@@ -92,6 +92,7 @@ def build_orch(connector_version_id, connection_config, node_timeout_ms=None):
     node_timeout_ms: 节点级超时（可选），传入后覆盖 connector 节点默认行为
     """
     connector_data = {
+        "type": "connector",
         "labelCn": "超时连接器",
         "labelEn": "TimeoutConn",
         "connectorVersionId": str(connector_version_id),
@@ -139,6 +140,7 @@ def build_orch(connector_version_id, connection_config, node_timeout_ms=None):
                 "id": "node_exit", "type": "exit",
                 "position": {"x": 600, "y": 200},
                 "data": {
+                    "type": "exit",
                     "labelCn": "返回", "labelEn": "Ret",
                     "output": {
                         "header": {"type": "object", "properties": {}},

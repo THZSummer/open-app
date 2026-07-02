@@ -46,7 +46,7 @@ def test_contract_response():
                        }},
             {"id": "node_exit", "type": "exit",
              "position": {"x": 350, "y": 200},
-             "data": {"labelCn": "返回", "labelEn": "Return",
+             "data": {"type": "exit", "labelCn": "返回", "labelEn": "Return",
                       "output": {"header": {"type": "object", "properties": {}},
                           "body": {"type": "object", "properties": {"ok": {"type": "boolean", "value": True}}}}}}
         ],

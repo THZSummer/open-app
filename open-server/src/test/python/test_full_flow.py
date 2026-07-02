@@ -637,6 +637,7 @@ def test_full_flow():
                             }
                         }},
                         {"id": nid_conn, "type": "connector", "data": {
+                            "type": "connector",
                             "connectorId": str(cid),
                             "connectorVersionId": str(conn_vid),
                             "connectorVersionConfig": {

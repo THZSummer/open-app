@@ -13,7 +13,7 @@ public class SystokenCredentialSupplier implements CredentialSupplier {
     public String getAuthType() { return "SYSTOKEN"; }
 
     @Override
-    public Map<String, String> resolve(Map<String, Object> fieldDefs, ExecutionContext context) {
+    public Map<String, String> resolve(Map<String, Object> fieldDefs, Map<String, Object> authConfig, ExecutionContext context) {
         Map<String, String> result = new LinkedHashMap<>();
         result.put("${$.system.env.sysToken}", getToken());
         return result;

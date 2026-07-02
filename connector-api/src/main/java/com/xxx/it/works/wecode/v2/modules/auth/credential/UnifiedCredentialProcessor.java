@@ -63,17 +63,17 @@ public class UnifiedCredentialProcessor {
 
         Map<String, Object> headerContainer = (Map<String, Object>) authConfig.get("header");
         if (headerContainer != null && headers != null) {
-            injectContainer(authType, headerContainer, (Map) headers, true, context);
+            injectContainer(authType, authConfig, headerContainer, (Map) headers, true, context);
         }
 
         Map<String, Object> queryContainer = (Map<String, Object>) authConfig.get("query");
         if (queryContainer != null && queryParams != null) {
-            injectContainer(authType, queryContainer, queryParams, false, context);
+            injectContainer(authType, authConfig, queryContainer, queryParams, false, context);
         }
     }
 
     @SuppressWarnings("unchecked")
-    private void injectContainer(String authType,
+    private void injectContainer(String authType, Map<String, Object> authConfig,
                                   Map<String, Object> container,
                                   Map<String, Object> target,
                                   boolean stringTarget,
@@ -83,7 +83,7 @@ public class UnifiedCredentialProcessor {
             return;
         }
 
-        Map<String, String> exprToValue = supplierRegistry.resolve(authType, properties, context);
+        Map<String, String> exprToValue = supplierRegistry.resolve(authType, properties, authConfig, context);
 
         for (Map.Entry<String, Object> entry : properties.entrySet()) {
             String fieldName = entry.getKey();

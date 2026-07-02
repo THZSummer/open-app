@@ -9,6 +9,7 @@ import com.xxx.it.works.wecode.v2.modules.connectorversion.entity.ConnectorVersi
 import com.xxx.it.works.wecode.v2.modules.connectorversion.entity.ConnectorVersionRef;
 import com.xxx.it.works.wecode.v2.modules.connectorversion.mapper.ConnectorVersionRefMapper;
 import com.xxx.it.works.wecode.v2.modules.connectorversion.mapper.OpConnectorVersionMapper;
+import com.xxx.it.works.wecode.v2.modules.flow.model.NodeTypeResolver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.graalvm.polyglot.Context;
@@ -129,9 +130,8 @@ public class FlowPublishValidator {
 
         boolean hasBusinessNode = false;
         for (JsonNode node : nodes) {
-            JsonNode type = node.get("type");
-            if (type != null) {
-                String typeStr = type.asText();
+            String typeStr = NodeTypeResolver.businessType(node);
+            if (typeStr != null) {
                 if (!"trigger".equals(typeStr) && !"exit".equals(typeStr)) {
                     hasBusinessNode = true;
                     break;
@@ -247,8 +247,8 @@ public class FlowPublishValidator {
         }
         int scriptNodeCount = 0;
         for (JsonNode node : nodes) {
-            JsonNode type = node.get("type");
-            if (type != null && "script".equals(type.asText())) {
+            String typeStr = NodeTypeResolver.businessType(node);
+            if (typeStr != null && "script".equals(typeStr)) {
                 scriptNodeCount++;
                 JsonNode data = node.get("data");
                 if (data != null) {

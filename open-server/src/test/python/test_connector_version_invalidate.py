@@ -41,7 +41,7 @@ class TestConnectorVersionInvalidate:
         db(f"UPDATE openplatform_v2_cp_flow_t SET lifecycle_status = 2 WHERE id = {fid}")
         try:
             resp = api("PUT", f"/connectors/{cid}/versions/{vid}/invalidate")
-            assert resp.status_code == 422
+            assert resp.json()["code"] == "422"
             body = resp.json()
             assert "运行中的连接流" in body.get("message", "") or "运行中" in body.get("messageZh", "")
         finally:

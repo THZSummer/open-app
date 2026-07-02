@@ -57,6 +57,7 @@ def build_orch_v1():
                 "id": "node_exit", "type": "exit",
                 "position": {"x": 350, "y": 200},
                 "data": {
+                    "type": "exit",
                     "labelCn": "返回V1", "labelEn": "ReturnV1",
                     "output": {
                         "header": {"type": "object", "properties": {}},
@@ -118,6 +119,7 @@ def build_orch_v2():
                 "id": "node_exit", "type": "exit",
                 "position": {"x": 350, "y": 200},
                 "data": {
+                    "type": "exit",
                     "labelCn": "返回V2", "labelEn": "ReturnV2",
                     "output": {
                         "header": {"type": "object", "properties": {}},

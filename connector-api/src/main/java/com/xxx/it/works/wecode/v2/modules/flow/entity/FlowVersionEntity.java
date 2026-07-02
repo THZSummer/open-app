@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Column;
+import com.xxx.it.works.wecode.v2.modules.runtime.NodeTypeResolver;
 import org.springframework.data.relational.core.mapping.Table;
 
 import java.time.LocalDateTime;
@@ -147,7 +148,7 @@ public class FlowVersionEntity {
         List<Map<String, Object>> nodes = (List<Map<String, Object>>) config.get("nodes");
         if (nodes != null) {
             for (Map<String, Object> node : nodes) {
-                if ("trigger".equals(node.get("type"))) {
+                if ("trigger".equals(NodeTypeResolver.businessType(node))) {
                     return node;
                 }
             }

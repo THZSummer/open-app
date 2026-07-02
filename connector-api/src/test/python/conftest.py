@@ -129,6 +129,7 @@ def deployed_flow(flow, request):
                 "id": "node_exit", "type": "exit",
                 "position": {"x": 350, "y": 200},
                 "data": {
+                    "type": "exit",
                     "labelCn": "返回", "labelEn": "Return",
                     "outputMapping": {
                         "header": {"type": "object", "properties": {}},

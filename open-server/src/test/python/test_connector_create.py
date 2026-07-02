@@ -33,7 +33,7 @@ class TestConnectorCreate:
     @pytest.mark.L4
     def test_missing_name_cn(self):
         resp = api("POST", "/connectors", {"nameEn": "Test", "connectorType": 1})
-        assert resp.status_code == 400
+        assert resp.json()["code"] == "400"
 
     @pytest.mark.parametrize("ctype", [99, 0, -1])
     @pytest.mark.L4
@@ -57,7 +57,7 @@ class TestConnectorCreate:
         name = "测" * 129
         body = {"nameCn": name, "nameEn": "BoundaryTest129", "connectorType": 1}
         resp = api("POST", "/connectors", body)
-        assert resp.status_code == 400
+        assert resp.json()["code"] == "400"
 
     @pytest.mark.L4
     def test_name_en_exactly_128(self):
@@ -75,4 +75,4 @@ class TestConnectorCreate:
         name = "a" * 129
         body = {"nameCn": "英文名边界129", "nameEn": name, "connectorType": 1}
         resp = api("POST", "/connectors", body)
-        assert resp.status_code == 400
+        assert resp.json()["code"] == "400"

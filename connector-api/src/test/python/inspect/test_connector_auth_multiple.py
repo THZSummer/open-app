@@ -163,6 +163,7 @@ def build_orch(connector_version_id, connection_config):
                 "id": "node_connector", "type": "connector",
                 "position": {"x": 350, "y": 200},
                 "data": {
+                    "type": "connector",
                     "labelCn": "连接器", "labelEn": "Conn",
                     "connectorVersionId": str(connector_version_id),
                     "connectorVersionConfig": connection_config,
@@ -177,6 +178,7 @@ def build_orch(connector_version_id, connection_config):
                 "id": "node_exit", "type": "exit",
                 "position": {"x": 600, "y": 200},
                 "data": {
+                    "type": "exit",
                     "labelCn": "返回", "labelEn": "Ret",
                     "output": {
                         "header": {"type": "object", "properties": {}},
@@ -254,7 +256,7 @@ CONN_CONFIG_DIGITALSIGN_COOKIE = {
     "authConfigs": [
         {
             "type": "SIGNATURE",
-            "secretKey": {"type": "object", "properties": {"signSecretKey": {"type": "string", "required": True, "sensitive": True, "value": "sign-test-value"}}}, "header": {"type": "object", "properties": {"X-Signature": {"type": "string", "required": True, "sensitive": True}}}
+            "secretKey": {"type": "object", "properties": {"signSecretKey": {"type": "string", "required": True, "sensitive": True, "value": "sign-test-value"}}}, "header": {"type": "object", "properties": {"X-Signature": {"type": "string", "required": True, "sensitive": True, "value": "${$.system.env.signature}"}}}
         },
         {
             "type": "COOKIE",
@@ -282,7 +284,7 @@ CONN_CONFIG_TRIPLE_AUTH = {
         },
         {
             "type": "SIGNATURE",
-            "secretKey": {"type": "object", "properties": {"signSecretKey": {"type": "string", "required": True, "sensitive": True, "value": "triple-sign-value"}}}, "header": {"type": "object", "properties": {"X-Signature": {"type": "string", "required": True, "sensitive": True}}}
+            "secretKey": {"type": "object", "properties": {"signSecretKey": {"type": "string", "required": True, "sensitive": True, "value": "triple-sign-value"}}}, "header": {"type": "object", "properties": {"X-Signature": {"type": "string", "required": True, "sensitive": True, "value": "${$.system.env.signature}"}}}
         },
         {
             "type": "COOKIE",

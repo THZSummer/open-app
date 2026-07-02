@@ -70,9 +70,9 @@ def _set_connection_config(vid, config_dict):
 
 _BASE_ORCH = {
     "nodes": [
-        {"id": "trigger", "type": "trigger", "data": {"triggerType": "http"}},
-        {"id": "n1", "type": "script", "data": {"script": "1 + 1"}},
-        {"id": "exit1", "type": "exit"}
+        {"id": "trigger", "type": "trigger", "data": {"type": "trigger", "triggerType": "http"}},
+        {"id": "n1", "type": "script", "data": {"type": "script", "script": "1 + 1"}},
+        {"id": "exit1", "type": "exit", "data": {"type": "exit"}}
     ],
     "edges": [
         {"id": "e1", "source": "trigger", "target": "n1"},
@@ -173,8 +173,8 @@ class TestUrlRegexPattern:
         _set_connection_config(vid, {"protocol": "HTTP", "protocolConfig": {"url": "http://evil.com/api", "method": "GET"}})
         resp = _publish_connector(cid, vid)
         if resp is not None:
-            assert resp.status_code == 422, (
-                f"Expected 422 for URL validation, got {resp.status_code}: "
+            assert resp.json()["code"] == "422", (
+                f"Expected code='422' for URL validation, got {resp.json()['code']}: "
                 f"{resp.json() if resp else ''}"
             )
         _set_lookup_item("Connector.Platform.Config", "Connector.Url.Regex.Pattern", "^https?://.*")
@@ -303,7 +303,7 @@ class TestNodeTimeoutLimit:
         _set_orchestration(fvid, config)
         resp = _publish_flow(fid, fvid)
         if resp is not None:
-            assert resp.status_code == 422, (
+            assert resp.json()["code"] == "422", (
                 f"Expected 422 for timeout exceeding 5s limit, got {resp.status_code}: "
                 f"{resp.json() if resp else ''}"
             )
@@ -314,9 +314,9 @@ class TestNodeTimeoutLimit:
         fid, fvid = draft_flow
         config = {
             "nodes": [
-                {"id": "trigger", "type": "trigger", "data": {"triggerType": "http"}},
-                {"id": "n1", "type": "connector", "data": {"timeoutMs": 10000}},
-                {"id": "exit1", "type": "exit"}
+                {"id": "trigger", "type": "trigger", "data": {"type": "trigger", "triggerType": "http"}},
+                {"id": "n1", "type": "connector", "data": {"type": "connector", "timeoutMs": 10000}},
+                {"id": "exit1", "type": "exit", "data": {"type": "exit"}}
             ],
             "edges": [
                 {"id": "e1", "source": "trigger", "target": "n1"},
@@ -326,7 +326,7 @@ class TestNodeTimeoutLimit:
         _set_orchestration(fvid, config)
         resp = _publish_flow(fid, fvid)
         if resp is not None:
-            assert resp.status_code == 422, (
+            assert resp.json()["code"] == "422", (
                 f"Expected 422 for connector node timeout > 5s, got {resp.status_code}: "
                 f"{resp.json() if resp else ''}"
             )
@@ -400,7 +400,7 @@ class TestFlowMaxQps:
         _set_orchestration(fvid, config)
         resp = _publish_flow(fid, fvid)
         if resp is not None:
-            assert resp.status_code == 422, (
+            assert resp.json()["code"] == "422", (
                 f"Expected 422 for maxQps validation, got {resp.status_code}: "
                 f"{resp.json() if resp else ''}"
             )
@@ -440,7 +440,7 @@ class TestFlowMaxConcurrency:
         _set_orchestration(fvid, config)
         resp = _publish_flow(fid, fvid)
         if resp is not None:
-            assert resp.status_code == 422, (
+            assert resp.json()["code"] == "422", (
                 f"Expected 422 for maxConcurrency validation, got {resp.status_code}: "
                 f"{resp.json() if resp else ''}"
             )
@@ -476,7 +476,7 @@ class TestFlowCacheTtlLimit:
         _set_orchestration(fvid, config)
         resp = _publish_flow(fid, fvid)
         if resp is not None:
-            assert resp.status_code == 422, (
+            assert resp.json()["code"] == "422", (
                 f"Expected 422 for cache TTL > 1296000, got {resp.status_code}: "
                 f"{resp.json() if resp else ''}"
             )
@@ -509,15 +509,15 @@ class TestParallelBranchesLimit:
         fid, fvid = draft_flow
         config = {
             "nodes": [
-                {"id": "trigger", "type": "trigger", "data": {"triggerType": "http"}},
-                {"id": "n1", "type": "script", "data": {"script": "1+1"}},
+                {"id": "trigger", "type": "trigger", "data": {"type": "trigger", "triggerType": "http"}},
+                {"id": "n1", "type": "script", "data": {"type": "script", "script": "1+1"}},
             ],
             "edges": [],
             "flowConfig": {}
         }
         for i in range(1, 10):
             exit_id = f"exit{i}"
-            config["nodes"].append({"id": exit_id, "type": "exit"})
+            config["nodes"].append({"id": exit_id, "type": "exit", "data": {"type": "exit"}})
             config["edges"].append({
                 "id": f"pe{i}", "source": "n1", "target": exit_id,
                 "data": {"connectionMode": "parallel"}
@@ -525,7 +525,7 @@ class TestParallelBranchesLimit:
         _set_orchestration(fvid, config)
         resp = _publish_flow(fid, fvid)
         if resp is not None:
-            assert resp.status_code == 422, (
+            assert resp.json()["code"] == "422", (
                 f"Expected 422 for 9 parallel branches > 8, got {resp.status_code}: "
                 f"{resp.json() if resp else ''}"
             )
@@ -536,15 +536,15 @@ class TestParallelBranchesLimit:
         fid, fvid = draft_flow
         config = {
             "nodes": [
-                {"id": "trigger", "type": "trigger", "data": {"triggerType": "http"}},
-                {"id": "n1", "type": "script", "data": {"script": "1+1"}},
+                {"id": "trigger", "type": "trigger", "data": {"type": "trigger", "triggerType": "http"}},
+                {"id": "n1", "type": "script", "data": {"type": "script", "script": "1+1"}},
             ],
             "edges": [],
             "flowConfig": {}
         }
         for i in range(1, 9):
             exit_id = f"exit{i}"
-            config["nodes"].append({"id": exit_id, "type": "exit"})
+            config["nodes"].append({"id": exit_id, "type": "exit", "data": {"type": "exit"}})
             config["edges"].append({
                 "id": f"pe{i}", "source": "n1", "target": exit_id,
                 "data": {"connectionMode": "parallel"}
@@ -572,9 +572,9 @@ class TestScriptLengthLimit:
         long_script = "let x = " + "1+" * 4000 + "0;"  # 约 12000 字符
         config = {
             "nodes": [
-                {"id": "trigger", "type": "trigger", "data": {"triggerType": "http"}},
-                {"id": "n1", "type": "script", "data": {"script": long_script}},
-                {"id": "exit1", "type": "exit"}
+                {"id": "trigger", "type": "trigger", "data": {"type": "trigger", "triggerType": "http"}},
+                {"id": "n1", "type": "script", "data": {"type": "script", "script": long_script}},
+                {"id": "exit1", "type": "exit", "data": {"type": "exit"}}
             ],
             "edges": [
                 {"id": "e1", "source": "trigger", "target": "n1"},
@@ -584,7 +584,7 @@ class TestScriptLengthLimit:
         _set_orchestration(fvid, config)
         resp = _publish_flow(fid, fvid)
         if resp is not None:
-            assert resp.status_code == 422, (
+            assert resp.json()["code"] == "422", (
                 f"Expected 422 for script > 10000 chars, got {resp.status_code}: "
                 f"{resp.json() if resp else ''}"
             )
@@ -621,9 +621,9 @@ class TestScriptTimeoutLimit:
         fid, fvid = draft_flow
         config = {
             "nodes": [
-                {"id": "trigger", "type": "trigger", "data": {"triggerType": "http"}},
-                {"id": "n1", "type": "script", "data": {"script": "1+1", "timeout": 60}},
-                {"id": "exit1", "type": "exit"}
+                {"id": "trigger", "type": "trigger", "data": {"type": "trigger", "triggerType": "http"}},
+                {"id": "n1", "type": "script", "data": {"type": "script", "script": "1+1", "timeout": 60}},
+                {"id": "exit1", "type": "exit", "data": {"type": "exit"}}
             ],
             "edges": [
                 {"id": "e1", "source": "trigger", "target": "n1"},
@@ -633,7 +633,7 @@ class TestScriptTimeoutLimit:
         _set_orchestration(fvid, config)
         resp = _publish_flow(fid, fvid)
         if resp is not None:
-            assert resp.status_code == 422, (
+            assert resp.json()["code"] == "422", (
                 f"Expected 422 for script timeout > 30s, got {resp.status_code}: "
                 f"{resp.json() if resp else ''}"
             )
@@ -644,9 +644,9 @@ class TestScriptTimeoutLimit:
         fid, fvid = draft_flow
         config = {
             "nodes": [
-                {"id": "trigger", "type": "trigger", "data": {"triggerType": "http"}},
-                {"id": "n1", "type": "script", "data": {"script": "1+1", "timeout": 10}},
-                {"id": "exit1", "type": "exit"}
+                {"id": "trigger", "type": "trigger", "data": {"type": "trigger", "triggerType": "http"}},
+                {"id": "n1", "type": "script", "data": {"type": "script", "script": "1+1", "timeout": 10}},
+                {"id": "exit1", "type": "exit", "data": {"type": "exit"}}
             ],
             "edges": [
                 {"id": "e1", "source": "trigger", "target": "n1"},

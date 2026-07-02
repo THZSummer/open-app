@@ -3,26 +3,29 @@ package com.xxx.it.works.wecode.v2.modules.ratelimit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.Order;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.http.HttpStatus;
+import org.springframework.scripting.support.ResourceScriptSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Mono;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 
 /**
- * 入站请求限流过滤器 (connector-api) — Redis INCR + EXPIRE
+ * 入站请求限流过滤器 (connector-api) — Redis Lua 原子限流
  * <p>
- * 取代旧的 Bucket4j 本地限流, 基于 Redis 实现分布式限流。
  * 支持两种模式:
  * <ul>
- *   <li>QPS 模式: Redis INCR + EXPIRE, 按秒级粒度限流</li>
+ *   <li>QPS 模式: Lua 令牌桶脚本 (SET+EX+DECR 原子操作), 按秒级粒度限流</li>
  *   <li>Concurrency 模式: Redis INCR/DECR, 控制同时在途请求数</li>
  * </ul>
  * </p>
@@ -42,14 +45,34 @@ public class InboundRateLimiter implements WebFilter {
     /** Redis Key 前缀: 并发 */
     private static final String CONCURRENCY_KEY_PREFIX = "cp:ratelimit:concurrency:";
 
-    /** 限流 Key TTL (秒) — QPS 秒级桶的存活时间 */
-    private static final int QPS_KEY_TTL_SECONDS = 2;
+    /** 限流 Key TTL (秒) — QPS 秒级桶, 1s 足够覆盖当前秒内所有请求, 下秒自动换桶 */
+    private static final int QPS_KEY_TTL_SECONDS = 1;
 
     /** 并发 Key TTL (秒) — 防止异常情况下的 key 泄漏 */
     private static final int CONCURRENCY_KEY_TTL_SECONDS = 300;
 
     /** 限流命中后的等待时间 (秒) */
     private static final int RETRY_AFTER_SECONDS = 1;
+
+    /** QPS 限流 Lua 脚本 (令牌桶, 原子操作: GET→SET/DECR→return) */
+    private static final RedisScript<Long> QPS_SCRIPT;
+    static {
+        DefaultRedisScript<Long> script = new DefaultRedisScript<>();
+        script.setScriptSource(new ResourceScriptSource(
+                new ClassPathResource("lua/rate_limit_qps.lua")));
+        script.setResultType(Long.class);
+        QPS_SCRIPT = script;
+    }
+
+    /** 并发限流 Lua 脚本 (原子 INCR+EXPIRE, 超限自动 DECR 回退) */
+    private static final RedisScript<Long> CONCURRENCY_SCRIPT;
+    static {
+        DefaultRedisScript<Long> script = new DefaultRedisScript<>();
+        script.setScriptSource(new ResourceScriptSource(
+                new ClassPathResource("lua/rate_limit_concurrency.lua")));
+        script.setResultType(Long.class);
+        CONCURRENCY_SCRIPT = script;
+    }
 
     private final ReactiveRedisTemplate<String, String> reactiveRedisTemplate;
     private final RateLimitConfigReader rateLimitConfigReader;
@@ -102,7 +125,15 @@ public class InboundRateLimiter implements WebFilter {
     }
 
     /**
-     * QPS 限流: Redis INCR + EXPIRE (秒级粒度)
+     * QPS 限流: Lua 令牌桶脚本 (原子操作)
+     * <p>
+     * 脚本逻辑: GET key → 不存在则 SET(maxTokens-1, EX, ttl) 返回1 →
+     * 存在且>0则 DECR 返回1 → 否则返回0
+     * </p>
+     * <p>
+     * 相比 INCR+EXPIRE 两步方案, Lua 脚本保证原子性:
+     * 无竞态窗口, 无 EXPIRE 丢失风险, 单次 Redis 往返
+     * </p>
      */
     private Mono<Void> applyQpsLimit(ServerWebExchange exchange, WebFilterChain chain,
                                        String flowId, RateLimitConfig config) {
@@ -110,67 +141,61 @@ public class InboundRateLimiter implements WebFilter {
         String secondBucket = LocalDateTime.now()
                 .truncatedTo(ChronoUnit.SECONDS)
                 .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"));
-        String key = QPS_KEY_PREFIX + flowId + ":" + secondBucket;
+        String key = QPS_KEY_PREFIX + "{" + flowId + "}:" + secondBucket;
 
         int maxQps = config.getMaxQps();
 
-        return reactiveRedisTemplate.opsForValue().increment(key)
-                .flatMap(current -> {
-                    // 首次使用设置 TTL
-                    if (current == 1) {
-                        return reactiveRedisTemplate.expire(key, Duration.ofSeconds(QPS_KEY_TTL_SECONDS))
-                                .thenReturn(current);
-                    }
-                    return Mono.just(current);
-                })
-                .flatMap(current -> {
-                    if (current <= maxQps) {
-                        return chain.filter(exchange);
-                    } else {
-                        log.warn("QPS rate limit exceeded: flowId={}, current={}, maxQps={}",
-                                flowId, current, maxQps);
-                        return writeRateLimitResponse(exchange, flowId);
-                    }
-                });
+        // 执行 Lua 脚本: KEYS[1]=key, ARGV[1]=maxQps, ARGV[2]=ttl
+        // 返回 1=允许, 0=拒绝
+        return reactiveRedisTemplate.execute(
+                QPS_SCRIPT,
+                List.of(key),
+                List.of(String.valueOf(maxQps), String.valueOf(QPS_KEY_TTL_SECONDS))
+        ).next()
+        .flatMap(result -> {
+            if (result != null && result == 1L) {
+                return chain.filter(exchange);
+            } else {
+                log.warn("QPS rate limit exceeded: flowId={}, maxQps={}", flowId, maxQps);
+                return writeRateLimitResponse(exchange, flowId);
+            }
+        });
     }
 
     /**
-     * 并发限流: Redis INCR/DECR
+     * 并发限流: Lua 脚本原子获取 (INCR+EXPIRE合一), doFinally 异步 DECR 释放
+     * <p>
+     * 获取阶段 (Lua 原子): INCR → 首次设EXPIRE → 超限则DECR回退返回-1
+     * 释放阶段 (Java异步): doFinally → DECR
+     * </p>
      */
     private Mono<Void> applyConcurrencyLimit(ServerWebExchange exchange, WebFilterChain chain,
                                               String flowId, RateLimitConfig config) {
-        String key = CONCURRENCY_KEY_PREFIX + flowId;
+        String key = CONCURRENCY_KEY_PREFIX + "{" + flowId + "}";
         int maxConcurrency = config.getMaxConcurrency();
 
-        // 先 INCR 检查是否超限
-        return reactiveRedisTemplate.opsForValue().increment(key)
-                .flatMap(current -> {
-                    // 首次使用设置 TTL
-                    if (current == 1) {
-                        return reactiveRedisTemplate.expire(key, Duration.ofSeconds(CONCURRENCY_KEY_TTL_SECONDS))
-                                .thenReturn(current);
-                    }
-                    return Mono.just(current);
-                })
-                .flatMap(current -> {
-                    if (current <= maxConcurrency) {
-                        // 未超限, 放行, 并在完成后 DECR
-                        return chain.filter(exchange)
-                                .doFinally(signalType -> {
-                                    reactiveRedisTemplate.opsForValue().decrement(key)
-                                            .subscribe(
-                                                    v -> {},
-                                                    e -> log.warn("Failed to decrement concurrency key for flowId={}", flowId, e)
-                                            );
-                                });
-                    } else {
-                        // 超限, 回退计数器并拒绝
-                        log.warn("Concurrency limit exceeded: flowId={}, current={}, max={}",
-                                flowId, current, maxConcurrency);
-                        return reactiveRedisTemplate.opsForValue().decrement(key)
-                                .then(writeRateLimitResponse(exchange, flowId));
-                    }
-                });
+        return reactiveRedisTemplate.execute(
+                CONCURRENCY_SCRIPT,
+                List.of(key),
+                List.of(String.valueOf(maxConcurrency), String.valueOf(CONCURRENCY_KEY_TTL_SECONDS))
+        ).next()
+        .flatMap(result -> {
+            if (result != null && result >= 1) {
+                // 未超限, 放行, 并在完成后 DECR
+                return chain.filter(exchange)
+                        .doFinally(signalType -> {
+                            reactiveRedisTemplate.opsForValue().decrement(key)
+                                    .subscribe(
+                                            v -> {},
+                                            e -> log.warn("Failed to decrement concurrency key for flowId={}", flowId, e)
+                                    );
+                        });
+            } else {
+                // 超限 (Lua 已自动 DECR 回退)
+                log.warn("Concurrency limit exceeded: flowId={}, max={}", flowId, maxConcurrency);
+                return writeRateLimitResponse(exchange, flowId);
+            }
+        });
     }
 
     /**

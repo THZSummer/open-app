@@ -231,6 +231,7 @@ def test_full_flow_script():
                         }
                     }},
                     {"id": nid_s, "type": "script", "data": {
+                        "type": "script",
                         "script": script_src, "timeoutMs": 5000,
                         "output": {
                             "type": "object",

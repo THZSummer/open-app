@@ -7,6 +7,8 @@ import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.ResourceLimits;
 import org.springframework.stereotype.Component;
 
+import jakarta.annotation.PostConstruct;
+
 /**
  * GraalJS 沙箱 Context 工厂
  * <p>
@@ -50,6 +52,23 @@ public class GraalJsContextFactory {
                 .option("engine.WarnInterpreterOnly", "false")
                 .build();
         log.info("GraalJS engine initialized");
+    }
+
+    /**
+     * 预热 GraalJS 引擎: 启动时创建临时 Context 执行一次空脚本后关闭,
+     * 触发 Engine/Context 的惰性初始化 (类加载 + JIT 编译),
+     * 避免首个真实脚本因冷启动超过 timeoutMs 而误报超时。
+     */
+    @PostConstruct
+    public void warmup() {
+        try {
+            Context ctx = createContext();
+            ctx.eval("js", "(function(){ return 1; })()");
+            closeContext(ctx);
+            log.info("GraalJS engine warmed up");
+        } catch (Exception e) {
+            log.warn("GraalJS warmup failed (will warm up on first script): {}", e.getMessage());
+        }
     }
 
     /**

@@ -192,6 +192,7 @@ def build_parallel_orch(connector_version_ids, connection_configs, parallel=True
                 "id": "node_conn_a", "type": "connector",
             "position": {"x": 350, "y": 100},
             "data": {
+                "type": "connector",
                 "labelCn": "分支A", "labelEn": "BranchA",
                 "connectorVersionId": str(connector_version_ids[0]),
                 "connectorVersionConfig": connection_configs[0],
@@ -206,6 +207,7 @@ def build_parallel_orch(connector_version_ids, connection_configs, parallel=True
             "id": "node_conn_b", "type": "connector",
             "position": {"x": 350, "y": 300},
             "data": {
+                "type": "connector",
                 "labelCn": "分支B", "labelEn": "BranchB",
                 "connectorVersionId": str(connector_version_ids[1]),
                 "connectorVersionConfig": connection_configs[1],
@@ -220,6 +222,7 @@ def build_parallel_orch(connector_version_ids, connection_configs, parallel=True
             "id": "node_exit", "type": "exit",
             "position": {"x": 600, "y": 200},
             "data": {
+                "type": "exit",
                 "labelCn": "返回", "labelEn": "Ret",
                 "output": {
                     "header": {"type": "object", "properties": {}},
@@ -296,6 +299,7 @@ def build_parallel_orch_multi(connector_version_ids, connection_configs):
             "id": node_id, "type": "connector",
             "position": {"x": 350, "y": 100 + i * 60},
             "data": {
+                "type": "connector",
                 "labelCn": f"分支{i}", "labelEn": f"Branch{i}",
                 "connectorVersionId": str(cvid),
                 "connectorVersionConfig": connection_configs[i],
@@ -319,6 +323,7 @@ def build_parallel_orch_multi(connector_version_ids, connection_configs):
         "id": "node_exit", "type": "exit",
         "position": {"x": 600, "y": 200},
         "data": {
+            "type": "exit",
             "labelCn": "返回", "labelEn": "Ret",
             "output": {
                 "header": {"type": "object", "properties": {}},

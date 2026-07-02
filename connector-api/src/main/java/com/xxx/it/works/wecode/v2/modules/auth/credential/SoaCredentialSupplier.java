@@ -13,7 +13,7 @@ public class SoaCredentialSupplier implements CredentialSupplier {
     public String getAuthType() { return "SOA"; }
 
     @Override
-    public Map<String, String> resolve(Map<String, Object> fieldDefs, ExecutionContext context) {
+    public Map<String, String> resolve(Map<String, Object> fieldDefs, Map<String, Object> authConfig, ExecutionContext context) {
         Map<String, String> result = new LinkedHashMap<>();
         result.put("${$.system.env.soaToken}", getToken());
         return result;

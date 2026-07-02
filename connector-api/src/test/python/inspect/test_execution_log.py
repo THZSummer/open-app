@@ -75,6 +75,7 @@ def build_orch_with_auth():
                 "id": "node_exit", "type": "exit",
                 "position": {"x": 350, "y": 200},
                 "data": {
+                    "type": "exit",
                     "labelCn": "返回结果", "labelEn": "ReturnResult",
                     "output": {
                         "header": {

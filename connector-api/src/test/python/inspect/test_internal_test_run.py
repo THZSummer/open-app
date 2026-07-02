@@ -61,6 +61,7 @@ def setup_flow(snow_id_val, lifecycle_status=2):
                 "type": "exit",
                 "position": {"x": 350, "y": 200},
                 "data": {
+                    "type": "exit",
                     "labelCn": "返回",
                     "labelEn": "Return",
                     "output": {

@@ -33,6 +33,7 @@ CONNECTOR_API_BASE = "http://localhost:18180/api/v1"
 CONNECTOR_API_HEALTH = "http://localhost:18180/actuator/health"
 OPEN_SERVER_BASE = "http://localhost:18080/open-server"
 MOCK_SERVER_URL = "http://localhost:18980"
+MOCK_SERVER_PARALLEL_URL = "http://localhost:18982"
 _TIMEOUT = 10
 
 # ═══════════════════════════════════════════════════════════

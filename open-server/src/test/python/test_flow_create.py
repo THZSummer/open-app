@@ -31,12 +31,12 @@ class TestFlowCreate:
     @pytest.mark.L4
     def test_missing_name_cn(self):
         resp = api("POST", "/flows", {"nameEn": "Test"})
-        assert resp.status_code == 400
+        assert resp.json()["code"] == "400"
 
     @pytest.mark.L4
     def test_missing_name_en(self):
         resp = api("POST", "/flows", {"nameCn": "测试"})
-        assert resp.status_code == 400
+        assert resp.json()["code"] == "400"
 
     @pytest.mark.L4
     def test_name_cn_exactly_128(self):
@@ -54,7 +54,7 @@ class TestFlowCreate:
         name = "测" * 129
         body = {"nameCn": name, "nameEn": "FlowBoundary129"}
         resp = api("POST", "/flows", body)
-        assert resp.status_code == 400
+        assert resp.json()["code"] == "400"
 
     @pytest.mark.L4
     def test_name_en_exactly_128(self):
@@ -72,4 +72,4 @@ class TestFlowCreate:
         name = "a" * 129
         body = {"nameCn": "连接流英文名边界129", "nameEn": name}
         resp = api("POST", "/flows", body)
-        assert resp.status_code == 400
+        assert resp.json()["code"] == "400"

@@ -9,6 +9,7 @@ import com.xxx.it.works.wecode.v2.common.enums.FlowVersionStatus;
 import com.xxx.it.works.wecode.v2.common.id.IdGeneratorStrategy;
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.modules.approval.dto.ApprovalActionResponse;
+import com.xxx.it.works.wecode.v2.modules.flow.model.NodeTypeResolver;
 import com.xxx.it.works.wecode.v2.modules.approval.FlowVersionApprovalService;
 import com.xxx.it.works.wecode.v2.modules.approval.service.ApprovalService;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -889,7 +890,7 @@ public class FlowVersionService {
      */
     private void processConnectorRefNode(com.fasterxml.jackson.databind.JsonNode node, Long flowId, Long versionId,
                                           java.util.List<ConnectorVersionRef> refs, String operator, Date now) {
-        String type = node.has("type") ? node.get("type").asText() : null;
+        String type = NodeTypeResolver.businessType(node);
         if (!"connector".equals(type)) {
             return;
         }

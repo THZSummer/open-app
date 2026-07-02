@@ -196,6 +196,7 @@ def test_script_http_invoke():
                         }
                     }},
                     {"id": nid_s, "type": "script", "data": {
+                        "type": "script",
                         "script": script_src, "timeoutMs": 5000,
                         "output": {
                             "type": "object",

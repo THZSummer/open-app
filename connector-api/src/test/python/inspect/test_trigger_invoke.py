@@ -279,6 +279,7 @@ CONNECTOR_NODE = {
     "type": "connector",
     "position": {"x": 350, "y": 200},
     "data": {
+        "type": "connector",
         "labelCn": "调用搜索服务",
         "labelEn": "Call Search Service",
         "connectorVersionId": None,
@@ -324,6 +325,7 @@ EXIT_NODE = {
     "type": "exit",
     "position": {"x": 600, "y": 200},
     "data": {
+        "type": "exit",
         "labelCn": "返回搜索结果",
         "labelEn": "Return Search Result",
         "output": {
@@ -447,6 +449,7 @@ EXIT_NODE_NO_CONNECTOR = {
     "type": "exit",
     "position": {"x": 350, "y": 200},
     "data": {
+        "type": "exit",
         "labelCn": "返回结果",
         "labelEn": "Return Result",
         "output": {
@@ -517,6 +520,7 @@ FAIL_CONNECTOR_NODE = {
     "type": "connector",
     "position": {"x": 350, "y": 200},
     "data": {
+        "type": "connector",
         "labelCn": "失败调用",
         "labelEn": "Fail Call",
         "connectorVersionId": None,

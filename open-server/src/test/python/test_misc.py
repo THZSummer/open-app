@@ -246,7 +246,7 @@ class TestJsonValidation:
             db(f"INSERT INTO openplatform_v2_cp_connector_version_t (id, connector_id, connection_config, status, create_by, last_update_by) VALUES ({vid}, {cid}, '{{invalid json!!!', 1, 'tester', 'tester')")
             resp = api("PUT", f"/connectors/{cid}/versions/{vid}/publish")
             if resp is not None:
-                assert resp.status_code == 400
+                assert resp.json()["code"] == "400"
         finally:
             db(f"DELETE FROM openplatform_v2_cp_connector_version_t WHERE id = {vid}")
             db(f"DELETE FROM openplatform_v2_cp_connector_t WHERE id = {cid}")

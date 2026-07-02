@@ -14,6 +14,12 @@ import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 import java.util.concurrent.ThreadLocalRandom;
+import com.xxx.it.works.wecode.v2.modules.ratelimit.RateLimitConfig;
+import com.xxx.it.works.wecode.v2.common.config.OpenplatformLookupRepository;
+import com.xxx.it.works.wecode.v2.common.config.LookupItemEntity;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * 平台实体缓存管理器 (Cache-Aside 模式)
@@ -43,15 +49,18 @@ public class EntityCacheManager {
     private final ObjectMapper objectMapper;
     private final OpFlowVersionReadRepository flowVersionReadRepository;
     private final OpFlowReadRepository flowReadRepository;
+    private final OpenplatformLookupRepository lookupRepository;
 
     public EntityCacheManager(ReactiveRedisTemplate<String, String> redisTemplate,
                                ObjectMapper objectMapper,
                                OpFlowVersionReadRepository flowVersionReadRepository,
-                               OpFlowReadRepository flowReadRepository) {
+                               OpFlowReadRepository flowReadRepository,
+                               OpenplatformLookupRepository lookupRepository) {
         this.redisTemplate = redisTemplate;
         this.objectMapper = objectMapper;
         this.flowVersionReadRepository = flowVersionReadRepository;
         this.flowReadRepository = flowReadRepository;
+        this.lookupRepository = lookupRepository;
     }
 
     // ===== Flow 缓存 =====
@@ -75,7 +84,11 @@ public class EntityCacheManager {
                 .switchIfEmpty(Mono.defer(() -> {
                     log.debug("Flow cache miss, loading from DB: flowId={}", flowId);
                     return loadFlowFromDb(flowId);
-                }));
+                }))
+                .onErrorResume(e -> {
+                    log.warn("Redis unavailable for flow cache, falling back to DB: flowId={}", flowId, e);
+                    return loadFlowFromDb(flowId);
+                });
     }
 
     /**
@@ -129,7 +142,11 @@ public class EntityCacheManager {
                 .switchIfEmpty(Mono.defer(() -> {
                     log.debug("FlowVersion cache miss, loading from DB: versionId={}", versionId);
                     return loadFlowVersionFromDb(versionId);
-                }));
+                }))
+                .onErrorResume(e -> {
+                    log.warn("Redis unavailable for version cache, falling back to DB: versionId={}", versionId, e);
+                    return loadFlowVersionFromDb(versionId);
+                });
     }
 
     /**
@@ -160,6 +177,153 @@ public class EntityCacheManager {
         return redisTemplate.opsForValue().delete(key)
                 .doOnSuccess(count -> log.debug("FlowVersion cache invalidated: versionId={}, deleted={}",
                         versionId, count));
+    }
+
+    // ===== RateLimitConfig 缓存 (TTL 60s) =====
+
+    private static final Duration RATELIMIT_TTL = Duration.ofSeconds(60);
+
+    /**
+     * 获取限流配置: Redis cache-aside, miss 时从 FlowVersion 提取并回写
+     *
+     * @param flowId 连接流ID
+     * @return RateLimitConfig
+     */
+    public Mono<RateLimitConfig> getRateLimitConfig(Long flowId) {
+        String key = ratelimitKey(flowId);
+        return redisTemplate.opsForValue().get(key)
+                .flatMap(json -> {
+                    try {
+                        return Mono.just(objectMapper.readValue(json, RateLimitConfig.class));
+                    } catch (Exception e) {
+                        log.warn("RateLimitConfig cache deserialize failed: flowId={}", flowId);
+                        return Mono.<RateLimitConfig>empty();
+                    }
+                })
+                .switchIfEmpty(Mono.defer(() -> loadRateLimitFromDb(flowId)));
+    }
+
+    /**
+     * 失效限流配置缓存
+     */
+    public Mono<Boolean> invalidateRateLimitCache(Long flowId) {
+        return redisTemplate.opsForValue().delete(ratelimitKey(flowId));
+    }
+
+    private Mono<RateLimitConfig> loadRateLimitFromDb(Long flowId) {
+        // 通过已缓存的 FlowVersion 获取限流配置
+        return getFlowVersionByFlowId(flowId)
+                .flatMap(this::extractRateLimitConfig)
+                .flatMap(config -> {
+                    try {
+                        String json = objectMapper.writeValueAsString(config);
+                        return redisTemplate.opsForValue().set(ratelimitKey(flowId), json, RATELIMIT_TTL)
+                                .thenReturn(config)
+                                .onErrorResume(e -> Mono.just(config));
+                    } catch (Exception e) {
+                        return Mono.just(config);
+                    }
+                })
+                .defaultIfEmpty(new RateLimitConfig("qps", 1000, 1000));
+    }
+
+    @SuppressWarnings("unchecked")
+    private Mono<RateLimitConfig> extractRateLimitConfig(FlowVersionEntity version) {
+        try {
+            Map<String, Object> config = version.parseOrchestrationConfigAsMap(objectMapper);
+            if (config == null) return Mono.empty();
+            Map<String, Object> flowConfig = (Map<String, Object>) config.get("flowConfig");
+            if (flowConfig == null) return Mono.empty();
+            Object rlObj = flowConfig.get("rateLimitConfig");
+            if (!(rlObj instanceof Map)) return Mono.empty();
+            Map<String, Object> rl = (Map<String, Object>) rlObj;
+            String mode = rl.get("mode") instanceof String ? (String) rl.get("mode") : "qps";
+            int maxQps = rl.get("maxQps") instanceof Number ? ((Number) rl.get("maxQps")).intValue() : 1000;
+            int maxCon = rl.get("maxConcurrency") instanceof Number ? ((Number) rl.get("maxConcurrency")).intValue() : 1000;
+            return Mono.just(new RateLimitConfig(mode, Math.max(1, maxQps), Math.max(1, maxCon)));
+        } catch (Exception e) {
+            return Mono.empty();
+        }
+    }
+
+    /**
+     * 按 flowId 获取 FlowVersion (不走 versionId 缓存, 用 flowId 查)
+     */
+    private Mono<FlowVersionEntity> getFlowVersionByFlowId(Long flowId) {
+        return flowVersionReadRepository.findByFlowId(flowId);
+    }
+
+    // ===== Lookup 配置缓存 (TTL 5min) =====
+
+    private static final Duration LOOKUP_TTL = Duration.ofMinutes(5);
+    private static final String LOOKUP_PATH = "CEC.Open";
+
+    /**
+     * 获取 Lookup 配置: Redis cache-aside, miss 时从 DB 查并回写
+     * <p>
+     * Redis 中缓存的是 {@code List<LookupItemEntity>} 实体 JSON (与 market-server/open-server 对齐缓存实体),
+     * 对外仍返回 item_code → item_value 的 Map (内存转换, 调用方无感)。
+     * </p>
+     *
+     * @param classifyCode 分类编码
+     * @return item_code → item_value 的 Map
+     */
+    public Mono<Map<String, String>> getLookupConfig(String classifyCode) {
+        String key = lookupKey(classifyCode);
+        return redisTemplate.opsForValue().get(key)
+                .flatMap(json -> {
+                    try {
+                        List<LookupItemEntity> items = objectMapper.readValue(json,
+                                new com.fasterxml.jackson.core.type.TypeReference<List<LookupItemEntity>>() {});
+                        log.debug("Lookup cache hit: classifyCode={}, count={}", classifyCode, items.size());
+                        return Mono.just(entitiesToMap(items));
+                    } catch (Exception e) {
+                        log.warn("Lookup cache deserialize failed: classifyCode={}", classifyCode);
+                        return Mono.<Map<String, String>>empty();
+                    }
+                })
+                .switchIfEmpty(Mono.defer(() -> loadLookupFromDb(classifyCode)));
+    }
+
+    private Mono<Map<String, String>> loadLookupFromDb(String classifyCode) {
+        return lookupRepository.findByPathAndClassifyCode(LOOKUP_PATH, classifyCode)
+                .collectList()
+                .flatMap(items -> {
+                    if (items.isEmpty()) return Mono.just(new LinkedHashMap<String, String>());
+                    Map<String, String> result = entitiesToMap(items);
+                    try {
+                        String json = objectMapper.writeValueAsString(items);
+                        return redisTemplate.opsForValue().set(lookupKey(classifyCode), json, LOOKUP_TTL)
+                                .thenReturn(result)
+                                .onErrorResume(e -> Mono.just(result));
+                    } catch (Exception e) {
+                        return Mono.just(result);
+                    }
+                })
+                .onErrorResume(e -> {
+                    log.warn("Lookup DB load failed: classifyCode={}", classifyCode, e);
+                    return Mono.just(new LinkedHashMap<String, String>());
+                });
+    }
+
+    /**
+     * LookupItemEntity 列表 → item_code: item_value 的 Map
+     */
+    private Map<String, String> entitiesToMap(List<LookupItemEntity> items) {
+        Map<String, String> result = new LinkedHashMap<>(items.size());
+        for (LookupItemEntity item : items) {
+            if (item.getItemCode() != null) {
+                result.put(item.getItemCode(), item.getItemValue());
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 失效 Lookup 配置缓存
+     */
+    public Mono<Boolean> invalidateLookupCache(String classifyCode) {
+        return redisTemplate.opsForValue().delete(lookupKey(classifyCode));
     }
 
     // ===== 内部方法 =====
@@ -207,5 +371,14 @@ public class EntityCacheManager {
     private String flowVersionKey(Long versionId) {
         return "cp:entity:flowversion:" + versionId;
     }
+
+    private String ratelimitKey(Long flowId) {
+        return "cp:entity:ratelimit:" + flowId;
+    }
+
+    private String lookupKey(String classifyCode) {
+        return "cp:entity:lookup:" + classifyCode;
+    }
+
 
 }

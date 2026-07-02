@@ -29,4 +29,4 @@ class TestConnectorVersionCreate:
         """FR-005a③: 已有草稿时再创建返回 409"""
         cid, _ = draft_connector
         resp = api("POST", f"/connectors/{cid}/versions")
-        assert resp.status_code == 409
+        assert resp.json()["code"] == "409"

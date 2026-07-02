@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.NodeContext;
+import com.xxx.it.works.wecode.v2.modules.runtime.NodeTypeResolver;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.ExecutionResult;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.NodeOutput;
 import com.xxx.it.works.wecode.v2.modules.runtime.node.ConnectorNodeExecutor;
@@ -109,7 +110,7 @@ public class ReactiveSequentialExecutor {
             storeNodeOutputToContext(context, prevOutput);
         }
 
-        String nodeType = nodeConfig.get("type").asText();
+        String nodeType = NodeTypeResolver.businessType(nodeConfig);
         NodeExecutor executor = executorMap.get(nodeType);
         if (executor == null) {
             log.warn("Unknown node type: {}, skipping", nodeType);
@@ -186,7 +187,7 @@ public class ReactiveSequentialExecutor {
      */
     private ExecutionResult.StepDetail buildStepDetail(JsonNode node, ExecutionContext context) {
         String nodeId = node.get("id").asText();
-        String nodeType = node.get("type").asText();
+        String nodeType = NodeTypeResolver.businessType(node);
         NodeContext nodeCtx = context.getNodeContext(nodeId);
 
         ExecutionResult.StepDetail step = new ExecutionResult.StepDetail();
@@ -265,19 +266,14 @@ public class ReactiveSequentialExecutor {
         for (JsonNode node : orderedNodes) {
             ExecutionResult.StepDetail step = buildStepDetail(node, context);
 
-            // 检查失败状态
             if ("failed".equals(step.getStatus()) || "timeout".equals(step.getStatus())) {
                 anyFailed = true;
                 if (firstErrorCode == null && step.getErrorInfo() != null) {
-                    Object code = step.getErrorInfo().get("code");
-                    Object msgZh = step.getErrorInfo().get("messageZh");
-                    Object msgEn = step.getErrorInfo().get("messageEn");
-                    // 回退到 "message" 字段
-                    if (msgZh == null) { msgZh = step.getErrorInfo().get("message"); }
-                    if (msgEn == null) { msgEn = step.getErrorInfo().get("message"); }
-                    firstErrorCode = code instanceof String ? (String) code : "6001";
-                    firstErrorMessageZh = msgZh instanceof String ? (String) msgZh : step.getStatus();
-                    firstErrorMessageEn = msgEn instanceof String ? (String) msgEn : step.getStatus();
+                    firstErrorCode = extractErrorField(step.getErrorInfo(), "code", "6001");
+                    firstErrorMessageZh = extractErrorField(step.getErrorInfo(), "messageZh",
+                            extractErrorField(step.getErrorInfo(), "message", step.getStatus()));
+                    firstErrorMessageEn = extractErrorField(step.getErrorInfo(), "messageEn",
+                            extractErrorField(step.getErrorInfo(), "message", step.getStatus()));
                 }
             }
 
@@ -315,6 +311,11 @@ public class ReactiveSequentialExecutor {
         return Mono.just(result);
     }
 
+    private String extractErrorField(Map<String, Object> errorInfo, String field, String defaultVal) {
+        Object val = errorInfo.get(field);
+        return val instanceof String ? (String) val : defaultVal;
+    }
+
     /**
      * 拓扑排序: 按 edges 确定节点执行顺序
      * v5.5: 使用 {@code source}/{@code target} 替代 {@code sourceNodeId}/{@code targetNodeId}
@@ -330,7 +331,7 @@ public class ReactiveSequentialExecutor {
         // 找 trigger 节点作为 DAG 入口
         JsonNode entryNode = null;
         for (JsonNode node : nodes) {
-            if ("trigger".equals(node.get("type").asText())) {
+            if ("trigger".equals(NodeTypeResolver.businessType(node))) {
                 entryNode = node;
                 break;
             }

@@ -11,10 +11,11 @@ import com.xxx.it.works.wecode.v2.modules.cache.EntityCacheManager;
 import com.xxx.it.works.wecode.v2.modules.cache.FlowCacheManager;
 import com.xxx.it.works.wecode.v2.modules.execution.ExecutionRecordService;
 import com.xxx.it.works.wecode.v2.modules.execution.ExecutionStepService;
-import com.xxx.it.works.wecode.v2.modules.execution.ExecutionStepService.StepLog;
+import com.xxx.it.works.wecode.v2.modules.execution.ExecutionStepLog;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.NodeContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.DagScheduler;
+import com.xxx.it.works.wecode.v2.modules.runtime.NodeTypeResolver;
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.ReactiveSequentialExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.expression.ExpressionResolver;
 import com.xxx.it.works.wecode.v2.common.error.ErrorCode;
@@ -122,21 +123,19 @@ public class FlowInvokeService {
     private Mono<Tuple2<FlowVersionEntity, Optional<FlowEntity>>> loadFlowVersion(Long flowId) {
         return entityCacheManager.getFlow(flowId)
                 .flatMap(flow -> {
-                    // 校验连接流状态：仅运行中(RUNNING=2)才允许执行
                     if (flow.getLifecycleStatus() == null || flow.getLifecycleStatus() != 2) {
                         return Mono.error(new RuntimeException(
-                                "FLOW_NOT_RUNNING:" + flowId));  // marker prefix for classifyError replacement
+                                "FLOW_NOT_RUNNING:" + flowId));
                     }
                     Long deployedVersionId = flow.getDeployedVersionId();
+                    Mono<FlowVersionEntity> versionMono;
                     if (deployedVersionId != null) {
-                        log.debug("Flow {} has deployed_version_id={}, loading specific version",
-                                flowId, deployedVersionId);
-                        return flowVersionReadRepository.findById(deployedVersionId)
-                                .map(fv -> Tuples.of(fv, Optional.of(flow)));
+                        versionMono = entityCacheManager.getFlowVersion(deployedVersionId)
+                                .switchIfEmpty(loadFlowVersionByFlowId(flowId));
+                    } else {
+                        versionMono = loadFlowVersionByFlowId(flowId);
                     }
-                    // 未设置部署版本, 回退到按 flowId 查询
-                    return loadFlowVersionByFlowId(flowId)
-                            .map(fv -> Tuples.of(fv, Optional.of(flow)));
+                    return versionMono.map(fv -> Tuples.of(fv, Optional.of(flow)));
                 })
                 .switchIfEmpty(
                     loadFlowVersionByFlowId(flowId)
@@ -200,14 +199,19 @@ public class FlowInvokeService {
         String executionId = UUID.randomUUID().toString().replace("-", "");
         Long recordId = idGenerator.nextId();
 
-        return loadFlowVersion(flowId)
+        // 异步读取日志采集开关 (默认开启): 关闭时不写 execution_record / execution_step 两张表
+        return propertyService.isLogCollectionEnabled()
+                .defaultIfEmpty(true)
+                .onErrorReturn(true)
+                .flatMap(logEnabled -> loadFlowVersion(flowId)
                 .switchIfEmpty(Mono.error(new RuntimeException("Flow not found: " + flowId)))
                 .flatMap(tuple -> {
                     FlowVersionEntity flowVersion = tuple.getT1();
                     FlowEntity flow = tuple.getT2().orElse(null);
 
-                    // ★ 初始化执行记录
-                    initExecutionRecord(recordId, flowId, executionId, flowVersion, flow);
+                    // ★ 初始化执行记录 (开关关闭时跳过)
+                    String triggerAccount = resolveSysAccount(headers.getOrDefault("X-Sys-Token", ""));
+                    initExecutionRecord(recordId, flowId, executionId, flowVersion, flow, triggerAccount, logEnabled);
 
                     // 1. 解析编排配置
                     Map<String, Object> config = flowVersion.parseOrchestrationConfigAsMap(objectMapper);
@@ -254,7 +258,7 @@ public class FlowInvokeService {
                                     dagScheduler.schedule(flowVersion.getOrchestrationConfig(), context)
                                             .flatMap(updatedCtx -> {
                                                 ExecutionResult result = buildResultFromExecutionContext(
-                                                        updatedCtx, executionId, flowIdStr, recordId);
+                                                        updatedCtx, executionId, flowIdStr, recordId, logEnabled);
                                                 result.setCacheHit(false);
                                                 return cacheManager.writeCache(flowId, cacheKey,
                                                         result, cacheTtl)
@@ -264,25 +268,19 @@ public class FlowInvokeService {
                     } else {
                         executionMono = dagScheduler.schedule(flowVersion.getOrchestrationConfig(), context)
                                 .map(updatedCtx -> buildResultFromExecutionContext(
-                                        updatedCtx, executionId, flowIdStr, recordId));
+                                        updatedCtx, executionId, flowIdStr, recordId, logEnabled));
                     }
 
-                    return executionMono.map(result -> {
+                    return executionMono.flatMap(result -> {
                         // ★ 执行成功 - 更新记录
                         Integer finalStatus = "success".equals(result.getStatus()) ? 0 : 1;
                         long totalMs = result.getTotalDurationMs();
                         Integer duration = totalMs > 0 ? (int) totalMs : null;
                         String errCode = result.getErrorInfo() != null ? (String) result.getErrorInfo().get("code") : null;
                         String errMsg = result.getErrorInfo() != null ? (String) result.getErrorInfo().get("messageZh") : null;
-                        try {
-                            executionRecordService.updateRecord(recordId, finalStatus, duration, errCode, errMsg);
-                            // FR-005: FIFO 清理 — 单流记录数超过上限时删除最早记录 (§3.3.4: 读①)
-                            int maxRecords = resolveMaxExecutionRecords();
-                            executionRecordService.checkAndCleanFifo(flowId, maxRecords);
-                        } catch (Exception ex) {
-                            log.warn("Failed to update execution record: {}", ex.getMessage());
-                        }
-                        return buildTransparentResponse(flowIdStr, result);
+                        // 异步取①平台全局最大记录数, 避免在 reactor/lettuce 线程上 block 导致自死锁
+                        return finalizeExecutionRecord(recordId, flowId, finalStatus, duration, errCode, errMsg, logEnabled)
+                                .thenReturn(buildTransparentResponse(flowIdStr, result));
                     });
                 })
                 .onErrorResume(e -> {
@@ -296,17 +294,9 @@ public class FlowInvokeService {
                     TransparentFlowResponse response = buildErrorResponse(flowIdStr, errorCode, errorMsg, msg);
 
                     // ★ 执行失败 - 更新记录
-                    try {
-                        executionRecordService.updateRecord(recordId, 1, null, errorCode, errorMsg);
-                        // FR-005: FIFO 清理 — 单流记录数超过上限时删除最早记录 (§3.3.4: 读①)
-                        int maxRecords = resolveMaxExecutionRecords();
-                        executionRecordService.checkAndCleanFifo(flowId, maxRecords);
-                    } catch (Exception ex) {
-                        log.warn("Failed to update execution record: {}", ex.getMessage());
-                    }
-
-                    return Mono.just(response);
-                });
+                    return finalizeExecutionRecord(recordId, flowId, 1, null, errorCode, errorMsg, logEnabled)
+                            .thenReturn(response);
+                }));
     }
 
     /**
@@ -320,27 +310,25 @@ public class FlowInvokeService {
      * 初始化执行记录并补充流元数据
      */
     private void initExecutionRecord(Long recordId, Long flowId, String executionId,
-                                      FlowVersionEntity flowVersion, FlowEntity flow) {
+                                      FlowVersionEntity flowVersion, FlowEntity flow,
+                                      String triggerAccount, boolean logEnabled) {
+        if (!logEnabled) {
+            log.debug("Execution record skipped (logCollectionEnabled=false): flowId={}", flowId);
+            return;
+        }
         Long appId = flow != null ? flow.getAppId() : null;
+        String nameCn = flow != null ? flow.getNameCn() : "";
+        String nameEn = flow != null ? flow.getNameEn() : "";
+        Integer versionNumber = flowVersion.getVersionNumber() != null
+                ? flowVersion.getVersionNumber() : 1;
+        String snapshot = flowVersion.getOrchestrationConfig();
         try {
             executionRecordService.startRecord(recordId, flowId,
-                    flowVersion.getId(), appId, 1);
+                    flowVersion.getId(), appId, 1,
+                    versionNumber, snapshot, nameCn, nameEn, triggerAccount);
             log.debug("Execution record started: recordId={}, executionId={}", recordId, executionId);
         } catch (Exception ex) {
             log.warn("Failed to start execution record: {}", ex.getMessage());
-        }
-        if (flow != null) {
-            try {
-                executionRecordService.updateFlowMeta(recordId,
-                        flowVersion.getId(),
-                        flowVersion.getVersionNumber(),
-                        flow.getAppId(),
-                        flow.getNameCn(),
-                        flow.getNameEn(),
-                        flowVersion.getOrchestrationConfig());
-            } catch (Exception ex) {
-                log.warn("Failed to update flow meta for record {}: {}", recordId, ex.getMessage());
-            }
         }
     }
 
@@ -410,19 +398,26 @@ public class FlowInvokeService {
         if (msg.contains("Flow not found")) {
             return new String[]{ErrorCode.PRECHECK_FLOW_NOT_FOUND, "连接流不存在"};
         }
-        if (msg.contains("whitelist") || msg.contains("Whitelist") || msg.contains("URL not in")) {
+        if (containsAny(msg, "whitelist", "Whitelist", "URL not in")) {
             return new String[]{ErrorCode.PRECHECK_URL_WHITELIST_DENIED, "URL 白名单拒绝: " + msg};
         }
-        if (msg.contains("token") || msg.contains("Token") || msg.contains("auth")
-                || msg.contains("X-Sys-Token") || msg.contains("认证")) {
+        if (containsAny(msg, "token", "Token", "auth", "X-Sys-Token", "认证")) {
             return new String[]{ErrorCode.PRECHECK_AUTH_FAILED, "认证失败: " + msg};
         }
-        if (msg.contains("required field") || msg.contains("input")
-                || msg.contains("must be") || msg.contains("Missing required")
+        if (containsAny(msg, "required field", "input", "must be", "Missing required")
                 || e instanceof IllegalArgumentException) {
             return new String[]{ErrorCode.PRECHECK_BAD_REQUEST, "请求参数错误: " + msg};
         }
         return new String[]{"500", "调用执行失败: " + msg};
+    }
+
+    private boolean containsAny(String msg, String... keywords) {
+        for (String kw : keywords) {
+            if (msg.contains(kw)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -456,7 +451,7 @@ public class FlowInvokeService {
      * 从 ExecutionContext 构建 ExecutionResult (DagScheduler 输出桥接)
      */
     private ExecutionResult buildResultFromExecutionContext(
-            ExecutionContext ctx, String executionId, String flowId, Long recordId) {
+            ExecutionContext ctx, String executionId, String flowId, Long recordId, boolean logEnabled) {
         ExecutionResult result = new ExecutionResult();
         result.setExecutionId(executionId);
         result.setFlowId(flowId);
@@ -513,7 +508,7 @@ public class FlowInvokeService {
             result.setResultData(cleanOutput);
         }
 
-        persistStepLogs(ctx, recordId);
+        persistStepLogs(ctx, recordId, logEnabled);
 
         return result;
     }
@@ -536,12 +531,15 @@ public class FlowInvokeService {
     /**
      * 持久化步骤日志（fire-and-forget，不影响业务响应）
      */
-    private void persistStepLogs(ExecutionContext ctx, Long recordId) {
+    private void persistStepLogs(ExecutionContext ctx, Long recordId, boolean logEnabled) {
+        if (!logEnabled) {
+            return;
+        }
         try {
-            List<StepLog> stepLogs = new ArrayList<>();
+            List<ExecutionStepLog> stepLogs = new ArrayList<>();
             for (Map.Entry<String, NodeContext> entry : ctx.getNodeContexts().entrySet()) {
                 NodeContext nodeCtx = entry.getValue();
-                StepLog sl = new StepLog();
+                ExecutionStepLog sl = new ExecutionStepLog();
                 sl.stepId = idGenerator.nextId();
                 sl.nodeId = nodeCtx.getNodeId();
                 sl.nodeType = mapNodeType(nodeCtx.getNodeType());
@@ -617,9 +615,12 @@ public class FlowInvokeService {
         int execStatus = "success".equals(result.getStatus()) ? 0
                 : ("timeout".equals(result.getStatus()) ? 2 : 1);
 
+        // v5.8: 执行失败/超时时, 响应体必须为空 (错误信息仅通过 X- 头传递, 对齐 preExecutionError 语义)
+        Object effectiveBody = execStatus == 0 ? responseBody : null;
+
         TransparentFlowResponse r = TransparentFlowResponse.success(
                 flowId, result.getExecutionId(), execStatus, result.getTotalDurationMs(),
-                userHeaders, responseBody);
+                userHeaders, effectiveBody);
 
         // v5.8: 执行失败/超时时补充 X-Code / X-Message-* 错误头
         if (execStatus != 0 && result.getErrorInfo() != null) {
@@ -704,7 +705,7 @@ public class FlowInvokeService {
     @SuppressWarnings("unchecked")
     private Map<String, Object> findTriggerNode(List<Map<String, Object>> nodes) {
         for (Map<String, Object> node : nodes) {
-            String type = (String) node.get("type");
+            String type = NodeTypeResolver.businessType(node);
             if ("trigger".equals(type)) {
                 return node;
             }
@@ -974,9 +975,18 @@ public class FlowInvokeService {
     }
 
     /**
-     * 读取①平台全局: 单流最大执行记录数
+     * 异步收尾执行记录: 读取①平台全局最大记录数后更新记录并执行 FIFO 清理.
+     * <p>
+     * 读取配置改为异步, 避免在 reactor/lettuce 线程上 block 导致 Redis 命令自死锁超时.
+     * updateRecord / checkAndCleanFifo 本身为 fire-and-forget (内部 subscribe), 不阻塞响应链.
+     * §3.3.4: 读①平台全局值.
      */
-    private int resolveMaxExecutionRecords() {
+    private Mono<Void> finalizeExecutionRecord(Long recordId, Long flowId, Integer status,
+                                                Integer durationMs, String errorCode, String errorMsg,
+                                                boolean logEnabled) {
+        if (!logEnabled) {
+            return Mono.empty();
+        }
         return propertyService.loadPlatformDefaults()
                 .map(config -> {
                     String val = config.get("Max.Execution.Records.Per.Flow");
@@ -984,7 +994,18 @@ public class FlowInvokeService {
                     try { return Integer.parseInt(val.trim()); }
                     catch (NumberFormatException e) { return 1000; }
                 })
-                .blockOptional().orElse(1000);
+                .defaultIfEmpty(1000)
+                .onErrorReturn(1000)
+                .doOnNext(maxRecords -> {
+                    try {
+                        executionRecordService.updateRecord(recordId, status, durationMs, errorCode, errorMsg);
+                        // FR-005: FIFO 清理 — 单流记录数超过上限时删除最早记录 (§3.3.4: 读①)
+                        executionRecordService.checkAndCleanFifo(flowId, maxRecords);
+                    } catch (Exception ex) {
+                        log.warn("Failed to update execution record: {}", ex.getMessage());
+                    }
+                })
+                .then();
     }
 
     private String buildCacheKey(ExecutionContext ctx, List<String> cacheKeyExpressions) {

@@ -97,21 +97,21 @@ public class ScriptNodeExecutor implements NodeExecutor {
         }
 
         // 2. 提取超时配置 (§3.3.4: ③存在用③不截断, ③不存在回退①)
+        // 异步取①平台全局超时, 避免在 reactor/lettuce 线程上 block 导致自死锁
         Object timeoutObj = data.get("timeoutMs");
-        int timeoutMs;
+        Mono<Integer> timeoutMono;
         if (timeoutObj instanceof Number num && num.intValue() > 0) {
-            timeoutMs = num.intValue();
+            timeoutMono = Mono.just(num.intValue());
         } else {
-            timeoutMs = propertyService.getScriptMaxTimeoutSeconds()
-                    .blockOptional().orElse(5) * 1000;
+            timeoutMono = propertyService.getScriptMaxTimeoutSeconds()
+                    .defaultIfEmpty(5)
+                    .onErrorReturn(5)
+                    .map(s -> s * 1000);
         }
 
         // 3. 提取上游节点 ID 列表
-        List<String> upstreamNodeIds = null;
         Object upstreamObj = data.get("upstreamNodeIds");
-        if (upstreamObj instanceof List<?> list) {
-            upstreamNodeIds = (List<String>) list;
-        }
+        final List<String> upstreamNodeIds = upstreamObj instanceof List<?> list ? (List<String>) list : null;
 
         // 4. 组装 ctx Map
         final Map<String, Object> ctxMap = ctxAssembler.assembleCtx(ctx, upstreamNodeIds);
@@ -121,33 +121,33 @@ public class ScriptNodeExecutor implements NodeExecutor {
             ctxMap.put("http", new ScriptHttpClient());
         }
 
-        final int finalTimeoutMs = timeoutMs;
-
         long startTime = System.currentTimeMillis();
 
-        log.info("Script node executing: nodeId={}, timeoutMs={}, upstreamCount={}",
-                nodeId, finalTimeoutMs,
-                upstreamNodeIds != null ? upstreamNodeIds.size() : "(default)");
-        // 5. 在虚拟线程中执行 (轻量级, 不占平台线程), 带超时控制
-        return Mono.fromCallable(() -> executeScript(scriptSource, ctxMap))
-                .subscribeOn(Schedulers.fromExecutor(Executors.newVirtualThreadPerTaskExecutor()))
-                .timeout(Duration.ofMillis(finalTimeoutMs))
-                .map(result -> {
-                    long duration = System.currentTimeMillis() - startTime;
-                    ctxMap.remove("http");
-                    NodeOutput output = new NodeOutput(nodeId, "script", ctxMap, result);
-                    output.setStatus("success");
-                    output.setDurationMs(duration);
-                    log.info("Script node {} executed successfully, duration={}ms, outputKeys={}",
-                            nodeId, duration, result.keySet());
-                    return output;
-                })
-                .onErrorResume(e -> {
-                    long duration = System.currentTimeMillis() - startTime;
-                    ctxMap.remove("http");
-                    NodeOutput output = buildFailedOutput(nodeId, ctxMap, duration, e);
-                    return Mono.just(output);
-                });
+        return timeoutMono.flatMap(finalTimeoutMs -> {
+            log.info("Script node executing: nodeId={}, timeoutMs={}, upstreamCount={}",
+                    nodeId, finalTimeoutMs,
+                    upstreamNodeIds != null ? upstreamNodeIds.size() : "(default)");
+            // 5. 在虚拟线程中执行 (轻量级, 不占平台线程), 带超时控制
+            return Mono.fromCallable(() -> executeScript(scriptSource, ctxMap))
+                    .subscribeOn(Schedulers.fromExecutor(Executors.newVirtualThreadPerTaskExecutor()))
+                    .timeout(Duration.ofMillis(finalTimeoutMs))
+                    .map(result -> {
+                        long duration = System.currentTimeMillis() - startTime;
+                        ctxMap.remove("http");
+                        NodeOutput output = new NodeOutput(nodeId, "script", ctxMap, result);
+                        output.setStatus("success");
+                        output.setDurationMs(duration);
+                        log.info("Script node {} executed successfully, duration={}ms, outputKeys={}",
+                                nodeId, duration, result.keySet());
+                        return output;
+                    })
+                    .onErrorResume(e -> {
+                        long duration = System.currentTimeMillis() - startTime;
+                        ctxMap.remove("http");
+                        NodeOutput output = buildFailedOutput(nodeId, ctxMap, duration, e);
+                        return Mono.just(output);
+                    });
+        });
     }
 
     /**
