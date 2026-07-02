@@ -11,66 +11,184 @@
 --   - 所有枚举: TINYINT(10) + COMMENT 注释数字→含义映射
 --   - 无物理外键
 --   - 审计字段: create_time, last_update_time, create_by, last_update_by
+--   - 幂等设计: 所有 DDL 通过存储过程安全判断，支持重复执行不报错
 -- ============================================================================
 
 -- ============================================================================
--- 第 1 部分: 已有表结构变更 (5 张表)
+-- 第 0 部分: 公共存储过程（幂等 DDL 安全执行）
+--   同一类逻辑抽取公共存储过程，通过 information_schema 判断对象是否存在
+--   满足条件才执行，不满足则跳过，实现无条件可重复执行
+-- ============================================================================
+
+-- ----------------------------------------------------------------------------
+-- 0.1 safe_add_column: 列不存在时才添加
+--     参数: p_table=表名, p_column=列名, p_definition=列定义(类型+约束+COMMENT)
+-- ----------------------------------------------------------------------------
+DROP PROCEDURE IF EXISTS safe_add_column;
+DELIMITER $$
+CREATE PROCEDURE safe_add_column(
+    IN p_table  VARCHAR(128),
+    IN p_column VARCHAR(128),
+    IN p_definition TEXT
+)
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = DATABASE()
+          AND table_name = p_table
+          AND column_name = p_column
+    ) THEN
+        SET @sql = CONCAT('ALTER TABLE `', p_table, '` ADD COLUMN `', p_column, '` ', p_definition);
+        PREPARE stmt FROM @sql;
+        EXECUTE stmt;
+        DEALLOCATE PREPARE stmt;
+    END IF;
+END$$
+DELIMITER ;
+
+-- ----------------------------------------------------------------------------
+-- 0.2 safe_modify_column: 列存在时才修改
+--     参数: p_table=表名, p_column=列名, p_definition=列定义(类型+约束+COMMENT)
+-- ----------------------------------------------------------------------------
+DROP PROCEDURE IF EXISTS safe_modify_column;
+DELIMITER $$
+CREATE PROCEDURE safe_modify_column(
+    IN p_table  VARCHAR(128),
+    IN p_column VARCHAR(128),
+    IN p_definition TEXT
+)
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = DATABASE()
+          AND table_name = p_table
+          AND column_name = p_column
+    ) THEN
+        SET @sql = CONCAT('ALTER TABLE `', p_table, '` MODIFY COLUMN `', p_column, '` ', p_definition);
+        PREPARE stmt FROM @sql;
+        EXECUTE stmt;
+        DEALLOCATE PREPARE stmt;
+    END IF;
+END$$
+DELIMITER ;
+
+-- ----------------------------------------------------------------------------
+-- 0.3 safe_add_index: 索引不存在时才添加（支持普通索引和唯一索引）
+--     参数: p_table=表名, p_index=索引名, p_index_type='INDEX'|'UNIQUE KEY',
+--           p_columns=列定义如'(app_id, status)', p_comment=注释或NULL
+-- ----------------------------------------------------------------------------
+DROP PROCEDURE IF EXISTS safe_add_index;
+DELIMITER $$
+CREATE PROCEDURE safe_add_index(
+    IN p_table      VARCHAR(128),
+    IN p_index      VARCHAR(128),
+    IN p_index_type VARCHAR(20),
+    IN p_columns    TEXT,
+    IN p_comment    VARCHAR(500)
+)
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.statistics
+        WHERE table_schema = DATABASE()
+          AND table_name = p_table
+          AND index_name = p_index
+    ) THEN
+        IF p_comment IS NOT NULL AND p_comment != '' THEN
+            SET @sql = CONCAT('ALTER TABLE `', p_table, '` ADD ', p_index_type, ' `', p_index, '` ', p_columns, ' COMMENT ''', p_comment, '''');
+        ELSE
+            SET @sql = CONCAT('ALTER TABLE `', p_table, '` ADD ', p_index_type, ' `', p_index, '` ', p_columns);
+        END IF;
+        PREPARE stmt FROM @sql;
+        EXECUTE stmt;
+        DEALLOCATE PREPARE stmt;
+    END IF;
+END$$
+DELIMITER ;
+
+-- ----------------------------------------------------------------------------
+-- 0.4 safe_drop_index: 索引存在时才删除
+--     参数: p_table=表名, p_index=索引名
+-- ----------------------------------------------------------------------------
+DROP PROCEDURE IF EXISTS safe_drop_index;
+DELIMITER $$
+CREATE PROCEDURE safe_drop_index(
+    IN p_table VARCHAR(128),
+    IN p_index VARCHAR(128)
+)
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.statistics
+        WHERE table_schema = DATABASE()
+          AND table_name = p_table
+          AND index_name = p_index
+    ) THEN
+        SET @sql = CONCAT('ALTER TABLE `', p_table, '` DROP INDEX `', p_index, '`');
+        PREPARE stmt FROM @sql;
+        EXECUTE stmt;
+        DEALLOCATE PREPARE stmt;
+    END IF;
+END$$
+DELIMITER ;
+
+
+-- ============================================================================
+-- 第 1 部分: 已有表结构变更 (5 张表 / 32 条 DDL)
 -- ============================================================================
 
 -- ----------------------------------------------------------------------------
 -- 1.1 connector_t: 新增 app_id，启用 status 4 状态
 -- ----------------------------------------------------------------------------
-ALTER TABLE openplatform_v2_cp_connector_t ADD COLUMN app_id BIGINT(20) NOT NULL DEFAULT 0 COMMENT '归属应用ID（0=全局，迁移前数据默认0）';
-ALTER TABLE openplatform_v2_cp_connector_t MODIFY COLUMN status TINYINT(10) NOT NULL DEFAULT 1 COMMENT '状态：1=有效不可用（无已发布版本）, 2=有效可用（有已发布版本）, 3=已失效, 4=物理删除';
-ALTER TABLE openplatform_v2_cp_connector_t ADD INDEX idx_app_status (app_id, status);
-ALTER TABLE openplatform_v2_cp_connector_t ADD INDEX idx_app_name_cn (app_id, name_cn) COMMENT '按应用+中文名称查询';
-ALTER TABLE openplatform_v2_cp_connector_t ADD INDEX idx_app_name_en (app_id, name_en) COMMENT '按应用+英文名称查询';
+CALL safe_add_column('openplatform_v2_cp_connector_t', 'app_id', 'BIGINT(20) NOT NULL DEFAULT 0 COMMENT ''归属应用ID（0=全局，迁移前数据默认0）''');
+CALL safe_modify_column('openplatform_v2_cp_connector_t', 'status', 'TINYINT(10) NOT NULL DEFAULT 1 COMMENT ''状态：1=有效不可用（无已发布版本）, 2=有效可用（有已发布版本）, 3=已失效, 4=物理删除''');
+CALL safe_add_index('openplatform_v2_cp_connector_t', 'idx_app_status', 'INDEX', '(app_id, status)', NULL);
+CALL safe_add_index('openplatform_v2_cp_connector_t', 'idx_app_name_cn', 'INDEX', '(app_id, name_cn)', '按应用+中文名称查询');
+CALL safe_add_index('openplatform_v2_cp_connector_t', 'idx_app_name_en', 'INDEX', '(app_id, name_en)', '按应用+英文名称查询');
 
 -- ----------------------------------------------------------------------------
 -- 1.2 connector_version_t: 移除 1:1 约束，新增版本号/状态/发布时间字段，connection_config 改为可空（草稿无需配置）
 -- ----------------------------------------------------------------------------
-ALTER TABLE openplatform_v2_cp_connector_version_t DROP INDEX idx_connector_id;
-ALTER TABLE openplatform_v2_cp_connector_version_t MODIFY COLUMN connection_config MEDIUMTEXT NULL COMMENT '连接配置JSON（V3多版本：草稿可为空，发布时必填）';
-ALTER TABLE openplatform_v2_cp_connector_version_t ADD COLUMN version_number INT NOT NULL DEFAULT 1 COMMENT '版本号，实体内从1递增';
-ALTER TABLE openplatform_v2_cp_connector_version_t ADD COLUMN status TINYINT(10) NOT NULL DEFAULT 1 COMMENT '状态：1=草稿, 2=已发布, 3=已失效, 4=物理删除';
-ALTER TABLE openplatform_v2_cp_connector_version_t ADD COLUMN published_time DATETIME(3) NULL COMMENT '发布时间（首次发布时刻）';
-ALTER TABLE openplatform_v2_cp_connector_version_t ADD COLUMN published_by VARCHAR(100) NULL COMMENT '发布人（发布操作人）';
-ALTER TABLE openplatform_v2_cp_connector_version_t ADD INDEX idx_connector_version (connector_id, version_number);
-ALTER TABLE openplatform_v2_cp_connector_version_t ADD INDEX idx_connector_status (connector_id, status);
+CALL safe_drop_index('openplatform_v2_cp_connector_version_t', 'idx_connector_id');
+CALL safe_modify_column('openplatform_v2_cp_connector_version_t', 'connection_config', 'MEDIUMTEXT NULL COMMENT ''连接配置JSON（V3多版本：草稿可为空，发布时必填）''');
+CALL safe_add_column('openplatform_v2_cp_connector_version_t', 'version_number', 'INT NOT NULL DEFAULT 1 COMMENT ''版本号，实体内从1递增''');
+CALL safe_add_column('openplatform_v2_cp_connector_version_t', 'status', 'TINYINT(10) NOT NULL DEFAULT 1 COMMENT ''状态：1=草稿, 2=已发布, 3=已失效, 4=物理删除''');
+CALL safe_add_column('openplatform_v2_cp_connector_version_t', 'published_time', 'DATETIME(3) NULL COMMENT ''发布时间（首次发布时刻）''');
+CALL safe_add_column('openplatform_v2_cp_connector_version_t', 'published_by', 'VARCHAR(100) NULL COMMENT ''发布人（发布操作人）''');
+CALL safe_add_index('openplatform_v2_cp_connector_version_t', 'idx_connector_version', 'INDEX', '(connector_id, version_number)', NULL);
+CALL safe_add_index('openplatform_v2_cp_connector_version_t', 'idx_connector_status', 'INDEX', '(connector_id, status)', NULL);
 
 -- ----------------------------------------------------------------------------
 -- 1.3 flow_t: 新增部署版本指针/app_id，扩展 lifecycle_status 4 状态
 -- ----------------------------------------------------------------------------
-ALTER TABLE openplatform_v2_cp_flow_t ADD COLUMN deployed_version_id BIGINT(20) NULL COMMENT '当前部署的版本ID（运行时按此指针读取编排快照）';
-ALTER TABLE openplatform_v2_cp_flow_t ADD COLUMN deployed_version_number INT NULL COMMENT '当前部署的版本号（冗余，避免列表查询 JOIN flow_version_t）';
-ALTER TABLE openplatform_v2_cp_flow_t ADD COLUMN app_id BIGINT(20) NOT NULL DEFAULT 0 COMMENT '归属应用ID';
-ALTER TABLE openplatform_v2_cp_flow_t MODIFY COLUMN lifecycle_status TINYINT(10) NOT NULL DEFAULT 1 COMMENT '生命周期：1=已停止, 2=运行中, 3=已失效, 4=物理删除';
-ALTER TABLE openplatform_v2_cp_flow_t ADD INDEX idx_deployed_version (deployed_version_id);
-ALTER TABLE openplatform_v2_cp_flow_t ADD INDEX idx_app_status (app_id, lifecycle_status);
-ALTER TABLE openplatform_v2_cp_flow_t ADD INDEX idx_app_name_cn (app_id, name_cn) COMMENT '按应用+中文名称查询';
-ALTER TABLE openplatform_v2_cp_flow_t ADD INDEX idx_app_name_en (app_id, name_en) COMMENT '按应用+英文名称查询';
+CALL safe_add_column('openplatform_v2_cp_flow_t', 'deployed_version_id', 'BIGINT(20) NULL COMMENT ''当前部署的版本ID（运行时按此指针读取编排快照）''');
+CALL safe_add_column('openplatform_v2_cp_flow_t', 'deployed_version_number', 'INT NULL COMMENT ''当前部署的版本号（冗余，避免列表查询 JOIN flow_version_t）''');
+CALL safe_add_column('openplatform_v2_cp_flow_t', 'app_id', 'BIGINT(20) NOT NULL DEFAULT 0 COMMENT ''归属应用ID''');
+CALL safe_modify_column('openplatform_v2_cp_flow_t', 'lifecycle_status', 'TINYINT(10) NOT NULL DEFAULT 1 COMMENT ''生命周期：1=已停止, 2=运行中, 3=已失效, 4=物理删除''');
+CALL safe_add_index('openplatform_v2_cp_flow_t', 'idx_deployed_version', 'INDEX', '(deployed_version_id)', NULL);
+CALL safe_add_index('openplatform_v2_cp_flow_t', 'idx_app_status', 'INDEX', '(app_id, lifecycle_status)', NULL);
+CALL safe_add_index('openplatform_v2_cp_flow_t', 'idx_app_name_cn', 'INDEX', '(app_id, name_cn)', '按应用+中文名称查询');
+CALL safe_add_index('openplatform_v2_cp_flow_t', 'idx_app_name_en', 'INDEX', '(app_id, name_en)', '按应用+英文名称查询');
 
 -- ----------------------------------------------------------------------------
 -- 1.4 flow_version_t: 移除 1:1 约束，新增版本号/7状态/发布时间字段，orchestration_config 改为可空（草稿无需编排）
 -- ----------------------------------------------------------------------------
-ALTER TABLE openplatform_v2_cp_flow_version_t DROP INDEX idx_flow_id;
-ALTER TABLE openplatform_v2_cp_flow_version_t MODIFY COLUMN orchestration_config MEDIUMTEXT NULL COMMENT '编排配置JSON（V3多版本：草稿可为空，发布时必填）';
-ALTER TABLE openplatform_v2_cp_flow_version_t ADD COLUMN version_number INT NOT NULL DEFAULT 1 COMMENT '版本号，实体内从1递增';
-ALTER TABLE openplatform_v2_cp_flow_version_t ADD COLUMN status TINYINT(10) NOT NULL DEFAULT 1 COMMENT '状态：1=草稿, 2=待审批, 3=已撤回, 4=已驳回, 5=已发布, 6=已失效, 7=物理删除';
-ALTER TABLE openplatform_v2_cp_flow_version_t ADD COLUMN published_time DATETIME(3) NULL COMMENT '发布时间（审批通过的时刻）';
-ALTER TABLE openplatform_v2_cp_flow_version_t ADD COLUMN published_by VARCHAR(100) NULL COMMENT '发布人（提交审批的人）';
-ALTER TABLE openplatform_v2_cp_flow_version_t ADD INDEX idx_flow_version (flow_id, version_number);
-ALTER TABLE openplatform_v2_cp_flow_version_t ADD INDEX idx_flow_status (flow_id, status);
+CALL safe_drop_index('openplatform_v2_cp_flow_version_t', 'idx_flow_id');
+CALL safe_modify_column('openplatform_v2_cp_flow_version_t', 'orchestration_config', 'MEDIUMTEXT NULL COMMENT ''编排配置JSON（V3多版本：草稿可为空，发布时必填）''');
+CALL safe_add_column('openplatform_v2_cp_flow_version_t', 'version_number', 'INT NOT NULL DEFAULT 1 COMMENT ''版本号，实体内从1递增''');
+CALL safe_add_column('openplatform_v2_cp_flow_version_t', 'status', 'TINYINT(10) NOT NULL DEFAULT 1 COMMENT ''状态：1=草稿, 2=待审批, 3=已撤回, 4=已驳回, 5=已发布, 6=已失效, 7=物理删除''');
+CALL safe_add_column('openplatform_v2_cp_flow_version_t', 'published_time', 'DATETIME(3) NULL COMMENT ''发布时间（审批通过的时刻）''');
+CALL safe_add_column('openplatform_v2_cp_flow_version_t', 'published_by', 'VARCHAR(100) NULL COMMENT ''发布人（提交审批的人）''');
+CALL safe_add_index('openplatform_v2_cp_flow_version_t', 'idx_flow_version', 'INDEX', '(flow_id, version_number)', NULL);
+CALL safe_add_index('openplatform_v2_cp_flow_version_t', 'idx_flow_status', 'INDEX', '(flow_id, status)', NULL);
 
 -- ----------------------------------------------------------------------------
 -- 1.5 approval_flow_t: 新增 app_id，uk_code → uk_code_app
 -- ----------------------------------------------------------------------------
-ALTER TABLE openplatform_v2_approval_flow_t DROP INDEX uk_code;
-ALTER TABLE openplatform_v2_approval_flow_t ADD COLUMN app_id BIGINT(20) NULL COMMENT '应用ID（NULL=全局配置，非NULL=指定应用配置）';
-ALTER TABLE openplatform_v2_approval_flow_t ADD UNIQUE KEY uk_code_app (code, app_id);
+CALL safe_drop_index('openplatform_v2_approval_flow_t', 'uk_code');
+CALL safe_add_column('openplatform_v2_approval_flow_t', 'app_id', 'BIGINT(20) NULL COMMENT ''应用ID（NULL=全局配置，非NULL=指定应用配置）''');
+CALL safe_add_index('openplatform_v2_approval_flow_t', 'uk_code_app', 'UNIQUE KEY', '(code, app_id)', NULL);
 
 -- ============================================================================
--- 第 2 部分: 新建表 (3 CREATE)
+-- 第 2 部分: 新建表 (3 CREATE) — CREATE TABLE IF NOT EXISTS 天然幂等
 -- ============================================================================
 
 -- ----------------------------------------------------------------------------
@@ -165,10 +283,19 @@ CREATE TABLE IF NOT EXISTS openplatform_v2_cp_execution_step_t (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='执行步骤详情表';
 
 -- ============================================================================
+-- 第 3 部分: 清理存储过程
+-- ============================================================================
+DROP PROCEDURE IF EXISTS safe_add_column;
+DROP PROCEDURE IF EXISTS safe_modify_column;
+DROP PROCEDURE IF EXISTS safe_add_index;
+DROP PROCEDURE IF EXISTS safe_drop_index;
+
+-- ============================================================================
 -- 迁移完成标记
 -- ============================================================================
--- 连接器平台 V3 Schema 迁移完成
+-- 连接器平台 V3 Schema 迁移完成（幂等版，支持重复执行）
 -- 变更汇总:
+--   公共存储过程 (4): safe_add_column, safe_modify_column, safe_add_index, safe_drop_index
 --   ALTER (5 表 / 32 条): connector_t(5), connector_version_t(8), flow_t(8), flow_version_t(8), approval_flow_t(3)
 --   CREATE (3): connector_version_ref_t, execution_record_t, execution_step_t
 -- ============================================================================
