@@ -76,25 +76,7 @@ public class FlowVersionDebugService {
                 .switchIfEmpty(Mono.error(new PreCheckException(
                         ErrorCode.PRECHECK_VERSION_NOT_FOUND, "版本不存在，请检查版本 ID", "Version not found")))
                 .flatMap(flowVersion -> {
-                    Integer status = flowVersion.getStatus();
-                    // 版本已失效
-                    if (status != null && status == 6) {
-                        return Mono.error(new PreCheckException(
-                                ErrorCode.PRECHECK_VERSION_INVALIDATED,
-                                "版本已失效，不可调试",
-                                "The version has been invalidated and cannot be debugged"));
-                    }
-                    // 版本状态不支持调试: 仅 DRAFT(1) 和 PUBLISHED(5) 可调试
-                    if (status != null && status != 1 && status != 5) {
-                        String statusName = switch (status) {
-                            case 2 -> "待审批"; case 3 -> "已撤回"; case 4 -> "已驳回";
-                            default -> String.valueOf(status);
-                        };
-                        return Mono.error(new PreCheckException(
-                                ErrorCode.PRECHECK_VERSION_STATUS_NOT_DEBUGGABLE,
-                                "版本状态为「" + statusName + "」，仅草稿和已发布版本可调试",
-                                "Version status is '" + statusName + "', only draft and published versions can be debugged"));
-                    }
+                    // 调试接口不判断版本状态: 草稿/已发布/待审批/已撤回/已驳回/已失效 均可调试
                     // 编排配置非空校验
                     String orchConfig = flowVersion.getOrchestrationConfig();
                     if (orchConfig == null || orchConfig.isBlank()) {
