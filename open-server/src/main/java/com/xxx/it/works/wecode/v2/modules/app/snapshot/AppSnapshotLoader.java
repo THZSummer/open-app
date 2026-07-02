@@ -63,23 +63,7 @@ public class AppSnapshotLoader implements EntitySnapshotLoader {
         }
         for (AppProperty p : properties) {
             try {
-                if (AppPropertyConstants.PROP_VERIFY_TYPE.equals(p.getPropertyName())) {
-                    List<Integer> verifyTypeList = List.of(p.getPropertyValue().split(","))
-                            .stream()
-                            .map(String::trim)
-                            .filter(s -> !s.isEmpty())
-                            .map(Integer::parseInt)
-                            .collect(Collectors.toList());
-                    snapshot.put("verifyType", verifyTypeList);
-                    // 加描述字段供模板 ${verifyTypeDesc} 使用
-                    String verifyTypeDesc = verifyTypeList.stream()
-                            .map(code -> {
-                                VerifyTypeEnum e = VerifyTypeEnum.fromCode(code);
-                                return e != null ? e.getName() : String.valueOf(code);
-                            })
-                            .collect(Collectors.joining("、"));
-                    snapshot.put("verifyTypeDesc", verifyTypeDesc);
-                } else if (AppPropertyConstants.PROP_DIAGRAM_ID_LIST.equals(p.getPropertyName())) {
+                if (AppPropertyConstants.PROP_DIAGRAM_ID_LIST.equals(p.getPropertyName())) {
                     // 示意图 ID 列表映射为 funcImgId，匹配 OperateLogV2Aspect.APP_FIELD_LABELS
                     snapshot.put("funcImgId", p.getPropertyValue());
                 } else if (AppPropertyConstants.PROP_EAMAP_CODE.equals(p.getPropertyName())) {
@@ -89,6 +73,31 @@ public class AppSnapshotLoader implements EntitySnapshotLoader {
             } catch (Exception e) {
                 log.warn("[AppSnapshotLoader] Failed to process property: id={}, name={}", id, p.getPropertyName(), e);
             }
+        }
+
+        loadVerifyType(properties, snapshot);
+    }
+
+    /**
+     * 加载认证方式到快照（verifyType + verifyTypeDesc）
+     */
+    private void loadVerifyType(List<AppProperty> properties, Map<String, Object> snapshot) {
+        try {
+            List<Integer> verifyTypeList = AppPropertyConstants.resolveVerifyTypeList(properties);
+            if (verifyTypeList.isEmpty()) {
+                return;
+            }
+            snapshot.put("verifyType", verifyTypeList);
+            // 描述字段供模板 ${verifyTypeDesc} 使用
+            String verifyTypeDesc = verifyTypeList.stream()
+                    .map(code -> {
+                        VerifyTypeEnum e = VerifyTypeEnum.fromCode(code);
+                        return e != null ? e.getName() : String.valueOf(code);
+                    })
+                    .collect(Collectors.joining("、"));
+            snapshot.put("verifyTypeDesc", verifyTypeDesc);
+        } catch (Exception e) {
+            log.warn("[AppSnapshotLoader] Failed to load verifyType", e);
         }
     }
 }
