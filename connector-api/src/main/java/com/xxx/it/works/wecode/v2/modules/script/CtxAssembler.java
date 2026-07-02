@@ -49,9 +49,9 @@ public class CtxAssembler {
 
         // 1. 组装上游节点数据 (指针引用, 不深拷贝)
         List<String> effectiveUpstream = upstreamNodeIds;
-        if (effectiveUpstream == null) {
-            // 默认为空: 只组装 trigger 数据
-            effectiveUpstream = new java.util.ArrayList<>();
+        if (effectiveUpstream == null || effectiveUpstream.isEmpty()) {
+            // 未显式指定上游节点时, 包含所有已执行节点
+            effectiveUpstream = new java.util.ArrayList<>(execCtx.getNodeContexts().keySet());
         }
 
         for (String nodeId : effectiveUpstream) {

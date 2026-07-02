@@ -196,7 +196,15 @@ def test_script_http_invoke():
                         }
                     }},
                     {"id": nid_s, "type": "script", "data": {
-                        "script": script_src, "timeoutMs": 5000
+                        "script": script_src, "timeoutMs": 5000,
+                        "output": {
+                            "type": "object",
+                            "properties": {
+                                "result": {"type": "string", "description": "Mock返回的display_name"},
+                                "domain": {"type": "string", "description": "Mock返回的email_domain"},
+                                "group": {"type": "string", "description": "Mock返回的age_group"}
+                            }
+                        }
                     }},
                     {"id": nid_e, "type": "exit", "data": {
                         "type": "exit",

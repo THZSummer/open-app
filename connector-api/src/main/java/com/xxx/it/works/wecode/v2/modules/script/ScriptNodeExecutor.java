@@ -144,6 +144,7 @@ public class ScriptNodeExecutor implements NodeExecutor {
                 })
                 .onErrorResume(e -> {
                     long duration = System.currentTimeMillis() - startTime;
+                    ctxMap.remove("http");
                     NodeOutput output = buildFailedOutput(nodeId, ctxMap, duration, e);
                     return Mono.just(output);
                 });

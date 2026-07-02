@@ -450,6 +450,8 @@ def test_full_flow_script():
             # script_prep: validate + construct connector payload
             script_prep = (
                 "function main(ctx) {\n"
+                "    // call mock health endpoint via script HTTP client\n"
+                "    var health = ctx.http.get('" + MOCK_URL + "/api/health');\n"
                 "    var input = ctx.trigger.input.body;\n"
                 "    var name = input.name || 'anonymous';\n"
                 "    var email = input.email || '';\n"
@@ -460,7 +462,8 @@ def test_full_flow_script():
                 "        email: email.trim(),\n"
                 "        age: Math.max(0, parseInt(age) || 0),\n"
                 "        city: city.trim(),\n"
-                "        prep_note: 'validated_by_script'\n"
+                "        prep_note: 'validated_by_script',\n"
+                "        health_status: health.body.status\n"
                 "    };\n"
                 "}"
             )
@@ -527,7 +530,18 @@ def test_full_flow_script():
                         # script_prep
                         {"id": nid_script_prep, "type": "script", "data": {
                             "script": script_prep,
-                            "timeoutMs": 3000
+                            "timeoutMs": 3000,
+                            "output": {
+                                "type": "object",
+                                "properties": {
+                                    "name": {"type": "string", "description": "清洗后的用户名"},
+                                    "email": {"type": "string", "description": "清洗后的邮箱"},
+                                    "age": {"type": "number", "description": "清洗后的年龄(>=0)"},
+                                    "city": {"type": "string", "description": "清洗后的城市"},
+                                    "prep_note": {"type": "string", "description": "预处理标记"},
+                                    "health_status": {"type": "string", "description": "Mock健康检查状态(ctx.http.get)"}
+                                }
+                            }
                         }},
                         # connector (HTTP call)
                         {"id": nid_connector, "type": "connector", "data": {
@@ -606,7 +620,20 @@ def test_full_flow_script():
                         # script_process
                         {"id": nid_script_process, "type": "script", "data": {
                             "script": script_process,
-                            "timeoutMs": 3000
+                            "timeoutMs": 3000,
+                            "output": {
+                                "type": "object",
+                                "properties": {
+                                    "external_user_id": {"type": "string", "description": "外部用户ID"},
+                                    "display_name": {"type": "string", "description": "显示名称(大写)"},
+                                    "email_domain": {"type": "string", "description": "邮箱域名"},
+                                    "age_group": {"type": "string", "description": "年龄段 adult/minor"},
+                                    "location": {"type": "string", "description": "城市"},
+                                    "is_adult": {"type": "boolean", "description": "是否成年"},
+                                    "call_number": {"type": "number", "description": "调用序号"},
+                                    "summary": {"type": "string", "description": "用户摘要"}
+                                }
+                            }
                         }},
                         # exit
                         {"id": nid_exit, "type": "exit", "data": {
