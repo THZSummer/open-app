@@ -2,6 +2,7 @@ package com.xxx.it.works.wecode.v2.modules.runtime.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.common.config.ConnectorApiPropertyService;
+import com.xxx.it.works.wecode.v2.common.config.OpenplatformLookupRepository;
 import com.xxx.it.works.wecode.v2.modules.auth.credential.UnifiedCredentialProcessor;
 import com.xxx.it.works.wecode.v2.modules.cache.EntityCacheManager;
 import com.xxx.it.works.wecode.v2.modules.cache.FlowCacheManager;
@@ -102,9 +103,10 @@ public class RuntimeConfig {
     public EntityCacheManager entityCacheManager(ReactiveRedisTemplate<String, String> reactiveRedisTemplate,
                                                    ObjectMapper objectMapper,
                                                    OpFlowVersionReadRepository flowVersionReadRepository,
-                                                   OpFlowReadRepository flowReadRepository) {
+                                                   OpFlowReadRepository flowReadRepository,
+                                                   OpenplatformLookupRepository lookupRepository) {
         return new EntityCacheManager(reactiveRedisTemplate, objectMapper,
-                flowVersionReadRepository, flowReadRepository);
+                flowVersionReadRepository, flowReadRepository, lookupRepository);
     }
 
     @Bean
