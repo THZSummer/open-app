@@ -405,19 +405,26 @@ public class FlowInvokeService {
         if (msg.contains("Flow not found")) {
             return new String[]{ErrorCode.PRECHECK_FLOW_NOT_FOUND, "连接流不存在"};
         }
-        if (msg.contains("whitelist") || msg.contains("Whitelist") || msg.contains("URL not in")) {
+        if (containsAny(msg, "whitelist", "Whitelist", "URL not in")) {
             return new String[]{ErrorCode.PRECHECK_URL_WHITELIST_DENIED, "URL 白名单拒绝: " + msg};
         }
-        if (msg.contains("token") || msg.contains("Token") || msg.contains("auth")
-                || msg.contains("X-Sys-Token") || msg.contains("认证")) {
+        if (containsAny(msg, "token", "Token", "auth", "X-Sys-Token", "认证")) {
             return new String[]{ErrorCode.PRECHECK_AUTH_FAILED, "认证失败: " + msg};
         }
-        if (msg.contains("required field") || msg.contains("input")
-                || msg.contains("must be") || msg.contains("Missing required")
+        if (containsAny(msg, "required field", "input", "must be", "Missing required")
                 || e instanceof IllegalArgumentException) {
             return new String[]{ErrorCode.PRECHECK_BAD_REQUEST, "请求参数错误: " + msg};
         }
         return new String[]{"500", "调用执行失败: " + msg};
+    }
+
+    private boolean containsAny(String msg, String... keywords) {
+        for (String kw : keywords) {
+            if (msg.contains(kw)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

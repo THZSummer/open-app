@@ -384,42 +384,49 @@ public class ConnectorNodeExecutor implements NodeExecutor {
                 })
                 .onErrorResume(e -> {
                     log.warn("Connector HTTP call failed: url={}, error={}", url, e.getMessage());
-
-                    Map<String, Object> errorInfo = new HashMap<>();
-                    String code;
-                    String msgZh;
-
-                    if (e instanceof java.util.concurrent.TimeoutException
-                            || (e.getMessage() != null && e.getMessage().toLowerCase().contains("timeout"))) {
-                        code = ErrorCode.CONNECTOR_READ_TIMEOUT;
-                        msgZh = "连接器调用超时（超过" + timeoutMs + "ms），目标地址 [" + url + "] 未在规定时间内响应";
-                    } else if (e.getMessage() != null && e.getMessage().toLowerCase().contains("connection refused")) {
-                        code = ErrorCode.CONNECTOR_CONNECT_TIMEOUT;
-                        msgZh = "连接器连接超时，目标地址 [" + url + "] 不可达";
-                    } else if (e.getMessage() != null && e.getMessage().toLowerCase().contains("unknown host")
-                            || (e.getMessage() != null && e.getMessage().toLowerCase().contains("dns"))) {
-                        code = ErrorCode.CONNECTOR_DNS_FAILED;
-                        msgZh = "连接器目标地址 DNS 解析失败，请检查 URL 配置";
-                    } else if (e.getMessage() != null && (e.getMessage().toLowerCase().contains("ssl")
-                            || e.getMessage().toLowerCase().contains("certificate"))) {
-                        code = ErrorCode.CONNECTOR_SSL_FAILED;
-                        msgZh = "连接器 SSL 证书校验失败，目标地址可能使用了不受信任的证书";
-                    } else {
-                        code = ErrorCode.CONNECTOR_HTTP_FAILED;
-                        msgZh = "连接器调用失败: " + e.getMessage();
-                    }
-
-                    errorInfo.put("code", code);
-                    errorInfo.put("messageZh", msgZh);
-                    errorInfo.put("messageEn", "Connector call failed: " + e.getMessage());
-
-                    Map<String, Object> outputData = new HashMap<>();
-                    outputData.put("__status", "failed");
-                    output.setOutput(outputData);
-                    output.setStatus("failed");
-                    output.setErrorInfo(errorInfo);
-                    output.setDurationMs(System.currentTimeMillis() - startTime);
-                    return Mono.just(output);
+                    return Mono.just(buildErrorOutput(nodeId, url, timeoutMs, startTime, input, e));
                 });
+    }
+
+    private NodeOutput buildErrorOutput(String nodeId, String url, long timeoutMs,
+                                         long startTime, Map<String, Object> input, Throwable e) {
+        NodeOutput output = new NodeOutput();
+        output.setNodeId(nodeId);
+        output.setNodeType("connector");
+        output.setInput(input);
+
+        String errMsg = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
+        String code;
+        String msgZh;
+
+        if (e instanceof java.util.concurrent.TimeoutException || errMsg.contains("timeout")) {
+            code = ErrorCode.CONNECTOR_READ_TIMEOUT;
+            msgZh = "连接器调用超时（超过" + timeoutMs + "ms），目标地址 [" + url + "] 未在规定时间内响应";
+        } else if (errMsg.contains("connection refused")) {
+            code = ErrorCode.CONNECTOR_CONNECT_TIMEOUT;
+            msgZh = "连接器连接超时，目标地址 [" + url + "] 不可达";
+        } else if (errMsg.contains("unknown host") || errMsg.contains("dns")) {
+            code = ErrorCode.CONNECTOR_DNS_FAILED;
+            msgZh = "连接器目标地址 DNS 解析失败，请检查 URL 配置";
+        } else if (errMsg.contains("ssl") || errMsg.contains("certificate")) {
+            code = ErrorCode.CONNECTOR_SSL_FAILED;
+            msgZh = "连接器 SSL 证书校验失败，目标地址可能使用了不受信任的证书";
+        } else {
+            code = ErrorCode.CONNECTOR_HTTP_FAILED;
+            msgZh = "连接器调用失败: " + e.getMessage();
+        }
+
+        Map<String, Object> errorInfo = new HashMap<>();
+        errorInfo.put("code", code);
+        errorInfo.put("messageZh", msgZh);
+        errorInfo.put("messageEn", "Connector call failed: " + e.getMessage());
+
+        Map<String, Object> outputData = new HashMap<>();
+        outputData.put("__status", "failed");
+        output.setOutput(outputData);
+        output.setStatus("failed");
+        output.setErrorInfo(errorInfo);
+        output.setDurationMs(System.currentTimeMillis() - startTime);
+        return output;
     }
 }

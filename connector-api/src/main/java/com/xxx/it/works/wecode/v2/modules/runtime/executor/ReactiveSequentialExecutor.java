@@ -266,19 +266,14 @@ public class ReactiveSequentialExecutor {
         for (JsonNode node : orderedNodes) {
             ExecutionResult.StepDetail step = buildStepDetail(node, context);
 
-            // 检查失败状态
             if ("failed".equals(step.getStatus()) || "timeout".equals(step.getStatus())) {
                 anyFailed = true;
                 if (firstErrorCode == null && step.getErrorInfo() != null) {
-                    Object code = step.getErrorInfo().get("code");
-                    Object msgZh = step.getErrorInfo().get("messageZh");
-                    Object msgEn = step.getErrorInfo().get("messageEn");
-                    // 回退到 "message" 字段
-                    if (msgZh == null) { msgZh = step.getErrorInfo().get("message"); }
-                    if (msgEn == null) { msgEn = step.getErrorInfo().get("message"); }
-                    firstErrorCode = code instanceof String ? (String) code : "6001";
-                    firstErrorMessageZh = msgZh instanceof String ? (String) msgZh : step.getStatus();
-                    firstErrorMessageEn = msgEn instanceof String ? (String) msgEn : step.getStatus();
+                    firstErrorCode = extractErrorField(step.getErrorInfo(), "code", "6001");
+                    firstErrorMessageZh = extractErrorField(step.getErrorInfo(), "messageZh",
+                            extractErrorField(step.getErrorInfo(), "message", step.getStatus()));
+                    firstErrorMessageEn = extractErrorField(step.getErrorInfo(), "messageEn",
+                            extractErrorField(step.getErrorInfo(), "message", step.getStatus()));
                 }
             }
 
@@ -314,6 +309,11 @@ public class ReactiveSequentialExecutor {
 
 
         return Mono.just(result);
+    }
+
+    private String extractErrorField(Map<String, Object> errorInfo, String field, String defaultVal) {
+        Object val = errorInfo.get(field);
+        return val instanceof String ? (String) val : defaultVal;
     }
 
     /**
