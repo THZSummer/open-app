@@ -18,6 +18,7 @@ import com.xxx.it.works.wecode.v2.modules.ratelimit.RateLimitConfig;
 import com.xxx.it.works.wecode.v2.common.config.OpenplatformLookupRepository;
 import com.xxx.it.works.wecode.v2.common.config.LookupItemEntity;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -251,6 +252,10 @@ public class EntityCacheManager {
 
     /**
      * 获取 Lookup 配置: Redis cache-aside, miss 时从 DB 查并回写
+     * <p>
+     * Redis 中缓存的是 {@code List<LookupItemEntity>} 实体 JSON (与 market-server/open-server 对齐缓存实体),
+     * 对外仍返回 item_code → item_value 的 Map (内存转换, 调用方无感)。
+     * </p>
      *
      * @param classifyCode 分类编码
      * @return item_code → item_value 的 Map
@@ -260,10 +265,10 @@ public class EntityCacheManager {
         return redisTemplate.opsForValue().get(key)
                 .flatMap(json -> {
                     try {
-                        Map<String, String> map = objectMapper.readValue(json,
-                                new com.fasterxml.jackson.core.type.TypeReference<Map<String, String>>() {});
-                        log.debug("Lookup cache hit: classifyCode={}", classifyCode);
-                        return Mono.just(map);
+                        List<LookupItemEntity> items = objectMapper.readValue(json,
+                                new com.fasterxml.jackson.core.type.TypeReference<List<LookupItemEntity>>() {});
+                        log.debug("Lookup cache hit: classifyCode={}, count={}", classifyCode, items.size());
+                        return Mono.just(entitiesToMap(items));
                     } catch (Exception e) {
                         log.warn("Lookup cache deserialize failed: classifyCode={}", classifyCode);
                         return Mono.<Map<String, String>>empty();
@@ -275,30 +280,35 @@ public class EntityCacheManager {
     private Mono<Map<String, String>> loadLookupFromDb(String classifyCode) {
         return lookupRepository.findByPathAndClassifyCode(LOOKUP_PATH, classifyCode)
                 .collectList()
-                .map(items -> {
-                    Map<String, String> result = new LinkedHashMap<>();
-                    for (LookupItemEntity item : items) {
-                        if (item.getItemCode() != null) {
-                            result.put(item.getItemCode(), item.getItemValue());
-                        }
-                    }
-                    return result;
-                })
-                .flatMap(map -> {
-                    if (map.isEmpty()) return Mono.just(map);
+                .flatMap(items -> {
+                    if (items.isEmpty()) return Mono.just(new LinkedHashMap<String, String>());
+                    Map<String, String> result = entitiesToMap(items);
                     try {
-                        String json = objectMapper.writeValueAsString(map);
+                        String json = objectMapper.writeValueAsString(items);
                         return redisTemplate.opsForValue().set(lookupKey(classifyCode), json, LOOKUP_TTL)
-                                .thenReturn(map)
-                                .onErrorResume(e -> Mono.just(map));
+                                .thenReturn(result)
+                                .onErrorResume(e -> Mono.just(result));
                     } catch (Exception e) {
-                        return Mono.just(map);
+                        return Mono.just(result);
                     }
                 })
                 .onErrorResume(e -> {
                     log.warn("Lookup DB load failed: classifyCode={}", classifyCode, e);
-                    return Mono.just(new LinkedHashMap<>());
+                    return Mono.just(new LinkedHashMap<String, String>());
                 });
+    }
+
+    /**
+     * LookupItemEntity 列表 → item_code: item_value 的 Map
+     */
+    private Map<String, String> entitiesToMap(List<LookupItemEntity> items) {
+        Map<String, String> result = new LinkedHashMap<>(items.size());
+        for (LookupItemEntity item : items) {
+            if (item.getItemCode() != null) {
+                result.put(item.getItemCode(), item.getItemValue());
+            }
+        }
+        return result;
     }
 
     /**
