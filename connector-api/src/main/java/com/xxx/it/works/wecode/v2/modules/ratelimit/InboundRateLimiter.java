@@ -132,7 +132,7 @@ public class InboundRateLimiter implements WebFilter {
         String secondBucket = LocalDateTime.now()
                 .truncatedTo(ChronoUnit.SECONDS)
                 .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"));
-        String key = QPS_KEY_PREFIX + flowId + ":" + secondBucket;
+        String key = QPS_KEY_PREFIX + "{" + flowId + "}:" + secondBucket;
 
         int maxQps = config.getMaxQps();
 
@@ -158,7 +158,7 @@ public class InboundRateLimiter implements WebFilter {
      */
     private Mono<Void> applyConcurrencyLimit(ServerWebExchange exchange, WebFilterChain chain,
                                               String flowId, RateLimitConfig config) {
-        String key = CONCURRENCY_KEY_PREFIX + flowId;
+        String key = CONCURRENCY_KEY_PREFIX + "{" + flowId + "}";
         int maxConcurrency = config.getMaxConcurrency();
 
         // 先 INCR 检查是否超限
