@@ -84,7 +84,11 @@ public class EntityCacheManager {
                 .switchIfEmpty(Mono.defer(() -> {
                     log.debug("Flow cache miss, loading from DB: flowId={}", flowId);
                     return loadFlowFromDb(flowId);
-                }));
+                }))
+                .onErrorResume(e -> {
+                    log.warn("Redis unavailable for flow cache, falling back to DB: flowId={}", flowId, e);
+                    return loadFlowFromDb(flowId);
+                });
     }
 
     /**
@@ -138,7 +142,11 @@ public class EntityCacheManager {
                 .switchIfEmpty(Mono.defer(() -> {
                     log.debug("FlowVersion cache miss, loading from DB: versionId={}", versionId);
                     return loadFlowVersionFromDb(versionId);
-                }));
+                }))
+                .onErrorResume(e -> {
+                    log.warn("Redis unavailable for version cache, falling back to DB: versionId={}", versionId, e);
+                    return loadFlowVersionFromDb(versionId);
+                });
     }
 
     /**
