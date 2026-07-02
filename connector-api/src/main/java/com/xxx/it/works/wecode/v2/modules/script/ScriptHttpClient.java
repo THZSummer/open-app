@@ -11,6 +11,11 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ThreadPoolExecutor;
 
 /**
  * Script-side HTTP client exposed to GraalJS sandbox via {@code ctx.http}.
@@ -22,6 +27,10 @@ import java.util.Map;
  * <p>Controlled by Spring property {@code script.http.client.enabled} (default true).
  * When enabled, {@code ctx.http} is injected into the script context.</p>
  *
+ * <p>Uses a dedicated thread pool initialized at class-load time (before any
+ * polyglot context exists) to perform HTTP calls outside the GraalVM sandbox,
+ * bypassing {@code allowIO(false)} restrictions.</p>
+ *
  * @author SDDU
  */
 public class ScriptHttpClient {
@@ -30,13 +39,30 @@ public class ScriptHttpClient {
 
     private static final int DEFAULT_TIMEOUT_SECONDS = 10;
 
-    private final HttpClient httpClient;
+    private static final ExecutorService SHARED_EXECUTOR;
 
-    public ScriptHttpClient() {
-        this.httpClient = HttpClient.newBuilder()
+    private static final HttpClient SHARED_HTTP_CLIENT;
+
+    static {
+        ThreadPoolExecutor tpe = (ThreadPoolExecutor) Executors.newFixedThreadPool(4, r -> {
+            Thread t = new Thread(r, "script-http-worker");
+            t.setDaemon(true);
+            return t;
+        });
+        tpe.prestartAllCoreThreads();
+        SHARED_EXECUTOR = tpe;
+        SHARED_HTTP_CLIENT = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(DEFAULT_TIMEOUT_SECONDS))
                 .followRedirects(HttpClient.Redirect.NORMAL)
                 .build();
+    }
+
+    private final HttpClient httpClient;
+    private final ExecutorService executor;
+
+    public ScriptHttpClient() {
+        this.httpClient = SHARED_HTTP_CLIENT;
+        this.executor = SHARED_EXECUTOR;
     }
 
     @HostAccess.Export
@@ -70,41 +96,75 @@ public class ScriptHttpClient {
     }
 
     private Map<String, Object> execute(String method, String url, Map<String, String> headers, Object body) {
+        Map<String, Object> resolvedBody = resolveBody(body);
+
+        Callable<Map<String, Object>> task = () -> {
+            try {
+                HttpRequest.Builder builder = HttpRequest.newBuilder()
+                        .uri(URI.create(url))
+                        .timeout(Duration.ofSeconds(DEFAULT_TIMEOUT_SECONDS));
+
+                if (headers != null) {
+                    headers.forEach(builder::header);
+                }
+
+                if (resolvedBody != null && !"GET".equalsIgnoreCase(method)) {
+                    String jsonBody = new com.fasterxml.jackson.databind.ObjectMapper()
+                            .writeValueAsString(resolvedBody);
+                    builder.header("Content-Type", "application/json");
+                    builder.method(method, HttpRequest.BodyPublishers.ofString(jsonBody));
+                } else if (body instanceof String && !"GET".equalsIgnoreCase(method)) {
+                    builder.header("Content-Type", "application/json");
+                    builder.method(method, HttpRequest.BodyPublishers.ofString((String) body));
+                } else {
+                    builder.method(method, HttpRequest.BodyPublishers.noBody());
+                }
+
+                HttpResponse<String> response = httpClient.send(
+                        builder.build(), HttpResponse.BodyHandlers.ofString());
+
+                Map<String, Object> result = new HashMap<>();
+                result.put("status", response.statusCode());
+                result.put("body", tryParseJson(response.body()));
+                result.put("headers", flattenHeaders(response.headers().map()));
+
+                log.debug("Script HTTP {} {} → {}", method, url, response.statusCode());
+                return result;
+
+            } catch (Exception e) {
+                log.warn("Script HTTP call failed: {} {}, error={}", method, url, e.getMessage());
+                Map<String, Object> result = new HashMap<>();
+                result.put("status", 0);
+                Map<String, Object> error = new HashMap<>();
+                error.put("message", "HTTP call failed: " + e.getClass().getSimpleName());
+                error.put("detail", e.getMessage() != null ? e.getMessage() : e.toString());
+                result.put("body", error);
+                result.put("headers", new HashMap<>());
+                return result;
+            }
+        };
+
+        Future<Map<String, Object>> future = executor.submit(task);
         try {
-            HttpRequest.Builder builder = HttpRequest.newBuilder()
-                    .uri(URI.create(url))
-                    .timeout(Duration.ofSeconds(DEFAULT_TIMEOUT_SECONDS));
-
-            if (headers != null) {
-                headers.forEach(builder::header);
-            }
-
-            if (body != null && !"GET".equalsIgnoreCase(method)) {
-                String jsonBody = body instanceof String ? (String) body : toJson(body);
-                builder.header("Content-Type", "application/json");
-                builder.method(method, HttpRequest.BodyPublishers.ofString(jsonBody));
-            } else {
-                builder.method(method, HttpRequest.BodyPublishers.noBody());
-            }
-
-            HttpResponse<String> response = httpClient.send(
-                    builder.build(), HttpResponse.BodyHandlers.ofString());
-
-            Map<String, Object> result = new HashMap<>();
-            result.put("status", response.statusCode());
-            result.put("body", tryParseJson(response.body()));
-            result.put("headers", flattenHeaders(response.headers().map()));
-
-            log.debug("Script HTTP {} {} → {}", method, url, response.statusCode());
-            return result;
-
-        } catch (Exception e) {
-            log.warn("Script HTTP call failed: {} {}, error={}", method, url, e.getMessage());
+            return future.get(3, java.util.concurrent.TimeUnit.SECONDS);
+        } catch (java.util.concurrent.TimeoutException e) {
+            future.cancel(true);
+            log.warn("Script HTTP timeout: {} {} (>3s)", method, url);
             Map<String, Object> result = new HashMap<>();
             result.put("status", 0);
             Map<String, Object> error = new HashMap<>();
-            error.put("message", "HTTP call failed");
-            error.put("detail", e.getMessage());
+            error.put("message", "HTTP call timed out");
+            error.put("detail", "Request exceeded 3s timeout");
+            result.put("body", error);
+            result.put("headers", new HashMap<>());
+            return result;
+        } catch (Exception e) {
+            log.warn("Script HTTP executor error: {} {}, error={}", method, url, e.getMessage());
+            Map<String, Object> result = new HashMap<>();
+            result.put("status", 0);
+            Map<String, Object> error = new HashMap<>();
+            error.put("message", "HTTP call failed: " + e.getClass().getSimpleName());
+            error.put("detail", e.getMessage() != null ? e.getMessage() : e.toString());
             result.put("body", error);
             result.put("headers", new HashMap<>());
             return result;
@@ -128,6 +188,38 @@ public class ScriptHttpClient {
         } catch (Exception e) {
             return String.valueOf(obj);
         }
+    }
+
+    private Map<String, Object> resolveBody(Object body) {
+        if (body == null) return null;
+        if (body instanceof Map) {
+            Map<String, Object> result = new HashMap<>();
+            for (Map.Entry<?, ?> entry : ((Map<?, ?>) body).entrySet()) {
+                result.put(String.valueOf(entry.getKey()), resolveValue(entry.getValue()));
+            }
+            return result;
+        }
+        if (body instanceof String) return null;
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Object resolveValue(Object val) {
+        if (val instanceof Map) {
+            Map<String, Object> result = new HashMap<>();
+            for (Map.Entry<?, ?> entry : ((Map<?, ?>) val).entrySet()) {
+                result.put(String.valueOf(entry.getKey()), resolveValue(entry.getValue()));
+            }
+            return result;
+        }
+        if (val instanceof java.util.List) {
+            java.util.List<Object> list = new java.util.ArrayList<>();
+            for (Object item : (java.util.List<Object>) val) {
+                list.add(resolveValue(item));
+            }
+            return list;
+        }
+        return val;
     }
 
     private Map<String, String> flattenHeaders(Map<String, java.util.List<String>> map) {

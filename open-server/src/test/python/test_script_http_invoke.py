@@ -66,7 +66,7 @@ class MockServer:
                     self._json(200, {"status": "ok"})
             def do_POST(self):
                 body = self._body()
-                name = body.get("name", "unknown")
+                name = body.get("name") or "unknown"
                 email = body.get("email", "")
                 age = body.get("age", 0)
                 self._json(200, {

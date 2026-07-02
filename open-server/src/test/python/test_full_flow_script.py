@@ -74,8 +74,8 @@ class MockServer:
                 if self.path == "/api/health": self._json(200, {"status": "ok"})
             def do_POST(self):
                 body = self._body(); state["call_count"] += 1
-                name = body.get("name", "unknown"); email = body.get("email", "")
-                age = body.get("age", 0)
+                name = body.get("name") or "unknown"; email = body.get("email") or ""
+                age = body.get("age") or 0
                 self._json(200, {
                     "code": 0,
                     "data": {
