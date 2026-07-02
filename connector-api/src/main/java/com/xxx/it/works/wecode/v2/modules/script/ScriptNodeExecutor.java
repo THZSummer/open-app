@@ -15,6 +15,7 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 import java.time.Duration;
+import java.util.concurrent.Executors;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -127,10 +128,9 @@ public class ScriptNodeExecutor implements NodeExecutor {
         log.info("Script node executing: nodeId={}, timeoutMs={}, upstreamCount={}",
                 nodeId, finalTimeoutMs,
                 upstreamNodeIds != null ? upstreamNodeIds.size() : "(default)");
-
-        // 5. 在 boundedElastic 线程池中执行, 带超时控制
+        // 5. 在虚拟线程中执行 (轻量级, 不占平台线程), 带超时控制
         return Mono.fromCallable(() -> executeScript(scriptSource, ctxMap))
-                .subscribeOn(Schedulers.boundedElastic())
+                .subscribeOn(Schedulers.fromExecutor(Executors.newVirtualThreadPerTaskExecutor()))
                 .timeout(Duration.ofMillis(finalTimeoutMs))
                 .map(result -> {
                     long duration = System.currentTimeMillis() - startTime;
