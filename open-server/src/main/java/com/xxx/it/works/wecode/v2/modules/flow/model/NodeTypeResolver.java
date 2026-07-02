@@ -12,7 +12,8 @@ import java.util.Map;
  *   <li>{@code node.type} — React Flow 框架渲染字段 (snake_case), 仅用于画布组件注册</li>
  *   <li>{@code node.data.type} — 业务节点类型 (camelCase), 引擎执行路由依据</li>
  * </ul>
- * 引擎应从 {@code node.data.type} 读取业务类型, 缺失时回退 {@code node.type} (向后兼容)。
+ * 引擎只从 {@code node.data.type} 读取业务类型, 不回退 {@code node.type},
+ * 避免错误格式的数据被静默兼容而无法暴露问题。
  * </p>
  *
  * @author SDDU Build Agent
@@ -23,7 +24,7 @@ public final class NodeTypeResolver {
     }
 
     /**
-     * 从 JsonNode 节点解析业务类型
+     * 从 JsonNode 节点解析业务类型 (仅读 node.data.type)
      *
      * @param node 节点 JSON (含 id/type/position/data)
      * @return 业务节点类型, 缺失时返回 null
@@ -36,12 +37,11 @@ public final class NodeTypeResolver {
         if (data != null && data.has("type") && !data.get("type").isNull()) {
             return data.get("type").asText();
         }
-        JsonNode type = node.get("type");
-        return type != null && !type.isNull() ? type.asText() : null;
+        return null;
     }
 
     /**
-     * 从 Map 节点解析业务类型
+     * 从 Map 节点解析业务类型 (仅读 node.data.type)
      *
      * @param node 节点 Map (含 id/type/position/data)
      * @return 业务节点类型, 缺失时返回 null
@@ -58,7 +58,6 @@ public final class NodeTypeResolver {
                 return (String) type;
             }
         }
-        Object type = node.get("type");
-        return type instanceof String ? (String) type : null;
+        return null;
     }
 }

@@ -70,9 +70,9 @@ def _set_connection_config(vid, config_dict):
 
 _BASE_ORCH = {
     "nodes": [
-        {"id": "trigger", "type": "trigger", "data": {"triggerType": "http"}},
-        {"id": "n1", "type": "script", "data": {"script": "1 + 1"}},
-        {"id": "exit1", "type": "exit"}
+        {"id": "trigger", "type": "trigger", "data": {"type": "trigger", "triggerType": "http"}},
+        {"id": "n1", "type": "script", "data": {"type": "script", "script": "1 + 1"}},
+        {"id": "exit1", "type": "exit", "data": {"type": "exit"}}
     ],
     "edges": [
         {"id": "e1", "source": "trigger", "target": "n1"},
@@ -314,9 +314,9 @@ class TestNodeTimeoutLimit:
         fid, fvid = draft_flow
         config = {
             "nodes": [
-                {"id": "trigger", "type": "trigger", "data": {"triggerType": "http"}},
-                {"id": "n1", "type": "connector", "data": {"timeoutMs": 10000}},
-                {"id": "exit1", "type": "exit"}
+                {"id": "trigger", "type": "trigger", "data": {"type": "trigger", "triggerType": "http"}},
+                {"id": "n1", "type": "connector", "data": {"type": "connector", "timeoutMs": 10000}},
+                {"id": "exit1", "type": "exit", "data": {"type": "exit"}}
             ],
             "edges": [
                 {"id": "e1", "source": "trigger", "target": "n1"},
@@ -509,15 +509,15 @@ class TestParallelBranchesLimit:
         fid, fvid = draft_flow
         config = {
             "nodes": [
-                {"id": "trigger", "type": "trigger", "data": {"triggerType": "http"}},
-                {"id": "n1", "type": "script", "data": {"script": "1+1"}},
+                {"id": "trigger", "type": "trigger", "data": {"type": "trigger", "triggerType": "http"}},
+                {"id": "n1", "type": "script", "data": {"type": "script", "script": "1+1"}},
             ],
             "edges": [],
             "flowConfig": {}
         }
         for i in range(1, 10):
             exit_id = f"exit{i}"
-            config["nodes"].append({"id": exit_id, "type": "exit"})
+            config["nodes"].append({"id": exit_id, "type": "exit", "data": {"type": "exit"}})
             config["edges"].append({
                 "id": f"pe{i}", "source": "n1", "target": exit_id,
                 "data": {"connectionMode": "parallel"}
@@ -536,15 +536,15 @@ class TestParallelBranchesLimit:
         fid, fvid = draft_flow
         config = {
             "nodes": [
-                {"id": "trigger", "type": "trigger", "data": {"triggerType": "http"}},
-                {"id": "n1", "type": "script", "data": {"script": "1+1"}},
+                {"id": "trigger", "type": "trigger", "data": {"type": "trigger", "triggerType": "http"}},
+                {"id": "n1", "type": "script", "data": {"type": "script", "script": "1+1"}},
             ],
             "edges": [],
             "flowConfig": {}
         }
         for i in range(1, 9):
             exit_id = f"exit{i}"
-            config["nodes"].append({"id": exit_id, "type": "exit"})
+            config["nodes"].append({"id": exit_id, "type": "exit", "data": {"type": "exit"}})
             config["edges"].append({
                 "id": f"pe{i}", "source": "n1", "target": exit_id,
                 "data": {"connectionMode": "parallel"}
@@ -572,9 +572,9 @@ class TestScriptLengthLimit:
         long_script = "let x = " + "1+" * 4000 + "0;"  # 约 12000 字符
         config = {
             "nodes": [
-                {"id": "trigger", "type": "trigger", "data": {"triggerType": "http"}},
-                {"id": "n1", "type": "script", "data": {"script": long_script}},
-                {"id": "exit1", "type": "exit"}
+                {"id": "trigger", "type": "trigger", "data": {"type": "trigger", "triggerType": "http"}},
+                {"id": "n1", "type": "script", "data": {"type": "script", "script": long_script}},
+                {"id": "exit1", "type": "exit", "data": {"type": "exit"}}
             ],
             "edges": [
                 {"id": "e1", "source": "trigger", "target": "n1"},
@@ -621,9 +621,9 @@ class TestScriptTimeoutLimit:
         fid, fvid = draft_flow
         config = {
             "nodes": [
-                {"id": "trigger", "type": "trigger", "data": {"triggerType": "http"}},
-                {"id": "n1", "type": "script", "data": {"script": "1+1", "timeout": 60}},
-                {"id": "exit1", "type": "exit"}
+                {"id": "trigger", "type": "trigger", "data": {"type": "trigger", "triggerType": "http"}},
+                {"id": "n1", "type": "script", "data": {"type": "script", "script": "1+1", "timeout": 60}},
+                {"id": "exit1", "type": "exit", "data": {"type": "exit"}}
             ],
             "edges": [
                 {"id": "e1", "source": "trigger", "target": "n1"},
@@ -644,9 +644,9 @@ class TestScriptTimeoutLimit:
         fid, fvid = draft_flow
         config = {
             "nodes": [
-                {"id": "trigger", "type": "trigger", "data": {"triggerType": "http"}},
-                {"id": "n1", "type": "script", "data": {"script": "1+1", "timeout": 10}},
-                {"id": "exit1", "type": "exit"}
+                {"id": "trigger", "type": "trigger", "data": {"type": "trigger", "triggerType": "http"}},
+                {"id": "n1", "type": "script", "data": {"type": "script", "script": "1+1", "timeout": 10}},
+                {"id": "exit1", "type": "exit", "data": {"type": "exit"}}
             ],
             "edges": [
                 {"id": "e1", "source": "trigger", "target": "n1"},

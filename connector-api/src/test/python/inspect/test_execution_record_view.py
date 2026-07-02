@@ -52,6 +52,7 @@ def build_orch():
                 "id": "node_exit", "type": "exit",
                 "position": {"x": 350, "y": 200},
                 "data": {
+                    "type": "exit",
                     "labelCn": "返回", "labelEn": "Return",
                     "output": {
                         "header": {"type": "object", "properties": {}},

@@ -68,6 +68,7 @@ def build_script_orch(script_content, timeout_ms=5000):
                 "type": "script",
                 "position": {"x": 350, "y": 200},
                 "data": {
+                    "type": "script",
                     "labelCn": "\u811a\u672c\u5904\u7406",
                     "labelEn": "Script",
                     "script": script_content,
@@ -79,6 +80,7 @@ def build_script_orch(script_content, timeout_ms=5000):
                 "type": "exit",
                 "position": {"x": 600, "y": 200},
                 "data": {
+                    "type": "exit",
                     "labelCn": "\u8fd4\u56de",
                     "labelEn": "Ret",
                     "output": {

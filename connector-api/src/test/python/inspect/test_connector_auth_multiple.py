@@ -163,6 +163,7 @@ def build_orch(connector_version_id, connection_config):
                 "id": "node_connector", "type": "connector",
                 "position": {"x": 350, "y": 200},
                 "data": {
+                    "type": "connector",
                     "labelCn": "连接器", "labelEn": "Conn",
                     "connectorVersionId": str(connector_version_id),
                     "connectorVersionConfig": connection_config,
@@ -177,6 +178,7 @@ def build_orch(connector_version_id, connection_config):
                 "id": "node_exit", "type": "exit",
                 "position": {"x": 600, "y": 200},
                 "data": {
+                    "type": "exit",
                     "labelCn": "返回", "labelEn": "Ret",
                     "output": {
                         "header": {"type": "object", "properties": {}},

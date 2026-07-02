@@ -162,6 +162,7 @@ def build_orch(connector_version_id, connection_config, cache_ttl=60):
     cache_ttl: 缓存 TTL（秒），默认 60；None 表示不启用缓存
     """
     connector_data = {
+        "type": "connector",
         "labelCn": "缓存连接器",
         "labelEn": "CacheConn",
         "connectorVersionId": str(connector_version_id),
@@ -215,6 +216,7 @@ def build_orch(connector_version_id, connection_config, cache_ttl=60):
                 "id": "node_exit", "type": "exit",
                 "position": {"x": 600, "y": 200},
                 "data": {
+                    "type": "exit",
                     "labelCn": "返回", "labelEn": "Ret",
                     "output": {
                         "header": {"type": "object", "properties": {}},

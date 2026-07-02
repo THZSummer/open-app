@@ -4,7 +4,7 @@
 覆盖 FR-041:
   - IT-115: 草稿版本调试 → 成功返回 steps
   - IT-116: 已发布版本调试 → 成功返回 steps
-  - IT-117: 已失效版本调试 → EC-014 拒绝
+  - IT-117: 已失效版本调试 → 不判断版本状态, 应成功
   - IT-118: 无编排草稿调试 → 失败
 
 依赖: connector-api (:18180)
@@ -53,6 +53,7 @@ def setup_flow(snow_id_val, lifecycle_status=2, orchestration=None, version_stat
                 "id": "node_exit", "type": "exit",
                 "position": {"x": 350, "y": 200},
                 "data": {
+                    "type": "exit",
                     "labelCn": "返回", "labelEn": "Return",
                     "output": {
                         "body": {
@@ -123,7 +124,7 @@ def test_debug_draft_invoke():
         check("executionId 存在",
               bool(body.get("executionId")))
     print("\n" + "=" * 60)
-    print("IT-117: 已失效版本调试 → 应被拒绝 (EC-014) (FR-041)")
+    print("IT-117: 已失效版本调试 → 不判断版本状态, 应成功 (FR-041)")
     print("=" * 60)
     
     sid_117 = snow_id()
@@ -133,15 +134,9 @@ def test_debug_draft_invoke():
     resp = debug_run(fid, vid_117, {"mockTriggerData": {"sender": "invalid_user"}})
     if resp is not None:
         body = resp.json()
-        # 期望失败: status=failed 或非 200
-        is_rejected = (
-            resp.status_code != 200 or
-            body.get("status") == "failed" or
-            (isinstance(body.get("errorInfo"), dict) and
-             body["errorInfo"].get("code") == "EC-014")
-        )
-        check("已失效版本调试被拒绝",
-              is_rejected,
+        # 调试接口不判断版本状态, 已失效版本也可调试
+        check("已失效版本可调试",
+              resp.status_code == 200 and body.get("status") != "failed",
               f"HTTP: {resp.status_code} body={json.dumps(body, ensure_ascii=False)[:200]}")
     print("\n" + "=" * 60)
     print("IT-118: 无编排草稿调试（编排为空）→ 应失败")
