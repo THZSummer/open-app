@@ -263,7 +263,7 @@ def test_full_flow_script():
                     {"id": "e1", "source": nid_t, "target": nid_s},
                     {"id": "e2", "source": nid_s, "target": nid_e}
                 ],
-                "flowConfig": {"rateLimitConfig": {"maxQps": 50}}
+                "flowConfig": {"flowMode": "serial", "rateLimitConfig": {"maxQps": 50}}
             }})
             return check_ok(r, "UPDATE orchestration (trigger→script→exit)", f"PUT /flows/{fid}/versions/{fvid}")
 

@@ -299,7 +299,7 @@ class TestNodeTimeoutLimit:
         """flowConfig.timeout = 10000ms > 5000ms → 422"""
         fid, fvid = draft_flow
         config = json.loads(json.dumps(_BASE_ORCH))
-        config["flowConfig"] = {"timeout": 10000}  # >> 5000ms
+        config["flowConfig"] = {"flowMode": "serial","timeout": 10000}  # >> 5000ms
         _set_orchestration(fvid, config)
         resp = _publish_flow(fid, fvid)
         if resp is not None:
@@ -336,7 +336,7 @@ class TestNodeTimeoutLimit:
         """flowConfig.timeout = 3000ms ≤ 5000ms → 发布成功"""
         fid, fvid = draft_flow
         config = json.loads(json.dumps(_BASE_ORCH))
-        config["flowConfig"] = {"timeout": 3000}
+        config["flowConfig"] = {"flowMode": "serial","timeout": 3000}
         _set_orchestration(fvid, config)
         resp = _publish_flow(fid, fvid)
         if resp is not None:
@@ -396,7 +396,7 @@ class TestFlowMaxQps:
         """
         fid, fvid = draft_flow
         config = json.loads(json.dumps(_BASE_ORCH))
-        config["flowConfig"] = {"rateLimitConfig": {"maxQps": 2000}}
+        config["flowConfig"] = {"flowMode": "serial","rateLimitConfig": {"maxQps": 2000}}
         _set_orchestration(fvid, config)
         resp = _publish_flow(fid, fvid)
         if resp is not None:
@@ -410,7 +410,7 @@ class TestFlowMaxQps:
         """flowConfig.rateLimitConfig.maxQps = 500 ≤ 1000 → 发布成功"""
         fid, fvid = draft_flow
         config = json.loads(json.dumps(_BASE_ORCH))
-        config["flowConfig"] = {"rateLimitConfig": {"maxQps": 500}}
+        config["flowConfig"] = {"flowMode": "serial","rateLimitConfig": {"maxQps": 500}}
         _set_orchestration(fvid, config)
         resp = _publish_flow(fid, fvid)
         if resp is not None:
@@ -436,7 +436,7 @@ class TestFlowMaxConcurrency:
         """
         fid, fvid = draft_flow
         config = json.loads(json.dumps(_BASE_ORCH))
-        config["flowConfig"] = {"rateLimitConfig": {"maxConcurrency": 2000}}
+        config["flowConfig"] = {"flowMode": "serial","rateLimitConfig": {"maxConcurrency": 2000}}
         _set_orchestration(fvid, config)
         resp = _publish_flow(fid, fvid)
         if resp is not None:
@@ -450,7 +450,7 @@ class TestFlowMaxConcurrency:
         """flowConfig.rateLimitConfig.maxConcurrency = 500 ≤ 1000 → 发布成功"""
         fid, fvid = draft_flow
         config = json.loads(json.dumps(_BASE_ORCH))
-        config["flowConfig"] = {"rateLimitConfig": {"maxConcurrency": 500}}
+        config["flowConfig"] = {"flowMode": "serial","rateLimitConfig": {"maxConcurrency": 500}}
         _set_orchestration(fvid, config)
         resp = _publish_flow(fid, fvid)
         if resp is not None:
@@ -472,7 +472,7 @@ class TestFlowCacheTtlLimit:
         """flowConfig.cache.ttl = 2000000 > 1296000 → 422"""
         fid, fvid = draft_flow
         config = json.loads(json.dumps(_BASE_ORCH))
-        config["flowConfig"] = {"cache": {"ttl": 2000000}}  # > 15 days
+        config["flowConfig"] = {"flowMode": "serial","cache": {"ttl": 2000000}}  # > 15 days
         _set_orchestration(fvid, config)
         resp = _publish_flow(fid, fvid)
         if resp is not None:
@@ -486,7 +486,7 @@ class TestFlowCacheTtlLimit:
         """flowConfig.cache.ttl = 3600 ≤ 1296000 → 发布成功"""
         fid, fvid = draft_flow
         config = json.loads(json.dumps(_BASE_ORCH))
-        config["flowConfig"] = {"cache": {"ttl": 3600}}
+        config["flowConfig"] = {"flowMode": "serial","cache": {"ttl": 3600}}
         _set_orchestration(fvid, config)
         resp = _publish_flow(fid, fvid)
         if resp is not None:
@@ -513,7 +513,7 @@ class TestParallelBranchesLimit:
                 {"id": "n1", "type": "script", "data": {"type": "script", "script": "1+1"}},
             ],
             "edges": [],
-            "flowConfig": {}
+            "flowConfig": {"flowMode": "serial"}
         }
         for i in range(1, 10):
             exit_id = f"exit{i}"
@@ -540,7 +540,7 @@ class TestParallelBranchesLimit:
                 {"id": "n1", "type": "script", "data": {"type": "script", "script": "1+1"}},
             ],
             "edges": [],
-            "flowConfig": {}
+            "flowConfig": {"flowMode": "serial"}
         }
         for i in range(1, 9):
             exit_id = f"exit{i}"
