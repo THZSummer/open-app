@@ -94,7 +94,14 @@ public class ApprovalService {
 
     /** appId 字符串 → Long（null/空白返回 null），用于 DTO↔Entity 转换 */
     private Long parseAppId(String appId) {
-        return (appId != null && !appId.trim().isEmpty()) ? Long.parseLong(appId.trim()) : null;
+        if (appId == null || appId.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            return Long.parseLong(appId.trim());
+        } catch (NumberFormatException e) {
+            throw new BusinessException("400", "应用ID格式无效", "Invalid appId format: " + appId);
+        }
     }
 
     /** appId Long → 字符串（null 返回 null），避免前端 Long 精度丢失 */
