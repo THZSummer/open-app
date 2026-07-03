@@ -39,8 +39,9 @@ public class ApprovalFlowListResponse implements Serializable {
     /**
      * 归属应用ID（V3 新增）
      * NULL=平台级/全局模板，非NULL=应用级定制模板
+     * String 格式返回，避免前端 Long 精度丢失
      */
-    private Long appId;
+    private String appId;
 
     // ✅ v2.8.0 变更：移除 isDefault 字段
     // 原因：用 code='global' 标识全局审批，更语义化且统一规范

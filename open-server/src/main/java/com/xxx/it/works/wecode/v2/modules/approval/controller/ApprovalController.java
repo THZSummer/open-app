@@ -59,7 +59,7 @@ public class ApprovalController {
     @PlatformAdminPermission
     public ApiResponse<List<ApprovalFlowListResponse>> getFlowList(
             @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) Long appId,
+            @RequestParam(required = false) String appId,
             @RequestParam(defaultValue = "1") Integer curPage,
             @RequestParam(defaultValue = "20") Integer pageSize) {
 

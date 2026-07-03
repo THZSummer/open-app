@@ -35,8 +35,9 @@ public class ApprovalFlowUpdateRequest implements Serializable {
      * 归属应用ID（V3 新增）
      *
      * <p>NULL=平台级/全局模板，非NULL=应用级定制模板</p>
+     * <p>String 格式返回，避免前端 Long 精度丢失</p>
      */
-    private Long appId;
+    private String appId;
 
     /**
      * 审批节点列表
