@@ -29,6 +29,9 @@ public class FlowListResponse {
     /** 英文描述 */
     private String descriptionEn;
 
+    /** 图标文件ID */
+    private String iconFileId;
+
     /** 生命周期状态 (TINYINT数字): 1=已停止, 2=运行中, 3=已失效 */
     private Integer lifecycleStatus;
 
@@ -49,4 +52,10 @@ public class FlowListResponse {
 
     /** 最后更新时间 */
     private Date lastUpdateTime;
+
+    /** 创建人 */
+    private String createBy;
+
+    /** 最后更新人 */
+    private String lastUpdateBy;
 }
