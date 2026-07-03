@@ -212,9 +212,8 @@
 |:--:|------|
 | 0 | success |
 | 1 | failed |
-| 2 | timeout |
 
-> 💡 同步执行模型，仅终态持久化。
+> 💡 同步执行模型，仅终态持久化。节点级超时归入 failed。
 
 #### 1.8.6 触发方式 (executionRecord.triggerType)
 
@@ -237,9 +236,8 @@
 | 数字 | 含义 |
 |:--:|------|
 | 0 | success（步骤执行成功） |
-| 1 | failed（步骤执行失败） |
-| 2 | timeout（步骤执行超时） |
-| 3 | not_executed（未执行，如分支未走到） |
+| 1 | failed（步骤执行失败，含超时） |
+| 2 | not_executed（未执行，如分支未走到） |
 
 #### 1.8.8 审批节点状态 (approvalNode.status)
 
@@ -3019,7 +3017,7 @@
 | pageSize | int | ❌ | 每页数量，默认 20 |
 | keyword | string | ❌ | 按连接流名称模糊搜索（同时匹配 flowNameCn 和 flowNameEn） |
 | flowId | string | ❌ | 按连接流 ID 过滤 |
-| status | int | ❌ | 执行状态：`0` 成功 / `1` 失败 / `2` 超时，见 §1.8.5 |
+| status | int | ❌ | 执行状态：`0` 成功 / `1` 失败，见 §1.8.5 |
 | triggerType | int | ❌ | 触发方式：`1` HTTP触发 / `2` 调试触发，见 §1.8.6 |
 | startTime | string | ❌ | 起始时间，格式 `yyyy-MM-dd HH:mm:ss` |
 | endTime | string | ❌ | 截止时间 |
@@ -3472,7 +3470,7 @@ sequenceDiagram
 |--------|------|------|---------|
 | X-Flow-Id | string | 连接流 ID（雪花ID），对应 URL 路径中的 `{flowId}` | 始终返回 |
 | X-Execution-Id | string | 执行记录 ID（雪花ID） | 连接流已执行（含执行失败） |
-| X-Status | int | 执行状态：`0`=成功 / `1`=失败 / `2`=超时，见 §1.8.5 | 连接流已执行 |
+| X-Status | int | 执行状态：`0`=成功 / `1`=失败，见 §1.8.5 | 连接流已执行 |
 | X-Duration-Ms | int | 执行耗时（毫秒） | 连接流已执行 |
 | X-Cache-Status | int | 缓存命中状态：`0`=未命中 / `1`=全流命中 / `2`=部分命中，见 §1.8.9 | 缓存已生效 |
 | X-Code | int | 平台结果码：`200`=成功，其余见 §1.7 错误码定义 | 始终返回 |
