@@ -198,6 +198,7 @@ public class FlowInvokeService {
                                                      Map<String, String> headers, Map<String, String> queryParams) {
         String executionId = UUID.randomUUID().toString().replace("-", "");
         Long recordId = idGenerator.nextId();
+        final long invokeStartTime = System.currentTimeMillis();
 
         // 异步读取日志采集开关 (默认开启): 关闭时不写 execution_record / execution_step 两张表
         return propertyService.isLogCollectionEnabled()
@@ -275,7 +276,8 @@ public class FlowInvokeService {
                         // ★ 执行成功 - 更新记录
                         Integer finalStatus = "success".equals(result.getStatus()) ? 0 : 1;
                         long totalMs = result.getTotalDurationMs();
-                        Integer duration = totalMs > 0 ? (int) totalMs : null;
+                        Integer duration = totalMs > 0 ? (int) totalMs
+                                : (int) (System.currentTimeMillis() - invokeStartTime);
                         String errCode = result.getErrorInfo() != null ? (String) result.getErrorInfo().get("code") : null;
                         String errMsg = result.getErrorInfo() != null ? (String) result.getErrorInfo().get("messageZh") : null;
                         // 异步取①平台全局最大记录数, 避免在 reactor/lettuce 线程上 block 导致自死锁
@@ -293,8 +295,9 @@ public class FlowInvokeService {
                     String errorMsg = classified[1];
                     TransparentFlowResponse response = buildErrorResponse(flowIdStr, errorCode, errorMsg, msg);
 
-                    // ★ 执行失败 - 更新记录
-                    return finalizeExecutionRecord(recordId, flowId, 1, null, errorCode, errorMsg, logEnabled)
+                    // ★ 执行失败 - 更新记录 (补耗时: 从触发到失败的时间差)
+                    int errorDuration = (int) (System.currentTimeMillis() - invokeStartTime);
+                    return finalizeExecutionRecord(recordId, flowId, 1, errorDuration, errorCode, errorMsg, logEnabled)
                             .thenReturn(response);
                 }));
     }
