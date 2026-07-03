@@ -36,7 +36,7 @@ fi
 
 echo "🔨 编译启动中..."
 mkdir -p logs
-nohup mvn spring-boot:run -Dspring-boot.run.profiles="$PROFILE" > "$LOG" 2>&1 &
+nohup mvn spring-boot:run -Dspring-boot.run.profiles="$PROFILE" -Dmaven.test.skip=true > "$LOG" 2>&1 &
 echo $! > "$PID_FILE"
 echo "PID: $(cat $PID_FILE)"
 

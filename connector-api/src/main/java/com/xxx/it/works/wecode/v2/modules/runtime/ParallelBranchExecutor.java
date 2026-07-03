@@ -57,14 +57,10 @@ public class ParallelBranchExecutor implements NodeExecutor {
         // 获取分支列表
         List<Map<String, Object>> branches = extractBranches(configMap);
         if (branches == null || branches.isEmpty()) {
-            log.info("Parallel node {} has no branches, returning empty", nodeId);
-            NodeOutput errOutput = new NodeOutput(nodeId, NODE_TYPE, new HashMap<>(), new HashMap<>());
-            errOutput.setStatus("failed");
-            errOutput.setDurationMs(System.currentTimeMillis() - startTime);
-            errOutput.setErrorInfo(ErrorCode.errorInfo(ErrorCode.PARALLEL_TOO_FEW_BRANCHES,
-                    "并行处理节点最少需要 2 个分支",
-                    "Parallel node requires at least 2 branches"));
-            return Mono.just(errOutput);
+            // 无 inline branches 配置: parallel 节点作为视觉标记, 实际分支由 DagScheduler 按边拓扑驱动
+            // 透传成功, 不阻断后续节点执行
+            log.info("Parallel node {} has no inline branches, pass-through (branches driven by DAG edges)", nodeId);
+            return emptyOutput(nodeId, startTime);
         }
 
         if (branches.size() > MAX_BRANCHES) {

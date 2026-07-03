@@ -19,6 +19,7 @@ import reactor.core.scheduler.Schedulers;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * DAG 调度器
@@ -108,6 +109,10 @@ public class DagScheduler {
                     // 构建 DAG 邻接表: source → list of targets
                     Map<String, List<String>> adjacencyMap = buildAdjacencyMap(edges, nodeMap);
 
+                    // 构建 join 同步计数器: 每个节点的待完成前驱数 (入度)
+                    // 多入度节点 (如并行分支汇合点) 仅当所有前驱完成才执行一次
+                    Map<String, AtomicInteger> pendingPredecessors = buildPendingPredecessors(edges, nodeMap);
+
                     // 查找入口节点 (trigger)
                     String entryNodeId = findEntryNode(nodes);
                     if (entryNodeId == null) {
@@ -116,7 +121,7 @@ public class DagScheduler {
                     }
 
                     // 按 DAG 拓扑执行
-                    return executeDag(entryNodeId, nodeMap, adjacencyMap, ctx, startTime)
+                    return executeDag(entryNodeId, nodeMap, adjacencyMap, pendingPredecessors, ctx, startTime)
                             .thenReturn(ctx);
                 });
     }
@@ -159,10 +164,37 @@ public class DagScheduler {
     }
 
     /**
+     * 构建每个节点的待完成前驱数 (入度) 计数器.
+     * <p>
+     * 用于 join 同步: 多入度节点 (并行分支汇合点) 仅当所有前驱完成 (计数归零) 才执行一次,
+     * 避免被每个前驱各触发一次导致重复执行 / 上下文不完整.
+     * </p>
+     */
+    private Map<String, AtomicInteger> buildPendingPredecessors(JsonNode edges, Map<String, JsonNode> nodeMap) {
+        Map<String, AtomicInteger> pending = new ConcurrentHashMap<>();
+        // 初始化所有节点入度为 0
+        for (String nodeId : nodeMap.keySet()) {
+            pending.put(nodeId, new AtomicInteger(0));
+        }
+        if (edges == null || !edges.isArray()) {
+            return pending;
+        }
+        // 统计每个节点的入边数
+        for (JsonNode edge : edges) {
+            String target = getEdgeField(edge, "target", "targetNodeId");
+            if (target != null && nodeMap.containsKey(target)) {
+                pending.computeIfAbsent(target, k -> new AtomicInteger(0)).incrementAndGet();
+            }
+        }
+        return pending;
+    }
+
+    /**
      * 按 DAG 递归执行 (深度优先, 支持并行分支)
      */
     private Mono<Void> executeDag(String nodeId, Map<String, JsonNode> nodeMap,
                                    Map<String, List<String>> adjacencyMap,
+                                   Map<String, AtomicInteger> pendingPredecessors,
                                    ExecutionContext ctx, long startTime) {
         JsonNode nodeConfig = nodeMap.get(nodeId);
         if (nodeConfig == null) {
@@ -179,12 +211,24 @@ public class DagScheduler {
                     if (targets.isEmpty()) {
                         return Mono.empty();
                     }
-                    if (targets.size() == 1) {
+                    // Join 同步: 仅当 target 的所有前驱完成 (pending 归零) 才执行
+                    // 多前驱节点由最后一个完成的前驱触发, 其余前驱跳过
+                    List<String> ready = new ArrayList<>();
+                    for (String targetId : targets) {
+                        AtomicInteger pending = pendingPredecessors.get(targetId);
+                        if (pending == null || pending.decrementAndGet() == 0) {
+                            ready.add(targetId);
+                        }
+                    }
+                    if (ready.isEmpty()) {
+                        return Mono.empty();
+                    }
+                    if (ready.size() == 1) {
                         // 单一下游: 串行执行
-                        return executeDag(targets.get(0), nodeMap, adjacencyMap, ctx, startTime);
+                        return executeDag(ready.get(0), nodeMap, adjacencyMap, pendingPredecessors, ctx, startTime);
                     } else {
-                        // 多个下游: 判断是否并行分支
-                        return executeParallelBranches(nodeId, targets, nodeMap, adjacencyMap, ctx, startTime);
+                        // 多个下游: 并行分支
+                        return executeParallelBranches(nodeId, ready, nodeMap, adjacencyMap, pendingPredecessors, ctx, startTime);
                     }
                 })
                 .onErrorResume(e -> {
@@ -199,13 +243,14 @@ public class DagScheduler {
     private Mono<Void> executeParallelBranches(String sourceNodeId, List<String> targetIds,
                                                 Map<String, JsonNode> nodeMap,
                                                 Map<String, List<String>> adjacencyMap,
+                                                Map<String, AtomicInteger> pendingPredecessors,
                                                 ExecutionContext ctx, long startTime) {
         log.info("Executing {} parallel branches from node {}", targetIds.size(), sourceNodeId);
 
         List<Mono<Void>> branches = new ArrayList<>();
         for (String targetId : targetIds) {
             // 每个分支独立执行, 失败不影响其他分支
-            Mono<Void> branch = executeDag(targetId, nodeMap, adjacencyMap, ctx, startTime)
+            Mono<Void> branch = executeDag(targetId, nodeMap, adjacencyMap, pendingPredecessors, ctx, startTime)
                     .subscribeOn(Schedulers.parallel())
                     .onErrorResume(e -> {
                         log.warn("Parallel branch {} failed: {}", targetId, e.getMessage());
