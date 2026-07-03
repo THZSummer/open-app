@@ -25,8 +25,8 @@ public class ExecutionRecordService {
 
     private static final Logger log = LoggerFactory.getLogger(ExecutionRecordService.class);
 
-    /** 初始状态：pending */
-    private static final int STATUS_PENDING = 2;
+    /** 初始状态：success (执行完成后由 updateRecord 更新为最终状态) */
+    private static final int STATUS_INITIAL = 0;
 
     private final ExecutionRecordRepository repository;
 
@@ -57,7 +57,8 @@ public class ExecutionRecordService {
         record.setFlowVersionId(flowVersionId);
         record.setAppId(appId);
         record.setTriggerType(triggerType);
-        record.setStatus(STATUS_PENDING);
+        record.setStatus(STATUS_INITIAL);
+        record.setDurationMs(0);
         record.setTriggerTime(now);
         record.setCreateTime(now);
         record.setLastUpdateTime(now);

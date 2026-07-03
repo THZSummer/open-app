@@ -23,8 +23,9 @@ public class ApprovalFlowListRequest implements Serializable {
     /**
      * 应用ID过滤（V3 新增）
      * <p>null=不过滤（返回全部），非null=仅返回指定应用的模板</p>
+     * <p>String 格式（前端传入），避免 Long 精度丢失</p>
      */
-    private Long appId;
+    private String appId;
 
     /**
      * 当前页码，从 1 开始

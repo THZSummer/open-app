@@ -102,13 +102,13 @@ class FlowPublishValidatorTest {
         @DisplayName("合法编排配置含 connector 节点 → 通过")
         void testValidConfigWithConnector_Pass() {
             String config = "{\"nodes\":[" +
-                    "{\"id\":\"t\",\"type\":\"trigger\"}," +
-                    "{\"id\":\"c\",\"type\":\"connector\"}," +
-                    "{\"id\":\"e\",\"type\":\"exit\"}" +
+                    "{\"id\":\"t\",\"type\":\"trigger\",\"data\":{\"type\":\"trigger\"}}," +
+                    "{\"id\":\"c\",\"type\":\"connector\",\"data\":{\"type\":\"connector\"}}," +
+                    "{\"id\":\"e\",\"type\":\"exit\",\"data\":{\"type\":\"exit\"}}" +
                     "],\"edges\":[" +
                     "{\"id\":\"e1\",\"source\":\"t\",\"target\":\"c\"}," +
                     "{\"id\":\"e2\",\"source\":\"c\",\"target\":\"e\"}" +
-                    "]}";
+                    "],\"flowConfig\":{\"flowMode\":\"serial\"}}";
             List<String> errors = validator.validateOrchestrationConfig(config, TEST_APP_ID);
             assertTrue(errors.isEmpty(), "Expected no errors but got: " + errors);
         }
@@ -125,7 +125,7 @@ class FlowPublishValidatorTest {
         @Test
         @DisplayName("无节点 → 失败")
         void testNoNodes_Fail() {
-            String config = "{\"nodes\":[],\"edges\":[]}";
+            String config = "{\"nodes\":[],\"edges\":[],\"flowConfig\":{\"flowMode\":\"serial\"}}";
             List<String> errors = validator.validateOrchestrationConfig(config, TEST_APP_ID);
             assertEquals(1, errors.size());
             assertTrue(errors.get(0).contains("至少一个节点"));
@@ -135,11 +135,11 @@ class FlowPublishValidatorTest {
         @DisplayName("仅有 trigger/exit 无业务节点 → 失败")
         void testOnlyTriggerExit_Fail() {
             String config = "{\"nodes\":[" +
-                    "{\"id\":\"t\",\"type\":\"trigger\"}," +
-                    "{\"id\":\"e\",\"type\":\"exit\"}" +
+                    "{\"id\":\"t\",\"type\":\"trigger\",\"data\":{\"type\":\"trigger\"}}," +
+                    "{\"id\":\"e\",\"type\":\"exit\",\"data\":{\"type\":\"exit\"}}" +
                     "],\"edges\":[" +
                     "{\"id\":\"e1\",\"source\":\"t\",\"target\":\"e\"}" +
-                    "]}";
+                    "],\"flowConfig\":{\"flowMode\":\"serial\"}}";
             List<String> errors = validator.validateOrchestrationConfig(config, TEST_APP_ID);
             assertEquals(1, errors.size());
             assertTrue(errors.get(0).contains("业务节点"));
@@ -155,9 +155,9 @@ class FlowPublishValidatorTest {
         @Test
         @DisplayName("缓存 TTL ≤ 1296000 → 通过")
         void testCacheTtlUnderLimit_Pass() {
-            String config = "{\"nodes\":[{\"id\":\"t\",\"type\":\"trigger\"},{\"id\":\"e\",\"type\":\"exit\"}]," +
+            String config = "{\"nodes\":[{\"id\":\"t\",\"type\":\"trigger\",\"data\":{\"type\":\"trigger\"}},{\"id\":\"e\",\"type\":\"exit\",\"data\":{\"type\":\"exit\"}}]," +
                     "\"edges\":[]," +
-                    "\"flowConfig\":{\"cache\":{\"ttl\":600}}}";
+                    "\"flowConfig\":{\"flowMode\":\"serial\",\"cache\":{\"ttl\":600}}}";
             // 无 business node 会报一个错，但 cache ttl 不报错
             List<String> errors = validator.validateOrchestrationConfig(config, TEST_APP_ID);
             // 只有 "业务节点" 一个错误，cache ttl 600 不报错
@@ -167,9 +167,9 @@ class FlowPublishValidatorTest {
         @Test
         @DisplayName("缓存 TTL > 1296000 → 失败")
         void testCacheTtlExceeded_Fail() {
-            String config = "{\"nodes\":[{\"id\":\"t\",\"type\":\"trigger\"},{\"id\":\"c\",\"type\":\"connector\"},{\"id\":\"e\",\"type\":\"exit\"}]," +
+            String config = "{\"nodes\":[{\"id\":\"t\",\"type\":\"trigger\",\"data\":{\"type\":\"trigger\"}},{\"id\":\"c\",\"type\":\"connector\",\"data\":{\"type\":\"connector\"}},{\"id\":\"e\",\"type\":\"exit\",\"data\":{\"type\":\"exit\"}}]," +
                     "\"edges\":[{\"id\":\"e1\",\"source\":\"t\",\"target\":\"c\"},{\"id\":\"e2\",\"source\":\"c\",\"target\":\"e\"}]," +
-                    "\"flowConfig\":{\"cache\":{\"ttl\":2000000}}}";
+                    "\"flowConfig\":{\"flowMode\":\"serial\",\"cache\":{\"ttl\":2000000}}}";
             List<String> errors = validator.validateOrchestrationConfig(config, TEST_APP_ID);
             assertTrue(errors.stream().anyMatch(e -> e.contains("缓存 TTL 超过上限")));
         }
@@ -177,9 +177,9 @@ class FlowPublishValidatorTest {
         @Test
         @DisplayName("缓存 TTL < 最小值 → 失败")
         void testCacheTtlTooLow_Fail() {
-            String config = "{\"nodes\":[{\"id\":\"t\",\"type\":\"trigger\"},{\"id\":\"c\",\"type\":\"connector\"},{\"id\":\"e\",\"type\":\"exit\"}]," +
+            String config = "{\"nodes\":[{\"id\":\"t\",\"type\":\"trigger\",\"data\":{\"type\":\"trigger\"}},{\"id\":\"c\",\"type\":\"connector\",\"data\":{\"type\":\"connector\"}},{\"id\":\"e\",\"type\":\"exit\",\"data\":{\"type\":\"exit\"}}]," +
                     "\"edges\":[{\"id\":\"e1\",\"source\":\"t\",\"target\":\"c\"},{\"id\":\"e2\",\"source\":\"c\",\"target\":\"e\"}]," +
-                    "\"flowConfig\":{\"cache\":{\"ttl\":0}}}";
+                    "\"flowConfig\":{\"flowMode\":\"serial\",\"cache\":{\"ttl\":0}}}";
             List<String> errors = validator.validateOrchestrationConfig(config, TEST_APP_ID);
             assertTrue(errors.stream().anyMatch(e -> e.contains("缓存 TTL 必须 ≥")));
         }
@@ -195,13 +195,13 @@ class FlowPublishValidatorTest {
         @DisplayName("并行分支数 ≤ 8 → 通过")
         void testParallelBranchesUnderLimit_Pass() {
             String config = "{\"nodes\":[" +
-                    "{\"id\":\"t\",\"type\":\"trigger\"}," +
-                    "{\"id\":\"c\",\"type\":\"connector\"}," +
-                    "{\"id\":\"e\",\"type\":\"exit\"}" +
+                    "{\"id\":\"t\",\"type\":\"trigger\",\"data\":{\"type\":\"trigger\"}}," +
+                    "{\"id\":\"c\",\"type\":\"connector\",\"data\":{\"type\":\"connector\"}}," +
+                    "{\"id\":\"e\",\"type\":\"exit\",\"data\":{\"type\":\"exit\"}}" +
                     "],\"edges\":[" +
                     "{\"id\":\"e1\",\"source\":\"t\",\"target\":\"c\"}," +
                     "{\"id\":\"e2\",\"source\":\"c\",\"target\":\"e\"}" +
-                    "]}";
+                    "],\"flowConfig\":{\"flowMode\":\"serial\"}}";
             List<String> errors = validator.validateOrchestrationConfig(config, TEST_APP_ID);
             assertTrue(errors.isEmpty(), "Expected no errors but got: " + errors);
         }
@@ -215,10 +215,10 @@ class FlowPublishValidatorTest {
                 edges.append("{\"id\":\"pe").append(i).append("\",\"source\":\"t\",\"target\":\"e\",\"data\":{\"connectionMode\":\"parallel\"}}");
             }
             String config = "{\"nodes\":[" +
-                    "{\"id\":\"t\",\"type\":\"trigger\"}," +
-                    "{\"id\":\"c\",\"type\":\"connector\"}," +
-                    "{\"id\":\"e\",\"type\":\"exit\"}" +
-                    "],\"edges\":[" + edges + "]}";
+                    "{\"id\":\"t\",\"type\":\"trigger\",\"data\":{\"type\":\"trigger\"}}," +
+                    "{\"id\":\"c\",\"type\":\"connector\",\"data\":{\"type\":\"connector\"}}," +
+                    "{\"id\":\"e\",\"type\":\"exit\",\"data\":{\"type\":\"exit\"}}" +
+                    "],\"edges\":[" + edges + "],\"flowConfig\":{\"flowMode\":\"serial\"}}";
             List<String> errors = validator.validateOrchestrationConfig(config, TEST_APP_ID);
             assertTrue(errors.stream().anyMatch(e -> e.contains("并行分支数超过上限")));
         }
@@ -229,9 +229,9 @@ class FlowPublishValidatorTest {
     @Test
     @DisplayName("校验3: QPS 超过应用上限 → 失败")
     void testRateLimitQpsExceeded_Fail() {
-        String config = "{\"nodes\":[{\"id\":\"t\",\"type\":\"trigger\"},{\"id\":\"e\",\"type\":\"exit\"}]," +
+        String config = "{\"nodes\":[{\"id\":\"t\",\"type\":\"trigger\",\"data\":{\"type\":\"trigger\"}},{\"id\":\"e\",\"type\":\"exit\",\"data\":{\"type\":\"exit\"}}]," +
                 "\"edges\":[]," +
-                "\"flowConfig\":{\"rateLimitConfig\":{\"maxQps\":200}}}";
+                "\"flowConfig\":{\"flowMode\":\"serial\",\"rateLimitConfig\":{\"maxQps\":200}}}";
         List<String> errors = validator.validateRateLimitAgainstAppMax(config, 100, 50);
         assertEquals(1, errors.size());
         assertTrue(errors.get(0).contains("QPS"));
@@ -240,7 +240,7 @@ class FlowPublishValidatorTest {
     @Test
     @DisplayName("校验3: QPS ≤ 应用上限 → 通过")
     void testRateLimitQpsUnderLimit_Pass() {
-        String config = "{\"nodes\":[],\"edges\":[],\"flowConfig\":{\"rateLimitConfig\":{\"maxQps\":50}}}";
+        String config = "{\"nodes\":[],\"edges\":[],\"flowConfig\":{\"flowMode\":\"serial\",\"rateLimitConfig\":{\"maxQps\":50}}}";
         List<String> errors = validator.validateRateLimitAgainstAppMax(config, 100, 50);
         assertTrue(errors.isEmpty());
     }
@@ -248,7 +248,7 @@ class FlowPublishValidatorTest {
     @Test
     @DisplayName("校验3: 并发超过应用上限 → 失败")
     void testConcurrencyExceeded_Fail() {
-        String config = "{\"nodes\":[],\"edges\":[],\"flowConfig\":{\"rateLimitConfig\":{\"maxConcurrency\":60}}}";
+        String config = "{\"nodes\":[],\"edges\":[],\"flowConfig\":{\"flowMode\":\"serial\",\"rateLimitConfig\":{\"maxConcurrency\":60}}}";
         List<String> errors = validator.validateRateLimitAgainstAppMax(config, 100, 50);
         assertEquals(1, errors.size());
         assertTrue(errors.get(0).contains("并发"));
@@ -259,9 +259,9 @@ class FlowPublishValidatorTest {
     @Test
     @DisplayName("校验4: 节点超时超过应用上限 → 失败")
     void testTimeoutExceeded_Fail() {
-        String config = "{\"nodes\":[{\"id\":\"c\",\"type\":\"connector\",\"data\":{\"timeoutMs\":60000}}]," +
+        String config = "{\"nodes\":[{\"id\":\"c\",\"type\":\"connector\",\"data\":{\"type\":\"connector\",\"timeoutMs\":60000}}]," +
                 "\"edges\":[]," +
-                "\"flowConfig\":{\"timeout\":50000}}";
+                "\"flowConfig\":{\"flowMode\":\"serial\",\"timeout\":50000}}";
         List<String> errors = validator.validateTimeoutAgainstAppMax(config, 30000);
         assertFalse(errors.isEmpty());
         assertTrue(errors.stream().anyMatch(e -> e.contains("超时")));
@@ -270,7 +270,7 @@ class FlowPublishValidatorTest {
     @Test
     @DisplayName("校验4: 超时 ≤ 应用上限 → 通过")
     void testTimeoutUnderLimit_Pass() {
-        String config = "{\"nodes\":[],\"edges\":[],\"flowConfig\":{\"timeout\":20000}}";
+        String config = "{\"nodes\":[],\"edges\":[],\"flowConfig\":{\"flowMode\":\"serial\",\"timeout\":20000}}";
         List<String> errors = validator.validateTimeoutAgainstAppMax(config, 30000);
         assertTrue(errors.isEmpty());
     }
@@ -344,15 +344,15 @@ class FlowPublishValidatorTest {
     void testScriptSourceTooLong_Fail() {
         String longSource = "x".repeat(50001);
         String config = "{\"nodes\":[" +
-                "{\"id\":\"t\",\"type\":\"trigger\"}," +
-                "{\"id\":\"s\",\"type\":\"script\",\"data\":{\"script\":\"" + longSource + "\"}}," +
-                "{\"id\":\"c\",\"type\":\"connector\"}," +
-                "{\"id\":\"e\",\"type\":\"exit\"}" +
+                "{\"id\":\"t\",\"type\":\"trigger\",\"data\":{\"type\":\"trigger\"}}," +
+                "{\"id\":\"s\",\"type\":\"script\",\"data\":{\"type\":\"script\",\"script\":\"" + longSource + "\"}}," +
+                "{\"id\":\"c\",\"type\":\"connector\",\"data\":{\"type\":\"connector\"}}," +
+                "{\"id\":\"e\",\"type\":\"exit\",\"data\":{\"type\":\"exit\"}}" +
                 "],\"edges\":[" +
                 "{\"id\":\"e1\",\"source\":\"t\",\"target\":\"s\"}," +
                 "{\"id\":\"e2\",\"source\":\"s\",\"target\":\"c\"}," +
                 "{\"id\":\"e3\",\"source\":\"c\",\"target\":\"e\"}" +
-                "]}";
+                "],\"flowConfig\":{\"flowMode\":\"serial\"}}";
         List<String> errors = validator.validateOrchestrationConfig(config, TEST_APP_ID);
         assertTrue(errors.stream().anyMatch(e -> e.contains("脚本源码超过最大长度")));
     }
@@ -363,10 +363,10 @@ class FlowPublishValidatorTest {
         StringBuilder nodes = new StringBuilder();
         for (int i = 0; i < 12; i++) {
             if (i > 0) nodes.append(",");
-            nodes.append("{\"id\":\"s").append(i).append("\",\"type\":\"script\"}");
+            nodes.append("{\"id\":\"s").append(i).append("\",\"type\":\"script\",\"data\":{\"type\":\"script\"}}");
         }
         String config = "{\"nodes\":[" +
-                "{\"id\":\"c\",\"type\":\"connector\"}," +
+                "{\"id\":\"c\",\"type\":\"connector\",\"data\":{\"type\":\"connector\"}}," +
                 nodes +
                 "],\"edges\":[]}";
         List<String> errors = validator.validateOrchestrationConfig(config, TEST_APP_ID);
@@ -378,15 +378,15 @@ class FlowPublishValidatorTest {
     void testValidScriptSyntax_Pass() {
         String validScript = "function main(ctx) { return { result: ctx.input.value + 1 }; }";
         String config = "{\"nodes\":[" +
-                "{\"id\":\"t\",\"type\":\"trigger\"}," +
-                "{\"id\":\"s\",\"type\":\"script\",\"data\":{\"script\":\"" + escapeJson(validScript) + "\"}}," +
-                "{\"id\":\"c\",\"type\":\"connector\"}," +
-                "{\"id\":\"e\",\"type\":\"exit\"}" +
+                "{\"id\":\"t\",\"type\":\"trigger\",\"data\":{\"type\":\"trigger\"}}," +
+                "{\"id\":\"s\",\"type\":\"script\",\"data\":{\"type\":\"script\",\"script\":\"" + escapeJson(validScript) + "\"}}," +
+                "{\"id\":\"c\",\"type\":\"connector\",\"data\":{\"type\":\"connector\"}}," +
+                "{\"id\":\"e\",\"type\":\"exit\",\"data\":{\"type\":\"exit\"}}" +
                 "],\"edges\":[" +
                 "{\"id\":\"e1\",\"source\":\"t\",\"target\":\"s\"}," +
                 "{\"id\":\"e2\",\"source\":\"s\",\"target\":\"c\"}," +
                 "{\"id\":\"e3\",\"source\":\"c\",\"target\":\"e\"}" +
-                "]}";
+                "],\"flowConfig\":{\"flowMode\":\"serial\"}}";
         List<String> errors = validator.validateOrchestrationConfig(config, TEST_APP_ID);
         assertTrue(errors.isEmpty(), "Expected no errors but got: " + errors);
     }
@@ -396,15 +396,15 @@ class FlowPublishValidatorTest {
     void testInvalidScriptSyntax_Fail() {
         String invalidScript = "function main(ctx) { return {; }"; // missing value after return
         String config = "{\"nodes\":[" +
-                "{\"id\":\"t\",\"type\":\"trigger\"}," +
-                "{\"id\":\"s\",\"type\":\"script\",\"data\":{\"script\":\"" + escapeJson(invalidScript) + "\"}}," +
-                "{\"id\":\"c\",\"type\":\"connector\"}," +
-                "{\"id\":\"e\",\"type\":\"exit\"}" +
+                "{\"id\":\"t\",\"type\":\"trigger\",\"data\":{\"type\":\"trigger\"}}," +
+                "{\"id\":\"s\",\"type\":\"script\",\"data\":{\"type\":\"script\",\"script\":\"" + escapeJson(invalidScript) + "\"}}," +
+                "{\"id\":\"c\",\"type\":\"connector\",\"data\":{\"type\":\"connector\"}}," +
+                "{\"id\":\"e\",\"type\":\"exit\",\"data\":{\"type\":\"exit\"}}" +
                 "],\"edges\":[" +
                 "{\"id\":\"e1\",\"source\":\"t\",\"target\":\"s\"}," +
                 "{\"id\":\"e2\",\"source\":\"s\",\"target\":\"c\"}," +
                 "{\"id\":\"e3\",\"source\":\"c\",\"target\":\"e\"}" +
-                "]}";
+                "],\"flowConfig\":{\"flowMode\":\"serial\"}}";
         List<String> errors = validator.validateOrchestrationConfig(config, TEST_APP_ID);
         assertTrue(errors.stream().anyMatch(e -> e.contains("语法错误")),
                 "Expected syntax error but got: " + errors);
@@ -414,15 +414,15 @@ class FlowPublishValidatorTest {
     @DisplayName("校验9: 空脚本源码 → 失败")
     void testEmptyScriptSource_Fail() {
         String config = "{\"nodes\":[" +
-                "{\"id\":\"t\",\"type\":\"trigger\"}," +
-                "{\"id\":\"s\",\"type\":\"script\",\"data\":{\"script\":\"\"}}," +
-                "{\"id\":\"c\",\"type\":\"connector\"}," +
-                "{\"id\":\"e\",\"type\":\"exit\"}" +
+                "{\"id\":\"t\",\"type\":\"trigger\",\"data\":{\"type\":\"trigger\"}}," +
+                "{\"id\":\"s\",\"type\":\"script\",\"data\":{\"type\":\"script\",\"script\":\"\"}}," +
+                "{\"id\":\"c\",\"type\":\"connector\",\"data\":{\"type\":\"connector\"}}," +
+                "{\"id\":\"e\",\"type\":\"exit\",\"data\":{\"type\":\"exit\"}}" +
                 "],\"edges\":[" +
                 "{\"id\":\"e1\",\"source\":\"t\",\"target\":\"s\"}," +
                 "{\"id\":\"e2\",\"source\":\"s\",\"target\":\"c\"}," +
                 "{\"id\":\"e3\",\"source\":\"c\",\"target\":\"e\"}" +
-                "]}";
+                "],\"flowConfig\":{\"flowMode\":\"serial\"}}";
         List<String> errors = validator.validateOrchestrationConfig(config, TEST_APP_ID);
         assertTrue(errors.stream().anyMatch(e -> e.contains("源码不能为空")),
                 "Expected empty source error but got: " + errors);

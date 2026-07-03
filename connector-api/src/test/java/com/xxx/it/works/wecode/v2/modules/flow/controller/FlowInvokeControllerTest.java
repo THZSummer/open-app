@@ -17,12 +17,15 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;
 import org.springframework.data.redis.core.ReactiveValueOperations;
 import com.xxx.it.works.wecode.v2.modules.ratelimit.RateLimitConfigReader;
+import org.mockito.ArgumentCaptor;
 import reactor.core.publisher.Mono;
 
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -220,6 +223,34 @@ class FlowInvokeControllerTest {
                     .expectHeader().valueEquals("X-Code", "500")
                     .expectHeader().valueEquals("X-Flow-Id", "50")
                     .expectBody().isEmpty();
+        }
+
+        @Test
+        @DisplayName("✅ TC-077: x-sys-token 任意大小写 — 大小写不敏感匹配 (RFC 7230)")
+        void testInvokeTokenHeaderCaseInsensitive() {
+            TransparentFlowResponse response = TransparentFlowResponse.success(
+                    "100", "exec-ci", 0, 50, Map.of(), Map.of("echo", "ok"));
+
+            @SuppressWarnings("unchecked")
+            ArgumentCaptor<Map<String, String>> headersCaptor = ArgumentCaptor.forClass(Map.class);
+            when(triggerService.invokeFlow(eq(100L), any(), any(), any()))
+                    .thenReturn(Mono.just(response));
+
+            // 客户端以全小写发送 header，协议上与 X-Sys-Token 等价
+            webTestClient.post()
+                    .uri("/api/v1/flows/{flowId}/invoke", "100")
+                    .header("x-sys-token", "my-sys-token")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue("{}")
+                    .exchange()
+                    .expectStatus().isOk();
+
+            verify(triggerService).invokeFlow(eq(100L), any(), headersCaptor.capture(), any());
+            Map<String, String> captured = headersCaptor.getValue();
+            // 大小写不敏感：无论按哪种大小写查找都应命中同一个值
+            assertEquals("my-sys-token", captured.get("X-Sys-Token"));
+            assertEquals("my-sys-token", captured.get("x-sys-token"));
+            assertEquals("my-sys-token", captured.get("X-SYS-TOKEN"));
         }
     }
 }

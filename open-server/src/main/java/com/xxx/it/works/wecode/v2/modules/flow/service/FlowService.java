@@ -494,12 +494,15 @@ public class FlowService {
         r.setNameEn(f.getNameEn());
         r.setDescriptionCn(f.getDescriptionCn());
         r.setDescriptionEn(f.getDescriptionEn());
+        r.setIconFileId(f.getIconFileId());
         r.setLifecycleStatus(f.getLifecycleStatus());
         r.setDeployedVersionId(f.getDeployedVersionId() != null ? String.valueOf(f.getDeployedVersionId()) : null);
         r.setDeployedVersionNumber(f.getDeployedVersionNumber());
         r.setAppId(f.getAppId() != null ? String.valueOf(f.getAppId()) : null);
         r.setCreateTime(f.getCreateTime());
         r.setLastUpdateTime(f.getLastUpdateTime());
+        r.setCreateBy(f.getCreateBy());
+        r.setLastUpdateBy(f.getLastUpdateBy());
         return r;
     }
 

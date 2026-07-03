@@ -92,6 +92,23 @@ public class ApprovalService {
 
     // ==================== 审批流程模板管理 ====================
 
+    /** appId 字符串 → Long（null/空白返回 null），用于 DTO↔Entity 转换 */
+    private Long parseAppId(String appId) {
+        if (appId == null || appId.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            return Long.parseLong(appId.trim());
+        } catch (NumberFormatException e) {
+            throw new BusinessException("400", "应用ID格式无效", "Invalid appId format: " + appId);
+        }
+    }
+
+    /** appId Long → 字符串（null 返回 null），避免前端 Long 精度丢失 */
+    private String formatAppId(Long appId) {
+        return appId != null ? String.valueOf(appId) : null;
+    }
+
     /**
      * 查询审批流程列表
      *
@@ -99,7 +116,7 @@ public class ApprovalService {
      */
     public List<ApprovalFlowListResponse> getFlowList(ApprovalFlowListRequest request) {
         int offset = (request.getCurPage() - 1) * request.getPageSize();
-        List<ApprovalFlow> flows = flowMapper.selectList(request.getKeyword(), request.getAppId(), offset, request.getPageSize());
+        List<ApprovalFlow> flows = flowMapper.selectList(request.getKeyword(), parseAppId(request.getAppId()), offset, request.getPageSize());
 
         return flows.stream().map(flow -> {
             ApprovalFlowListResponse response = new ApprovalFlowListResponse();
@@ -107,7 +124,7 @@ public class ApprovalService {
             response.setNameCn(flow.getNameCn());
             response.setNameEn(flow.getNameEn());
             response.setCode(flow.getCode());
-            response.setAppId(flow.getAppId());  // V3 新增
+            response.setAppId(formatAppId(flow.getAppId()));  // V3 新增
 
             // ✅ v2.8.0变更：移除 isDefault 字段
             response.setStatus(flow.getStatus());
@@ -119,8 +136,8 @@ public class ApprovalService {
     /**
      * 统计审批流程数量
      */
-    public Long countFlowList(String keyword, Long appId) {
-        return flowMapper.countList(keyword, appId);
+    public Long countFlowList(String keyword, String appId) {
+        return flowMapper.countList(keyword, parseAppId(appId));
     }
 
     /**
@@ -139,7 +156,7 @@ public class ApprovalService {
         response.setNameCn(flow.getNameCn());
         response.setNameEn(flow.getNameEn());
         response.setCode(flow.getCode());
-        response.setAppId(flow.getAppId());  // V3 新增
+        response.setAppId(formatAppId(flow.getAppId()));  // V3 新增
 
         // ✅ v2.8.0变更：移除 isDefault 字段
         response.setStatus(flow.getStatus());
@@ -156,16 +173,18 @@ public class ApprovalService {
     @Transactional(rollbackFor = Exception.class)
     public ApprovalFlowDetailResponse createFlow(ApprovalFlowCreateRequest request, String operator) {
 
+        Long appId = parseAppId(request.getAppId());
+
         // appId 存在性校验（非null时校验应用是否存在）
-        if (request.getAppId() != null) {
-            App app = appMapper.selectById(request.getAppId());
+        if (appId != null) {
+            App app = appMapper.selectById(appId);
             if (app == null) {
                 throw new BusinessException("404", "应用不存在", "App not found: " + request.getAppId());
             }
         }
 
         // 检查 code+appId 唯一性（V3 修复：带 appId 校验）
-        if (flowMapper.countByCodeAndAppId(request.getCode(), request.getAppId()) > 0) {
+        if (flowMapper.countByCodeAndAppId(request.getCode(), appId) > 0) {
             throw new BusinessException("409", "流程编码已存在", "Flow code already exists for this app");
         }
 
@@ -174,7 +193,7 @@ public class ApprovalService {
         flow.setNameCn(request.getNameCn());
         flow.setNameEn(request.getNameEn());
         flow.setCode(request.getCode());
-        flow.setAppId(request.getAppId());
+        flow.setAppId(appId);
         flow.setNodes(approvalEngine.serializeNodes(request.getNodes()));
         flow.setStatus(1);
         flow.setCreateTime(new Date());
@@ -202,8 +221,9 @@ public class ApprovalService {
         }
 
         // appId 存在性校验（非null时校验应用是否存在）
-        if (request.getAppId() != null) {
-            App app = appMapper.selectById(request.getAppId());
+        Long requestAppId = parseAppId(request.getAppId());
+        if (requestAppId != null) {
+            App app = appMapper.selectById(requestAppId);
             if (app == null) {
                 throw new BusinessException("404", "应用不存在", "App not found: " + request.getAppId());
             }
@@ -211,7 +231,7 @@ public class ApprovalService {
 
         // 更新前检查 code+appId 唯一性（排除自身）
         String effectiveCode = request.getCode() != null ? request.getCode() : flow.getCode();
-        Long effectiveAppId = request.getAppId() != null ? request.getAppId() : flow.getAppId();
+        Long effectiveAppId = requestAppId != null ? requestAppId : flow.getAppId();
         if (flowMapper.countByCodeAndAppIdExcludeId(effectiveCode, effectiveAppId, id) > 0) {
             throw new BusinessException("409", "流程编码已存在", "Flow code already exists for this app");
         }
@@ -221,7 +241,7 @@ public class ApprovalService {
         }
         flow.setNameCn(request.getNameCn());
         flow.setNameEn(request.getNameEn());
-        flow.setAppId(request.getAppId());
+        flow.setAppId(requestAppId);
         flow.setNodes(approvalEngine.serializeNodes(request.getNodes()));
         flow.setLastUpdateTime(new Date());
         flow.setLastUpdateBy(operator);

@@ -79,6 +79,7 @@ public class FlowPublishValidator {
 
         validateConfigSize(orchestrationConfig, propertyConfig, errors);
         validateNodes(config, errors);
+        validateFlowMode(config, propertyConfig, errors);
         validateParallelBranches(config, propertyConfig, errors);
 
         JsonNode flowConfig = config.get("flowConfig");
@@ -141,6 +142,103 @@ public class FlowPublishValidator {
         if (!hasBusinessNode && hasEdges) {
             errors.add("编排配置至少需要一个业务节点（connector 或 script）");
         }
+    }
+
+    /**
+     * 校验 flowMode 模式约束 (§6.3.3.1~§6.3.3.3)
+     * <p>
+     * single: 仅允许 trigger + connector + exit，不可增删
+     * serial:  仅允许 script/connector 节点，connector 数量 ≤ Flow.Max.Serial.Connector.Nodes
+     * parallel: 必须含 trigger + parallel + exit，分支数由 validateParallelBranches 校验
+     * </p>
+     */
+    private void validateFlowMode(JsonNode config, Map<String, String> propertyConfig, List<String> errors) {
+        JsonNode flowConfigNode = config.get("flowConfig");
+        if (flowConfigNode == null) {
+            errors.add("编排配置缺少 flowConfig");
+            return;
+        }
+        JsonNode fm = flowConfigNode.get("flowMode");
+        if (fm == null || fm.isNull()) {
+            errors.add("缺少编排模式 flowMode（single / serial / parallel）");
+            return;
+        }
+        String mode = fm.asText();
+        JsonNode nodes = config.get("nodes");
+
+        // 无节点时由 validateNodes 处理, 不再追加 flowMode 错误
+        if (nodes == null || !nodes.isArray() || nodes.isEmpty()) {
+            return;
+        }
+
+        switch (mode) {
+            case "single" -> validateSingleMode(nodes, errors);
+            case "serial" -> validateSerialMode(nodes, propertyConfig, errors);
+            case "parallel" -> validateParallelMode(nodes, errors);
+            default -> errors.add("不支持的编排模式：" + mode + "（支持 single / serial / parallel）");
+        }
+    }
+
+    private void validateSingleMode(JsonNode nodes, List<String> errors) {
+        boolean hasTrigger = false, hasConnector = false, hasExit = false;
+        int connectorCount = 0;
+        for (JsonNode node : nodes) {
+            String type = NodeTypeResolver.businessType(node);
+            if (type == null) continue;
+            switch (type) {
+                case "trigger" -> hasTrigger = true;
+                case "connector" -> { hasConnector = true; connectorCount++; }
+                case "exit" -> hasExit = true;
+                default -> errors.add("单节点模式不允许包含 \"" + type + "\" 节点（仅允许 trigger / connector / exit）");
+            }
+        }
+        if (!hasTrigger) { errors.add("单节点模式缺少触发节点（trigger）"); }
+        if (!hasConnector) { errors.add("单节点模式缺少连接器节点（connector）"); }
+        if (!hasExit) { errors.add("单节点模式缺少数据输出节点（exit）"); }
+        if (connectorCount > 1) { errors.add("单节点模式只允许 1 个连接器节点，当前：" + connectorCount); }
+    }
+
+    private void validateSerialMode(JsonNode nodes, Map<String, String> propertyConfig, List<String> errors) {
+        boolean hasTrigger = false, hasExit = false;
+        int connectorCount = 0;
+        for (JsonNode node : nodes) {
+            String type = NodeTypeResolver.businessType(node);
+            if (type == null) continue;
+            switch (type) {
+                case "trigger" -> hasTrigger = true;
+                case "exit" -> hasExit = true;
+                case "connector" -> connectorCount++;
+                case "script" -> { /* 允许 */ }
+                case "parallel" -> errors.add("串行模式不允许包含并行节点（parallel），请切换为并行模式");
+                default -> errors.add("串行模式不支持节点类型：" + type);
+            }
+        }
+        if (!hasTrigger) { errors.add("串行模式缺少触发节点（trigger）"); }
+        if (!hasExit) { errors.add("串行模式缺少数据输出节点（exit）"); }
+
+        int maxConnectorNodes = getIntFromConfig(propertyConfig,
+                ConnectorPlatformConstants.ITEM_FLOW_MAX_SERIAL_CONNECTOR_NODES, 3);
+        if (connectorCount > maxConnectorNodes) {
+            errors.add("串行模式连接器节点数超过上限 " + maxConnectorNodes + "，当前：" + connectorCount);
+        }
+    }
+
+    private void validateParallelMode(JsonNode nodes, List<String> errors) {
+        boolean hasTrigger = false, hasParallel = false, hasExit = false;
+        for (JsonNode node : nodes) {
+            String type = NodeTypeResolver.businessType(node);
+            if (type == null) continue;
+            switch (type) {
+                case "trigger" -> hasTrigger = true;
+                case "parallel" -> hasParallel = true;
+                case "exit" -> hasExit = true;
+                case "connector", "script" -> { /* 允许 */ }
+                default -> errors.add("并行模式不支持节点类型：" + type);
+            }
+        }
+        if (!hasTrigger) { errors.add("并行模式缺少触发节点（trigger）"); }
+        if (!hasParallel) { errors.add("并行模式缺少并行节点（parallel），请添加并行网关"); }
+        if (!hasExit) { errors.add("并行模式缺少数据输出节点（exit）"); }
     }
 
     /**

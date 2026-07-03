@@ -285,6 +285,7 @@ def test_full_flow_parallel():
     failed = False
     nid_trigger = f"t_{_RUN_ID}"
     nid_script_1 = f"s1_{_RUN_ID}"
+    nid_parallel = f"p_{_RUN_ID}"
     nid_conn_a = f"ca_{_RUN_ID}"
     nid_conn_b = f"cb_{_RUN_ID}"
     nid_script_2 = f"s2_{_RUN_ID}"
@@ -401,6 +402,10 @@ def test_full_flow_parallel():
                             }
                         },
                         {
+                            "id": nid_parallel, "type": "parallel",
+                            "data": {"type": "parallel"}
+                        },
+                        {
                             "id": nid_conn_a, "type": "connector",
                             "data": {
                                 "type": "connector",
@@ -512,22 +517,25 @@ def test_full_flow_parallel():
                     "edges": [
                         {"id": f"e_{_RUN_ID}_ts1",
                          "source": nid_trigger, "target": nid_script_1,
-                         "type": "smoothstep", "data": {"businessType": "default"}},
-                        {"id": f"e_{_RUN_ID}_sa",
-                         "source": nid_script_1, "target": nid_conn_a,
-                         "type": "smoothstep", "data": {"businessType": "default"}},
-                        {"id": f"e_{_RUN_ID}_sb",
-                         "source": nid_script_1, "target": nid_conn_b,
-                         "type": "smoothstep", "data": {"businessType": "default"}},
+                         "type": "smoothstep", "data": {"businessType": "default", "connectionMode": "serial"}},
+                        {"id": f"e_{_RUN_ID}_s1p",
+                         "source": nid_script_1, "target": nid_parallel,
+                         "type": "smoothstep", "data": {"businessType": "default", "connectionMode": "serial"}},
+                        {"id": f"e_{_RUN_ID}_pa",
+                         "source": nid_parallel, "target": nid_conn_a,
+                         "type": "smoothstep", "data": {"businessType": "default", "connectionMode": "parallel"}},
+                        {"id": f"e_{_RUN_ID}_pb",
+                         "source": nid_parallel, "target": nid_conn_b,
+                         "type": "smoothstep", "data": {"businessType": "default", "connectionMode": "parallel"}},
                         {"id": f"e_{_RUN_ID}_as2",
                          "source": nid_conn_a, "target": nid_script_2,
-                         "type": "smoothstep", "data": {"businessType": "default"}},
+                         "type": "smoothstep", "data": {"businessType": "default", "connectionMode": "parallel"}},
                         {"id": f"e_{_RUN_ID}_bs2",
                          "source": nid_conn_b, "target": nid_script_2,
-                         "type": "smoothstep", "data": {"businessType": "default"}},
+                         "type": "smoothstep", "data": {"businessType": "default", "connectionMode": "parallel"}},
                         {"id": f"e_{_RUN_ID}_se",
                          "source": nid_script_2, "target": nid_exit,
-                         "type": "smoothstep", "data": {"businessType": "default"}}
+                         "type": "smoothstep", "data": {"businessType": "default", "connectionMode": "serial"}}
                     ],
                     "flowConfig": {"flowMode": "parallel", "rateLimitConfig": {"maxQps": 100, "maxConcurrency": 20}}
                 }
