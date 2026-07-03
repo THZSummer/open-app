@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
 import java.util.Map;
+import java.util.TreeMap;
 
 /**
  * HTTP 触发 Controller (v5.8)
@@ -80,8 +81,15 @@ public class FlowInvokeController {
 
         log.info("HTTP trigger invoke: flowId={}", flowId);
 
+        // HTTP header 协议上大小写不敏感 (RFC 7230 §3.2)，包装为大小写不敏感 Map
+        // 使下游 headers.get("X-Sys-Token") 等查找可匹配 x-sys-token / X-SYS-TOKEN 等任意大小写变体
+        Map<String, String> ciHeaders = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+        if (allHeaders != null) {
+            ciHeaders.putAll(allHeaders);
+        }
+
         // 认证/限流/入参校验 + 执行全部由 FlowInvokeService 处理
-        return triggerService.invokeFlow(flowId, triggerData, allHeaders, queryParams)
+        return triggerService.invokeFlow(flowId, triggerData, ciHeaders, queryParams)
                 .map(response -> {
                     HttpHeaders headers = new HttpHeaders();
                     // 先放平台 X- 头
