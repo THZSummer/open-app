@@ -451,9 +451,9 @@ public class AppServiceImpl implements AppService {
 
         List<AppProperty> props = appMapper.selectPropertiesByParentId(app.getId());
 
-        List<Integer> verifyTypes = AppPropertyConstants.resolveVerifyTypeList(props);
+        List<Integer> verifyTypes = appCommonService.resolveVerifyTypeList(props);
         if (verifyTypes.isEmpty()) {
-            verifyTypes = List.of(Integer.parseInt(CommonConstants.DEFAULT_VERIFY_TYPE));
+            verifyTypes = List.of(VerifyTypeEnum.COOKIE.getCode());
         }
 
         String apiSecret = props.stream()

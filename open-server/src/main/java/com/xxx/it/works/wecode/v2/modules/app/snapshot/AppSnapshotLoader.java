@@ -7,6 +7,7 @@ import com.xxx.it.works.wecode.v2.modules.app.entity.App;
 import com.xxx.it.works.wecode.v2.modules.app.entity.AppProperty;
 import com.xxx.it.works.wecode.v2.modules.app.mapper.AppMapper;
 import com.xxx.it.works.wecode.v2.modules.app.enums.VerifyTypeEnum;
+import com.xxx.it.works.wecode.v2.modules.app.service.AppCommonService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -25,7 +26,7 @@ import java.util.stream.Collectors;
  * <p>扩展字段映射：
  * <ul>
  *   <li>funcImgId ← app_property.diagram_id_list</li>
- *   <li>verifyType ← app_property.verify_type</li>
+ *   <li>verifyType ← app_property.verify_type_v2（优先）或 verify_type（兼容旧数据）</li>
  *   <li>eamapAppCode ← app_property.eamap_app_code</li>
  * </ul>
  */
@@ -35,6 +36,9 @@ public class AppSnapshotLoader implements EntitySnapshotLoader {
 
     @Autowired
     private AppMapper appMapper;
+
+    @Autowired
+    private AppCommonService appCommonService;
 
     @Override
     public List<String> supportedObjects() {
@@ -83,7 +87,7 @@ public class AppSnapshotLoader implements EntitySnapshotLoader {
      */
     private void loadVerifyType(List<AppProperty> properties, Map<String, Object> snapshot) {
         try {
-            List<Integer> verifyTypeList = AppPropertyConstants.resolveVerifyTypeList(properties);
+            List<Integer> verifyTypeList = appCommonService.resolveVerifyTypeList(properties);
             if (verifyTypeList.isEmpty()) {
                 return;
             }
