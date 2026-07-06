@@ -160,3 +160,53 @@ pytest e2e/ -v -s                                      # 全量
 
 KEEP_TEST_DATA=1 pytest e2e/test_full_flow.py -v -s   # 保留数据
 ```
+
+---
+
+## 运行前准备
+
+### 1. 安装依赖
+
+```bash
+pip install -r requirements.txt
+```
+
+依赖：`pymysql` `redis` `requests`（pytest 需单独安装）。
+
+### 2. 启动后端服务
+
+| 服务 | 端口 | 启动方式 |
+|------|------|----------|
+| open-server | 18080 | `mvn spring-boot:run -Dspring-boot.run.profiles=dev` |
+| connector-api | 18180 | `mvn spring-boot:run -Dspring-boot.run.profiles=dev` |
+
+或使用项目级脚本：
+```bash
+bash open-server/scripts/restart.sh
+bash connector-api/scripts/restart.sh
+```
+
+确认就绪：
+```bash
+curl http://localhost:18080/open-server/actuator/health
+curl http://localhost:18180/actuator/health
+```
+
+### 3. 修改配置
+
+编辑 `common/client.py`：
+
+| 配置项 | 说明 | 默认值 |
+|--------|------|--------|
+| `_DB` | 测试数据库连接 | `192.168.3.155 / openapp / openapp` |
+| `TEST_APP_ID` | 测试应用 ID（需在白名单中） | `20250730213114178360970` |
+| `_REDIS_CLUSTER_NODES` | Redis 集群节点（仅 e2e 测试用） | `192.168.3.201~206` |
+| `_DEFAULT_USER` | 默认操作用户 | `admin` |
+
+### 4. 确认环境
+
+```bash
+pytest -m L0 -q
+```
+
+L0 冒烟通过即环境就绪，可进入全量测试。`conftest.py` 的 session fixture 会自动插入平台配置和白名单数据，无需手动准备。
