@@ -110,18 +110,11 @@ class TestFlowCopy:
         """复制时同步复制 connector_version_ref 引用关系"""
         cid, vid = published_connector
         fid, fvid = deployed_flow
-        # 写入引用关系
-        ref_id = 9000000000000099
-        db(f"INSERT INTO openplatform_v2_cp_connector_version_ref_t (id, flow_id, flow_version_id, node_id, connector_id, connector_version_id, create_by, last_update_by) VALUES ({ref_id}, {fid}, {fvid}, 'conn_1', {cid}, {vid}, 'tester', 'tester')")
-        try:
-            resp = api("POST", f"/flows/{fid}/copy", {})
-            assert resp.status_code in (200, 201)
-            new_fid = resp.json()["data"]["flowId"]
-            # 验证新流有引用记录
-            new_ref_count = db_val(f"SELECT COUNT(*) FROM openplatform_v2_cp_connector_version_ref_t WHERE flow_id = {new_fid}")
-            assert str(new_ref_count) == "1", f"新流应有1条引用记录，实际: {new_ref_count}"
-        finally:
-            db(f"DELETE FROM openplatform_v2_cp_connector_version_ref_t WHERE id = {ref_id}")
+        resp = api("POST", f"/flows/{fid}/copy", {})
+        assert resp.status_code in (200, 201)
+        new_fid = resp.json()["data"]["flowId"]
+        new_ref_count = db_val(f"SELECT COUNT(*) FROM openplatform_v2_cp_connector_version_ref_t WHERE flow_id = {new_fid}")
+        assert str(new_ref_count) == "1", f"新流应有1条引用记录，实际: {new_ref_count}"
 
     @pytest.mark.L2
     def test_copy_source_not_affected(self, deployed_flow):

@@ -38,7 +38,7 @@ class TestFlowVersionDetail:
         d = resp.json()["data"]
         assert d["status"] == 2
         assert d["approver"] is not None
-        assert d["approver"]["userId"] == "approver001"
+        assert d["approver"]["userId"] == "tester"
         assert d.get("latestApprovalLog") is None
 
     @pytest.mark.L2
