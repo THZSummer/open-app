@@ -59,8 +59,21 @@ def _get_data(resp):
     return resp.json()["data"]
 
 
+def _create_version(connector_id):
+    api("POST", f"/connectors/{connector_id}/versions", {})
+    r = api("GET", f"/connectors/{connector_id}/versions?page=1&size=1")
+    versions = _get_data(r)
+    return int(versions[0]["versionId"]) if isinstance(versions, list) else int(versions["data"][0]["versionId"])
+
+
+def _create_flow_version(flow_id):
+    r = api("POST", f"/flows/{flow_id}/versions", {})
+    d = _get_data(r)
+    return int(d.get("versionId", d.get("id", 0)))
+
+
 # ═══════════════════════════════════════════════════════════
-# 连接器 fixtures — 全部通过 API 创建
+# 连接器 fixtures
 # ═══════════════════════════════════════════════════════════
 
 @pytest.fixture
@@ -71,16 +84,7 @@ def connector(request):
         "nameEn": f"pytest_{tag}",
         "connectorType": 1,
     })
-    cid = _get_data(r)["connectorId"]
-    return int(cid)
-
-
-def _create_version(connector_id):
-    """创建草稿版本并返回 versionId"""
-    api("POST", f"/connectors/{connector_id}/versions", {})
-    r = api("GET", f"/connectors/{connector_id}/versions?page=1&size=1")
-    versions = _get_data(r)
-    return int(versions[0]["versionId"]) if isinstance(versions, list) else int(_get_data(r)["data"][0]["versionId"])
+    return int(_get_data(r)["connectorId"])
 
 
 @pytest.fixture
@@ -104,7 +108,7 @@ def published_connector(connector):
 
 
 # ═══════════════════════════════════════════════════════════
-# 连接流 fixtures — 全部通过 API 创建
+# 连接流 fixtures
 # ═══════════════════════════════════════════════════════════
 
 @pytest.fixture
@@ -114,15 +118,7 @@ def flow(request):
         "nameCn": f"pytest_flow_{tag}",
         "nameEn": f"pytest_flow_{tag}",
     })
-    fid = _get_data(r)["flowId"]
-    return int(fid)
-
-
-def _create_flow_version(flow_id):
-    """创建草稿版本并返回 versionId"""
-    r = api("POST", f"/flows/{flow_id}/versions", {})
-    d = _get_data(r)
-    return int(d.get("versionId", d.get("id", 0)))
+    return int(_get_data(r)["flowId"])
 
 
 @pytest.fixture
@@ -132,14 +128,22 @@ def draft_flow(flow):
 
 
 @pytest.fixture
-def deployed_flow(flow):
-    """已部署的连接流（通过 publish → deploy API）"""
+def deployed_flow(flow, published_connector):
+    """已部署的连接流（通过 publish → deploy API），依赖已发布的连接器"""
+    cid, cvid = published_connector
     vid = _create_flow_version(flow)
     api("PUT", f"/flows/{flow}/versions/{vid}", {
         "orchestrationConfig": {
-            "flowConfig": {"flowMode": "single", "timeout": 3000},
-            "nodes": [{"id": "trigger", "type": "trigger", "data": {"type": "trigger", "triggerType": "http"}}],
-            "edges": [],
+            "flowConfig": {"flowMode": "serial", "timeout": 3000},
+            "nodes": [
+                {"id": "trigger", "type": "trigger", "data": {"type": "trigger", "triggerType": "http"}},
+                {"id": "conn", "type": "connector", "data": {"type": "connector", "connectorId": cid, "connectorVersionId": cvid}},
+                {"id": "exit", "type": "exit", "data": {"type": "exit"}},
+            ],
+            "edges": [
+                {"id": "e1", "source": "trigger", "target": "conn"},
+                {"id": "e2", "source": "conn", "target": "exit"},
+            ],
         }
     })
     api("POST", f"/flows/{flow}/versions/{vid}/publish")
@@ -148,21 +152,39 @@ def deployed_flow(flow):
 
 
 @pytest.fixture
-def pending_approval_flow(flow):
-    """含待审批版本 + 关联审批记录的连接流"""
+def pending_approval_flow(flow, connector):
+    """含待审批版本 + 关联审批记录的连接流，依赖 connector"""
+    cid = connector
+    # 创建并发布一个 connector 版本用于编排
+    cv = _create_version(cid)
+    api("PUT", f"/connectors/{cid}/versions/{cv}", {
+        "connectionConfig": {
+            "protocol": "HTTP",
+            "protocolConfig": {"url": "https://httpbin.org/get", "method": "GET"},
+            "timeoutMs": 5000,
+        }
+    })
+    api("PUT", f"/connectors/{cid}/versions/{cv}/publish")
     vid = _create_flow_version(flow)
     api("PUT", f"/flows/{flow}/versions/{vid}", {
         "orchestrationConfig": {
-            "flowConfig": {"flowMode": "single", "timeout": 3000},
-            "nodes": [{"id": "trigger", "type": "trigger", "data": {"type": "trigger", "triggerType": "http"}}],
-            "edges": [],
+            "flowConfig": {"flowMode": "serial", "timeout": 3000},
+            "nodes": [
+                {"id": "trigger", "type": "trigger", "data": {"type": "trigger", "triggerType": "http"}},
+                {"id": "conn", "type": "connector", "data": {"type": "connector", "connectorId": cid, "connectorVersionId": cv}},
+                {"id": "exit", "type": "exit", "data": {"type": "exit"}},
+            ],
+            "edges": [
+                {"id": "e1", "source": "trigger", "target": "conn"},
+                {"id": "e2", "source": "conn", "target": "exit"},
+            ],
         }
     })
     api("POST", f"/flows/{flow}/versions/{vid}/publish")
-    # 查询审批记录 ID
     r = api("GET", f"/approvals/pending?businessType=connector_flow_version_publish&page=1&size=10")
+    items = _get_data(r)
     ar_id = 0
-    for item in _get_data(r).get("data", []):
+    for item in (items if isinstance(items, list) else []):
         if str(item.get("businessId")) == str(vid):
             ar_id = int(item["id"])
             break
