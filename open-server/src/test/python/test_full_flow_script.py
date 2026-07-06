@@ -160,7 +160,7 @@ def test_full_flow_script():
     if not tpl: tpl = os_db_val("SELECT id FROM openplatform_v2_approval_flow_t WHERE code='connector_flow_version_publish' AND app_id IS NULL LIMIT 1")
     if not tpl:
         print("  Creating approval template...")
-        r = os_api("POST", "/approval-flows", {"code": "connector_flow_version_publish", "nameCn": "审批", "nameEn": "approval", "appId": INTERNAL_APP_ID, "nodes": [{"userId": "tester", "userName": "Test Approver"}]})
+        r = os_api("POST", "/approval-flows", {"code": "connector_flow_version_publish", "nameCn": "审批", "nameEn": "approval", "appId": TEST_APP_ID, "nodes": [{"userId": "tester", "userName": "Test Approver"}]})
     print("  [OK] approval template ready")
 
     # start mock

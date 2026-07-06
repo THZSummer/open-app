@@ -1,4 +1,4 @@
-package com.xxx.it.works.wecode.v2.modules.approval.entity;
+package com.xxx.it.works.wecode.v2.modules.approvalflow.entity;
 
 import lombok.Data;
 
@@ -67,8 +67,16 @@ public class ApprovalFlow implements Serializable {
      *
      * <p>NULL=平台级/全局模板，非NULL=应用级定制模板。
      * 查询时按app_id就近匹配：应用级优先 → 平台级回退 → 全局级兜底。</p>
+     * <p>存储的是 App.id（内部主键），非 App.appId（业务标识）。</p>
      */
     private Long appId;
+
+    /**
+     * 外部业务应用ID（V3 新增，transient，来自 JOIN openplatform_app_t）
+     *
+     * <p>仅在列表/详情查询 SQL 通过 LEFT JOIN 填充，insert/update 不持久化。</p>
+     */
+    private String externalAppId;
 
     /**
      * 审批节点配置（JSON 格式）

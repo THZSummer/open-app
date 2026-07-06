@@ -176,7 +176,7 @@ public class OperateLogV2Aspect {
     }
 
     /**
-     * 加载 beforeData（UPDATE/DELETE/CONFIG/WITHDRAW），并补全 appId 策略 2。
+     * 加载 beforeData（UPDATE/DELETE/CONFIG/WITHDRAW），并补全 appId。
      */
     private void loadBeforeData(AuditContext ctx, ProceedingJoinPoint joinPoint) {
         if (ctx.op.needsBeforeData()) {
@@ -186,11 +186,10 @@ public class OperateLogV2Aspect {
             }
         }
         if (!StringUtils.hasText(ctx.appId)) {
-            ctx.appId = extractAppIdFromEntity(ctx.before);
-        }
-        // appId fallback: extract from X-App-Id request header
-        if (!StringUtils.hasText(ctx.appId)) {
             ctx.appId = extractAppIdFromRequestHeader();
+        }
+        if (!StringUtils.hasText(ctx.appId)) {
+            ctx.appId = extractAppIdFromEntity(ctx.before);
         }
     }
 
@@ -313,7 +312,7 @@ public class OperateLogV2Aspect {
     }
 
     /**
-     * appId 策略 2: 从 beforeData 实体快照提取（内部 ID → 外部业务 ID）。
+     * appId 策略: 从 beforeData 实体快照提取（兜底方案）。
      */
     private String extractAppIdFromEntity(JsonNode node) {
         Long internalId = JsonUtils.getFieldLong(node, CommonConstants.FIELD_APP_ID);
@@ -359,7 +358,7 @@ public class OperateLogV2Aspect {
     }
 
     /**
-     * 从 X-App-Id 请求头提取内部 appId（Controller 层可用）
+     * 从 X-App-Id 请求头提取外部 appId（Controller 层可用）
      */
     private String extractAppIdFromRequestHeader() {
         try {
@@ -370,10 +369,7 @@ public class OperateLogV2Aspect {
                 jakarta.servlet.http.HttpServletRequest request = attrs.getRequest();
                 String headerAppId = request.getHeader("X-App-Id");
                 if (headerAppId != null && !headerAppId.trim().isEmpty()) {
-                    Long internalId = resolveInternalIdFromAppId(headerAppId.trim());
-                    if (internalId != null) {
-                        return String.valueOf(internalId);
-                    }
+                    return headerAppId.trim();
                 }
             }
         } catch (Exception e) {

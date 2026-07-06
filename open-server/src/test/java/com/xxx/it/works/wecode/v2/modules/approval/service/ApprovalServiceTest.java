@@ -2,15 +2,12 @@ package com.xxx.it.works.wecode.v2.modules.approval.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.common.exception.BusinessException;
-import com.xxx.it.works.wecode.v2.common.id.IdGeneratorStrategy;
 import com.xxx.it.works.wecode.v2.modules.api.entity.Api;
 import com.xxx.it.works.wecode.v2.modules.api.mapper.ApiMapper;
 import com.xxx.it.works.wecode.v2.modules.approval.dto.*;
-import com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalFlow;
 import com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalLog;
 import com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalRecord;
 import com.xxx.it.works.wecode.v2.modules.approval.engine.ApprovalEngine;
-import com.xxx.it.works.wecode.v2.modules.approval.mapper.ApprovalFlowMapper;
 import com.xxx.it.works.wecode.v2.modules.approval.mapper.ApprovalLogMapper;
 import com.xxx.it.works.wecode.v2.modules.approval.mapper.ApprovalRecordMapper;
 import com.xxx.it.works.wecode.v2.modules.callback.mapper.CallbackMapper;
@@ -29,21 +26,17 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-@DisplayName("审批管理服务测试")
+@DisplayName("审批执行管理服务测试")
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 class ApprovalServiceTest {
 
-    @Mock
-    private ApprovalFlowMapper flowMapper;
     @Mock
     private ApprovalRecordMapper recordMapper;
     @Mock
     private ApprovalLogMapper logMapper;
     @Mock
     private ApprovalEngine approvalEngine;
-    @Mock
-    private IdGeneratorStrategy idGenerator;
     @Mock
     private ObjectMapper objectMapper;
     @Mock
@@ -57,207 +50,6 @@ class ApprovalServiceTest {
 
     @InjectMocks
     private ApprovalService approvalService;
-
-    @Nested
-    @DisplayName("审批流程模板管理测试")
-    class FlowManagementTests {
-
-        @Test
-        @DisplayName("获取流程列表成功")
-        void getFlowList_success() {
-            ApprovalFlowListRequest request = new ApprovalFlowListRequest();
-            request.setKeyword("test");
-            request.setCurPage(1);
-            request.setPageSize(10);
-
-            ApprovalFlow flow = new ApprovalFlow();
-            flow.setId(1L);
-            flow.setNameCn("测试流程");
-            flow.setNameEn("test_flow");
-            flow.setCode("test");
-            flow.setStatus(1);
-            flow.setNodes("[]");
-
-            when(flowMapper.selectList("test", null, 0, 10)).thenReturn(List.of(flow));
-            when(approvalEngine.parseNodes("[]")).thenReturn(new ArrayList<>());
-
-            List<ApprovalFlowListResponse> result = approvalService.getFlowList(request);
-
-            assertNotNull(result);
-            assertEquals(1, result.size());
-            assertEquals("1", result.get(0).getId());
-            assertEquals("测试流程", result.get(0).getNameCn());
-            verify(flowMapper).selectList("test", null, 0, 10);
-        }
-
-        @Test
-        @DisplayName("获取流程详情成功")
-        void getFlowDetail_success() {
-            ApprovalFlow flow = new ApprovalFlow();
-            flow.setId(1L);
-            flow.setNameCn("测试流程");
-            flow.setNameEn("test_flow");
-            flow.setCode("test");
-            flow.setStatus(1);
-            flow.setNodes("[]");
-
-            when(flowMapper.selectById(1L)).thenReturn(flow);
-            when(approvalEngine.parseNodes("[]")).thenReturn(new ArrayList<>());
-
-            ApprovalFlowDetailResponse result = approvalService.getFlowDetail(1L);
-
-            assertNotNull(result);
-            assertEquals("1", result.getId());
-            assertEquals("测试流程", result.getNameCn());
-            assertEquals("test", result.getCode());
-        }
-
-        @Test
-        @DisplayName("获取流程详情-流程不存在")
-        void getFlowDetail_notFound() {
-            when(flowMapper.selectById(999L)).thenReturn(null);
-
-            BusinessException exception = assertThrows(BusinessException.class,
-                () -> approvalService.getFlowDetail(999L));
-
-            assertEquals("404", exception.getCode());
-        }
-
-        @Test
-        @DisplayName("创建流程成功")
-        void createFlow_success() {
-            ApprovalFlowCreateRequest request = new ApprovalFlowCreateRequest();
-            request.setNameCn("新流程");
-            request.setNameEn("new_flow");
-            request.setCode("new_code");
-            request.setNodes(new ArrayList<>());
-
-            when(flowMapper.countByCode("new_code")).thenReturn(0);
-            when(idGenerator.nextId()).thenReturn(1L);
-            when(approvalEngine.serializeNodes(any())).thenReturn("[]");
-            when(flowMapper.insert(any(ApprovalFlow.class))).thenReturn(1);
-
-            ApprovalFlow savedFlow = new ApprovalFlow();
-            savedFlow.setId(1L);
-            savedFlow.setNameCn("新流程");
-            savedFlow.setNameEn("new_flow");
-            savedFlow.setCode("new_code");
-            savedFlow.setStatus(1);
-            savedFlow.setNodes("[]");
-            when(flowMapper.selectById(1L)).thenReturn(savedFlow);
-            when(approvalEngine.parseNodes("[]")).thenReturn(new ArrayList<>());
-
-            ApprovalFlowDetailResponse result = approvalService.createFlow(request, "admin");
-
-            assertNotNull(result);
-            assertEquals("新流程", result.getNameCn());
-            verify(flowMapper).insert(any(ApprovalFlow.class));
-        }
-
-        @Test
-        @DisplayName("创建流程-编码已存在")
-        void createFlow_codeExists() {
-            ApprovalFlowCreateRequest request = new ApprovalFlowCreateRequest();
-            request.setNameCn("新流程");
-            request.setNameEn("new_flow");
-            request.setCode("existing_code");
-            request.setNodes(new ArrayList<>());
-
-            when(flowMapper.countByCodeAndAppId("existing_code", null)).thenReturn(1);
-
-            BusinessException exception = assertThrows(BusinessException.class,
-                () -> approvalService.createFlow(request, "admin"));
-
-            assertEquals("409", exception.getCode());
-            verify(flowMapper, never()).insert(any());
-        }
-
-        @Test
-        @DisplayName("更新流程成功")
-        void updateFlow_success() {
-            ApprovalFlowUpdateRequest request = new ApprovalFlowUpdateRequest();
-            request.setNameCn("更新流程");
-            request.setNameEn("updated_flow");
-            request.setNodes(new ArrayList<>());
-
-            ApprovalFlow existingFlow = new ApprovalFlow();
-            existingFlow.setId(1L);
-            existingFlow.setNameCn("原流程");
-            existingFlow.setCode("test");
-            existingFlow.setStatus(1);
-
-            when(flowMapper.selectById(1L)).thenReturn(existingFlow);
-            when(approvalEngine.serializeNodes(any())).thenReturn("[]");
-            when(flowMapper.update(any(ApprovalFlow.class))).thenReturn(1);
-
-            ApprovalFlow updatedFlow = new ApprovalFlow();
-            updatedFlow.setId(1L);
-            updatedFlow.setNameCn("更新流程");
-            updatedFlow.setNameEn("updated_flow");
-            updatedFlow.setCode("test");
-            updatedFlow.setStatus(1);
-            updatedFlow.setNodes("[]");
-            when(flowMapper.selectById(1L)).thenReturn(updatedFlow);
-            when(approvalEngine.parseNodes("[]")).thenReturn(new ArrayList<>());
-
-            ApprovalFlowDetailResponse result = approvalService.updateFlow(1L, request, "admin");
-
-            assertNotNull(result);
-            assertEquals("更新流程", result.getNameCn());
-            verify(flowMapper).update(any(ApprovalFlow.class));
-        }
-
-        @Test
-        @DisplayName("更新流程-流程不存在")
-        void updateFlow_notFound() {
-            ApprovalFlowUpdateRequest request = new ApprovalFlowUpdateRequest();
-            request.setNameCn("更新流程");
-
-            when(flowMapper.selectById(999L)).thenReturn(null);
-
-            BusinessException exception = assertThrows(BusinessException.class,
-                () -> approvalService.updateFlow(999L, request, "admin"));
-
-            assertEquals("404", exception.getCode());
-        }
-
-        @Test
-        @DisplayName("删除流程成功")
-        void deleteFlow_success() {
-            ApprovalFlow flow = new ApprovalFlow();
-            flow.setId(1L);
-            flow.setCode("test");
-            flow.setNameCn("测试流程");
-
-            when(flowMapper.selectById(1L)).thenReturn(flow);
-            when(flowMapper.deleteById(1L)).thenReturn(1);
-
-            assertDoesNotThrow(() -> approvalService.deleteFlow(1L, "admin"));
-
-            verify(flowMapper).deleteById(1L);
-        }
-
-        @Test
-        @DisplayName("删除流程-流程不存在")
-        void deleteFlow_notFound() {
-            when(flowMapper.selectById(999L)).thenReturn(null);
-
-            BusinessException exception = assertThrows(BusinessException.class,
-                () -> approvalService.deleteFlow(999L, "admin"));
-
-            assertEquals("404", exception.getCode());
-        }
-
-        @Test
-        @DisplayName("统计流程数量成功")
-        void countFlowList_success() {
-            when(flowMapper.countList("test", null)).thenReturn(10L);
-
-            Long result = approvalService.countFlowList("test", null);
-
-            assertEquals(10L, result);
-        }
-    }
 
     @Nested
     @DisplayName("审批执行管理测试")

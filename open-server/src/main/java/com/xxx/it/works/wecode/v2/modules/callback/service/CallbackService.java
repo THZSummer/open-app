@@ -6,7 +6,7 @@ import com.xxx.it.works.wecode.v2.common.id.IdGeneratorStrategy;
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.modules.approval.dto.ApprovalNodeDto;
 import com.xxx.it.works.wecode.v2.modules.approval.engine.ApprovalEngine;
-import com.xxx.it.works.wecode.v2.modules.approval.mapper.ApprovalFlowMapper;
+import com.xxx.it.works.wecode.v2.modules.approvalflow.mapper.ApprovalFlowMapper;
 import com.xxx.it.works.wecode.v2.modules.callback.dto.*;
 import com.xxx.it.works.wecode.v2.modules.callback.entity.Callback;
 import com.xxx.it.works.wecode.v2.modules.callback.entity.CallbackProperty;
