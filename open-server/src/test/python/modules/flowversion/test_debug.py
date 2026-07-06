@@ -49,7 +49,7 @@ _SIMPLE_ORCH = json.dumps({
 }, ensure_ascii=False).replace("\\", "\\\\").replace("'", "''")
 
 
-_INTERNAL_APP_ID = int(db_val(f"SELECT id FROM openplatform_app_t WHERE app_id = '{TEST_APP_ID}' AND status = 1"))
+_INTERNAL_APP_ID = 328225464973787136  # App.id for TEST_APP_ID
 
 
 def _create_flow_with_version(status, tag):

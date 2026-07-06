@@ -72,7 +72,7 @@ def os_redis(*args):
         return None
 
 TEST_APP_ID = _osm.TEST_APP_ID
-INTERNAL_APP_ID = int(os_db_val(f"SELECT id FROM openplatform_app_t WHERE app_id = '{TEST_APP_ID}' AND status = 1"))
+INTERNAL_APP_ID = 328225464973787136  # App.id for TEST_APP_ID
 
 import pytest
 import requests

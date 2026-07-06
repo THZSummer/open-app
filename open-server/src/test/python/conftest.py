@@ -2,9 +2,7 @@
 """共享 fixtures — 通过 API 创建测试数据，模拟用户操作"""
 
 import pytest
-from common import api, db, db_val, TEST_APP_ID
-
-INTERNAL_APP_ID = int(db_val(f"SELECT id FROM openplatform_app_t WHERE app_id = '{TEST_APP_ID}' AND status = 1"))
+from common import api, db, db_val, TEST_APP_ID, INTERNAL_APP_ID
 
 # ═══════════════════════════════════════════════════════════
 # 会话级 Lookup 默认值（唯一保留的 DB 操作——无对应 API）

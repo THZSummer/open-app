@@ -19,6 +19,7 @@ import requests
 # ═══════════════════════════════════════════════════════════
 _API_BASE = "http://localhost:18080/open-server"
 TEST_APP_ID = "20250730213114178360970"
+INTERNAL_APP_ID = 328225464973787136  # App.id for TEST_APP_ID
 _DEFAULT_USER  = "admin"
 _DB = {"host": "192.168.3.155", "user": "openapp", "passwd": "openapp", "db": "openapp"}
 # Redis 集群节点（full_flow 测试用）

@@ -36,8 +36,7 @@ os_fail = _osm.fail
 os_done = _osm.done
 from client import CONNECTOR_API_BASE, CONNECTOR_API_HEALTH
 
-INTERNAL_APP_ID = int(os_db_val(
-    f"SELECT id FROM openplatform_app_t WHERE app_id = '{_osm.TEST_APP_ID}' AND status = 1"))
+INTERNAL_APP_ID = 328225464973787136  # App.id for TEST_APP_ID
 _RUN_ID = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
 MOCK_PORT = 18987; MOCK_URL = f"http://localhost:{MOCK_PORT}"
 
