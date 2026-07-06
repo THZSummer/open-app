@@ -1,4 +1,4 @@
-package com.xxx.it.works.wecode.v2.modules.approval.dto;
+package com.xxx.it.works.wecode.v2.modules.approvalflow.dto;
 
 import lombok.Data;
 

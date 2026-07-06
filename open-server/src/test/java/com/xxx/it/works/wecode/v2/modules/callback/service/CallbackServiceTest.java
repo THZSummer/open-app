@@ -3,7 +3,7 @@ package com.xxx.it.works.wecode.v2.modules.callback.service;
 import com.xxx.it.works.wecode.v2.common.exception.BusinessException;
 import com.xxx.it.works.wecode.v2.common.id.IdGeneratorStrategy;
 import com.xxx.it.works.wecode.v2.modules.approval.engine.ApprovalEngine;
-import com.xxx.it.works.wecode.v2.modules.approval.mapper.ApprovalFlowMapper;
+import com.xxx.it.works.wecode.v2.modules.approvalflow.mapper.ApprovalFlowMapper;
 import com.xxx.it.works.wecode.v2.modules.callback.dto.CallbackUpdateRequest;
 import com.xxx.it.works.wecode.v2.modules.callback.dto.PermissionDefinitionDto;
 import com.xxx.it.works.wecode.v2.modules.callback.entity.Callback;

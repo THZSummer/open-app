@@ -1,6 +1,6 @@
-package com.xxx.it.works.wecode.v2.modules.approval.mapper;
+package com.xxx.it.works.wecode.v2.modules.approvalflow.mapper;
 
-import com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalFlow;
+import com.xxx.it.works.wecode.v2.modules.approvalflow.entity.ApprovalFlow;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -42,20 +42,21 @@ public interface ApprovalFlowMapper {
      * 查询审批流程列表
      *
      * @param keyword 搜索关键词
+     * @param externalAppId 外部业务应用ID（String，过滤条件）
      * @param offset 偏移量
      * @param pageSize 每页数量
      * @return 流程列表
      */
     List<ApprovalFlow> selectList(
             @Param("keyword") String keyword,
-            @Param("appId") Long appId,
+            @Param("externalAppId") String externalAppId,
             @Param("offset") Integer offset,
             @Param("pageSize") Integer pageSize);
 
     /**
      * 统计审批流程数量
      */
-    Long countList(@Param("keyword") String keyword, @Param("appId") Long appId);
+    Long countList(@Param("keyword") String keyword, @Param("externalAppId") String externalAppId);
 
     /**
      * 更新审批流程

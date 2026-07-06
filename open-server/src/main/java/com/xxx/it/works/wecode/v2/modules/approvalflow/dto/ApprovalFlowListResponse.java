@@ -1,6 +1,8 @@
-package com.xxx.it.works.wecode.v2.modules.approval.dto;
+package com.xxx.it.works.wecode.v2.modules.approvalflow.dto;
 
 import lombok.Data;
+
+import com.xxx.it.works.wecode.v2.modules.approval.dto.ApprovalNodeDto;
 
 import java.io.Serializable;
 import java.util.List;

@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
     "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.xxx.it.works.wecode.v2.modules.approval.mapper.ApprovalFlowMapper">
+<mapper namespace="com.xxx.it.works.wecode.v2.modules.approvalflow.mapper.ApprovalFlowMapper">
 
     <!-- 结果映射 -->
-    <resultMap id="BaseResultMap" type="com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalFlow">
+    <resultMap id="BaseResultMap" type="com.xxx.it.works.wecode.v2.modules.approvalflow.entity.ApprovalFlow">
         <id column="id" property="id"/>
         <result column="name_cn" property="nameCn"/>
         <result column="name_en" property="nameEn"/>
@@ -19,6 +19,8 @@
         <result column="last_update_time" property="lastUpdateTime"/>
         <result column="create_by" property="createBy"/>
         <result column="last_update_by" property="lastUpdateBy"/>
+        <!-- V3：JOIN 查出的外部业务 appId -->
+        <result column="external_app_id" property="externalAppId"/>
     </resultMap>
 
     <!-- 基础列 -->
@@ -28,7 +30,7 @@
     </sql>
 
     <!-- 插入审批流程 -->
-    <insert id="insert" parameterType="com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalFlow">
+    <insert id="insert" parameterType="com.xxx.it.works.wecode.v2.modules.approvalflow.entity.ApprovalFlow">
         INSERT INTO openplatform_v2_approval_flow_t (
             id, name_cn, name_en, code, description_cn, description_en, app_id, nodes, status,
             create_time, last_update_time, create_by, last_update_by
@@ -39,10 +41,15 @@
     </insert>
 
     <!-- 根据ID查询审批流程 -->
+    <!-- V3：LEFT JOIN 查询外部业务 appId -->
     <select id="selectById" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List"/>
-        FROM openplatform_v2_approval_flow_t
-        WHERE id = #{id}
+        SELECT f.id, f.name_cn, f.name_en, f.code, f.description_cn, f.description_en,
+               f.app_id, f.nodes, f.status,
+               f.create_time, f.last_update_time, f.create_by, f.last_update_by,
+               a.app_id as external_app_id
+        FROM openplatform_v2_approval_flow_t f
+        LEFT JOIN openplatform_app_t a ON f.app_id = a.id
+        WHERE f.id = #{id}
     </select>
 
     <!-- 根据编码查询审批流程 -->
@@ -59,40 +66,47 @@
 
     <!-- 查询审批流程列表 -->
     <!-- v2.8.0变更：移除 is_default DESC 排序 -->
+    <!-- V3：LEFT JOIN 查外部业务 appId + 按外部 appId 过滤 -->
     <select id="selectList" resultMap="BaseResultMap">
-        SELECT <include refid="Base_Column_List"/>
-        FROM openplatform_v2_approval_flow_t
-        WHERE status = 1
+        SELECT f.id, f.name_cn, f.name_en, f.code, f.description_cn, f.description_en,
+               f.app_id, f.nodes, f.status,
+               f.create_time, f.last_update_time, f.create_by, f.last_update_by,
+               a.app_id as external_app_id
+        FROM openplatform_v2_approval_flow_t f
+        LEFT JOIN openplatform_app_t a ON f.app_id = a.id
+        WHERE f.status = 1
         <if test="keyword != null and keyword != ''">
-            AND (name_cn LIKE CONCAT('%', #{keyword}, '%')
-                 OR name_en LIKE CONCAT('%', #{keyword}, '%')
-                 OR code LIKE CONCAT('%', #{keyword}, '%'))
+            AND (f.name_cn LIKE CONCAT('%', #{keyword}, '%')
+                 OR f.name_en LIKE CONCAT('%', #{keyword}, '%')
+                 OR f.code LIKE CONCAT('%', #{keyword}, '%'))
         </if>
-        <if test="appId != null">
-            AND app_id = #{appId}
+        <if test="externalAppId != null and externalAppId != ''">
+            AND a.app_id = #{externalAppId}
         </if>
-        ORDER BY create_time DESC
+        ORDER BY f.create_time DESC
         LIMIT #{offset}, #{pageSize}
     </select>
 
     <!-- 统计审批流程数量 -->
+    <!-- V3：LEFT JOIN 按外部 appId 过滤 -->
     <select id="countList" resultType="java.lang.Long">
         SELECT COUNT(*)
-        FROM openplatform_v2_approval_flow_t
-        WHERE status = 1
+        FROM openplatform_v2_approval_flow_t f
+        LEFT JOIN openplatform_app_t a ON f.app_id = a.id
+        WHERE f.status = 1
         <if test="keyword != null and keyword != ''">
-            AND (name_cn LIKE CONCAT('%', #{keyword}, '%')
-                 OR name_en LIKE CONCAT('%', #{keyword}, '%')
-                 OR code LIKE CONCAT('%', #{keyword}, '%'))
+            AND (f.name_cn LIKE CONCAT('%', #{keyword}, '%')
+                 OR f.name_en LIKE CONCAT('%', #{keyword}, '%')
+                 OR f.code LIKE CONCAT('%', #{keyword}, '%'))
         </if>
-        <if test="appId != null">
-            AND app_id = #{appId}
+        <if test="externalAppId != null and externalAppId != ''">
+            AND a.app_id = #{externalAppId}
         </if>
     </select>
 
     <!-- 更新审批流程（动态更新非null字段） -->
     <!-- v2.8.0变更：移除 is_default 字段更新 -->
-    <update id="update" parameterType="com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalFlow">
+    <update id="update" parameterType="com.xxx.it.works.wecode.v2.modules.approvalflow.entity.ApprovalFlow">
         UPDATE openplatform_v2_approval_flow_t
         <set>
             <if test="nameCn != null">name_cn = #{nameCn},</if>

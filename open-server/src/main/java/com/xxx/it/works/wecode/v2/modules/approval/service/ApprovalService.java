@@ -2,19 +2,13 @@ package com.xxx.it.works.wecode.v2.modules.approval.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.xxx.it.works.wecode.v2.common.enums.ConnectorPlatformConstants;
 import com.xxx.it.works.wecode.v2.common.exception.BusinessException;
-import com.xxx.it.works.wecode.v2.common.id.IdGeneratorStrategy;
-import com.xxx.it.works.wecode.v2.modules.app.mapper.AppMapper;
-import com.xxx.it.works.wecode.v2.modules.app.entity.App;
 import com.xxx.it.works.wecode.v2.modules.api.entity.Api;
 import com.xxx.it.works.wecode.v2.modules.api.mapper.ApiMapper;
 import com.xxx.it.works.wecode.v2.modules.approval.dto.*;
-import com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalFlow;
 import com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalLog;
 import com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalRecord;
 import com.xxx.it.works.wecode.v2.modules.approval.engine.ApprovalEngine;
-import com.xxx.it.works.wecode.v2.modules.approval.mapper.ApprovalFlowMapper;
 import com.xxx.it.works.wecode.v2.modules.approval.mapper.ApprovalLogMapper;
 import com.xxx.it.works.wecode.v2.modules.approval.mapper.ApprovalRecordMapper;
 import com.xxx.it.works.wecode.v2.modules.callback.entity.Callback;
@@ -68,11 +62,9 @@ public class ApprovalService {
 
     private static final int APPROVER_FILTER_BATCH_SIZE = 200;
 
-    private final ApprovalFlowMapper flowMapper;
     private final ApprovalRecordMapper recordMapper;
     private final ApprovalLogMapper logMapper;
     private final ApprovalEngine approvalEngine;
-    private final IdGeneratorStrategy idGenerator;
     private final ObjectMapper objectMapper;
 
     // 注入资源 Mapper（用于获取业务数据）
@@ -86,195 +78,6 @@ public class ApprovalService {
     // V3 新增：连接器流模块 Mapper（用于获取连接流版本发布审批业务数据）
     private final OpFlowMapper cpFlowMapper;
     private final OpFlowVersionMapper cpFlowVersionMapper;
-
-    // V3 新增：应用存在性校验
-    private final AppMapper appMapper;
-
-    // ==================== 审批流程模板管理 ====================
-
-    /** appId 字符串 → Long（null/空白返回 null），用于 DTO↔Entity 转换 */
-    private Long parseAppId(String appId) {
-        if (appId == null || appId.trim().isEmpty()) {
-            return null;
-        }
-        try {
-            return Long.parseLong(appId.trim());
-        } catch (NumberFormatException e) {
-            throw new BusinessException("400", "应用ID格式无效", "Invalid appId format: " + appId);
-        }
-    }
-
-    /** appId Long → 字符串（null 返回 null），避免前端 Long 精度丢失 */
-    private String formatAppId(Long appId) {
-        return appId != null ? String.valueOf(appId) : null;
-    }
-
-    /**
-     * 查询审批流程列表
-     *
-     * v2.8.0变更：移除 isDefault 字段
-     */
-    public List<ApprovalFlowListResponse> getFlowList(ApprovalFlowListRequest request) {
-        int offset = (request.getCurPage() - 1) * request.getPageSize();
-        List<ApprovalFlow> flows = flowMapper.selectList(request.getKeyword(), parseAppId(request.getAppId()), offset, request.getPageSize());
-
-        return flows.stream().map(flow -> {
-            ApprovalFlowListResponse response = new ApprovalFlowListResponse();
-            response.setId(String.valueOf(flow.getId()));
-            response.setNameCn(flow.getNameCn());
-            response.setNameEn(flow.getNameEn());
-            response.setCode(flow.getCode());
-            response.setAppId(formatAppId(flow.getAppId()));  // V3 新增
-
-            // ✅ v2.8.0变更：移除 isDefault 字段
-            response.setStatus(flow.getStatus());
-            response.setNodes(approvalEngine.parseNodes(flow.getNodes()));
-            return response;
-        }).collect(Collectors.toList());
-    }
-
-    /**
-     * 统计审批流程数量
-     */
-    public Long countFlowList(String keyword, String appId) {
-        return flowMapper.countList(keyword, parseAppId(appId));
-    }
-
-    /**
-     * 获取审批流程详情
-     *
-     * v2.8.0变更：移除 isDefault 字段
-     */
-    public ApprovalFlowDetailResponse getFlowDetail(Long id) {
-        ApprovalFlow flow = flowMapper.selectById(id);
-        if (flow == null) {
-            throw new BusinessException("404", "审批流程不存在", "Approval flow not found");
-        }
-
-        ApprovalFlowDetailResponse response = new ApprovalFlowDetailResponse();
-        response.setId(String.valueOf(flow.getId()));
-        response.setNameCn(flow.getNameCn());
-        response.setNameEn(flow.getNameEn());
-        response.setCode(flow.getCode());
-        response.setAppId(formatAppId(flow.getAppId()));  // V3 新增
-
-        // ✅ v2.8.0变更：移除 isDefault 字段
-        response.setStatus(flow.getStatus());
-        response.setNodes(approvalEngine.parseNodes(flow.getNodes()));
-
-        return response;
-    }
-
-    /**
-     * 创建审批流程
-     *
-     * v2.8.0变更：移除 isDefault 字段，用 code='global' 标识全局审批
-     */
-    @Transactional(rollbackFor = Exception.class)
-    public ApprovalFlowDetailResponse createFlow(ApprovalFlowCreateRequest request, String operator) {
-
-        Long appId = parseAppId(request.getAppId());
-
-        // appId 存在性校验（非null时校验应用是否存在）
-        if (appId != null) {
-            App app = appMapper.selectById(appId);
-            if (app == null) {
-                throw new BusinessException("404", "应用不存在", "App not found: " + request.getAppId());
-            }
-        }
-
-        // 检查 code+appId 唯一性（V3 修复：带 appId 校验）
-        if (flowMapper.countByCodeAndAppId(request.getCode(), appId) > 0) {
-            throw new BusinessException("409", "流程编码已存在", "Flow code already exists for this app");
-        }
-
-        ApprovalFlow flow = new ApprovalFlow();
-        flow.setId(idGenerator.nextId());
-        flow.setNameCn(request.getNameCn());
-        flow.setNameEn(request.getNameEn());
-        flow.setCode(request.getCode());
-        flow.setAppId(appId);
-        flow.setNodes(approvalEngine.serializeNodes(request.getNodes()));
-        flow.setStatus(1);
-        flow.setCreateTime(new Date());
-        flow.setLastUpdateTime(new Date());
-        flow.setCreateBy(operator);
-        flow.setLastUpdateBy(operator);
-
-        flowMapper.insert(flow);
-
-        log.info("Create approval flow: id={}, code={}, appId={}, operator={}", flow.getId(), flow.getCode(), flow.getAppId(), operator);
-
-        return getFlowDetail(flow.getId());
-    }
-
-    /**
-     * 更新审批流程
-     *
-     * v2.8.0变更：移除 isDefault 字段
-     */
-    @Transactional(rollbackFor = Exception.class)
-    public ApprovalFlowDetailResponse updateFlow(Long id, ApprovalFlowUpdateRequest request, String operator) {
-        ApprovalFlow flow = flowMapper.selectById(id);
-        if (flow == null) {
-            throw new BusinessException("404", "审批流程不存在", "Approval flow not found");
-        }
-
-        // appId 存在性校验（非null时校验应用是否存在）
-        Long requestAppId = parseAppId(request.getAppId());
-        if (requestAppId != null) {
-            App app = appMapper.selectById(requestAppId);
-            if (app == null) {
-                throw new BusinessException("404", "应用不存在", "App not found: " + request.getAppId());
-            }
-        }
-
-        // 更新前检查 code+appId 唯一性（排除自身）
-        String effectiveCode = request.getCode() != null ? request.getCode() : flow.getCode();
-        Long effectiveAppId = requestAppId != null ? requestAppId : flow.getAppId();
-        if (flowMapper.countByCodeAndAppIdExcludeId(effectiveCode, effectiveAppId, id) > 0) {
-            throw new BusinessException("409", "流程编码已存在", "Flow code already exists for this app");
-        }
-
-        if (request.getCode() != null) {
-            flow.setCode(request.getCode());
-        }
-        flow.setNameCn(request.getNameCn());
-        flow.setNameEn(request.getNameEn());
-        flow.setAppId(requestAppId);
-        flow.setNodes(approvalEngine.serializeNodes(request.getNodes()));
-        flow.setLastUpdateTime(new Date());
-        flow.setLastUpdateBy(operator);
-
-        flowMapper.update(flow);
-
-        log.info("Update approval flow: id={}, operator={}", id, operator);
-
-        return getFlowDetail(id);
-    }
-
-    /**
-     * 删除审批流程
-     *
-     * v2.8.0变更：移除 isDefault 字段相关逻辑
-     *
-     * @param id 流程ID
-     * @param operator 操作人
-     */
-    @Transactional(rollbackFor = Exception.class)
-    public void deleteFlow(Long id, String operator) {
-        ApprovalFlow flow = flowMapper.selectById(id);
-        if (flow == null) {
-            throw new BusinessException("404", "审批流程不存在", "Approval flow not found");
-        }
-
-        // ✅ v2.8.0变更：允许删除任何流程，包括 global 流程
-        // 原因：通过 code 标识审批类型，删除不影响其他流程
-
-        flowMapper.deleteById(id);
-
-        log.info("Delete approval flow: id={}, code={}, operator={}", id, flow.getCode(), operator);
-    }
 
     // ==================== 审批执行管理 ====================
 
