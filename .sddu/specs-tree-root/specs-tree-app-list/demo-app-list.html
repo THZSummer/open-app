@@ -1,0 +1,4359 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>开放平台应用管理 - Demo</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f5f6f7;
+      min-height: 100vh;
+      color: #1f2329;
+    }
+
+    /* 页面容器 */
+    .page-container {
+      display: none;
+      min-height: 100vh;
+    }
+
+    .page-container.active {
+      display: block;
+    }
+
+    /* ========== 应用列表页 ========== */
+    .list-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 48px 32px 32px;
+    }
+
+    /* Hero Section */
+    .hero {
+      background: linear-gradient(135deg, #3370ff 0%, #85a5ff 100%);
+      border-radius: 12px;
+      padding: 48px 40px;
+      margin: 24px 0 32px;
+      position: relative;
+      overflow: hidden;
+      text-align: center;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -30%;
+      right: -10%;
+      width: 300px;
+      height: 300px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 50%;
+    }
+
+    .hero-title {
+      font-size: 28px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 20px;
+    }
+
+    .btn-create {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 28px;
+      background: #fff;
+      color: #3370ff;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-create:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    /* Section Title */
+    .section-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #1f2329;
+      margin-bottom: 20px;
+    }
+
+    /* Card Grid */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    @media (max-width: 900px) {
+      .card-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 600px) {
+      .card-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* App Card */
+    .app-card {
+      background: #fff;
+      border-radius: 8px;
+      padding: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 1px solid #dee0e3;
+    }
+
+    .app-card:hover {
+      border-color: #3370ff;
+      box-shadow: 0 4px 16px rgba(51, 112, 255, 0.08);
+      transform: translateY(-2px);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .app-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #e8f0ff 0%, #d6e4ff 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      color: #3370ff;
+      flex-shrink: 0;
+    }
+
+    .app-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .app-name {
+      font-size: 15px;
+      font-weight: 600;
+      color: #1f2329;
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .eamap-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .eamap-status.binded {
+      background: #e5f7e5;
+      color: #1a7f1a;
+    }
+
+    .eamap-status.unbinded {
+      background: #fff3e5;
+      color: #d46b08;
+    }
+
+    .eamap-status .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+
+    .eamap-status.binded .dot {
+      background: #1a7f1a;
+    }
+
+    .eamap-status.unbinded .dot {
+      background: #d46b08;
+    }
+
+    .card-body {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .card-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+    }
+
+    .card-row .label {
+      color: #8f959e;
+      min-width: 60px;
+    }
+
+    .card-row .value {
+      color: #1f2329;
+    }
+
+    .card-row .value.owner {
+      color: #3370ff;
+    }
+
+    .card-row .value.role {
+      padding: 2px 8px;
+      background: #f2f3f5;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    /* Pagination */
+    .pagination-wrapper {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 24px;
+      padding: 14px 20px;
+      background: #fff;
+      border-radius: 8px;
+      border: 1px solid #dee0e3;
+    }
+
+    /* 版本列表工具栏 */
+    .version-list-toolbar {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .pagination-info {
+      color: #8f959e;
+      font-size: 13px;
+    }
+
+    .pagination-controls {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .page-size-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #8f959e;
+      font-size: 13px;
+    }
+
+    .page-size-select {
+      padding: 6px 12px;
+      border: 1px solid #dee0e3;
+      border-radius: 6px;
+      font-size: 13px;
+      color: #1f2329;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    .pagination-btns {
+      display: flex;
+      gap: 4px;
+    }
+
+    .page-btn {
+      min-width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid #dee0e3;
+      border-radius: 6px;
+      background: #fff;
+      color: #1f2329;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .page-btn:hover:not(:disabled) {
+      border-color: #3370ff;
+      color: #3370ff;
+    }
+
+    .page-btn.active {
+      background: #3370ff;
+      border-color: #3370ff;
+      color: #fff;
+    }
+
+    .page-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* ========== 顶部全局导航栏 ========== */
+    .top-nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 48px;
+      background: #fff;
+      border-bottom: 1px solid #dee0e3;
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      z-index: 1100;
+    }
+
+    .top-nav-left {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .top-nav-left .top-nav-link {
+      margin-left: 16px;
+    }
+
+    .top-nav-logo {
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      background: linear-gradient(135deg, #3370ff 0%, #85a5ff 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .top-nav-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: #1f2329;
+      letter-spacing: 0.2px;
+    }
+
+    .top-nav-center {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .top-nav-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      color: #4e5969;
+      font-size: 14px;
+      text-decoration: none;
+      border-radius: 6px;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+
+    .top-nav-link:hover {
+      background: #f2f3f5;
+      color: #3370ff;
+    }
+
+    .top-nav-link svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .top-nav-right {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-left: auto;
+    }
+
+    .user-menu {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px 4px 4px;
+      cursor: pointer;
+      border-radius: 20px;
+      transition: all 0.2s;
+    }
+
+    .user-menu:hover {
+      background: #f2f3f5;
+    }
+
+    .user-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #3370ff 0%, #85a5ff 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    .user-name {
+      font-size: 14px;
+      font-weight: 500;
+      color: #1f2329;
+      max-width: 120px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .user-menu-caret {
+      width: 12px;
+      height: 12px;
+      color: #8f959e;
+      transition: transform 0.2s;
+      flex-shrink: 0;
+    }
+
+    .user-menu.open .user-menu-caret {
+      transform: rotate(180deg);
+    }
+
+    .user-dropdown {
+      position: absolute;
+      top: calc(100% + 6px);
+      right: 0;
+      min-width: 180px;
+      background: #fff;
+      border: 1px solid #dee0e3;
+      border-radius: 8px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04);
+      padding: 4px;
+      z-index: 1200;
+      opacity: 0;
+      transform: translateY(-4px) scale(0.98);
+      transform-origin: top right;
+      pointer-events: none;
+      transition: opacity 0.18s, transform 0.18s;
+    }
+
+    .user-dropdown.show {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: auto;
+    }
+
+    .user-dropdown-header {
+      padding: 10px 12px 8px;
+      border-bottom: 1px solid #f2f3f5;
+      margin-bottom: 4px;
+    }
+
+    .user-dropdown-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1f2329;
+    }
+
+    .user-dropdown-role {
+      font-size: 12px;
+      color: #8f959e;
+      margin-top: 2px;
+    }
+
+    .user-dropdown-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 12px;
+      cursor: pointer;
+      font-size: 14px;
+      color: #1f2329;
+      border-radius: 6px;
+      transition: all 0.15s;
+    }
+
+    .user-dropdown-item:hover {
+      background: #f2f3f5;
+    }
+
+    .user-dropdown-item svg {
+      width: 16px;
+      height: 16px;
+      color: #646a73;
+      flex-shrink: 0;
+    }
+
+    .user-dropdown-divider {
+      height: 1px;
+      background: #f2f3f5;
+      margin: 4px 8px;
+    }
+
+    /* ========== 应用详情页 ========== */
+    .top-header {
+      position: fixed;
+      top: 48px;
+      left: 0;
+      right: 0;
+      height: 56px;
+      background: #fff;
+      border-bottom: 1px solid #dee0e3;
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      z-index: 100;
+    }
+
+    .top-header-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .home-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      background: transparent;
+      border: none;
+      border-radius: 6px;
+      color: #646a73;
+      font-size: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .home-btn:hover {
+      background: #f2f3f5;
+      color: #1f2329;
+    }
+
+    .header-divider {
+      width: 1px;
+      height: 24px;
+      background: #dee0e3;
+    }
+
+    .header-app-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .header-app-name {
+      font-size: 16px;
+      font-weight: 600;
+      color: #1f2329;
+    }
+
+    .header-eamap {
+      font-size: 12px;
+      color: #1a7f1a;
+      font-weight: 500;
+    }
+
+    .header-menu-text {
+      font-size: 14px;
+      color: #646a73;
+    }
+
+    .header-page-title {
+      font-size: 14px;
+      font-weight: 500;
+      color: #1f2329;
+    }
+
+    .top-header-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .detail-container {
+      max-width: 960px;
+    }
+
+    .detail-layout {
+      display: flex;
+      min-height: 100vh;
+      padding-top: 104px;
+    }
+
+    .main-content {
+      flex: 1;
+      margin-left: 240px;
+      padding: 24px;
+      min-height: calc(100vh - 56px);
+    }
+
+    /* 左侧菜单栏 */
+    .sidebar {
+      width: 240px;
+      background: #fff;
+      border-right: 1px solid #dee0e3;
+      padding: 24px 0;
+      position: fixed;
+      left: 0;
+      top: 104px;
+      bottom: 0;
+      overflow-y: auto;
+    }
+
+    .menu-list {
+      list-style: none;
+    }
+
+    .menu-item {
+      padding: 12px 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 14px;
+      color: #646a73;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-left: 3px solid transparent;
+    }
+
+    .menu-item:hover {
+      background: #f2f3f5;
+      color: #1f2329;
+    }
+
+    .menu-item.active {
+      background: #e8f0ff;
+      color: #3370ff;
+      font-weight: 500;
+      border-left-color: #3370ff;
+    }
+
+    .menu-icon {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+    }
+
+    /* 子菜单项 */
+    .sub-menu-item {
+      padding: 10px 20px 10px 48px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 13px;
+      color: #646a73;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-left: 3px solid transparent;
+    }
+
+    .sub-menu-item:hover {
+      background: #f2f3f5;
+      color: #1f2329;
+    }
+
+    .sub-menu-item.active {
+      background: #e8f0ff;
+      color: #3370ff;
+      font-weight: 500;
+      border-left-color: #3370ff;
+    }
+
+    .sub-menu-item .sub-icon {
+      width: 14px;
+      height: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .sub-menu-item .sub-icon svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .sub-menu-item .sub-name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* ========== 菜单分组（模块标题） ========== */
+    .menu-group {
+      margin-bottom: 4px;
+    }
+
+    .menu-group + .menu-group {
+      margin-top: 12px;
+    }
+
+    .menu-group-title {
+      padding: 6px 20px;
+      font-size: 12px;
+      font-weight: 500;
+      color: #8f959e;
+      letter-spacing: 0.3px;
+      user-select: none;
+    }
+
+    /* 右侧内容区 */
+    .content-area {
+      flex: 1;
+      margin-left: 240px;
+      padding: 32px;
+      min-height: 100vh;
+    }
+
+    .content-section {
+      display: none;
+    }
+
+    .content-section.active {
+      display: block;
+    }
+
+    /* 信息卡片 */
+    .info-card {
+      background: #fff;
+      border-radius: 8px;
+      border: 1px solid #dee0e3;
+      margin-bottom: 24px;
+      box-shadow: 0 1px 2px rgba(31, 35, 41, 0.04);
+      transition: box-shadow 0.2s;
+    }
+
+    .info-card:hover {
+      box-shadow: 0 2px 8px rgba(31, 35, 41, 0.06);
+    }
+
+    .info-card-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid #f2f3f5;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .info-card-header h3 {
+      font-size: 15px;
+      font-weight: 600;
+      color: #1f2329;
+    }
+
+    .info-card-body {
+      padding: 20px;
+    }
+
+    .info-row {
+      display: flex;
+      padding: 12px 0;
+      border-bottom: 1px solid #f2f3f5;
+    }
+
+    .info-row:last-child {
+      border-bottom: none;
+    }
+
+    .info-label {
+      width: 120px;
+      color: #8f959e;
+      font-size: 14px;
+    }
+
+    .info-value {
+      flex: 1;
+      color: #1f2329;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* 版本详情页专用样式 */
+    /* 返回图标按钮（用于表单/详情页的header） */
+    .back-icon-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      margin-right: 12px;
+      background: #fff;
+      border: 1px solid #dee0e3;
+      border-radius: 50%;
+      color: #4e5969;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+      box-shadow: 0 1px 2px rgba(31, 35, 41, 0.04);
+    }
+
+    .back-icon-btn:hover {
+      background: #f0f7ff;
+      border-color: #3370ff;
+      color: #3370ff;
+      transform: translateX(-2px);
+      box-shadow: 0 2px 6px rgba(51, 112, 255, 0.15);
+    }
+
+    .back-icon-btn:active {
+      transform: translateX(-1px) scale(0.96);
+    }
+
+    .back-icon-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .info-card-header h3 {
+      display: flex;
+      align-items: center;
+    }
+
+    /* 应用能力条目 */
+    .ability-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: linear-gradient(135deg, #e6f0ff 0%, #f0e6ff 100%);
+      color: #3370ff;
+      border-radius: 16px;
+      font-size: 12px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .ability-item:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(51, 112, 255, 0.2);
+    }
+
+    .ability-item .ability-icon {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+    }
+
+    .ability-item-static {
+      cursor: default;
+    }
+
+    .ability-item-static:hover {
+      transform: none;
+      box-shadow: none;
+    }
+
+    /* 应用能力条目已迁移到 .ability-item（包含图标+名称） */
+
+    .version-action-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px dashed #f2f3f5;
+    }
+
+    .secret-text {
+      font-family: monospace;
+      background: #f2f3f5;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+
+    .btn-icon {
+      padding: 4px 8px;
+      background: transparent;
+      border: 1px solid #dee0e3;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      color: #646a73;
+      transition: all 0.2s;
+    }
+
+    .btn-icon:hover {
+      border-color: #3370ff;
+      color: #3370ff;
+    }
+
+    /* 表单样式 */
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #1f2329;
+    }
+
+    .form-input {
+      width: 100%;
+      max-width: 520px;
+      padding: 10px 14px;
+      border: 1px solid #dee0e3;
+      border-radius: 6px;
+      font-size: 14px;
+      color: #1f2329;
+      transition: all 0.2s;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: #3370ff;
+      box-shadow: 0 0 0 3px rgba(51, 112, 255, 0.1);
+    }
+
+    .form-select {
+      width: 100%;
+      max-width: 520px;
+      padding: 10px 14px;
+      border: 1px solid #dee0e3;
+      border-radius: 6px;
+      font-size: 14px;
+      color: #1f2329;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    .form-select[multiple] {
+      max-width: 100%;
+      padding: 8px;
+    }
+
+    .form-select[multiple] option {
+      padding: 8px 12px;
+      border-radius: 4px;
+      margin-bottom: 4px;
+      cursor: pointer;
+    }
+
+    .form-select[multiple] option:checked {
+      background: #e8f0ff;
+      color: #3370ff;
+    }
+
+    .form-select[multiple] option:hover {
+      background: #f2f3f5;
+    }
+
+    /* 查看状态 - 认证方式 */
+    .auth-view-group {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .auth-view-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border: 1px solid #dee0e3;
+      border-radius: 6px;
+      background: #fff;
+      opacity: 0.5;
+    }
+
+    .auth-view-item.active {
+      border-color: #3370ff;
+      background: #e8f0ff;
+      opacity: 1;
+    }
+
+    .auth-view-circle {
+      width: 16px;
+      height: 16px;
+      border: 2px solid #dee0e3;
+      border-radius: 50%;
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    .auth-view-item.active .auth-view-circle {
+      border-color: #3370ff;
+      background: #3370ff;
+    }
+
+    .auth-view-item.active .auth-view-circle::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 6px;
+      height: 6px;
+      background: #fff;
+      border-radius: 50%;
+    }
+
+    .auth-view-label {
+      font-size: 14px;
+      font-weight: 500;
+      color: #1f2329;
+    }
+
+    .auth-view-item.active .auth-view-label {
+      color: #3370ff;
+    }
+
+    /* 编辑状态 - 认证方式 */
+    .radio-group {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .radio-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border: 1px solid #dee0e3;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: #fff;
+    }
+
+    .radio-item:hover {
+      border-color: #3370ff;
+    }
+
+    .radio-item.active {
+      border-color: #3370ff;
+      background: #e8f0ff;
+      color: #3370ff;
+    }
+
+    .radio-circle {
+      width: 16px;
+      height: 16px;
+      border: 2px solid #dee0e3;
+      border-radius: 50%;
+      flex-shrink: 0;
+      position: relative;
+      transition: all 0.2s;
+    }
+
+    .radio-item.active .radio-circle {
+      border-color: #3370ff;
+      background: #3370ff;
+    }
+
+    .radio-item.active .radio-circle::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 6px;
+      height: 6px;
+      background: #fff;
+      border-radius: 50%;
+    }
+
+    .radio-title {
+      font-size: 14px;
+      font-weight: 500;
+      color: #1f2329;
+    }
+
+    .radio-item.active .radio-title {
+      color: #3370ff;
+    }
+
+    /* 表格样式 */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .data-table th {
+      text-align: left;
+      padding: 12px 16px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #8f959e;
+      border-bottom: 1px solid #dee0e3;
+      background: #f2f3f5;
+    }
+
+    .data-table td {
+      padding: 12px 16px;
+      font-size: 14px;
+      color: #1f2329;
+      border-bottom: 1px solid #f2f3f5;
+    }
+
+    .data-table tr:hover td {
+      background: #f7f8fa;
+    }
+
+    /* 分页组件 */
+    .pagination {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      padding: 16px;
+      border-top: 1px solid #f2f3f5;
+    }
+
+    .pagination-info {
+      font-size: 13px;
+      color: #8f959e;
+      margin-right: 8px;
+    }
+
+    .pagination-btn {
+      padding: 6px 12px;
+      border: 1px solid #dee0e3;
+      background: #fff;
+      border-radius: 6px;
+      font-size: 13px;
+      color: #1f2329;
+      cursor: pointer;
+      transition: all 0.2s;
+      min-width: 32px;
+      text-align: center;
+    }
+
+    .pagination-btn:hover:not(:disabled) {
+      border-color: #3370ff;
+      color: #3370ff;
+    }
+
+    .pagination-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .pagination-btn.active {
+      background: #3370ff;
+      color: #fff;
+      border-color: #3370ff;
+    }
+
+    .pagination-ellipsis {
+      color: #8f959e;
+      font-size: 13px;
+      padding: 0 4px;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .tag-owner {
+      background: #e8f0ff;
+      color: #3370ff;
+    }
+
+    .tag-admin {
+      background: #fff3e5;
+      color: #d46b08;
+    }
+
+    .tag-dev {
+      background: #e5f7e5;
+      color: #1a7f1a;
+    }
+
+    .action-btns {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-text {
+      padding: 4px 12px;
+      background: transparent;
+      border: none;
+      color: #3370ff;
+      font-size: 13px;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+
+    .btn-text:hover {
+      background: #e8f0ff;
+    }
+
+    .btn-text-danger {
+      color: #f54a45;
+    }
+
+    .btn-text-danger:hover {
+      background: #fde2e2;
+    }
+
+    /* 能力卡片 */
+    .ability-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 12px;
+    }
+
+    .ability-card {
+      background: #fff;
+      border-radius: 6px;
+      border: 1px solid #dee0e3;
+      padding: 12px;
+      transition: all 0.2s;
+      display: flex;
+      flex-direction: column;
+      min-height: 160px;
+    }
+
+    .ability-card:hover {
+      border-color: #3370ff;
+      box-shadow: 0 2px 8px rgba(51, 112, 255, 0.1);
+    }
+
+    .ability-image {
+      width: 100%;
+      height: 48px;
+      border-radius: 6px;
+      background: linear-gradient(135deg, #f2f3f5 0%, #e8e8e8 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 8px;
+      color: #8f959e;
+      font-size: 12px;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .ability-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .ability-name {
+      font-size: 12px;
+      font-weight: 500;
+      color: #1f2329;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex-shrink: 0;
+    }
+
+    .ability-name-icon {
+      width: 12px;
+      height: 12px;
+      color: #3370ff;
+      flex-shrink: 0;
+    }
+
+    .ability-desc {
+      font-size: 11px;
+      color: #8f959e;
+      margin-bottom: 8px;
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      flex: 1;
+    }
+
+    .ability-card .btn-add,
+    .ability-card .btn-config {
+      width: 100%;
+      padding: 4px 8px;
+      background: #3370ff;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.2s;
+      height: 24px;
+      flex-shrink: 0;
+    }
+
+    .ability-card .btn-config {
+      background: #fff;
+      border: 1px solid #3370ff;
+      color: #3370ff;
+    }
+
+    .ability-card .btn-add:hover {
+      background: #2860e8;
+    }
+
+    .ability-card .btn-config:hover {
+      background: #f0f5ff;
+    }
+
+    /* 版本列表 */
+    .version-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .status-reviewing {
+      background: #3370ff;
+    }
+
+    .status-approved {
+      background: #1a7f1a;
+    }
+
+    .status-rejected {
+      background: #f54a45;
+    }
+
+    /* 弹窗 */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(2px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      animation: overlayFadeIn 0.2s ease-out;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    @keyframes overlayFadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .modal {
+      width: 520px;
+      max-width: 90vw;
+      max-height: 90vh;
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 24px;
+      border-bottom: 1px solid #f2f3f5;
+    }
+
+    .modal-header h2 {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .modal-close {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      background: transparent;
+      color: #8f959e;
+      cursor: pointer;
+      border-radius: 6px;
+      font-size: 20px;
+    }
+
+    .modal-close:hover {
+      background: #f2f3f5;
+      color: #1f2329;
+    }
+
+    .modal-body {
+      padding: 24px;
+      max-height: calc(90vh - 140px);
+      overflow-y: visible;
+    }
+
+    #addMemberModal .modal-body,
+    #transferModal .modal-body {
+      overflow-y: visible;
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      padding: 16px 24px;
+      border-top: 1px solid #f2f3f5;
+      background: #f7f8fa;
+    }
+
+    .confirm-modal {
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+      animation: confirmFadeIn 0.2s ease-out;
+    }
+
+    @keyframes confirmFadeIn {
+      from { opacity: 0; transform: scale(0.95) translateY(-10px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .confirm-modal .modal-body {
+      background: #fff;
+    }
+
+    .confirm-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px;
+      background: #fff7e6;
+      color: #ff9500;
+    }
+
+    .confirm-icon.warning {
+      background: #fff7e6;
+      color: #ff9500;
+    }
+
+    .confirm-icon.danger {
+      background: #fff2f0;
+      color: #f54a45;
+    }
+
+    .confirm-icon.info {
+      background: #e6f0ff;
+      color: #3370ff;
+    }
+
+    .confirm-icon.success {
+      background: #e8f5e9;
+      color: #1a7f1a;
+    }
+
+    .confirm-title {
+      font-size: 17px;
+      font-weight: 600;
+      color: #1f2329;
+      margin-bottom: 8px;
+      letter-spacing: -0.2px;
+    }
+
+    .confirm-message {
+      font-size: 14px;
+      color: #646a73;
+      line-height: 1.6;
+      margin: 0;
+    }
+
+    /* Toast 提示 */
+    .toast-container {
+      position: fixed;
+      top: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 2000;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .toast {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      background: #fff;
+      color: #1f2329;
+      border-radius: 10px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08);
+      font-size: 14px;
+      font-weight: 500;
+      pointer-events: auto;
+      animation: toastSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      min-width: 200px;
+      max-width: 400px;
+    }
+
+    .toast.toast-out {
+      animation: toastSlideOut 0.3s cubic-bezier(0.55, 0, 0.7, 0.1) forwards;
+    }
+
+    .toast-icon {
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+    }
+
+    .toast.success .toast-icon {
+      background: #e8f5e9;
+      color: #1a7f1a;
+    }
+
+    .toast.success .toast-icon svg {
+      width: 12px;
+      height: 12px;
+    }
+
+    @keyframes toastSlideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    @keyframes toastSlideOut {
+      to {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.95);
+      }
+    }
+
+    .confirm-icon.info {
+      background: #e6f0ff;
+      color: #3370ff;
+    }
+
+    .btn-secondary {
+      min-width: 72px;
+      height: 36px;
+      padding: 0 16px;
+      border: 1px solid #dee0e3;
+      border-radius: 6px;
+      background: #fff;
+      color: #1f2329;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .btn-secondary:hover {
+      background: #f2f3f5;
+    }
+
+    .btn-submit {
+      min-width: 72px;
+      height: 36px;
+      padding: 0 16px;
+      border: none;
+      border-radius: 6px;
+      background: #3370ff;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .btn-submit:hover {
+      background: #245bdb;
+    }
+
+    /* 图片上传 */
+    .image-upload {
+      width: 360px;
+      height: 200px;
+      border: 2px dashed #dee0e3;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: #8f959e;
+    }
+
+    .image-upload:hover {
+      border-color: #3370ff;
+      color: #3370ff;
+    }
+
+    .image-upload .upload-icon {
+      font-size: 32px;
+      margin-bottom: 8px;
+    }
+
+    .image-upload .upload-text {
+      font-size: 13px;
+    }
+
+    .image-upload .upload-hint {
+      font-size: 12px;
+      margin-top: 4px;
+    }
+
+    /* 图标选择器 */
+    .icon-picker-wrapper {
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+    }
+
+    .icon-preview-box {
+      width: 80px;
+      height: 80px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #e8f0ff 0%, #d6e4ff 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      flex-shrink: 0;
+    }
+
+    .icon-picker-right {
+      flex: 1;
+    }
+
+    .icon-requirements {
+      font-size: 12px;
+      color: #8f959e;
+      margin-bottom: 12px;
+      line-height: 1.5;
+    }
+
+    .icon-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .icon-option {
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      background: #f2f3f5;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .icon-option svg {
+      width: 24px;
+      height: 24px;
+      color: #3370ff;
+    }
+
+    .icon-option:hover {
+      border-color: #3370ff;
+      background: #e8f0ff;
+    }
+
+    .icon-option.selected {
+      border-color: #3370ff;
+      background: #e8f0ff;
+    }
+
+    .upload-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border: 1px dashed #3370ff;
+      border-radius: 6px;
+      background: transparent;
+      color: #3370ff;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .upload-btn:hover {
+      background: #e8f0ff;
+    }
+
+    /* 横向表单布局 */
+    .form-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .form-row-label {
+      font-size: 14px;
+      font-weight: 500;
+      color: #1f2329;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    /* 成员选择组件 - 飞书风格 */
+    .form-group {
+      position: relative;
+      margin-bottom: 20px;
+    }
+
+    .form-group:last-child {
+      margin-bottom: 0;
+    }
+
+    .form-group > div.char-count-wrapper {
+      position: relative;
+      display: inline-block;
+      width: 100%;
+      max-width: 520px;
+    }
+
+    .form-group > div.char-count-wrapper > .form-input {
+      padding-right: 50px;
+    }
+
+    .form-group > div.char-count-wrapper > textarea.form-input {
+      padding-right: 50px;
+    }
+
+    .char-count {
+      position: absolute;
+      right: 10px;
+      bottom: 8px;
+      font-size: 12px;
+      color: #8f959e;
+      transition: color 0.2s;
+      white-space: nowrap;
+      pointer-events: none;
+      line-height: 1;
+    }
+
+    .char-count.warning {
+      color: #f54a45;
+    }
+
+    .member-search-container {
+      position: relative;
+      display: flex;
+      align-items: center;
+      padding: 0;
+      background: #fff;
+      border: 1px solid #dee0e3;
+      border-radius: 6px;
+      overflow: visible;
+    }
+
+    .member-search-container:focus-within {
+      border-color: #3370ff;
+      box-shadow: 0 0 0 3px rgba(51, 112, 255, 0.1);
+    }
+
+    .search-icon {
+      color: #8f959e;
+      margin: 0 8px;
+      flex-shrink: 0;
+    }
+
+    .member-search-input {
+      flex: 1;
+      border: none;
+      outline: none;
+      font-size: 14px;
+      color: #1f2329;
+      background: transparent;
+      padding: 10px 0;
+      min-width: 280px;
+    }
+
+    .member-search-input::placeholder {
+      color: #8f959e;
+    }
+
+    /* 搜索结果下拉 */
+    .member-dropdown {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      right: 0;
+      background: #fff;
+      border: 1px solid #dee0e3;
+      border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+      z-index: 1000;
+      max-height: 240px;
+      overflow-y: auto;
+    }
+
+    .member-dropdown-header {
+      padding: 8px 16px;
+      font-size: 12px;
+      color: #8f959e;
+      border-bottom: 1px solid #f2f3f5;
+    }
+
+    .member-dropdown-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .member-dropdown-item:hover {
+      background: #f7f8fa;
+    }
+
+    .member-dropdown-item.selected {
+      background: #e8f0ff;
+    }
+
+    .member-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #e8f0ff 0%, #d6e4ff 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      color: #3370ff;
+      flex-shrink: 0;
+    }
+
+    .member-dropdown-info {
+      flex: 1;
+    }
+
+    .member-dropdown-name {
+      font-size: 14px;
+      font-weight: 500;
+      color: #1f2329;
+    }
+
+    .member-dropdown-id {
+      font-size: 12px;
+      color: #8f959e;
+    }
+
+    .member-dropdown-dept {
+      font-size: 12px;
+      color: #8f959e;
+    }
+
+    .member-check {
+      width: 18px;
+      height: 18px;
+      border: 2px solid #dee0e3;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .member-dropdown-item.selected .member-check {
+      background: #3370ff;
+      border-color: #3370ff;
+    }
+
+    .member-dropdown-item.selected .member-check::after {
+      content: '';
+      width: 6px;
+      height: 6px;
+      background: #fff;
+      border-radius: 50%;
+    }
+
+    /* 已选成员标签 */
+    .member-selected-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+      min-height: 32px;
+    }
+
+    .member-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: #e8f0ff;
+      border-radius: 16px;
+      font-size: 13px;
+      color: #3370ff;
+    }
+
+    .member-tag-avatar {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #3370ff 0%, #85a5ff 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      color: #fff;
+    }
+
+    .member-tag-remove {
+      cursor: pointer;
+      width: 16px;
+      height: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: all 0.2s;
+    }
+
+    .member-tag-remove:hover {
+      background: rgba(51, 112, 255, 0.2);
+    }
+
+    /* 转移成员列表 */
+    .transfer-member-list {
+      border: 1px solid #dee0e3;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .transfer-member-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      cursor: pointer;
+      transition: all 0.2s;
+      border-bottom: 1px solid #f2f3f5;
+    }
+
+    .transfer-member-item:last-child {
+      border-bottom: none;
+    }
+
+    .transfer-member-item:hover {
+      background: #f7f8fa;
+    }
+
+    .transfer-member-item.selected {
+      background: #e8f0ff;
+    }
+
+    .transfer-member-item.selected .member-check {
+      background: #3370ff;
+      border-color: #3370ff;
+    }
+
+    .transfer-member-item.selected .member-check::after {
+      content: '';
+      width: 6px;
+      height: 6px;
+      background: #fff;
+      border-radius: 50%;
+    }
+
+    /* 成员权限说明 */
+    .member-permission-info {
+      margin-top: 16px;
+      padding: 16px;
+      background: #f7f8fa;
+      border-radius: 8px;
+      border-left: 3px solid #3370ff;
+    }
+
+    .permission-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1f2329;
+      margin-bottom: 8px;
+    }
+
+    .permission-list {
+      font-size: 13px;
+      color: #646a73;
+      line-height: 1.8;
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .permission-list li {
+      position: relative;
+      padding-left: 16px;
+      margin-bottom: 4px;
+    }
+
+    .permission-list li::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 10px;
+      width: 6px;
+      height: 6px;
+      background: #3370ff;
+      border-radius: 50%;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 顶部全局导航栏（所有页面共享） -->
+  <div class="top-nav">
+    <div class="top-nav-left">
+      <div class="top-nav-logo">开</div>
+      <span class="top-nav-title">开放平台</span>
+      <a class="top-nav-link" href="javascript:void(0)" onclick="goToDevDocs()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+          <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+        </svg>
+        开发文档
+      </a>
+    </div>
+    <div class="top-nav-right">
+      <div class="user-menu" id="userMenu" onclick="toggleUserMenu(event)">
+        <div class="user-avatar">张</div>
+        <span class="user-name">张三</span>
+        <svg class="user-menu-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+        <!-- 用户下拉菜单 -->
+        <div class="user-dropdown" id="userDropdown">
+          <div class="user-dropdown-header">
+            <div class="user-dropdown-name">张三</div>
+            <div class="user-dropdown-role">工号：zhangsan · Owner</div>
+          </div>
+          <div class="user-dropdown-item" onclick="goToApiReview(event)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 11l3 3L22 4"></path>
+              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+            </svg>
+            API 审核
+          </div>
+          <div class="user-dropdown-divider"></div>
+          <div class="user-dropdown-item" onclick="logout(event)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+            退出登录
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast 通知容器 -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- ========== 应用列表页 ========== -->
+  <div id="page-list" class="page-container active">
+    <div class="list-container">
+      <!-- Hero Section -->
+      <div class="hero">
+        <h1 class="hero-title">创建你的应用</h1>
+        <button class="btn-create" onclick="openModal()">
+          <span>+</span>
+          立即创建
+        </button>
+      </div>
+
+      <!-- Section Title -->
+      <h2 class="section-title">应用</h2>
+
+      <!-- Card Grid -->
+      <div class="card-grid">
+        <div class="app-card" onclick="goToDetail()">
+          <div class="card-header">
+            <div class="app-icon" style="font-size: 20px; font-weight: 600; color: #3370ff;">智</div>
+            <div class="app-info">
+              <div class="app-name">智能客服系统</div>
+              <span class="eamap-status binded">
+                <span class="dot"></span>
+                已绑定 EAMAP-2024-001
+              </span>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="card-row">
+              <span class="label">所有者</span>
+              <span class="value owner">zhangsan</span>
+            </div>
+            <div class="card-row">
+              <span class="label">我的角色</span>
+              <span class="value role">所有者</span>
+            </div>
+            <div class="card-row">
+              <span class="label">最新动态</span>
+              <span class="value">2026-05-28 14:30:00</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="app-card">
+          <div class="card-header">
+            <div class="app-icon" style="font-size: 20px; font-weight: 600; color: #3370ff;">内</div>
+            <div class="app-info">
+              <div class="app-name">内控平台</div>
+              <span class="eamap-status unbinded">
+                <span class="dot"></span>
+                未绑定 EAMAP
+              </span>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="card-row">
+              <span class="label">所有者</span>
+              <span class="value owner">lisi</span>
+            </div>
+            <div class="card-row">
+              <span class="label">我的角色</span>
+              <span class="value role">开发者</span>
+            </div>
+            <div class="card-row">
+              <span class="label">最新动态</span>
+              <span class="value">2026-05-27 09:15:00</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="app-card">
+          <div class="card-header">
+            <div class="app-icon" style="font-size: 20px; font-weight: 600; color: #3370ff;">数</div>
+            <div class="app-info">
+              <div class="app-name">数据分析平台</div>
+              <span class="eamap-status binded">
+                <span class="dot"></span>
+                已绑定 EAMAP-2024-003
+              </span>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="card-row">
+              <span class="label">所有者</span>
+              <span class="value owner">wangwu</span>
+            </div>
+            <div class="card-row">
+              <span class="label">我的角色</span>
+              <span class="value role">管理员</span>
+            </div>
+            <div class="card-row">
+              <span class="label">最新动态</span>
+              <span class="value">2026-05-25 18:45:00</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination-wrapper">
+        <div class="pagination-info">共 26 条记录</div>
+        <div class="pagination-controls">
+          <div class="pagination-btns">
+            <button class="page-btn" disabled>&lt;</button>
+            <button class="page-btn active">1</button>
+            <button class="page-btn">2</button>
+            <button class="page-btn">3</button>
+            <button class="page-btn">&gt;</button>
+          </div>
+          <div class="page-size-wrapper">
+            <span>每页</span>
+            <select class="page-size-select">
+              <option value="10" selected>10</option>
+              <option value="20">20</option>
+              <option value="50">50</option>
+            </select>
+            <span>条</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 应用详情页 ========== -->
+  <div id="page-detail" class="page-container">
+    <!-- 顶部固定导航栏 -->
+    <div class="top-header">
+      <div class="top-header-left">
+        <button class="home-btn" onclick="goToList()" title="返回首页">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+          </svg>
+        </button>
+        <div class="header-divider"></div>
+        <div class="header-app-info">
+          <span class="header-app-name">智能客服系统</span>
+          <span class="header-eamap">已绑定 EAMAP-2024-001</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-layout">
+      <!-- 左侧菜单栏（按模块分组） -->
+      <div class="sidebar">
+        <!-- 基础信息模块 -->
+        <div class="menu-group" data-group="basic">
+          <div class="menu-group-title">基础信息</div>
+          <ul class="menu-list">
+            <li class="menu-item active" data-group="basic" onclick="switchTab('basic', this)">
+              <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+              凭证与基础信息
+            </li>
+            <li class="menu-item" data-group="basic" onclick="switchTab('member', this)">
+              <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+              </svg>
+              成员管理
+            </li>
+          </ul>
+        </div>
+
+        <!-- 应用能力模块 -->
+        <div class="menu-group" data-group="ability">
+          <div class="menu-group-title">应用能力</div>
+          <ul class="menu-list" id="abilityMenuList">
+            <li class="menu-item" data-group="ability" onclick="switchTab('ability', this)">
+              <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              添加应用能力
+            </li>
+          </ul>
+        </div>
+
+        <!-- 版本管理模块 -->
+        <div class="menu-group" data-group="version">
+          <div class="menu-group-title">版本管理</div>
+          <ul class="menu-list">
+            <li class="menu-item" data-group="version" onclick="switchTab('version', this)">
+              <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+              版本发布与审核
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 右侧内容区 -->
+      <div class="content-area">
+        <!-- 凭证与基础信息 -->
+        <div id="tab-basic" class="content-section active">
+
+          <!-- 应用凭证 -->
+          <div class="info-card">
+            <div class="info-card-header">
+              <h3>应用凭证</h3>
+            </div>
+            <div class="info-card-body">
+              <div class="info-row">
+                <div class="info-label">APPID</div>
+                <div class="info-value">
+                  <span class="secret-text">app_2024060112345678</span>
+                </div>
+              </div>
+              <div class="info-row">
+                <div class="info-label">APP Key</div>
+                <div class="info-value">
+                  <span class="secret-text">key_abc123def456</span>
+                </div>
+              </div>
+              <div class="info-row">
+                <div class="info-label">APP Secret</div>
+                <div class="info-value">
+                  <span class="secret-text" id="appSecret">**** **** **** efgh</span>
+                  <button class="btn-icon" onclick="toggleSecret()" title="显示/隐藏" id="eyeBtn">
+                    <!-- 闭眼图标（默认密文） -->
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="eyeIconClosed">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                      <line x1="1" y1="1" x2="23" y2="23"></line>
+                    </svg>
+                    <!-- 睁眼图标（明文时显示） -->
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="eyeIconOpen" style="display: none;">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                      <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                  </button>
+                  <button class="btn-icon" onclick="copySecret()" title="复制">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 基本信息 -->
+          <div class="info-card">
+            <div class="info-card-header">
+              <h3>基本信息 <button class="btn-icon" onclick="editBasicInfo()" title="编辑" style="margin-left: 8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></button></h3>
+            </div>
+            <div class="info-card-body" id="basicInfoBody">
+              <div class="info-row">
+                <div class="info-label">应用图标</div>
+                <div class="info-value">
+                  <div class="app-icon" style="width: 64px; height: 64px; font-size: 24px; font-weight: 600; color: #3370ff;">智</div>
+                </div>
+              </div>
+              <div class="info-row">
+                <div class="info-label">中文名称</div>
+                <div class="info-value" id="cnName">智能客服系统</div>
+              </div>
+              <div class="info-row">
+                <div class="info-label">英文名称</div>
+                <div class="info-value" id="enName">Smart Customer Service</div>
+              </div>
+              <div class="info-row">
+                <div class="info-label">中文描述</div>
+                <div class="info-value" id="cnDesc">基于 AI 技术的智能客服解决方案</div>
+              </div>
+              <div class="info-row">
+                <div class="info-label">英文描述</div>
+                <div class="info-value" id="enDesc">AI-based intelligent customer service solution</div>
+              </div>
+              <div class="info-row">
+                <div class="info-label">功能示意图</div>
+                <div class="info-value">--</div>
+              </div>
+            </div>
+            <div class="info-card-body" id="basicInfoEdit" style="display: none;">
+              <div class="form-group">
+                <label>应用图标</label>
+                <div class="icon-picker-wrapper">
+                      <div class="icon-preview-box" id="editIconPreview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 36px; height: 36px; color: #3370ff;"><rect x="3" y="11" width="18" height="10" rx="2"></rect><circle cx="12" cy="5" r="2"></circle><path d="M12 7v4"></path><line x1="8" y1="16" x2="8" y2="16"></line><line x1="16" y1="16" x2="16" y2="16"></line></svg></div>
+                  <div class="icon-picker-right">
+                    <div class="icon-requirements">
+                      支持 PNG、JPG、JPEG 格式<br>
+                      尺寸 128×128px，大小不超过 100KB
+                    </div>
+                    <div class="icon-grid">
+                      <div class="icon-option selected" onclick="selectEditIcon(this, 'robot')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"></rect><circle cx="12" cy="5" r="2"></circle><path d="M12 7v4"></path><line x1="8" y1="16" x2="8" y2="16"></line><line x1="16" y1="16" x2="16" y2="16"></line></svg>
+                      </div>
+                      <div class="icon-option" onclick="selectEditIcon(this, 'chat')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                      </div>
+                      <div class="icon-option" onclick="selectEditIcon(this, 'mail')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                      </div>
+                      <div class="icon-option" onclick="selectEditIcon(this, 'calendar')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                      </div>
+                      <div class="icon-option" onclick="selectEditIcon(this, 'file')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                      </div>
+                      <div class="icon-option" onclick="selectEditIcon(this, 'settings')">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.67 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.67 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.67a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                      </div>
+                    </div>
+                    <button class="upload-btn">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+                      </svg>
+                      上传自定义图标
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>中文名称</label>
+                <div class="char-count-wrapper">
+                  <input type="text" class="form-input" value="智能客服系统" maxlength="255" oninput="updateCharCount(this, 'editNameCount')">
+                  <div class="char-count" id="editNameCount">7/255</div>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>英文名称</label>
+                <div class="char-count-wrapper">
+                  <input type="text" class="form-input" value="Smart Customer Service" maxlength="255" oninput="updateCharCount(this, 'editEnNameCount')">
+                  <div class="char-count" id="editEnNameCount">22/255</div>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>中文描述</label>
+                <div class="char-count-wrapper">
+                  <textarea class="form-input" maxlength="2000" style="min-height: 80px; resize: vertical;" oninput="updateCharCount(this, 'editDescCount')">基于 AI 技术的智能客服解决方案</textarea>
+                  <div class="char-count" id="editDescCount">16/2000</div>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>英文描述</label>
+                <div class="char-count-wrapper">
+                  <textarea class="form-input" maxlength="2000" style="min-height: 80px; resize: vertical;" oninput="updateCharCount(this, 'editEnDescCount')">AI-based intelligent customer service solution</textarea>
+                  <div class="char-count" id="editEnDescCount">38/2000</div>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>功能示意图</label>
+                <div class="image-upload">
+                  <div class="upload-icon" style="font-size: 24px; color: #8f959e;">+</div>
+                  <div class="upload-text">点击上传功能示意图</div>
+                  <div class="upload-hint">360×200px，支持 PNG/JPG/JPEG，小于 500KB</div>
+                </div>
+              </div>
+              <div style="display: flex; gap: 12px; margin-top: 24px;">
+                <button class="btn-secondary" onclick="cancelBasicEdit()">取消</button>
+                <button class="btn-submit" onclick="saveBasicInfo()">保存</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 认证方式 -->
+          <div class="info-card">
+            <div class="info-card-header">
+              <h3>认证方式 <button class="btn-icon" onclick="editAuthMethod()" title="编辑" style="margin-left: 8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></button></h3>
+            </div>
+            <div class="info-card-body" id="authMethodBody">
+              <!-- 查看状态：显示所有选项，只读 -->
+              <div class="auth-view-group">
+                <div class="auth-view-item active">
+                  <div class="auth-view-circle"></div>
+                  <span class="auth-view-label">Cookie</span>
+                </div>
+                <div class="auth-view-item">
+                  <div class="auth-view-circle"></div>
+                  <span class="auth-view-label">数字签名</span>
+                </div>
+                <div class="auth-view-item">
+                  <div class="auth-view-circle"></div>
+                  <span class="auth-view-label">SOAHeader</span>
+                </div>
+                <div class="auth-view-item">
+                  <div class="auth-view-circle"></div>
+                  <span class="auth-view-label">SOAURL</span>
+                </div>
+                <div class="auth-view-item">
+                  <div class="auth-view-circle"></div>
+                  <span class="auth-view-label">APIG</span>
+                </div>
+              </div>
+              <!-- apiSecret 查看状态，默认隐藏 -->
+              <div class="info-row" id="apiSecretView" style="display: none; margin-top: 16px;">
+                <div class="info-label">apiSecret</div>
+                <div class="info-value">
+                  <span class="secret-text" id="apiSecretValue">abcdefghijklmnop</span>
+                </div>
+              </div>
+            </div>
+            <div class="info-card-body" id="authMethodEdit" style="display: none;">
+              <!-- 编辑状态：可点击切换（**多选**） -->
+              <div class="radio-group">
+                <div class="radio-item active" data-type="cookie" onclick="selectAuth(this, 'cookie')">
+                  <div class="radio-circle"></div>
+                  <div class="radio-title">Cookie</div>
+                </div>
+                <div class="radio-item" data-type="signature" onclick="selectAuth(this, 'signature')">
+                  <div class="radio-circle"></div>
+                  <div class="radio-title">数字签名</div>
+                </div>
+                <div class="radio-item" data-type="soaheader" onclick="selectAuth(this, 'soaheader')">
+                  <div class="radio-circle"></div>
+                  <div class="radio-title">SOAHeader</div>
+                </div>
+                <div class="radio-item" data-type="soaurl" onclick="selectAuth(this, 'soaurl')">
+                  <div class="radio-circle"></div>
+                  <div class="radio-title">SOAURL</div>
+                </div>
+                <div class="radio-item" data-type="apig" onclick="selectAuth(this, 'apig')">
+                  <div class="radio-circle"></div>
+                  <div class="radio-title">APIG</div>
+                </div>
+              </div>
+              <!-- apiSecret 横向布局：标签和输入框在同一行 -->
+              <div class="form-row" id="apiSecretGroup" style="display: none; margin-top: 20px; align-items: center;">
+                <label class="form-row-label">apiSecret <span style="color: #f54a45;">*</span></label>
+                <div style="flex: 1; max-width: 320px;">
+                  <input type="text" class="form-input" id="apiSecretInput" placeholder="请输入 16位数字+字母组合" maxlength="16" style="width: 100%;" oninput="validateApiSecret(this)">
+                  <div id="apiSecretError" style="font-size: 12px; color: #f54a45; margin-top: 4px; display: none;">格式错误：必须为16位数字+字母组合</div>
+                </div>
+              </div>
+              <div style="display: flex; gap: 12px; margin-top: 24px;">
+                <button class="btn-secondary" onclick="cancelAuthEdit()">取消</button>
+                <button class="btn-submit" onclick="saveAuthMethod()">保存</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 成员管理 -->
+        <div id="tab-member" class="content-section">
+
+          <div class="info-card">
+            <div class="info-card-header">
+              <h3>成员列表</h3>
+              <button class="btn-submit" onclick="openAddMemberModal()" style="padding: 8px 16px; font-size: 13px;">
+                <span style="margin-right: 4px;">+</span>添加成员
+              </button>
+            </div>
+            <div class="info-card-body">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>姓名</th>
+                    <th>工号</th>
+                    <th>角色</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>张三</td>
+                    <td>zhangsan</td>
+                    <td><span class="tag tag-owner">Owner</span></td>
+                    <td>
+                      <div class="action-btns">
+                        <button class="btn-text" onclick="transferMember()">转移</button>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>李四</td>
+                    <td>lisi</td>
+                    <td><span class="tag tag-admin">管理员</span></td>
+                    <td>
+                      <div class="action-btns">
+                        <button class="btn-text btn-text-danger" onclick="deleteMember(this)">删除</button>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>王五</td>
+                    <td>wangwu</td>
+                    <td><span class="tag tag-dev">开发者</span></td>
+                    <td>-</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="pagination-wrapper" id="memberPagination">
+                <div class="pagination-info">共 <span id="memberTotalCount">3</span> 条</div>
+                <div class="pagination-controls">
+                  <div class="pagination-btns" id="memberPageBtns">
+                    <button class="page-btn" disabled>&lt;</button>
+                    <button class="page-btn active">1</button>
+                    <button class="page-btn">&gt;</button>
+                  </div>
+                  <div class="page-size-wrapper">
+                    <span>最大分页数</span>
+                    <select class="page-size-select" id="memberPageSizeSelect" onchange="changeMemberPageSize(this.value)">
+                      <option value="10" selected>10</option>
+                      <option value="20">20</option>
+                      <option value="50">50</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 添加应用能力 -->
+        <div id="tab-ability" class="content-section">
+
+          <div class="ability-grid">
+            <div class="ability-card">
+              <div class="ability-image">示意图</div>
+              <div class="ability-name">
+                <svg class="ability-name-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>
+                群置顶
+              </div>
+              <div class="ability-desc">将应用消息置顶在群聊顶部，提高消息曝光率</div>
+              <button class="btn-config" onclick="configAbility('群置顶')">配置</button>
+            </div>
+
+            <div class="ability-card">
+              <div class="ability-image">示意图</div>
+              <div class="ability-name">
+                <svg class="ability-name-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                群通知
+              </div>
+              <div class="ability-desc">向指定群组发送应用通知消息</div>
+              <button class="btn-config" onclick="configAbility('群通知')">配置</button>
+            </div>
+
+            <div class="ability-card">
+              <div class="ability-image">示意图</div>
+              <div class="ability-name">
+                <svg class="ability-name-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                链接增强
+              </div>
+              <div class="ability-desc">增强链接预览效果，支持自定义卡片样式</div>
+              <button class="btn-add" onclick="addAbility(this, '链接增强', 'link')">添加</button>
+            </div>
+
+            <div class="ability-card">
+              <div class="ability-image">示意图</div>
+              <div class="ability-name">
+                <svg class="ability-name-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                点对点通知
+              </div>
+              <div class="ability-desc">向指定用户发送一对一通知消息</div>
+              <button class="btn-add" onclick="addAbility(this, '点对点通知', 'message')">添加</button>
+            </div>
+
+            <div class="ability-card">
+              <div class="ability-image">示意图</div>
+              <div class="ability-name">
+                <svg class="ability-name-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="8" y1="12" x2="16" y2="12"></line><line x1="12" y1="8" x2="12" y2="16"></line></svg>
+                We码
+              </div>
+              <div class="ability-desc">生成 We码 供用户扫码使用应用功能</div>
+              <button class="btn-add" onclick="addAbility(this, 'We码', 'qrcode')">添加</button>
+            </div>
+
+            <div class="ability-card">
+              <div class="ability-image">示意图</div>
+              <div class="ability-name">
+                <svg class="ability-name-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                应用入群通知
+              </div>
+              <div class="ability-desc">应用加入群组时发送欢迎通知</div>
+              <button class="btn-add" onclick="addAbility(this, '应用入群通知', 'group')">添加</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 能力子页面 - 群置顶服务 -->
+        <div id="tab-ability-pindao" class="content-section">
+          <div class="info-card">
+            <div class="info-card-header">
+              <h3>群置顶服务配置</h3>
+            </div>
+            <div class="info-card-body">
+              <p style="color: #8f959e; font-size: 14px;">群置顶服务已添加，点击左侧菜单可查看配置详情。</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 能力子页面 - 群通知服务 -->
+        <div id="tab-ability-tongzhi" class="content-section">
+          <div class="info-card">
+            <div class="info-card-header">
+              <h3>群通知服务配置</h3>
+            </div>
+            <div class="info-card-body">
+              <p style="color: #8f959e; font-size: 14px;">群通知服务已添加，点击左侧菜单可查看配置详情。</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 版本发布与审核 -->
+        <div id="tab-version" class="content-section">
+
+          <!-- 版本列表区域 -->
+          <div id="versionListSection">
+            <div class="info-card">
+              <div class="info-card-header">
+                <h3>版本列表</h3>
+                <button class="btn-submit" id="btnCreateVersion">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px; vertical-align: -2px;">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                  </svg>
+                  创建版本
+                </button>
+              </div>
+              <div class="info-card-body" style="padding-top: 8px;">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>版本号</th>
+                    <th>版本状态</th>
+                    <th>发布人</th>
+                    <th>审核通过时间</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>1.2.0</td>
+                    <td>
+                      <div class="version-status">
+                        <span class="status-dot status-reviewing"></span>
+                        审核中
+                      </div>
+                    </td>
+                    <td>张三</td>
+                    <td>-</td>
+                    <td>
+                      <div class="action-btns">
+                        <button class="btn-text" onclick="viewVersion('1.2.0','审核中','status-reviewing','张三','-','新增群置顶功能和群通知功能')">查看</button>
+                        <button class="btn-text" onclick="withdrawVersion(this)">撤回</button>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>1.1.0</td>
+                    <td>
+                      <div class="version-status">
+                        <span class="status-dot status-approved"></span>
+                        已通过
+                      </div>
+                    </td>
+                    <td>张三</td>
+                    <td>2026-05-20 14:30:00</td>
+                    <td>
+                      <div class="action-btns">
+                        <button class="btn-text" onclick="viewVersion('1.1.0','已通过','status-approved','张三','2026-05-20 14:30:00','新增群置顶功能和群通知功能')">查看</button>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>1.0.0</td>
+                    <td>
+                      <div class="version-status">
+                        <span class="status-dot status-rejected"></span>
+                        已拒绝
+                      </div>
+                    </td>
+                    <td>李四</td>
+                    <td>-</td>
+                    <td>
+                      <div class="action-btns">
+                        <button class="btn-text" onclick="viewVersion('1.0.0','已拒绝','status-rejected','李四','-','新增群置顶功能和群通知功能')">查看</button>
+                        <button class="btn-text btn-text-danger" onclick="deleteVersion(this)">删除</button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="pagination-wrapper" id="versionPagination">
+                <div class="pagination-info">共 <span id="versionTotalCount">3</span> 条</div>
+                <div class="pagination-controls">
+                  <div class="pagination-btns" id="versionPageBtns">
+                    <button class="page-btn" disabled>&lt;</button>
+                    <button class="page-btn active">1</button>
+                    <button class="page-btn">&gt;</button>
+                  </div>
+                  <div class="page-size-wrapper">
+                    <span>最大分页数</span>
+                    <select class="page-size-select" id="versionPageSizeSelect" onchange="changeVersionPageSize(this.value)">
+                      <option value="10" selected>10</option>
+                      <option value="20">20</option>
+                      <option value="50">50</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+             </div>
+           </div>
+           </div>
+
+           <!-- 创建版本表单 -->
+          <div class="info-card" id="createVersionForm" style="display: none;">
+            <div class="info-card-header" style="display: flex; align-items: center; gap: 8px;">
+              <button class="back-icon-btn" onclick="hideCreateVersionForm()" title="返回版本列表" style="vertical-align: middle;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+              </button>
+              <h3 style="margin: 0; flex: 1;">创建版本</h3>
+            </div>
+            <div class="info-card-body">
+              <div class="form-group">
+                <label>版本号 <span style="color: #f54a45;">*</span></label>
+                <input type="text" class="form-input" placeholder="请输入版本号，如：1.0.0" id="versionNumber" style="max-width: 400px;">
+              </div>
+              <div class="form-group">
+                <label>版本描述</label>
+                <textarea class="form-input" placeholder="请输入版本描述" style="min-height: 100px; resize: vertical; max-width: 600px;" id="versionDesc"></textarea>
+              </div>
+              <div class="form-group">
+                <label>应用能力</label>
+                <div class="ability-tags" style="display: flex; gap: 8px; flex-wrap: wrap; padding: 12px; background: #f7f8fa; border-radius: 6px; max-width: 600px;">
+                  <div class="ability-item">
+                    <svg class="ability-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                      <path d="M2 17l10 5 10-5"></path>
+                      <path d="M2 12l10 5 10-5"></path>
+                    </svg>
+                    <span>群置顶服务</span>
+                  </div>
+                  <div class="ability-item">
+                    <svg class="ability-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                      <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                    </svg>
+                    <span>群通知服务</span>
+                  </div>
+                </div>
+              </div>
+              <div style="display: flex; gap: 12px; margin-top: 24px;">
+                <button class="btn-submit" onclick="confirmCreateVersion()">创建</button>
+                <button class="btn-secondary" onclick="hideCreateVersionForm()">取消</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 添加成员弹窗 -->
+  <div class="modal-overlay" id="addMemberModal">
+    <div class="modal" style="width: 560px;">
+      <div class="modal-header">
+        <h2>添加成员</h2>
+        <button class="modal-close" onclick="closeAddMemberModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <!-- 搜索区域 -->
+        <div class="form-group">
+          <div class="member-search-container">
+            <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <path d="m21 21-4.35-4.35"></path>
+            </svg>
+            <input type="text" class="member-search-input" id="memberSearchInput" placeholder="搜索姓名或工号" oninput="filterMembers()">
+          </div>
+          <!-- 搜索结果下拉 -->
+          <div class="member-dropdown" id="memberDropdown" style="display: none;">
+            <div class="member-dropdown-list" id="memberDropdownList">
+            </div>
+          </div>
+        </div>
+
+        <!-- 已选成员标签 -->
+        <div class="member-selected-tags" id="memberSelectedTags" style="margin-top: 12px;">
+          <!-- 动态插入已选成员 -->
+        </div>
+        
+        <!-- 成员类型 -->
+        <div class="form-group">
+          <label>成员类型 <span style="color: #f54a45;">*</span></label>
+          <div class="radio-group">
+            <div class="radio-item active" onclick="selectMemberType(this)">
+              <div class="radio-circle"></div>
+              <div class="radio-title">管理员</div>
+            </div>
+            <div class="radio-item" onclick="selectMemberType(this)">
+              <div class="radio-circle"></div>
+              <div class="radio-title">开发者</div>
+            </div>
+          </div>
+          <div class="member-permission-info" id="memberPermissionInfo">
+            <div class="permission-title">管理员权限</div>
+            <ul class="permission-list">
+              <li>添加、删除应用开发者</li>
+              <li>添加、删除各种开放服务</li>
+              <li>申请API权限</li>
+              <li>查看应用基本信息</li>
+              <li>查看申请后的服务</li>
+              <li>查看运营报表</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeAddMemberModal()">取消</button>
+        <button class="btn-submit" onclick="confirmAddMember()">确认添加</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 版本详情页 ========== -->
+  <div id="page-version-detail" class="page-container">
+    <!-- 顶部固定导航栏 -->
+    <div class="top-header">
+      <div class="top-header-left">
+        <button class="home-btn" onclick="goToList()" title="返回首页">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+          </svg>
+        </button>
+        <div class="header-divider"></div>
+        <div class="header-app-info">
+          <span class="header-app-name">智能客服系统</span>
+          <span class="header-eamap">已绑定 EAMAP-2024-001</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 主内容区（无侧边栏，与基本信息tab一致） -->
+    <div class="detail-layout">
+      <!-- 左侧菜单栏（按模块分组，版本详情页高亮版本管理） -->
+      <div class="sidebar">
+        <!-- 基础信息模块 -->
+        <div class="menu-group" data-group="basic">
+          <div class="menu-group-title">基础信息</div>
+          <ul class="menu-list">
+            <li class="menu-item" data-group="basic" onclick="goBackToVersionListFromDetail()">
+              <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+              凭证与基础信息
+            </li>
+            <li class="menu-item" data-group="basic" onclick="goBackToVersionListFromDetail()">
+              <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+              </svg>
+              成员管理
+            </li>
+          </ul>
+        </div>
+
+        <!-- 应用能力模块 -->
+        <div class="menu-group" data-group="ability">
+          <div class="menu-group-title">应用能力</div>
+          <ul class="menu-list" id="abilityMenuList2">
+            <li class="menu-item" data-group="ability" onclick="goBackToVersionListFromDetail()">
+              <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              添加应用能力
+            </li>
+          </ul>
+        </div>
+
+        <!-- 版本管理模块（当前激活） -->
+        <div class="menu-group" data-group="version">
+          <div class="menu-group-title">版本管理</div>
+          <ul class="menu-list">
+            <li class="menu-item active" data-group="version" onclick="goBackToVersionListFromDetail()">
+              <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+              版本发布与审核
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 右侧内容区 -->
+      <div class="content-area">
+        <div id="versionDetailContent">
+          <!-- 查看态 -->
+          <div class="info-card" id="versionInfoCard">
+            <div class="info-card-header">
+              <h3>
+                <button class="back-icon-btn" onclick="goBackToVersionListFromDetail()" title="返回版本列表">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                  </svg>
+                </button>
+                版本信息
+                <button class="btn-icon" id="editVersionBtn" onclick="enableVersionEdit()" title="编辑" style="margin-left: 8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></button>
+              </h3>
+            </div>
+            <div class="info-card-body" id="versionInfoBody">
+              <div class="info-row" id="versionDetailNumber">
+                <div class="info-label">版本号</div>
+                <div class="info-value">1.2.0</div>
+              </div>
+              <div class="info-row" id="versionDetailDesc">
+                <div class="info-label">版本描述</div>
+                <div class="info-value" id="versionDescValue">新增群置顶功能和群通知功能</div>
+              </div>
+              <div class="info-row" id="versionDetailAbilities">
+                <div class="info-label">应用能力</div>
+                <div class="info-value" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                  <div class="ability-item ability-item-static">
+                    <svg class="ability-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                      <path d="M2 17l10 5 10-5"></path>
+                      <path d="M2 12l10 5 10-5"></path>
+                    </svg>
+                    <span>群置顶服务</span>
+                  </div>
+                  <div class="ability-item ability-item-static">
+                    <svg class="ability-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                      <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                    </svg>
+                    <span>群通知服务</span>
+                  </div>
+                </div>
+              </div>
+              <div class="version-action-bar">
+                <button class="btn-submit" id="publishVersionBtn" onclick="publishVersion()">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px; vertical-align: -2px;">
+                    <path d="M22 2L11 13"></path>
+                    <path d="M22 2L15 22 11 13 2 9l20-7z"></path>
+                  </svg>
+                  发布
+                </button>
+                <span style="color: #8f959e; font-size: 13px;">发布后将进入审核流程</span>
+              </div>
+            </div>
+          </div>
+          <!-- 编辑态（与创建版本界面一致） -->
+          <div class="info-card" id="versionEditCard" style="display: none;">
+            <div class="info-card-header" style="display: flex; align-items: center; gap: 8px;">
+              <button class="back-icon-btn" onclick="cancelVersionEdit()" title="返回版本详情" style="vertical-align: middle;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+              </button>
+              <h3 style="margin: 0; flex: 1;">编辑版本</h3>
+            </div>
+            <div class="info-card-body">
+              <div class="form-group">
+                <label>版本号 <span style="color: #f54a45;">*</span></label>
+                <input type="text" class="form-input" placeholder="请输入版本号，如：1.0.0" id="editVersionNumber" style="max-width: 400px;">
+              </div>
+              <div class="form-group">
+                <label>版本描述</label>
+                <textarea class="form-input" id="editVersionDesc" placeholder="请输入版本描述" style="min-height: 100px; resize: vertical; max-width: 600px;"></textarea>
+              </div>
+              <div class="form-group">
+                <label>应用能力</label>
+                <div class="ability-tags" style="display: flex; gap: 8px; flex-wrap: wrap; padding: 12px; background: #f7f8fa; border-radius: 6px; max-width: 600px;">
+                  <div class="ability-item">
+                    <svg class="ability-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                      <path d="M2 17l10 5 10-5"></path>
+                      <path d="M2 12l10 5 10-5"></path>
+                    </svg>
+                    <span>群置顶服务</span>
+                  </div>
+                  <div class="ability-item">
+                    <svg class="ability-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                      <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                    </svg>
+                    <span>群通知服务</span>
+                  </div>
+                </div>
+              </div>
+              <div style="display: flex; gap: 12px; margin-top: 24px;">
+                <button class="btn-submit" onclick="saveVersionEdit()">保存</button>
+                <button class="btn-secondary" onclick="cancelVersionEdit()">取消</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 确认弹窗 -->
+  <div class="modal-overlay" id="confirmModal" onclick="closeConfirmOnOverlay(event)">
+    <div class="modal confirm-modal" style="width: 400px;">
+      <div class="modal-body" style="text-align: center; padding: 32px 24px 24px;">
+        <div class="confirm-icon" id="confirmIcon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4.99c-.77-1.33-2.69-1.33-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z"/>
+          </svg>
+        </div>
+        <h2 id="confirmTitle" class="confirm-title">确认操作</h2>
+        <p id="confirmMessage" class="confirm-message"></p>
+      </div>
+      <div class="modal-footer" style="justify-content: center; gap: 12px; padding: 16px 24px 24px; border-top: none; background: #fff;">
+        <button class="btn-secondary" onclick="closeConfirmModal()" id="confirmCancelBtn" style="min-width: 96px; height: 36px; border-radius: 8px;">取消</button>
+        <button class="btn-submit" onclick="executeConfirm()" id="confirmOkBtn" style="min-width: 96px; height: 36px; border-radius: 8px; box-shadow: 0 2px 6px rgba(51, 112, 255, 0.25);">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 转移成员弹窗 -->
+  <div class="modal-overlay" id="transferModal" onclick="closeTransferOnOverlay(event)">
+    <div class="modal" style="width: 480px;">
+      <div class="modal-header">
+        <h2>转移Owner权限</h2>
+        <button class="modal-close" onclick="closeTransferModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 14px; color: #646a73; margin-bottom: 16px;">选择要转移Owner权限的成员：</p>
+        <div class="form-group">
+          <div class="member-search-container">
+            <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <path d="M21 21l-4.35-4.35"></path>
+            </svg>
+            <input type="text" class="member-search-input" id="transferSearchInput" placeholder="搜索姓名或工号" oninput="filterTransferMembers()">
+          </div>
+          <!-- 搜索结果下拉 -->
+          <div class="member-dropdown" id="transferDropdown" style="display: none;">
+            <div class="member-dropdown-list" id="transferDropdownList">
+            </div>
+          </div>
+        </div>
+
+        <!-- 已选成员显示 -->
+        <div class="member-selected-tags" id="transferSelectedTags" style="margin-top: 12px;">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeTransferModal()">取消</button>
+        <button class="btn-submit" onclick="confirmTransfer()">确认转移</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 创建应用弹窗 -->
+  <div class="modal-overlay" id="createModal" onclick="closeModalOnOverlay(event)">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>创建应用</h2>
+        <button class="modal-close" onclick="closeModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>应用图标 <span style="color: #f54a45;">*</span></label>
+          <div class="icon-picker-wrapper">
+                <div class="icon-preview-box" id="createIconPreview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 36px; height: 36px; color: #3370ff;"><rect x="3" y="11" width="18" height="10" rx="2"></rect><circle cx="12" cy="5" r="2"></circle><path d="M12 7v4"></path><line x1="8" y1="16" x2="8" y2="16"></line><line x1="16" y1="16" x2="16" y2="16"></line></svg></div>
+            <div class="icon-picker-right">
+              <div class="icon-requirements">
+                支持 PNG、JPG、JPEG 格式<br>
+                尺寸 128×128px，大小不超过 100KB
+              </div>
+              <div class="icon-grid">
+                <div class="icon-option selected" onclick="selectCreateIcon(this, 'robot')">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"></rect><circle cx="12" cy="5" r="2"></circle><path d="M12 7v4"></path><line x1="8" y1="16" x2="8" y2="16"></line><line x1="16" y1="16" x2="16" y2="16"></line></svg>
+                </div>
+                <div class="icon-option" onclick="selectCreateIcon(this, 'chat')">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                </div>
+                <div class="icon-option" onclick="selectCreateIcon(this, 'mail')">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                </div>
+                <div class="icon-option" onclick="selectCreateIcon(this, 'calendar')">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                </div>
+                <div class="icon-option" onclick="selectCreateIcon(this, 'file')">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                </div>
+                <div class="icon-option" onclick="selectCreateIcon(this, 'settings')">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.67 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.67 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.67a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                </div>
+              </div>
+              <button class="upload-btn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+                </svg>
+                上传自定义图标
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>中文名称 <span style="color: #f54a45;">*</span></label>
+          <div class="char-count-wrapper">
+            <input type="text" class="form-input" placeholder="请输入应用中文名称" maxlength="255" oninput="updateCharCount(this, 'createNameCount')">
+            <div class="char-count" id="createNameCount">0/255</div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>英文名称 <span style="color: #f54a45;">*</span></label>
+          <div class="char-count-wrapper">
+            <input type="text" class="form-input" placeholder="请输入应用英文名称" maxlength="255" oninput="updateCharCount(this, 'createEnNameCount')">
+            <div class="char-count" id="createEnNameCount">0/255</div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>中文描述</label>
+          <div class="char-count-wrapper">
+            <textarea class="form-input" placeholder="请输入应用中文描述（选填）" maxlength="2000" style="min-height: 80px; resize: vertical;" oninput="updateCharCount(this, 'createDescCount')"></textarea>
+            <div class="char-count" id="createDescCount">0/2000</div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>英文描述</label>
+          <div class="char-count-wrapper">
+            <textarea class="form-input" placeholder="请输入应用英文描述（选填）" maxlength="2000" style="min-height: 80px; resize: vertical;" oninput="updateCharCount(this, 'createEnDescCount')"></textarea>
+            <div class="char-count" id="createEnDescCount">0/2000</div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>绑定到应用服务 <span style="color: #f54a45;">*</span></label>
+          <select class="form-select">
+            <option value="">请选择应用服务</option>
+            <option value="EAMAP-2024-001">EAMAP-2024-001 - 用户认证服务</option>
+            <option value="EAMAP-2024-002">EAMAP-2024-002 - 审批流程服务</option>
+            <option value="EAMAP-2024-003">EAMAP-2024-003 - 消息推送服务</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeModal()">取消</button>
+        <button class="btn-submit">创建</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 全局变量
+    var currentVersion = '';
+    var selectedTransferMember = null;
+
+    // ========== 顶部导航栏 / 用户菜单 ==========
+    function toggleUserMenu(event) {
+      event.stopPropagation();
+      const userMenu = document.getElementById('userMenu');
+      const dropdown = document.getElementById('userDropdown');
+      if (!userMenu || !dropdown) return;
+      const isOpen = userMenu.classList.contains('open');
+      if (isOpen) {
+        closeUserMenu();
+      } else {
+        userMenu.classList.add('open');
+        dropdown.classList.add('show');
+      }
+    }
+
+    function closeUserMenu() {
+      const userMenu = document.getElementById('userMenu');
+      const dropdown = document.getElementById('userDropdown');
+      if (userMenu) userMenu.classList.remove('open');
+      if (dropdown) dropdown.classList.remove('show');
+    }
+
+    function goToDevDocs() {
+      showToast('正在打开开发文档...', 'success');
+      // 实际项目可跳转：window.open('https://developer.example.com/docs', '_blank');
+    }
+
+    function goToApiReview(event) {
+      event.stopPropagation();
+      closeUserMenu();
+      showToast('跳转到 API 审核页面', 'success');
+      // 实际项目可跳转：window.location.href = '/api-review';
+    }
+
+    function logout(event) {
+      event.stopPropagation();
+      closeUserMenu();
+      showConfirm('退出登录', '确定要退出当前账号吗？', 'warning', function() {
+        showToast('已退出登录', 'success');
+        // 实际项目可执行：window.location.href = '/login';
+      });
+    }
+
+    // 点击页面其他位置关闭下拉菜单
+    document.addEventListener('click', function(e) {
+      const userMenu = document.getElementById('userMenu');
+      if (userMenu && !userMenu.contains(e.target)) {
+        closeUserMenu();
+      }
+    });
+
+    // 页面切换
+    function goToDetail() {
+      document.getElementById('page-list').classList.remove('active');
+      document.getElementById('page-detail').classList.add('active');
+    }
+
+    function goToList() {
+      document.getElementById('page-detail').classList.remove('active');
+      document.getElementById('page-list').classList.add('active');
+    }
+
+    function goToCreateVersion() {
+      // 确保 page-detail 显示
+      var pageDetail = document.getElementById('page-detail');
+      var pageList = document.getElementById('page-list');
+      if (pageDetail) pageDetail.classList.add('active');
+      if (pageList) pageList.classList.remove('active');
+
+      // 切换到版本 tab
+      var tabVersion = document.getElementById('tab-version');
+      var tabBasic = document.getElementById('tab-basic');
+      if (tabBasic) tabBasic.classList.remove('active');
+      if (tabVersion) {
+        tabVersion.classList.add('active');
+        tabVersion.style.display = 'block';
+      }
+
+      // 隐藏版本列表，显示创建表单
+      var versionListSection = document.getElementById('versionListSection');
+      var createVersionForm = document.getElementById('createVersionForm');
+      if (versionListSection) {
+        versionListSection.style.display = 'none';
+      }
+      if (createVersionForm) {
+        createVersionForm.style.display = 'block';
+      }
+
+      // 同步菜单激活态
+      syncActiveMenuToTab('version');
+    }
+
+    function hideCreateVersionForm() {
+      var createVersionForm = document.getElementById('createVersionForm');
+      var versionListSection = document.getElementById('versionListSection');
+
+      if (createVersionForm) {
+        createVersionForm.style.display = 'none';
+      }
+      if (versionListSection) {
+        versionListSection.style.display = 'block';
+      }
+      // 清空表单
+      var versionNumber = document.getElementById('versionNumber');
+      var versionDesc = document.getElementById('versionDesc');
+      if (versionNumber) versionNumber.value = '';
+      if (versionDesc) versionDesc.value = '';
+    }
+
+    function goBackToVersionListFromDetail() {
+      document.getElementById('page-version-detail').classList.remove('active');
+      document.getElementById('page-detail').classList.add('active');
+      // 同步应用详情页菜单激活态：版本管理 -> 版本发布与审核
+      syncActiveMenuToTab('version');
+    }
+
+    // 根据当前激活的 content-section 同步菜单激活态
+    function syncActiveMenuToTab(tabKey) {
+      // 仅同步应用详情页内的菜单
+      const pageDetail = document.getElementById('page-detail');
+      if (!pageDetail || !pageDetail.classList.contains('active')) return;
+
+      // 清除所有菜单项激活
+      pageDetail.querySelectorAll('.menu-item, .sub-menu-item').forEach(item => {
+        item.classList.remove('active');
+      });
+
+      // 激活对应的菜单项
+      const targetItem = pageDetail.querySelector(`.menu-item[onclick*="switchTab('${tabKey}'"]`);
+      if (targetItem) targetItem.classList.add('active');
+    }
+
+    // 从版本列表返回应用详情
+    function goBackToListFromVersion() {
+      // 当前在 page-detail 的版本tab中，点击返回只需重置表单状态
+      hideCreateVersionForm();
+    }
+
+    // 版本详情
+    function viewVersion(version, status, statusClass, creator, time, desc) {
+      currentVersion = version;
+      // 跳转到版本详情页
+      document.getElementById('page-detail').classList.remove('active');
+      document.getElementById('page-version-detail').classList.add('active');
+      // 更新详情页内容（只展示创建时填写的信息）
+      document.getElementById('versionDetailNumber').querySelector('.info-value').textContent = version;
+      document.getElementById('versionDescValue').textContent = desc || '';
+      // 重置为查看态
+      document.getElementById('versionInfoCard').style.display = '';
+      document.getElementById('versionEditCard').style.display = 'none';
+      document.getElementById('editVersionBtn').style.display = 'inline-block';
+    }
+
+    // 发布版本
+    function publishVersion() {
+      showConfirm('发布版本', '确定要发布该版本吗？发布后将进入审核流程。', 'warning', function() {
+        // 更新版本列表中对应行的状态为"审核中"
+        var rows = document.querySelectorAll('#tab-version tbody tr');
+        for (var i = 0; i < rows.length; i++) {
+          if (rows[i].cells[0] && rows[i].cells[0].textContent.trim() === currentVersion) {
+            var statusCell = rows[i].querySelector('.version-status');
+            if (statusCell) {
+              statusCell.innerHTML = '<span class="status-dot status-reviewing"></span> 审核中';
+            }
+            break;
+          }
+        }
+        showToast('版本已提交审核', 'success');
+        // 跳回版本列表
+        goBackToVersionListFromDetail();
+      });
+    }
+
+    function enableVersionEdit() {
+      document.getElementById('versionInfoCard').style.display = 'none';
+      document.getElementById('versionEditCard').style.display = '';
+      // 填充当前值到编辑表单
+      document.getElementById('editVersionNumber').value = document.getElementById('versionDetailNumber').querySelector('.info-value').textContent;
+      document.getElementById('editVersionDesc').value = document.getElementById('versionDescValue').textContent;
+    }
+
+    function cancelVersionEdit() {
+      document.getElementById('versionInfoCard').style.display = '';
+      document.getElementById('versionEditCard').style.display = 'none';
+    }
+
+    function saveVersionEdit() {
+      const newNumber = document.getElementById('editVersionNumber').value;
+      const newDesc = document.getElementById('editVersionDesc').value;
+
+      if (!newNumber) {
+        alert('请输入版本号');
+        return;
+      }
+
+      // 更新显示
+      document.getElementById('versionDetailNumber').querySelector('.info-value').textContent = newNumber;
+      document.getElementById('versionDescValue').textContent = newDesc;
+
+      // 切换回查看态
+      document.getElementById('versionInfoCard').style.display = '';
+      document.getElementById('versionEditCard').style.display = 'none';
+    }
+
+    // Tab 切换
+    function switchTab(tabName, clickedEl) {
+      // 更新菜单状态：清除所有激活
+      document.querySelectorAll('.menu-item, .sub-menu-item').forEach(item => {
+        item.classList.remove('active');
+      });
+
+      // 找到被点击的菜单项
+      let targetItem = clickedEl;
+      if (!targetItem) {
+        targetItem = (window.event && window.event.target)
+          ? (window.event.target.closest('.menu-item') || window.event.target.closest('.sub-menu-item'))
+          : null;
+      }
+      if (!targetItem && typeof event !== 'undefined' && event && event.target) {
+        targetItem = event.target.closest('.menu-item') || event.target.closest('.sub-menu-item');
+      }
+
+      if (targetItem) {
+        targetItem.classList.add('active');
+      }
+
+      // 更新内容显示
+      document.querySelectorAll('.content-section').forEach(section => {
+        section.classList.remove('active'); section.style.display = '';
+      });
+      
+      const targetTab = document.getElementById('tab-' + tabName);
+      if (targetTab) {
+        targetTab.classList.add('active');
+      }
+    }
+
+    // 弹窗控制
+    function openModal() {
+      document.getElementById('createModal').classList.add('active');
+    }
+
+    function closeModal() {
+      document.getElementById('createModal').classList.remove('active');
+    }
+
+    function closeModalOnOverlay(e) {
+      if (e.target === document.getElementById('createModal')) {
+        closeModal();
+      }
+    }
+
+    // 认证方式点选交互（多选）— **认证方式区域**用 onclick="selectAuth(this, type)" 处理
+    // 旧的单选事件委托已删除（成员角色选择等仍用 .radio-item 单选，互不影响）
+
+    // APP Secret 显示/隐藏
+    let secretVisible = false;
+    const fullSecret = 'sec_abcdefghijklmnop';
+    const maskedSecret = '**** **** **** efgh';
+
+    function toggleSecret() {
+      secretVisible = !secretVisible;
+      document.getElementById('appSecret').textContent = secretVisible ? fullSecret : maskedSecret;
+      
+      // 切换图标：睁眼（明文）/ 闭眼（密文）
+      if (secretVisible) {
+        document.getElementById('eyeIconClosed').style.display = 'none';
+        document.getElementById('eyeIconOpen').style.display = 'block';
+      } else {
+        document.getElementById('eyeIconClosed').style.display = 'block';
+        document.getElementById('eyeIconOpen').style.display = 'none';
+      }
+    }
+
+    function copySecret() {
+      const secret = secretVisible ? fullSecret : maskedSecret;
+      navigator.clipboard.writeText(secret);
+    }
+
+    // 基本信息编辑
+    function editBasicInfo() {
+      document.getElementById('basicInfoBody').style.display = 'none';
+      document.getElementById('basicInfoEdit').style.display = 'block';
+    }
+
+    function cancelBasicEdit() {
+      document.getElementById('basicInfoEdit').style.display = 'none';
+      document.getElementById('basicInfoBody').style.display = 'block';
+    }
+
+    function saveBasicInfo() {
+      document.getElementById('basicInfoEdit').style.display = 'none';
+      document.getElementById('basicInfoBody').style.display = 'block';
+    }
+
+    // 认证方式编辑
+    function editAuthMethod() {
+      document.getElementById('authMethodBody').style.display = 'none';
+      document.getElementById('authMethodEdit').style.display = 'block';
+    }
+
+    function cancelAuthEdit() {
+      document.getElementById('authMethodEdit').style.display = 'none';
+      document.getElementById('authMethodBody').style.display = 'block';
+    }
+
+    function validateApiSecret(input) {
+      const value = input.value;
+      const errorDiv = document.getElementById('apiSecretError');
+      
+      // 只允许输入数字和字母
+      input.value = value.replace(/[^a-zA-Z0-9]/g, '');
+      
+      // 验证格式
+      if (input.value.length > 0 && !/^[a-zA-Z0-9]{16}$/.test(input.value)) {
+        errorDiv.style.display = 'block';
+      } else {
+        errorDiv.style.display = 'none';
+      }
+    }
+
+    function updateCharCount(input, countId) {
+      const current = input.value.length;
+      const max = input.getAttribute('maxlength');
+      const countEl = document.getElementById(countId);
+      countEl.textContent = current + '/' + max;
+      
+      // 当字数超过90%时显示警告颜色
+      if (current / max > 0.9) {
+        countEl.classList.add('warning');
+      } else {
+        countEl.classList.remove('warning');
+      }
+    }
+
+    function saveAuthMethod() {
+      // 多选：获取**所有**选中的认证方式
+      const activeItems = document.querySelectorAll('#authMethodEdit .radio-item.active');
+      const authTypes = Array.from(activeItems).map(item => item.querySelector('.radio-title').textContent);
+      // 默认至少一个（如全取消选）
+      if (authTypes.length === 0) {
+        authTypes.push('Cookie');
+      }
+
+      // 多选：若任一为"数字签名"，验证 API Secret（必须填）
+      if (authTypes.includes('数字签名')) {
+        const apiSecret = document.getElementById('apiSecretInput').value;
+        if (!/^[a-zA-Z0-9]{16}$/.test(apiSecret)) {
+          document.getElementById('apiSecretError').style.display = 'block';
+          return;
+        }
+        // 更新查看区域的值
+        document.getElementById('apiSecretValue').textContent = apiSecret;
+      }
+
+      // 多选：更新查看区域（所有选中的都加 active）
+      const viewItems = document.querySelectorAll('#authMethodBody .auth-view-item');
+      viewItems.forEach(item => {
+        item.classList.remove('active');
+        if (authTypes.includes(item.querySelector('.auth-view-label').textContent)) {
+          item.classList.add('active');
+        }
+      });
+
+      // 多选：若任一为"数字签名"，显示 API Secret
+      const apiSecretView = document.getElementById('apiSecretView');
+      if (authTypes.includes('数字签名')) {
+        apiSecretView.style.display = 'flex';
+      } else {
+        apiSecretView.style.display = 'none';
+      }
+
+      document.getElementById('authMethodEdit').style.display = 'none';
+      document.getElementById('authMethodBody').style.display = 'block';
+    }
+
+    function selectCreateIcon(element, icon) {
+      document.querySelectorAll('#createModal .icon-option').forEach(i => i.classList.remove('selected'));
+      element.classList.add('selected');
+      const svg = element.querySelector('svg');
+      if (svg) {
+        const preview = document.getElementById('createIconPreview');
+        preview.innerHTML = svg.outerHTML;
+        const previewSvg = preview.querySelector('svg');
+        if (previewSvg) {
+          previewSvg.style.width = '36px';
+          previewSvg.style.height = '36px';
+          previewSvg.style.color = '#3370ff';
+        }
+      }
+    }
+
+    function selectEditIcon(element, icon) {
+      document.querySelectorAll('#basicInfoEdit .icon-option').forEach(i => i.classList.remove('selected'));
+      element.classList.add('selected');
+      const svg = element.querySelector('svg');
+      if (svg) {
+        const preview = document.getElementById('editIconPreview');
+        preview.innerHTML = svg.outerHTML;
+        const previewSvg = preview.querySelector('svg');
+        if (previewSvg) {
+          previewSvg.style.width = '36px';
+          previewSvg.style.height = '36px';
+          previewSvg.style.color = '#3370ff';
+        }
+      }
+    }
+
+    // 成员数据
+    const allMembers = [
+      { name: '张三', id: 'zhangsan', department: '研发部' },
+      { name: '李四', id: 'lisi', department: '产品部' },
+      { name: '王五', id: 'wangwu', department: '设计部' },
+      { name: '赵六', id: 'zhaoliu', department: '研发部' },
+      { name: '孙七', id: 'sunqi', department: '市场部' },
+      { name: '周八', id: 'zhouba', department: '运营部' },
+      { name: '吴九', id: 'wujiu', department: '产品部' },
+      { name: '郑十', id: 'zhengshi', department: '研发部' }
+    ];
+
+    // 已选成员存储
+    let selectedMembers = [];
+
+    // 成员选择相关函数
+    function filterMembers() {
+      const searchValue = document.getElementById('memberSearchInput').value.toLowerCase().trim();
+      const dropdown = document.getElementById('memberDropdown');
+      const dropdownList = document.getElementById('memberDropdownList');
+      
+      if (searchValue.length === 0) {
+        dropdown.style.display = 'none';
+        return;
+      }
+      
+      // 搜索匹配的成员
+      const matchedMembers = allMembers.filter(member => 
+        member.name.toLowerCase().includes(searchValue) || 
+        member.id.toLowerCase().includes(searchValue)
+      );
+      
+      // 清空并重新渲染列表
+      dropdownList.innerHTML = '';
+      
+      if (matchedMembers.length === 0) {
+        dropdownList.innerHTML = '<div style="padding: 16px; text-align: center; color: #8f959e; font-size: 13px;">未找到匹配的成员</div>';
+      } else {
+          matchedMembers.forEach(member => {
+          const isSelected = selectedMembers.find(m => m.id === member.id);
+          const item = document.createElement('div');
+          item.className = `member-dropdown-item ${isSelected ? 'selected' : ''}`;
+          item.setAttribute('data-value', member.id);
+          item.setAttribute('onclick', 'toggleMemberSelection(this)');
+          item.innerHTML = `
+            <div class="member-dropdown-info" style="display: flex; align-items: center; gap: 16px; flex: 1;">
+              <div class="member-dropdown-name" style="width: 80px;">${member.name}</div>
+              <div class="member-dropdown-id" style="width: 100px;">${member.id}</div>
+              <div class="member-dropdown-dept">${member.department}</div>
+            </div>
+            <div class="member-check"></div>
+          `;
+          dropdownList.appendChild(item);
+        });
+      }
+      
+      dropdown.style.display = 'block';
+    }
+
+    function toggleMemberSelection(element) {
+      const memberId = element.getAttribute('data-value');
+      const member = allMembers.find(m => m.id === memberId);
+      const index = selectedMembers.findIndex(m => m.id === memberId);
+      
+      if (index > -1) {
+        // 取消选择
+        selectedMembers.splice(index, 1);
+        element.classList.remove('selected');
+      } else {
+        // 添加选择
+        selectedMembers.push(member);
+        element.classList.add('selected');
+      }
+      
+      updateSelectedTags();
+    }
+
+    function updateSelectedTags() {
+      const container = document.getElementById('memberSelectedTags');
+      container.innerHTML = '';
+      
+      selectedMembers.forEach(member => {
+        const tag = document.createElement('div');
+        tag.className = 'member-tag';
+        tag.innerHTML = `
+          <div class="member-tag-avatar">${member.name.charAt(0)}</div>
+          <span>${member.name}</span>
+          <div class="member-tag-remove" onclick="removeMember('${member.id}')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </div>
+        `;
+        container.appendChild(tag);
+      });
+    }
+
+    function removeMember(memberId) {
+      const index = selectedMembers.findIndex(m => m.id === memberId);
+      if (index > -1) {
+        selectedMembers.splice(index, 1);
+        updateSelectedTags();
+        
+        // 更新下拉列表中的选中状态
+        const dropdownItem = document.querySelector(`#memberDropdownList .member-dropdown-item[data-value="${memberId}"]`);
+        if (dropdownItem) {
+          dropdownItem.classList.remove('selected');
+        }
+      }
+    }
+
+    // 动态添加能力菜单项（平级菜单，归入"应用能力"分组下）
+    function addAbilitySubMenu(id, icon, name) {
+      // 只往应用详情页的"应用能力"分组下添加
+      const abilityMenuLists = document.querySelectorAll('#page-detail [data-group="ability"] .menu-list');
+      
+      abilityMenuLists.forEach(list => {
+        // 避免重复添加（按id去重）
+        if (list.querySelector(`[data-tab-id="${id}"]`)) return;
+        
+        const menuItem = document.createElement('li');
+        menuItem.className = 'menu-item';
+        menuItem.setAttribute('data-group', 'ability');
+        menuItem.setAttribute('data-tab-id', id);
+        menuItem.setAttribute('onclick', `switchTab('${id}', this)`);
+        menuItem.innerHTML = `
+          <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${icon}</svg>
+          <span>${name}</span>
+        `;
+        list.appendChild(menuItem);
+      });
+    }
+
+    // 通用确认弹窗
+    let confirmCallback = null;
+    let confirmOkCallback = null;
+
+    function showConfirm(title, message, type, callback) {
+      document.getElementById('confirmTitle').textContent = title;
+      document.getElementById('confirmMessage').textContent = message;
+      const iconEl = document.getElementById('confirmIcon');
+      iconEl.className = 'confirm-icon ' + (type || 'info');
+      confirmOkCallback = callback;
+      document.getElementById('confirmModal').classList.add('active');
+    }
+
+    function executeConfirm() {
+      closeConfirmModal();
+      if (confirmOkCallback) {
+        confirmOkCallback();
+        confirmOkCallback = null;
+      }
+    }
+
+    function closeConfirmModal() {
+      document.getElementById('confirmModal').classList.remove('active');
+      confirmCallback = null;
+    }
+
+    function closeConfirmOnOverlay(e) {
+      if (e.target === document.getElementById('confirmModal')) {
+        closeConfirmModal();
+      }
+    }
+
+    // Toast 通知
+    function showToast(message, type) {
+      type = type || 'success';
+      var container = document.getElementById('toastContainer');
+      var toast = document.createElement('div');
+      toast.className = 'toast ' + type;
+
+      var iconHtml = '';
+      if (type === 'success') {
+        iconHtml = '<span class="toast-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>';
+      } else if (type === 'error') {
+        iconHtml = '<span class="toast-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg></span>';
+      } else {
+        iconHtml = '<span class="toast-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg></span>';
+      }
+
+      toast.innerHTML = iconHtml + '<span>' + message + '</span>';
+      container.appendChild(toast);
+
+      setTimeout(function() {
+        toast.classList.add('toast-out');
+        setTimeout(function() {
+          if (toast.parentNode) {
+            toast.parentNode.removeChild(toast);
+          }
+        }, 300);
+      }, 2200);
+    }
+
+    // 成员管理操作
+    function openAddMemberModal() {
+      document.getElementById('addMemberModal').classList.add('active');
+      // 重置成员类型为默认（管理员）
+      document.querySelectorAll('#addMemberModal .radio-item').forEach(i => i.classList.remove('active'));
+      document.querySelector('#addMemberModal .radio-item').classList.add('active');
+      // 重置权限说明
+      const permissionInfo = document.getElementById('memberPermissionInfo');
+      permissionInfo.innerHTML = `
+        <div class="permission-title">管理员权限</div>
+        <ul class="permission-list">
+          <li>添加、删除应用开发者</li>
+          <li>添加、删除各种开放服务</li>
+          <li>申请API权限</li>
+          <li>查看应用基本信息</li>
+          <li>查看申请后的服务</li>
+          <li>查看运营报表</li>
+        </ul>
+      `;
+    }
+
+    function closeAddMemberModal() {
+      document.getElementById('addMemberModal').classList.remove('active');
+      // 重置状态
+      selectedMembers = [];
+      updateSelectedTags();
+      document.getElementById('memberSearchInput').value = '';
+      document.getElementById('memberDropdown').style.display = 'none';
+    }
+
+    function selectMemberType(element) {
+      document.querySelectorAll('#addMemberModal .radio-item').forEach(i => i.classList.remove('active'));
+      element.classList.add('active');
+      
+      // 更新权限说明
+      const memberType = element.querySelector('.radio-title').textContent;
+      const permissionInfo = document.getElementById('memberPermissionInfo');
+      
+      if (memberType === '管理员') {
+        permissionInfo.innerHTML = `
+          <div class="permission-title">管理员权限</div>
+          <ul class="permission-list">
+            <li>添加、删除应用开发者</li>
+            <li>添加、删除各种开放服务</li>
+            <li>申请API权限</li>
+            <li>查看应用基本信息</li>
+            <li>查看申请后的服务</li>
+            <li>查看运营报表</li>
+          </ul>
+        `;
+      } else {
+        permissionInfo.innerHTML = `
+          <div class="permission-title">开发者权限</div>
+          <ul class="permission-list">
+            <li>查看应用基本信息</li>
+            <li>添加、删除各种服务</li>
+            <li>申请API权限</li>
+            <li>查看申请后的服务</li>
+            <li>查看运营报表</li>
+          </ul>
+        `;
+      }
+    }
+
+    function confirmAddMember() {
+      // 实际添加成员逻辑
+      if (selectedMembers.length === 0) {
+        showConfirm('提示', '请选择至少一个成员', null);
+        return;
+      }
+      
+      const memberType = document.querySelector('#addMemberModal .radio-item.active .radio-title').textContent;
+      const table = document.querySelector('#tab-member .data-table tbody');
+      
+      selectedMembers.forEach(member => {
+        const newRow = document.createElement('tr');
+        newRow.innerHTML = `
+          <td>${member.name}</td>
+          <td>${member.id}</td>
+          <td><span class="tag tag-${memberType === '管理员' ? 'admin' : 'dev'}">${memberType}</span></td>
+          <td>
+            <div class="action-btns">
+              <button class="btn-text btn-text-danger" onclick="deleteMember(this)">删除</button>
+            </div>
+          </td>
+        `;
+        table.appendChild(newRow);
+      });
+      
+      closeAddMemberModal();
+      // 重置选择
+      selectedMembers = [];
+      updateSelectedTags();
+      document.getElementById('memberSearchInput').value = '';
+      document.getElementById('memberDropdown').style.display = 'none';
+    }
+
+    // 转移成员
+    let transferTargetRow = null;
+
+    function transferMember() {
+      transferTargetRow = event.target.closest('tr');
+      document.getElementById('transferModal').classList.add('active');
+    }
+
+    function filterTransferMembers() {
+      const searchValue = document.getElementById('transferSearchInput').value.toLowerCase().trim();
+      const dropdown = document.getElementById('transferDropdown');
+      const dropdownList = document.getElementById('transferDropdownList');
+      
+      if (searchValue.length === 0) {
+        dropdown.style.display = 'none';
+        return;
+      }
+      
+      // 排除 Owner（张三），只显示其他成员
+      const transferableMembers = allMembers.filter(m => m.id !== 'zhangsan');
+      const matchedMembers = transferableMembers.filter(member => 
+        member.name.toLowerCase().includes(searchValue) || 
+        member.id.toLowerCase().includes(searchValue)
+      );
+      
+      dropdownList.innerHTML = '';
+      
+      if (matchedMembers.length === 0) {
+        dropdownList.innerHTML = '<div style="padding: 16px; text-align: center; color: #8f959e; font-size: 13px;">未找到匹配的成员</div>';
+      } else {
+        matchedMembers.forEach(member => {
+          const isSelected = selectedTransferMember === member.id;
+          const item = document.createElement('div');
+          item.className = 'member-dropdown-item' + (isSelected ? ' selected' : '');
+          item.setAttribute('data-value', member.id);
+          item.setAttribute('onclick', 'selectTransferMember(this)');
+          item.innerHTML = '<div class="member-dropdown-info" style="display: flex; align-items: center; gap: 16px; flex: 1;">' +
+            '<div class="member-dropdown-name" style="width: 80px;">' + member.name + '</div>' +
+            '<div class="member-dropdown-id" style="width: 100px;">' + member.id + '</div>' +
+            '<div class="member-dropdown-dept">' + member.department + '</div></div>' +
+            '<div class="member-check"></div>';
+          dropdownList.appendChild(item);
+        });
+      }
+      
+      dropdown.style.display = 'block';
+    }
+
+    function selectTransferMember(element) {
+      const memberId = element.getAttribute('data-value');
+      const member = allMembers.find(m => m.id === memberId);
+      
+      // 单选：切换选中
+      if (selectedTransferMember === memberId) {
+        selectedTransferMember = null;
+        element.classList.remove('selected');
+      } else {
+        // 清除其他选中状态
+        document.querySelectorAll('#transferDropdownList .member-dropdown-item').forEach(item => {
+          item.classList.remove('selected');
+        });
+        element.classList.add('selected');
+        selectedTransferMember = memberId;
+      }
+      
+      updateTransferSelectedTags();
+    }
+
+    function removeTransferMember() {
+      selectedTransferMember = null;
+      document.querySelectorAll('#transferDropdownList .member-dropdown-item').forEach(item => {
+        item.classList.remove('selected');
+      });
+      updateTransferSelectedTags();
+    }
+
+    function updateTransferSelectedTags() {
+      const container = document.getElementById('transferSelectedTags');
+      container.innerHTML = '';
+      
+      if (selectedTransferMember) {
+        const member = allMembers.find(m => m.id === selectedTransferMember);
+        if (member) {
+          const tag = document.createElement('div');
+          tag.className = 'member-tag';
+          tag.innerHTML = '<div class="member-avatar" style="width: 20px; height: 20px; font-size: 11px;">' + member.name.charAt(0) + '</div>' +
+            '<span>' + member.name + '</span>' +
+            '<span class="member-tag-remove" onclick="removeTransferMember()">×</span>';
+          container.appendChild(tag);
+        }
+      }
+    }
+
+    function closeTransferModal() {
+      document.getElementById('transferModal').classList.remove('active');
+      transferTargetRow = null;
+      selectedTransferMember = null;
+      
+      document.getElementById('transferSearchInput').value = '';
+      document.getElementById('transferDropdown').style.display = 'none';
+      document.getElementById('transferSelectedTags').innerHTML = '';
+    }
+
+    function closeTransferOnOverlay(e) {
+      if (e.target === document.getElementById('transferModal')) {
+        closeTransferModal();
+      }
+    }
+
+    function confirmTransfer() {
+      if (!selectedTransferMember) {
+        showConfirm('提示', '请选择要转移的成员', null);
+        return;
+      }
+      
+      const member = allMembers.find(m => m.id === selectedTransferMember);
+      const targetName = member ? member.name : '';
+      
+      showConfirm('确认转移', '确定将Owner权限转移给 ' + targetName + ' 吗？', 'warning', function() {
+        const currentOwner = document.querySelector('.tag-owner');
+        const targetRow = transferTargetRow;
+        const targetRole = targetRow.querySelector('.tag');
+        
+        // 原Owner变为管理员
+        currentOwner.textContent = '管理员';
+        currentOwner.className = 'tag tag-admin';
+        
+        // 目标变为Owner
+        targetRole.textContent = 'Owner';
+        targetRole.className = 'tag tag-owner';
+        
+        // 更新操作按钮
+        const currentRow = currentOwner.closest('tr');
+        currentRow.querySelector('.action-btns').innerHTML = '<button class="btn-text btn-text-danger" onclick="deleteMember(this)">删除</button>';
+        targetRow.querySelector('.action-btns').innerHTML = '<button class="btn-text" onclick="transferMember()">转移</button>';
+      });
+      
+      closeTransferModal();
+      selectedTransferMember = null;
+    }
+
+    function deleteMember(btn) {
+      const row = btn.closest('tr');
+      const memberName = row.querySelector('td').textContent;
+      showConfirm('确认删除', `确定要删除成员 ${memberName} 吗？`, function() {
+        row.remove();
+      });
+    }
+
+    function selectAuth(element, type) {
+      // 多选：切换当前元素的 active 状态（不移除其他）
+      element.classList.toggle('active');
+
+      // 多选：任一为"数字签名"就显示 apiSecret 输入框
+      const isSignatureActive = document.querySelector('#authMethodEdit .radio-item.active[data-type="signature"]');
+      document.getElementById('apiSecretGroup').style.display = isSignatureActive ? 'flex' : 'none';
+    }
+
+    // 能力图标映射
+    const abilityIcons = {
+      'link': '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>',
+      'message': '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>',
+      'qrcode': '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="8" y1="12" x2="16" y2="12"></line><line x1="12" y1="8" x2="12" y2="16"></line></svg>',
+      'group': '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>'
+    };
+
+    // 能力管理操作
+    function configAbility(abilityName) {
+      alert(`配置${abilityName}能力`);
+    }
+
+    function addAbility(btn, abilityName, iconKey) {
+      if (confirm(`确定要添加${abilityName}能力吗？`)) {
+        // 更改按钮为配置
+        btn.textContent = '配置';
+        btn.className = 'btn-config';
+        btn.setAttribute('onclick', `configAbility('${abilityName}')`);
+        
+        // 添加到左侧菜单
+        const abilityId = 'ability-' + abilityName.toLowerCase().replace(/[^\w]/g, '');
+        const iconSvg = abilityIcons[iconKey] || abilityIcons['link'];
+        addAbilitySubMenu(abilityId, iconSvg, abilityName + '服务');
+      }
+    }
+
+    // 创建版本操作
+    function confirmCreateVersion() {
+      const versionNum = document.getElementById('versionNumber').value;
+      const versionDesc = document.getElementById('versionDesc').value;
+      
+      if (!versionNum) {
+        alert('请输入版本号');
+        return;
+      }
+      
+      // 验证版本号格式 x.x.x
+      if (!/^\d+\.\d+\.\d+$/.test(versionNum)) {
+        alert('版本号格式不正确，请使用 x.x.x 格式');
+        return;
+      }
+      
+      const table = document.querySelector('#tab-version .data-table tbody');
+      const newRow = document.createElement('tr');
+      newRow.innerHTML = `
+        <td>${versionNum}</td>
+        <td>
+          <div class="version-status">
+            <span class="status-dot status-reviewing"></span>
+            审核中
+          </div>
+        </td>
+        <td>张三</td>
+        <td>-</td>
+        <td>
+          <div class="action-btns">
+            <button class="btn-text" onclick="viewVersion('${versionNum}','审核中','status-reviewing','张三','-','${versionDesc.replace(/'/g, "\\'")}')">查看</button>
+            <button class="btn-text" onclick="withdrawVersion(this)">撤回</button>
+          </div>
+        </td>
+      `;
+      table.insertBefore(newRow, table.firstChild);
+
+      hideCreateVersionForm();
+
+      // 跳转到详情页
+      viewVersion(versionNum, '审核中', 'status-reviewing', '张三', '-', versionDesc);
+    }
+
+    // 版本管理操作
+    function withdrawVersion(btn) {
+      showConfirm('撤回版本', '确定要撤回该版本吗？撤回后版本将变为草稿状态。', 'warning', function() {
+        const row = btn.closest('tr');
+        const statusCell = row.querySelector('.version-status');
+        statusCell.innerHTML = `
+          <span class="status-dot" style="background: #8f959e;"></span>
+          已撤回
+        `;
+        btn.remove();
+      });
+    }
+
+    function deleteVersion(btn) {
+      showConfirm('删除版本', '确定要删除该版本吗？删除后不可恢复。', 'danger', function() {
+        const row = btn.closest('tr');
+        row.remove();
+      });
+    }
+
+    // 成员分页状态
+    let memberCurrentPage = 1;
+    let memberPageSize = 10;
+    let memberTotalCount = 3;
+    
+    function changeMemberPage(page) {
+      memberCurrentPage = page;
+      updateMemberPagination();
+    }
+    
+    function changeMemberPageSize(size) {
+      memberPageSize = parseInt(size);
+      memberCurrentPage = 1;
+      updateMemberPagination();
+    }
+    
+    function updateMemberPagination() {
+      const tbody = document.querySelector('#tab-member .data-table tbody');
+      const totalRows = tbody.querySelectorAll('tr').length;
+      memberTotalCount = totalRows;
+      const totalPages = Math.ceil(totalRows / memberPageSize) || 1;
+      
+      if (memberCurrentPage > totalPages) memberCurrentPage = totalPages;
+      if (memberCurrentPage < 1) memberCurrentPage = 1;
+      
+      // 显示/隐藏行
+      const rows = tbody.querySelectorAll('tr');
+      rows.forEach((row, index) => {
+        const start = (memberCurrentPage - 1) * memberPageSize;
+        const end = start + memberPageSize;
+        row.style.display = (index >= start && index < end) ? '' : 'none';
+      });
+      
+      // 更新总数显示
+      document.getElementById('memberTotalCount').textContent = totalRows;
+      
+      // 渲染分页按钮
+      renderPageButtons('memberPageBtns', memberCurrentPage, totalPages, 'changeMemberPage');
+    }
+    
+    // 版本分页状态
+    let versionCurrentPage = 1;
+    let versionPageSize = 10;
+    let versionTotalCount = 3;
+    
+    function changeVersionPage(page) {
+      versionCurrentPage = page;
+      updateVersionPagination();
+    }
+    
+    function changeVersionPageSize(size) {
+      versionPageSize = parseInt(size);
+      versionCurrentPage = 1;
+      updateVersionPagination();
+    }
+    
+    function updateVersionPagination() {
+      const tbody = document.querySelector('#tab-version .data-table tbody');
+      const totalRows = tbody.querySelectorAll('tr').length;
+      versionTotalCount = totalRows;
+      const totalPages = Math.ceil(totalRows / versionPageSize) || 1;
+      
+      if (versionCurrentPage > totalPages) versionCurrentPage = totalPages;
+      if (versionCurrentPage < 1) versionCurrentPage = 1;
+      
+      // 显示/隐藏行
+      const rows = tbody.querySelectorAll('tr');
+      rows.forEach((row, index) => {
+        const start = (versionCurrentPage - 1) * versionPageSize;
+        const end = start + versionPageSize;
+        row.style.display = (index >= start && index < end) ? '' : 'none';
+      });
+      
+      // 更新总数显示
+      document.getElementById('versionTotalCount').textContent = totalRows;
+      
+      // 渲染分页按钮
+      renderPageButtons('versionPageBtns', versionCurrentPage, totalPages, 'changeVersionPage');
+    }
+    
+    // 渲染分页按钮
+    function renderPageButtons(containerId, currentPage, totalPages, onPageChange) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+      
+      let html = '';
+      
+      // 上一页
+      html += `<button class="page-btn" ${currentPage === 1 ? 'disabled' : ''} onclick="${onPageChange}(${currentPage - 1})">&lt;</button>`;
+      
+      // 页码
+      for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+          html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="${onPageChange}(${i})">${i}</button>`;
+        } else if (i === currentPage - 2 || i === currentPage + 2) {
+          html += `<span style="padding: 0 8px; color: #8f959e;">...</span>`;
+        }
+      }
+      
+      // 下一页
+      html += `<button class="page-btn" ${currentPage === totalPages ? 'disabled' : ''} onclick="${onPageChange}(${currentPage + 1})">&gt;</button>`;
+      
+      container.innerHTML = html;
+    }
+
+    // 页面加载时动态添加已配置的能力子菜单（示例）
+      document.addEventListener('DOMContentLoaded', function() {
+      // 示例：添加一些已配置的能力（使用简洁的SVG图标）
+      addAbilitySubMenu('ability-pindao', '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>', '群置顶服务');
+      addAbilitySubMenu('ability-tongzhi', '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>', '群通知服务');
+      
+      // 初始化添加成员弹窗的权限文案（默认选中管理员）
+      const defaultMemberType = document.querySelector('#addMemberModal .radio-item.active');
+      if (defaultMemberType) {
+        selectMemberType(defaultMemberType);
+      }
+      
+      // 点击页面其他地方关闭下拉框
+      document.addEventListener('click', function(e) {
+        const searchContainer = document.querySelector('.member-search-container');
+        const dropdown = document.getElementById('memberDropdown');
+        if (searchContainer && dropdown && !searchContainer.contains(e.target) && !dropdown.contains(e.target)) {
+          dropdown.style.display = 'none';
+        }
+      });
+      
+      document.getElementById('transferModal').addEventListener('click', function(e) {
+        if (e.target === this) closeTransferModal();
+      });
+      
+      document.getElementById('confirmModal').addEventListener('click', function(e) {
+        if (e.target === this) closeConfirmModal();
+      });
+
+      document.getElementById('btnCreateVersion').addEventListener('click', function(e) {
+        e.stopPropagation();
+        goToCreateVersion();
+      });
+      
+      // 初始化分页
+      updateMemberPagination();
+      updateVersionPagination();
+    });
+  </script>
+
+</body>
+</html>

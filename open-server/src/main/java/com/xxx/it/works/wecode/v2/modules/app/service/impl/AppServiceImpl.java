@@ -374,13 +374,13 @@ public class AppServiceImpl implements AppService {
 
         validateVerifyType(app, request);
 
-        // 更新 verify_type
+        // 更新 verify_type_v2（旧字段 verify_type 不动）
         String verifyTypeStr = request.getVerifyType().stream()
                 .map(String::valueOf)
                 .collect(Collectors.joining(","));
 
-        appMapper.deletePropertyByName(app.getId(), AppPropertyConstants.PROP_VERIFY_TYPE);
-        appMapper.insertProperty(createProperty(app.getId(), AppPropertyConstants.PROP_VERIFY_TYPE, verifyTypeStr));
+        appMapper.deletePropertyByName(app.getId(), AppPropertyConstants.PROP_VERIFY_TYPE_V2);
+        appMapper.insertProperty(createProperty(app.getId(), AppPropertyConstants.PROP_VERIFY_TYPE_V2, verifyTypeStr));
 
         // 更新 api_secret
         appMapper.deletePropertyByName(app.getId(), AppPropertyConstants.PROP_API_SECRET);
@@ -450,20 +450,17 @@ public class AppServiceImpl implements AppService {
         App app = ctx.getApp();
 
         List<AppProperty> props = appMapper.selectPropertiesByParentId(app.getId());
-        String verifyTypeStr = CommonConstants.DEFAULT_VERIFY_TYPE;
-        String apiSecret = null;
-        for (AppProperty p : props) {
-            if (AppPropertyConstants.PROP_VERIFY_TYPE.equals(p.getPropertyName())) {
-                verifyTypeStr = p.getPropertyValue();
-            }
-            if (AppPropertyConstants.PROP_API_SECRET.equals(p.getPropertyName())) {
-                apiSecret = p.getPropertyValue();
-            }
+
+        List<Integer> verifyTypes = appCommonService.resolveVerifyTypeList(props);
+        if (verifyTypes.isEmpty()) {
+            verifyTypes = List.of(VerifyTypeEnum.COOKIE.getCode());
         }
 
-        List<Integer> verifyTypes = Arrays.stream(verifyTypeStr.split(","))
-                .map(Integer::parseInt)
-                .collect(Collectors.toList());
+        String apiSecret = props.stream()
+                .filter(p -> AppPropertyConstants.PROP_API_SECRET.equals(p.getPropertyName()))
+                .map(AppProperty::getPropertyValue)
+                .findFirst()
+                .orElse(null);
 
         AppVerifyTypeVO vo = new AppVerifyTypeVO();
         vo.setVerifyType(verifyTypes);

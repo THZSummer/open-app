@@ -17,9 +17,14 @@ public final class AppPropertyConstants {
     public static final String PROP_EAMAP_CODE = "eamap_app_code";
 
     /**
-     * 认证方式
+     * 认证方式（旧字段，单选值，保留不动）
      */
     public static final String PROP_VERIFY_TYPE = "verify_type";
+
+    /**
+     * 认证方式（新字段，多选值，逗号分隔）
+     */
+    public static final String PROP_VERIFY_TYPE_V2 = "verify_type_v2";
 
     /**
      * API 密钥
