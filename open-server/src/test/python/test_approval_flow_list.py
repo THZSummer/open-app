@@ -9,7 +9,7 @@ V3 修复后:
 """
 import time
 import pytest
-from conftest import api, db, db_val, TEST_APP_ID, INTERNAL_APP_ID
+from conftest import api, db, db_val, TEST_APP_ID
 
 
 def _snow_id():
@@ -72,10 +72,10 @@ class TestApprovalFlowList:
         assert r1.status_code in (200, 201)
         tid_global = r1.json()["data"]["id"]
 
-        # 创建应用模板 (appId=INTERNAL_APP_ID) — GAP-2 修复后可共存
+        # 创建应用模板 (appId=TEST_APP_ID) — GAP-2 修复后可共存
         r2 = api("POST", "/approval-flows", {
             "nameCn": f"应用_{code}", "nameEn": f"app_{code}",
-            "code": code, "appId": INTERNAL_APP_ID,
+            "code": code, "appId": TEST_APP_ID,
             "nodes": [{"userId": "tester", "userName": "Test"}]
         })
         assert r2.status_code in (200, 201), f"创建应用模板失败: {r2.json()}"
@@ -83,7 +83,7 @@ class TestApprovalFlowList:
 
         try:
             # 按 appId 过滤 — 应只返回应用模板，不返回全局模板
-            resp = api("GET", f"/approval-flows?appId={INTERNAL_APP_ID}")
+            resp = api("GET", f"/approval-flows?appId={TEST_APP_ID}")
             assert resp.status_code == 200
             items = resp.json().get("data", [])
 
@@ -97,10 +97,10 @@ class TestApprovalFlowList:
 
             # 应用模板应该在结果中
             app_in_filtered = any(
-                it.get("code") == code and str(it.get("appId")) == str(INTERNAL_APP_ID)
+                it.get("code") == code and str(it.get("appId")) == str(TEST_APP_ID)
                 for it in items
             )
             assert app_in_filtered, \
-                f"?appId={INTERNAL_APP_ID} 过滤结果中未找到应用模板 (code={code})"
+                f"?appId={TEST_APP_ID} 过滤结果中未找到应用模板 (code={code})"
         finally:
             db(f"DELETE FROM openplatform_v2_approval_flow_t WHERE code = '{code}'")

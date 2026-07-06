@@ -355,7 +355,7 @@ def test_full_flow():
             "code": "connector_flow_version_publish",
             "nameCn": "连接器流版本发布审批",
             "nameEn": "connector_flow_version_publish",
-            "appId": INTERNAL_APP_ID,
+            "appId": TEST_APP_ID,
             "nodes": [{"userId": "tester", "userName": "Test Approver"}]
         })
         if r and r.status_code in (200, 201):
