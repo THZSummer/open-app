@@ -50,14 +50,29 @@ test/python/
 │   ├── __init__.py          # re-export: api, db, db_val, TEST_APP_ID
 │   └── client.py            # 基础设施 (api / db / 常量)
 │
-├── modules/                 # 与源码 modules/ 一一对应
+├── modules/                 # 与源码 modules/ 一一对应，每个接口一个 test_{action}.py
 │   ├── connector/           # → 源码 modules/connector/
+│   │   ├── test_create.py   #   POST /connectors
+│   │   ├── test_list.py     #   GET  /connectors
+│   │   └── test_delete.py   #   DELETE /connectors/{id}
 │   ├── connectorversion/    # → 源码 modules/connectorversion/
+│   │   ├── test_create.py   #   POST .../versions
+│   │   └── test_publish.py  #   PUT  .../publish
 │   ├── flow/                # → 源码 modules/flow/
+│   │   ├── test_create.py   #   POST /flows
+│   │   └── test_deploy.py   #   POST /flows/{id}/deploy
 │   ├── flowversion/         # → 源码 modules/flowversion/
+│   │   ├── test_create.py   #   POST .../versions
+│   │   ├── test_publish.py  #   POST .../publish
+│   │   └── test_debug.py    #   POST .../debug
 │   ├── approval/            # → 源码 modules/approval/
+│   │   ├── test_list.py     #   GET  /approvals/pending
+│   │   └── test_approve.py  #   POST /approvals/{id}/approve
 │   ├── approvalflow/        # → 源码 modules/approvalflow/
+│   │   ├── test_create.py   #   POST /approval-flows
+│   │   └── test_list.py     #   GET  /approval-flows
 │   └── flowexecrecord/      # → 源码 modules/flowexecrecord/
+│       └── test_list.py     #   GET  /executions
 │
 ├── e2e/                     # 全流程端到端
 │   └── test_full_flow*.py
@@ -69,26 +84,6 @@ test/python/
 ```
 
 **规则**：模块目录下每个接口一个 `test_{action}.py`，文件名去掉模块前缀。例如 `modules/connector/` 包含 `test_create.py`、`test_list.py` 等。
-
----
-
-## 文件命名
-
-目录与源码 `modules/` 严格对应，文件名只保留 action：
-
-```
-modules/connector/              →  POST /connectors         → test_create.py
-modules/connector/              →  GET  /connectors         → test_list.py
-modules/connectorversion/       →  POST .../versions        → test_create.py
-modules/connectorversion/       →  PUT  .../publish         → test_publish.py
-modules/flow/                   →  POST /flows              → test_create.py
-modules/flowversion/            →  POST .../versions        → test_create.py
-modules/flowversion/            →  POST .../debug           → test_debug.py
-modules/approval/               →  POST .../approve         → test_approve.py
-modules/approvalflow/           →  POST /approval-flows     → test_create.py
-```
-
-命名规则：`{源码模块目录}/{test_}{action}.py`
 
 ---
 
