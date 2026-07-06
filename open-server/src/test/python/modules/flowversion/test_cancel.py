@@ -2,7 +2,7 @@
 """#37 POST /flows/{id}/versions/{vid}/cancel — 撤回连接流版本审批"""
 import json
 import pytest
-from common import api, db
+from common import api
 from conftest import assert_operate_log
 
 
@@ -32,12 +32,9 @@ class TestFlowVersionCancel:
             f"Expected status=3(已撤回), got {after.get('status')}"
 
     @pytest.mark.L4
-    def test_cancel_published_rejected(self, draft_flow):
-        """已发布/已驳回版本不可撤回"""
-        fid, fvid = draft_flow
-
-        # 设为已发布状态
-        db(f"UPDATE openplatform_v2_cp_flow_version_t SET status = 5 WHERE id = {fvid}")
+    def test_cancel_published_rejected(self, deployed_flow):
+        """已发布版本不可撤回"""
+        fid, fvid = deployed_flow
         resp = api("POST", f"/flows/{fid}/versions/{fvid}/cancel")
         assert resp is not None
 

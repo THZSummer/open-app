@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """#39~#44 审批记录查询 — 列表、详情、批量操作"""
 import pytest
-from conftest import api, db_val
+from conftest import api
 
 
 class TestApprovalRecordList:
