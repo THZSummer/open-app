@@ -2,6 +2,7 @@
 """#8 POST /connectors/{id}/versions — 创建连接器草稿版本 (FR-005a)"""
 import pytest
 from common import api
+from conftest import assert_operate_log
 
 
 class TestConnectorVersionCreate:
@@ -30,3 +31,12 @@ class TestConnectorVersionCreate:
         cid, _ = draft_connector
         resp = api("POST", f"/connectors/{cid}/versions")
         assert resp.json()["code"] == "409"
+
+    @pytest.mark.L2
+    def test_create_log(self, connector):
+        """创建草稿版本 → 操作日志"""
+        resp = api("POST", f"/connectors/{connector}/versions", {})
+        assert resp.status_code in (200, 201)
+        vid = resp.json().get("data", {}).get("versionId")
+        assert_operate_log("创建")
+

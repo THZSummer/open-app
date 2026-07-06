@@ -57,6 +57,20 @@ def _get_data(resp):
     return resp.json()["data"]
 
 
+def assert_operate_log(keyword, expected_count=1):
+    """通过 API 验证操作日志是否包含指定关键词"""
+    import time
+    time.sleep(0.5)
+    r = api("GET", f"/operate-log?curPage=1&pageSize=50")
+    items = r.json().get("data", [])
+    count = 0
+    for item in (items if isinstance(items, list) else []):
+        text = str(item)
+        if str(keyword) in text:
+            count += 1
+    assert count >= expected_count, f"操作日志未找到关键词 '{keyword}' (预期>={expected_count}，实际={count})"
+
+
 def _find_approval(flow_version_id):
     """查询指定版本的最新审批记录 ID"""
     r = api("GET", f"/approvals/pending?businessType=connector_flow_version_publish&page=1&size=50")

@@ -9,6 +9,7 @@ V3 新增校验：
 import time
 import pytest
 from conftest import api, db, db_val, TEST_APP_ID, INTERNAL_APP_ID
+from conftest import assert_operate_log
 
 
 def _snow_id():
@@ -116,6 +117,6 @@ class TestFlowStart:
                 f"提示应含'连接器'，实际: {body}"
         finally:
             db(f"DELETE FROM openplatform_v2_cp_connector_version_ref_t WHERE id = {ref_id}")
-            db(f"DELETE FROM openplatform_v2_cp_flow_version_t WHERE id = {fvid}")
             db(f"DELETE FROM openplatform_v2_cp_connector_version_t WHERE id = {cv_id}")
             db(f"DELETE FROM openplatform_v2_cp_connector_t WHERE id = {cid}")
+

@@ -3,6 +3,7 @@
 import json
 import pytest
 from conftest import api, db, db_val
+from conftest import assert_operate_log
 
 
 class TestConnectorVersionPublish:
@@ -20,3 +21,19 @@ class TestConnectorVersionPublish:
         log_count = db_val(f"SELECT COUNT(*) FROM openplatform_operate_log_t WHERE after_data LIKE '%{vid}%'")
         if log_count is not None:
             assert int(log_count) >= 0  # 审计增强
+
+    @pytest.mark.L2
+    def test_publish_log(self, draft_connector):
+        """发布版本 → 操作日志"""
+        cid, vid = draft_connector
+        api("PUT", f"/connectors/{cid}/versions/{vid}", {
+            "connectionConfig": {
+                "protocol": "HTTP",
+                "protocolConfig": {"url": "https://httpbin.org/get", "method": "GET"},
+                "timeoutMs": 5000,
+            }
+        })
+        resp = api("PUT", f"/connectors/{cid}/versions/{vid}/publish")
+        assert resp.status_code == 200
+        assert_operate_log("pytest_publish")
+

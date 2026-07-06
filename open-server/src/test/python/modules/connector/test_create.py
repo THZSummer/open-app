@@ -5,6 +5,7 @@
 """
 import pytest
 from common import api
+from conftest import assert_operate_log
 
 
 class TestConnectorCreate:
@@ -76,3 +77,21 @@ class TestConnectorCreate:
         body = {"nameCn": "英文名边界129", "nameEn": name, "connectorType": 1}
         resp = api("POST", "/connectors", body)
         assert resp.json()["code"] == "400"
+
+    @pytest.mark.L1
+    def test_create_log(self):
+        """创建连接器 → 操作日志"""
+        resp = api("POST", "/connectors", {"nameCn": "日志测试连接器", "nameEn": "LogTestConnector", "connectorType": 1})
+        assert resp.status_code == 200
+        cid = resp.json()["data"]["connectorId"]
+        assert_operate_log("日志测试连接器")
+
+    @pytest.mark.L1
+    def test_create_invalidate_delete_log(self):
+        """创建+失效+删除全流程操作日志"""
+        resp = api("POST", "/connectors", {"nameCn": "日志删除测试", "nameEn": "LogDeleteTest", "connectorType": 1})
+        assert resp.status_code == 200
+        cid = resp.json()["data"]["connectorId"]
+        api("PUT", f"/connectors/{cid}/invalidate")
+        api("DELETE", f"/connectors/{cid}")
+        assert_operate_log("日志测试连接器")

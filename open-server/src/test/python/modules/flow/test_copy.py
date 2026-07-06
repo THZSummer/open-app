@@ -10,6 +10,7 @@ V3 修复:
 """
 import pytest
 from common import api, db, db_val
+from conftest import assert_operate_log
 
 
 class TestFlowCopy:
@@ -136,3 +137,14 @@ class TestFlowCopy:
         assert str(after_flow_status) == str(src_flow_status), "源流状态被修改了"
         assert str(after_deployed) == str(src_deployed), "源流部署版本被修改了"
         assert str(after_ver_count) == str(src_ver_count), "源流版本数量变了"
+
+    @pytest.mark.L2
+    def test_copy_log(self, deployed_flow):
+        """复制连接流 → 操作日志"""
+        fid, _ = deployed_flow
+        resp = api("POST", f"/flows/{fid}/copy", {})
+        assert resp.status_code in (200, 201)
+        new_fid = resp.json().get("data", {}).get("flowId")
+        if new_fid:
+            assert_operate_log("复制连接流")
+

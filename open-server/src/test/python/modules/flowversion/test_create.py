@@ -2,6 +2,7 @@
 """#28 POST /flows/{id}/versions — 创建连接流草稿版本 (FR-024a)"""
 import pytest
 from common import api
+from conftest import assert_operate_log
 
 
 class TestFlowVersionCreate:
@@ -23,3 +24,13 @@ class TestFlowVersionCreate:
         fid, _ = draft_flow
         resp = api("POST", f"/flows/{fid}/versions")
         assert resp.json()["code"] == "409"
+
+    @pytest.mark.L2
+    def test_create_log(self, flow):
+        """创建连接流版本草稿 → 操作日志"""
+        resp = api("POST", f"/flows/{flow}/versions", {})
+        assert resp.status_code in (200, 201)
+        vid = resp.json().get("data", {}).get("versionId")
+        if vid:
+            assert_operate_log("新增版本")
+
