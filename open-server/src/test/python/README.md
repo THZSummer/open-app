@@ -51,28 +51,17 @@ test/python/
 │   └── client.py            # 基础设施 (api / db / 常量)
 │
 ├── modules/                 # 与源码 modules/ 一一对应，每个接口一个 test_{action}.py
-│   ├── connector/           # → 源码 modules/connector/
-│   │   ├── test_create.py   #   POST /connectors
-│   │   ├── test_list.py     #   GET  /connectors
-│   │   └── test_delete.py   #   DELETE /connectors/{id}
-│   ├── connectorversion/    # → 源码 modules/connectorversion/
-│   │   ├── test_create.py   #   POST .../versions
-│   │   └── test_publish.py  #   PUT  .../publish
-│   ├── flow/                # → 源码 modules/flow/
-│   │   ├── test_create.py   #   POST /flows
-│   │   └── test_deploy.py   #   POST /flows/{id}/deploy
-│   ├── flowversion/         # → 源码 modules/flowversion/
-│   │   ├── test_create.py   #   POST .../versions
+│   ├── connector/           # → modules/connector/
+│   ├── connectorversion/    # → modules/connectorversion/
+│   ├── flow/                # → modules/flow/
+│   ├── flowversion/         # → modules/flowversion/
+│   │   ├── test_create.py   #   POST /flows/{id}/versions
 │   │   ├── test_publish.py  #   POST .../publish
-│   │   └── test_debug.py    #   POST .../debug
-│   ├── approval/            # → 源码 modules/approval/
-│   │   ├── test_list.py     #   GET  /approvals/pending
-│   │   └── test_approve.py  #   POST /approvals/{id}/approve
-│   ├── approvalflow/        # → 源码 modules/approvalflow/
-│   │   ├── test_create.py   #   POST /approval-flows
-│   │   └── test_list.py     #   GET  /approval-flows
-│   └── flowexecrecord/      # → 源码 modules/flowexecrecord/
-│       └── test_list.py     #   GET  /executions
+│   │   ├── test_debug.py    #   POST .../debug
+│   │   └── ...              #   其余接口同理
+│   ├── approval/            # → modules/approval/
+│   ├── approvalflow/        # → modules/approvalflow/
+│   └── flowexecrecord/      # → modules/flowexecrecord/
 │
 ├── e2e/                     # 全流程端到端
 │   └── test_full_flow*.py
