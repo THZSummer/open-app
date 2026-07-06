@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""共享 fixtures — 通过 API 创建测试数据，不写 DB"""
+"""共享 fixtures — 通过 API 创建测试数据，模拟用户操作"""
 
 import pytest
 from common import api, db, db_val, TEST_APP_ID
@@ -59,17 +59,14 @@ def _get_data(resp):
     return resp.json()["data"]
 
 
-def _create_version(connector_id):
-    api("POST", f"/connectors/{connector_id}/versions", {})
-    r = api("GET", f"/connectors/{connector_id}/versions?page=1&size=1")
-    versions = _get_data(r)
-    return int(versions[0]["versionId"]) if isinstance(versions, list) else int(versions["data"][0]["versionId"])
-
-
-def _create_flow_version(flow_id):
-    r = api("POST", f"/flows/{flow_id}/versions", {})
-    d = _get_data(r)
-    return int(d.get("versionId", d.get("id", 0)))
+def _find_approval(flow_version_id):
+    """查询指定版本的最新审批记录 ID"""
+    r = api("GET", f"/approvals/pending?businessType=connector_flow_version_publish&page=1&size=50")
+    items = r.json().get("data", [])
+    for item in (items if isinstance(items, list) else []):
+        if str(item.get("businessId")) == str(flow_version_id):
+            return int(item["id"])
+    return 0
 
 
 # ═══════════════════════════════════════════════════════════
@@ -87,15 +84,22 @@ def connector(request):
     return int(_get_data(r)["connectorId"])
 
 
+def _create_connector_version(connector_id):
+    api("POST", f"/connectors/{connector_id}/versions", {})
+    r = api("GET", f"/connectors/{connector_id}/versions?page=1&size=1")
+    versions = _get_data(r)
+    return int(versions[0]["versionId"])
+
+
 @pytest.fixture
 def draft_connector(connector):
-    vid = _create_version(connector)
+    vid = _create_connector_version(connector)
     return connector, vid
 
 
 @pytest.fixture
 def published_connector(connector):
-    vid = _create_version(connector)
+    vid = _create_connector_version(connector)
     api("PUT", f"/connectors/{connector}/versions/{vid}", {
         "connectionConfig": {
             "protocol": "HTTP",
@@ -121,23 +125,25 @@ def flow(request):
     return int(_get_data(r)["flowId"])
 
 
+def _create_flow_version(flow_id):
+    r = api("POST", f"/flows/{flow_id}/versions", {})
+    return int(_get_data(r)["versionId"])
+
+
 @pytest.fixture
 def draft_flow(flow):
     vid = _create_flow_version(flow)
     return flow, vid
 
 
-@pytest.fixture
-def deployed_flow(flow, published_connector):
-    """已部署的连接流（通过 publish → deploy API），依赖已发布的连接器"""
-    cid, cvid = published_connector
-    vid = _create_flow_version(flow)
-    api("PUT", f"/flows/{flow}/versions/{vid}", {
+def _set_orchestration(flow_id, version_id, connector_id, connector_version_id):
+    """设置编排配置并提交发布（status=2 待审批）"""
+    api("PUT", f"/flows/{flow_id}/versions/{version_id}", {
         "orchestrationConfig": {
             "flowConfig": {"flowMode": "serial", "timeout": 3000},
             "nodes": [
                 {"id": "trigger", "type": "trigger", "data": {"type": "trigger", "triggerType": "http"}},
-                {"id": "conn", "type": "connector", "data": {"type": "connector", "connectorId": cid, "connectorVersionId": cvid}},
+                {"id": "conn", "type": "connector", "data": {"type": "connector", "connectorId": connector_id, "connectorVersionId": connector_version_id}},
                 {"id": "exit", "type": "exit", "data": {"type": "exit"}},
             ],
             "edges": [
@@ -146,46 +152,33 @@ def deployed_flow(flow, published_connector):
             ],
         }
     })
-    api("POST", f"/flows/{flow}/versions/{vid}/publish")
-    api("POST", f"/flows/{flow}/deploy", {"versionId": vid})
+    api("POST", f"/flows/{flow_id}/versions/{version_id}/publish")
+
+
+def _approve_and_deploy(flow_id, version_id):
+    """两级审批通过 + 部署"""
+    aid = _find_approval(version_id)
+    if aid:
+        api("POST", f"/approvals/{aid}/approve", {"comment": "L1 approve"})
+        api("POST", f"/approvals/{aid}/approve", {"comment": "L2 approve"})
+    api("POST", f"/flows/{flow_id}/deploy", {"versionId": version_id})
+
+
+@pytest.fixture
+def deployed_flow(flow, published_connector):
+    """已部署的连接流：create → draft → 编排 → publish → approve → deploy"""
+    cid, cvid = published_connector
+    vid = _create_flow_version(flow)
+    _set_orchestration(flow, vid, cid, cvid)
+    _approve_and_deploy(flow, vid)
     return flow, vid
 
 
 @pytest.fixture
-def pending_approval_flow(flow, connector):
-    """含待审批版本 + 关联审批记录的连接流，依赖 connector"""
-    cid = connector
-    # 创建并发布一个 connector 版本用于编排
-    cv = _create_version(cid)
-    api("PUT", f"/connectors/{cid}/versions/{cv}", {
-        "connectionConfig": {
-            "protocol": "HTTP",
-            "protocolConfig": {"url": "https://httpbin.org/get", "method": "GET"},
-            "timeoutMs": 5000,
-        }
-    })
-    api("PUT", f"/connectors/{cid}/versions/{cv}/publish")
+def pending_approval_flow(flow, published_connector):
+    """含待审批版本（status=2）+ 关联审批记录的连接流"""
+    cid, cvid = published_connector
     vid = _create_flow_version(flow)
-    api("PUT", f"/flows/{flow}/versions/{vid}", {
-        "orchestrationConfig": {
-            "flowConfig": {"flowMode": "serial", "timeout": 3000},
-            "nodes": [
-                {"id": "trigger", "type": "trigger", "data": {"type": "trigger", "triggerType": "http"}},
-                {"id": "conn", "type": "connector", "data": {"type": "connector", "connectorId": cid, "connectorVersionId": cv}},
-                {"id": "exit", "type": "exit", "data": {"type": "exit"}},
-            ],
-            "edges": [
-                {"id": "e1", "source": "trigger", "target": "conn"},
-                {"id": "e2", "source": "conn", "target": "exit"},
-            ],
-        }
-    })
-    api("POST", f"/flows/{flow}/versions/{vid}/publish")
-    r = api("GET", f"/approvals/pending?businessType=connector_flow_version_publish&page=1&size=10")
-    items = _get_data(r)
-    ar_id = 0
-    for item in (items if isinstance(items, list) else []):
-        if str(item.get("businessId")) == str(vid):
-            ar_id = int(item["id"])
-            break
-    return flow, vid, ar_id
+    _set_orchestration(flow, vid, cid, cvid)
+    aid = _find_approval(vid)
+    return flow, vid, aid
