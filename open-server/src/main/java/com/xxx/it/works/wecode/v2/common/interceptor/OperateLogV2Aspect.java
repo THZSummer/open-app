@@ -11,8 +11,6 @@ import com.xxx.it.works.wecode.v2.common.snapshot.EntitySnapshotLoader;
 import com.xxx.it.works.wecode.v2.common.snapshot.EntitySnapshotLoaderFactory;
 import com.xxx.it.works.wecode.v2.common.util.CommonUtils;
 import com.xxx.it.works.wecode.v2.common.util.JsonUtils;
-import com.xxx.it.works.wecode.v2.modules.app.entity.App;
-import com.xxx.it.works.wecode.v2.modules.app.mapper.AppMapper;
 import com.xxx.it.works.wecode.v2.modules.app.resolver.AppContext;
 import com.xxx.it.works.wecode.v2.modules.app.resolver.AppContextResolver;
 import com.xxx.it.works.wecode.v2.modules.auditlog.entity.OperateLog;
@@ -54,7 +52,6 @@ public class OperateLogV2Aspect {
     private final AuditLogService auditLogService;
     private final EntitySnapshotLoaderFactory snapshotLoaderFactory;
     private final AppContextResolver appContextResolver;
-    private final AppMapper appMapper;
 
     private static final Pattern PLACEHOLDER_PATTERN = Pattern.compile("\\$\\{(\\w+)}");
 
@@ -179,7 +176,7 @@ public class OperateLogV2Aspect {
     }
 
     /**
-     * 加载 beforeData（UPDATE/DELETE/CONFIG/WITHDRAW），并补全 appId 策略 2。
+     * 加载 beforeData（UPDATE/DELETE/CONFIG/WITHDRAW），并补全 appId。
      */
     private void loadBeforeData(AuditContext ctx, ProceedingJoinPoint joinPoint) {
         if (ctx.op.needsBeforeData()) {
@@ -189,11 +186,10 @@ public class OperateLogV2Aspect {
             }
         }
         if (!StringUtils.hasText(ctx.appId)) {
-            ctx.appId = extractAppIdFromEntity(ctx.before);
-        }
-        // appId fallback: extract from X-App-Id request header
-        if (!StringUtils.hasText(ctx.appId)) {
             ctx.appId = extractAppIdFromRequestHeader();
+        }
+        if (!StringUtils.hasText(ctx.appId)) {
+            ctx.appId = extractAppIdFromEntity(ctx.before);
         }
     }
 
@@ -316,14 +312,14 @@ public class OperateLogV2Aspect {
     }
 
     /**
-     * appId 策略 2: 从 beforeData 实体快照提取（内部 ID → 外部业务 ID）。
+     * appId 策略: 从 beforeData 实体快照提取（兜底方案）。
      */
     private String extractAppIdFromEntity(JsonNode node) {
         Long internalId = JsonUtils.getFieldLong(node, CommonConstants.FIELD_APP_ID);
         if (internalId == null) {
             return null;
         }
-        return resolveExternalAppId(internalId);
+        return String.valueOf(internalId);
     }
 
     /**
@@ -380,21 +376,5 @@ public class OperateLogV2Aspect {
             log.debug("[OPERATE_LOG] Failed to extract appId from request header", e);
         }
         return null;
-    }
-
-    /**
-     * 内部 App.id → 外部 App.appId 转换。
-     */
-    private String resolveExternalAppId(Long internalId) {
-        if (internalId == null) {
-            return null;
-        }
-        try {
-            App app = appMapper.selectById(internalId);
-            return app != null ? app.getAppId() : null;
-        } catch (Exception e) {
-            log.warn("[OPERATE_LOG] Failed to resolve external appId from internalId={}", internalId, e);
-            return null;
-        }
     }
 }
