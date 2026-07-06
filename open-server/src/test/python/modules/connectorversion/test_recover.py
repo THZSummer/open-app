@@ -2,6 +2,7 @@
 """#15 PUT /connectors/{id}/versions/{vid}/recover — 恢复连接器版本"""
 import pytest
 from common import api, db
+from conftest import assert_operate_log
 
 
 class TestConnectorVersionRecover:
@@ -24,3 +25,12 @@ class TestConnectorVersionRecover:
         assert resp2.status_code == 200
         after = resp2.json()["data"]
         assert after.get("status") in (2, "2"), f"Expected status=2 (已发布), got {after.get('status')}"
+
+    @pytest.mark.L2
+    def test_recover_log(self, published_connector):
+        """恢复版本 → 操作日志"""
+        cid, vid = published_connector
+        api("PUT", f"/connectors/{cid}/versions/{vid}/invalidate")
+        resp = api("PUT", f"/connectors/{cid}/versions/{vid}/recover")
+        assert resp.status_code == 200
+        assert_operate_log("恢复")

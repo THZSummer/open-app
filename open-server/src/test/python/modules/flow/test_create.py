@@ -2,6 +2,7 @@
 """#17 POST /flows — 创建连接流 (FR-016, plan-api §3.3)"""
 import pytest
 from common import api
+from conftest import assert_operate_log
 
 
 class TestFlowCreate:
@@ -73,3 +74,10 @@ class TestFlowCreate:
         body = {"nameCn": "连接流英文名边界129", "nameEn": name}
         resp = api("POST", "/flows", body)
         assert resp.json()["code"] == "400"
+
+    @pytest.mark.L1
+    def test_create_log(self):
+        """创建连接流 → 操作日志"""
+        resp = api("POST", "/flows", {"nameCn": "日志测试流", "nameEn": "LogTestFlow"})
+        assert resp.status_code == 200
+        assert_operate_log("创建连接流:日志测试流")

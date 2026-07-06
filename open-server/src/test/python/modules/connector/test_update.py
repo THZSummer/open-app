@@ -2,6 +2,7 @@
 """#4 PUT /connectors/{id} — 更新连接器 (FR-046 操作日志)"""
 import pytest
 from conftest import api, db_val, connector
+from conftest import assert_operate_log
 
 
 class TestConnectorUpdate:
@@ -24,3 +25,10 @@ class TestConnectorUpdate:
         log_count = db_val(f"SELECT COUNT(*) FROM openplatform_operate_log_t WHERE after_data LIKE '%{connector}%'")
         if log_count is not None:
             assert int(log_count) >= 0, f"FR-046 audit: got {log_count} logs (update logging not yet implemented)"
+
+    @pytest.mark.L2
+    def test_update_log(self, connector):
+        """更新连接器 → 操作日志"""
+        resp = api("PUT", f"/connectors/{connector}", {"nameCn": "更新日志测试", "nameEn": "UpdateLogTest"})
+        assert resp.status_code == 200
+        assert_operate_log("更新连接器")

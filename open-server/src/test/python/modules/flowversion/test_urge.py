@@ -3,6 +3,7 @@
 import json
 import pytest
 from common import api, db
+from conftest import assert_operate_log
 
 
 class TestFlowVersionUrge:
@@ -47,3 +48,11 @@ class TestFlowVersionUrge:
         """不存在的版本催办返回错误"""
         resp = api("POST", f"/flows/{flow}/versions/999999999999999999/urge")
         assert resp is not None
+
+    @pytest.mark.L2
+    def test_urge_log(self, pending_approval_flow):
+        """催办审批 → 操作日志"""
+        fid, fvid, _ = pending_approval_flow
+        resp = api("POST", f"/flows/{fid}/versions/{fvid}/urge")
+        assert resp.status_code in (200, 201)
+        assert_operate_log("催办")

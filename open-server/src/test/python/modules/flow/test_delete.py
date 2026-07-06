@@ -2,6 +2,7 @@
 """#27 DELETE /flows/{id} — 删除连接流 (FR-023)"""
 import pytest
 from common import api, db
+from conftest import assert_operate_log
 
 
 class TestFlowDelete:
@@ -29,3 +30,11 @@ class TestFlowDelete:
     def test_not_found(self):
         resp = api("DELETE", "/flows/999999999999999999")
         assert resp is not None
+
+    @pytest.mark.L2
+    def test_delete_log(self, flow):
+        """删除连接流 → 操作日志"""
+        api("PUT", f"/flows/{flow}/invalidate")
+        resp = api("DELETE", f"/flows/{flow}")
+        assert resp.status_code == 200
+        assert_operate_log("删除连接流")

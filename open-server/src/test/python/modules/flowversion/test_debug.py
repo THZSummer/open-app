@@ -7,6 +7,7 @@ import pytest
 import json
 import time
 from common import api, db, db_val, TEST_APP_ID
+from conftest import assert_operate_log
 
 
 def _snow_id():

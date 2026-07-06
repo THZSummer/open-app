@@ -2,6 +2,7 @@
 """#13 POST /connectors/{id}/versions/{vid}/copy-to-draft — 复制版本到草稿"""
 import pytest
 from common import api
+from conftest import assert_operate_log
 
 
 class TestConnectorVersionCopy:
@@ -18,3 +19,11 @@ class TestConnectorVersionCopy:
         vlist = resp2.json().get("data", [])
         drafts = [v for v in vlist if v.get("status") in (1, "1")]
         assert len(drafts) >= 1, f"Expected >=1 draft version after copy, got {vlist}"
+
+    @pytest.mark.L2
+    def test_copy_log(self, draft_connector):
+        """复制版本至草稿 → 操作日志"""
+        cid, vid = draft_connector
+        resp = api("POST", f"/connectors/{cid}/versions/{vid}/copy-to-draft")
+        assert resp.status_code in (200, 201)
+        assert_operate_log("复制")

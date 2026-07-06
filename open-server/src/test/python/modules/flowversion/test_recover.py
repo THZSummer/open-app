@@ -2,6 +2,8 @@
 """#35 PUT /flows/{id}/versions/{vid}/recover — 恢复连接流版本"""
 import pytest
 from common import api, db
+from conftest import assert_operate_log
+import json
 
 
 class TestFlowVersionRecover:
@@ -23,3 +25,23 @@ class TestFlowVersionRecover:
         assert resp2.status_code == 200
         after = resp2.json()["data"]
         assert after.get("status") in (5, "5"), f"Expected status=5 (已发布), got {after.get('status')}"
+
+    @pytest.mark.L2
+    def test_recover_log(self, draft_flow):
+        """恢复版本 → 操作日志"""
+        fid, fvid = draft_flow
+        api("PUT", f"/flows/{fid}/versions/{fvid}", {
+            "orchestrationConfig": json.dumps({
+                "flowConfig": {"flowMode": "serial", "timeout": 3000},
+                "nodes": [
+                    {"id": "trigger", "type": "trigger", "data": {"type": "trigger", "triggerType": "http"}},
+                    {"id": "exit", "type": "exit", "data": {"type": "exit"}},
+                ],
+                "edges": [{"id": "e1", "source": "trigger", "target": "exit"}],
+            })
+        })
+        api("POST", f"/flows/{fid}/versions/{fvid}/publish")
+        api("PUT", f"/flows/{fid}/versions/{fvid}/invalidate")
+        resp = api("PUT", f"/flows/{fid}/versions/{fvid}/recover")
+        assert resp.status_code == 200
+        assert_operate_log("恢复")
