@@ -23,10 +23,10 @@ import random, string
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(TEST_DIR, "inspect"))
+sys.path.insert(0, os.path.join(TEST_DIR, "common"))
 import importlib.util
 _spec = importlib.util.spec_from_file_location(
-    "inspect_client", os.path.join(TEST_DIR, "inspect", "client.py"))
+    "common_client", os.path.join(TEST_DIR, "common", "client.py"))
 _osm = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_osm)
 os_db = _osm.db

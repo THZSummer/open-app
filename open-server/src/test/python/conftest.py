@@ -2,7 +2,7 @@
 """共享 fixtures：自动管理测试数据生命周期"""
 import os, time
 import pytest
-from _client import api, db, db_val, TEST_APP_ID
+from common import api, db, db_val, TEST_APP_ID
 
 INTERNAL_APP_ID = int(db_val(f"SELECT id FROM openplatform_app_t WHERE app_id = '{TEST_APP_ID}' AND status = 1"))
 
