@@ -9,7 +9,7 @@ V3 修复后:
 """
 import time
 import pytest
-from conftest import api, db, db_val, TEST_APP_ID
+from conftest import api, TEST_APP_ID
 
 
 def _snow_id():
@@ -17,10 +17,6 @@ def _snow_id():
 
 
 class TestApprovalFlowList:
-    # ═══════════════════════════════════════════════════════
-    # L1: 基础查询
-    # ═══════════════════════════════════════════════════════
-
     @pytest.mark.L1
     def test_list_ok(self):
         """基础列表查询"""
@@ -55,52 +51,38 @@ class TestApprovalFlowList:
                 assert "appId" in item, \
                     f"列表项缺少 appId 字段，字段列表: {list(item.keys())}"
 
-    # ═══════════════════════════════════════════════════════
-    # L2: appId 过滤（GAP-1 已修复）
-    # ═══════════════════════════════════════════════════════
-
     @pytest.mark.L2
     def test_list_by_appid_filters_correctly(self):
         """V3 修复: ?appId=xxx 仅返回该应用的模板，不返回全局模板"""
         code = f"pytest_list_appid_{_snow_id()}"
 
-        # 创建全局模板 (appId=null)
         r1 = api("POST", "/approval-flows", {
             "nameCn": f"全局_{code}", "nameEn": f"global_{code}",
             "code": code, "nodes": [{"userId": "tester", "userName": "Test"}]
         })
         assert r1.status_code in (200, 201)
-        tid_global = r1.json()["data"]["id"]
 
-        # 创建应用模板 (appId=TEST_APP_ID) — GAP-2 修复后可共存
         r2 = api("POST", "/approval-flows", {
             "nameCn": f"应用_{code}", "nameEn": f"app_{code}",
             "code": code, "appId": TEST_APP_ID,
             "nodes": [{"userId": "tester", "userName": "Test"}]
         })
         assert r2.status_code in (200, 201), f"创建应用模板失败: {r2.json()}"
-        tid_app = r2.json()["data"]["id"]
 
-        try:
-            # 按 appId 过滤 — 应只返回应用模板，不返回全局模板
-            resp = api("GET", f"/approval-flows?appId={TEST_APP_ID}")
-            assert resp.status_code == 200
-            items = resp.json().get("data", [])
+        resp = api("GET", f"/approval-flows?appId={TEST_APP_ID}")
+        assert resp.status_code == 200
+        items = resp.json().get("data", [])
 
-            # 全局模板不应出现在 appId 过滤结果中
-            global_in_filtered = any(
-                it.get("code") == code and it.get("appId") is None
-                for it in items
-            )
-            assert not global_in_filtered, \
-                f"GAP-1 未修复: ?appId 过滤仍返回全局模板 (code={code})"
+        global_in_filtered = any(
+            it.get("code") == code and it.get("appId") is None
+            for it in items
+        )
+        assert not global_in_filtered, \
+            f"GAP-1 未修复: ?appId 过滤仍返回全局模板 (code={code})"
 
-            # 应用模板应该在结果中
-            app_in_filtered = any(
-                it.get("code") == code and str(it.get("appId")) == str(TEST_APP_ID)
-                for it in items
-            )
-            assert app_in_filtered, \
-                f"?appId={TEST_APP_ID} 过滤结果中未找到应用模板 (code={code})"
-        finally:
-            db(f"DELETE FROM openplatform_v2_approval_flow_t WHERE code = '{code}'")
+        app_in_filtered = any(
+            it.get("code") == code and str(it.get("appId")) == str(TEST_APP_ID)
+            for it in items
+        )
+        assert app_in_filtered, \
+            f"?appId={TEST_APP_ID} 过滤结果中未找到应用模板 (code={code})"

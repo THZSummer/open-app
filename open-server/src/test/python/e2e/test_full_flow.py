@@ -38,7 +38,6 @@ _spec = importlib.util.spec_from_file_location(
 _osm = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_osm)
 os_api = _osm.api
-os_db = _osm.db
 os_db_val = _osm.db_val
 os_ok = _osm.ok
 os_fail = _osm.fail
@@ -72,11 +71,9 @@ def os_redis(*args):
         return None
 
 TEST_APP_ID = _osm.TEST_APP_ID
-INTERNAL_APP_ID = 328225464973787136  # App.id for TEST_APP_ID
 
 import pytest
 import requests
-KEEP = os.environ.get("KEEP_TEST_DATA", "1") == "1"
 
 import random
 import string
@@ -344,9 +341,13 @@ def test_full_flow():
         return
 
     # V3: 优先查找应用级模板 (code + appId)，回退到全局模板
-    tpl = os_db_val(f"SELECT id FROM openplatform_v2_approval_flow_t WHERE code = 'connector_flow_version_publish' AND app_id = {INTERNAL_APP_ID} LIMIT 1")
-    if not tpl:
-        tpl = os_db_val("SELECT id FROM openplatform_v2_approval_flow_t WHERE code = 'connector_flow_version_publish' AND app_id IS NULL LIMIT 1")
+    tpl = None
+    r = os_api("GET", "/approval-flows?keyword=connector_flow_version_publish")
+    if r and r.status_code == 200:
+        for item in r.json().get("data", []):
+            if item.get("code") == "connector_flow_version_publish":
+                tpl = item.get("id")
+                break
     if tpl:
         print(f"  ✅ 审批流模板存在 (id={tpl})")
     else:
@@ -881,13 +882,6 @@ def test_full_flow():
                     if str(item.get("businessId")) == str(fvid):
                         aid = item.get("id")
                         break
-            # fallback: DB
-            if not aid:
-                aid = os_db_val(
-                    f"SELECT id FROM openplatform_v2_approval_record_t "
-                    f"WHERE business_type='connector_flow_version_publish' AND business_id={fvid} "
-                    f"ORDER BY create_time DESC LIMIT 1"
-                )
             if not aid:
                 os_fail("未找到审批记录")
                 return False
@@ -1151,22 +1145,6 @@ def test_full_flow():
         return
 
     finally:
-        # Cleanup
-        if not KEEP:
-            print("\n── 清理测试数据 ──")
-            if fid:
-                os_db(f"DELETE FROM openplatform_v2_cp_connector_version_ref_t WHERE flow_id={fid}")
-                os_db(f"DELETE FROM openplatform_v2_cp_flow_version_t WHERE flow_id={fid}")
-                os_db(f"DELETE FROM openplatform_v2_cp_flow_t WHERE id={fid}")
-            if cid:
-                os_db(f"DELETE FROM openplatform_v2_cp_connector_version_t WHERE connector_id={cid}")
-                os_db(f"DELETE FROM openplatform_v2_cp_connector_t WHERE id={cid}")
-            if aid:
-                os_db(f"DELETE FROM openplatform_v2_approval_record_t WHERE id={aid}")
-            print("  ✅ 测试数据已清理")
-        else:
-            print(f"\n  📝 KEEP_TEST_DATA=1: cid={cid}, fid={fid}")
-
         mock.stop()
         os_done()
 

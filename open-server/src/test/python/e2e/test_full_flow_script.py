@@ -35,8 +35,6 @@ _spec = importlib.util.spec_from_file_location(
 _osm = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_osm)
 os_api = _osm.api
-os_db = _osm.db
-os_db_val = _osm.db_val
 os_ok = _osm.ok
 os_fail = _osm.fail
 os_done = _osm.done
@@ -45,8 +43,6 @@ from client import CONNECTOR_API_BASE, CONNECTOR_API_HEALTH
 import pytest, requests, random, string
 
 TEST_APP_ID = _osm.TEST_APP_ID
-INTERNAL_APP_ID = 328225464973787136  # App.id for TEST_APP_ID
-KEEP = os.environ.get("KEEP_TEST_DATA", "1") == "1"
 _RUN_ID = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
 MOCK_PORT = 18986; MOCK_URL = f"http://localhost:{MOCK_PORT}"
 
@@ -156,8 +152,13 @@ def test_full_flow_script():
     except: print("[FAIL] connector-api not running!"); return
 
     # check approval template
-    tpl = os_db_val(f"SELECT id FROM openplatform_v2_approval_flow_t WHERE code='connector_flow_version_publish' AND app_id={INTERNAL_APP_ID} LIMIT 1")
-    if not tpl: tpl = os_db_val("SELECT id FROM openplatform_v2_approval_flow_t WHERE code='connector_flow_version_publish' AND app_id IS NULL LIMIT 1")
+    tpl = None
+    r = os_api("GET", "/approval-flows?keyword=connector_flow_version_publish")
+    if r and r.status_code == 200:
+        for item in r.json().get("data", []):
+            if item.get("code") == "connector_flow_version_publish":
+                tpl = item.get("id")
+                break
     if not tpl:
         print("  Creating approval template...")
         r = os_api("POST", "/approval-flows", {"code": "connector_flow_version_publish", "nameCn": "审批", "nameEn": "approval", "appId": TEST_APP_ID, "nodes": [{"userId": "tester", "userName": "Test Approver"}]})
@@ -294,7 +295,12 @@ def test_full_flow_script():
             return check_ok(r, "PUBLISH submit", f"POST /flows/{fid}/versions/{fvid}/publish")
         def s6():
             nonlocal aid
-            aid = os_db_val(f"SELECT id FROM openplatform_v2_approval_record_t WHERE business_type='connector_flow_version_publish' AND business_id={fvid} ORDER BY create_time DESC LIMIT 1")
+            r = os_api("GET", "/approvals/pending?businessType=connector_flow_version_publish&page=1&size=50")
+            if r and r.status_code == 200:
+                for item in r.json().get("data", []):
+                    if str(item.get("businessId")) == str(fvid):
+                        aid = item.get("id")
+                        break
             if not aid: os_fail("Approval record not found"); return False
             print(f"    approvalId={aid}"); return True
         def s7():
@@ -375,12 +381,6 @@ def test_full_flow_script():
         assert not failed
 
     finally:
-        if not KEEP:
-            if fid:
-                os_db(f"DELETE FROM openplatform_v2_cp_flow_version_t WHERE flow_id={fid}")
-                os_db(f"DELETE FROM openplatform_v2_cp_flow_t WHERE id={fid}")
-            if aid: os_db(f"DELETE FROM openplatform_v2_approval_record_t WHERE id={aid}")
-            print("  [OK] Test data cleaned up")
         mock.stop(); os_done()
 
 if __name__ == "__main__":
