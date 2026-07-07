@@ -359,10 +359,11 @@ def test_full_flow_parallel():
                                     "body": {
                                         "type": "object",
                                         "properties": {
-                                            "task": {"type": "string"},
+                                            "task_a": {"type": "string"},
+                                            "task_b": {"type": "string"},
                                             "priority": {"type": "number"}
                                         },
-                                        "required": ["task"]
+                                        "required": ["task_a", "task_b"]
                                     }
                                 }
                             }
@@ -374,12 +375,16 @@ def test_full_flow_parallel():
                                 "labelCn": "数据准备",
                                 "script": (
                                     "function main(ctx) {\n"
-                                    "  var task = ctx['" + nid_trigger + "'].input.body.task;\n"
-                                    "  var priority = ctx['" + nid_trigger + "'].input.body.priority || 0;\n"
+                                    "  var input = ctx['" + nid_trigger + "'].input.body;\n"
                                     "  return {\n"
-                                    "    payload: {\n"
-                                    "      task: task,\n"
-                                    "      priority: priority,\n"
+                                    "    payload_a: {\n"
+                                    "      task: input.task_a,\n"
+                                    "      priority: input.priority,\n"
+                                    "      ts: new Date().getTime()\n"
+                                    "    },\n"
+                                    "    payload_b: {\n"
+                                    "      task: input.task_b,\n"
+                                    "      priority: (input.priority || 0) + 1,\n"
                                     "      ts: new Date().getTime()\n"
                                     "    }\n"
                                     "  };\n"
@@ -388,7 +393,15 @@ def test_full_flow_parallel():
                                 "output": {
                                     "type": "object",
                                     "properties": {
-                                        "payload": {
+                                        "payload_a": {
+                                            "type": "object",
+                                            "properties": {
+                                                "task": {"type": "string"},
+                                                "priority": {"type": "number"},
+                                                "ts": {"type": "number"}
+                                            }
+                                        },
+                                        "payload_b": {
                                             "type": "object",
                                             "properties": {
                                                 "task": {"type": "string"},
@@ -420,7 +433,7 @@ def test_full_flow_parallel():
                                         "properties": {
                                             "payload": {
                                                 "type": "object",
-                                                "value": "${$.node." + nid_script_1 + ".output.payload}"
+                                                "value": "${$.node." + nid_script_1 + ".output.payload_a}"
                                             }
                                         }
                                     }
@@ -442,7 +455,7 @@ def test_full_flow_parallel():
                                         "properties": {
                                             "payload": {
                                                 "type": "object",
-                                                "value": "${$.node." + nid_script_1 + ".output.payload}"
+                                                "value": "${$.node." + nid_script_1 + ".output.payload_b}"
                                             }
                                         }
                                     }
@@ -460,13 +473,17 @@ def test_full_flow_parallel():
                                     "  var b = ctx['" + nid_conn_b + "'].output || {};\n"
                                     "  var ac = (a.code != null) ? a.code : -1;\n"
                                     "  var bc = (b.code != null) ? b.code : -1;\n"
+                                    "  var ae = (a.data && a.data.echo_body && a.data.echo_body.payload) ? a.data.echo_body.payload : {};\n"
+                                    "  var be = (b.data && b.data.echo_body && b.data.echo_body.payload) ? b.data.echo_body.payload : {};\n"
                                     "  return {\n"
                                     "    branch_a_code: ac,\n"
                                     "    branch_b_code: bc,\n"
                                     "    branch_a_delay: (a.data && a.data.delay != null) ? a.data.delay : 0,\n"
                                     "    branch_b_delay: (b.data && b.data.delay != null) ? b.data.delay : 0,\n"
                                     "    branch_a_call: (a.data && a.data.call_number != null) ? a.data.call_number : 0,\n"
-                                    "    branch_b_call: (b.data && b.data.call_number != null) ? b.data.call_number : 0\n"
+                                    "    branch_b_call: (b.data && b.data.call_number != null) ? b.data.call_number : 0,\n"
+                                    "    branch_a_echo: {task: ae.task, priority: ae.priority},\n"
+                                    "    branch_b_echo: {task: be.task, priority: be.priority}\n"
                                     "  };\n"
                                     "}"
                                 ),
@@ -478,7 +495,21 @@ def test_full_flow_parallel():
                                         "branch_a_delay": {"type": "number"},
                                         "branch_b_delay": {"type": "number"},
                                         "branch_a_call": {"type": "number"},
-                                        "branch_b_call": {"type": "number"}
+                                        "branch_b_call": {"type": "number"},
+                                        "branch_a_echo": {
+                                            "type": "object",
+                                            "properties": {
+                                                "task": {"type": "string"},
+                                                "priority": {"type": "number"}
+                                            }
+                                        },
+                                        "branch_b_echo": {
+                                            "type": "object",
+                                            "properties": {
+                                                "task": {"type": "string"},
+                                                "priority": {"type": "number"}
+                                            }
+                                        }
                                     }
                                 },
                                 "timeout": 5
@@ -507,6 +538,22 @@ def test_full_flow_parallel():
                                             "branchBDelay": {
                                                 "type": "number",
                                                 "value": "${$.node." + nid_script_2 + ".output.branch_b_delay}"
+                                            },
+                                            "branchAEcho": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "task": {"type": "string"},
+                                                    "priority": {"type": "number"}
+                                                },
+                                                "value": "${$.node." + nid_script_2 + ".output.branch_a_echo}"
+                                            },
+                                            "branchBEcho": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "task": {"type": "string"},
+                                                    "priority": {"type": "number"}
+                                                },
+                                                "value": "${$.node." + nid_script_2 + ".output.branch_b_echo}"
                                             }
                                         }
                                     }
@@ -618,9 +665,12 @@ def test_full_flow_parallel():
             )
 
         def s10():
+            invoke_task_a = f"order_{_RUN_ID}"
+            invoke_task_b = f"invoice_{_RUN_ID}"
+            invoke_priority = random.randint(1, 5)
             start = time.time()
             r = api_connector("POST", f"/flows/{fid}/invoke",
-                             {"task": "parallel-test", "priority": 1},
+                             {"task_a": invoke_task_a, "task_b": invoke_task_b, "priority": invoke_priority},
                              headers={"X-Sys-Token": "tester"})
             elapsed = time.time() - start
             individual_sum = BRANCH_DELAYS["a"] + BRANCH_DELAYS["b"]
@@ -638,7 +688,13 @@ def test_full_flow_parallel():
                 os_ok(body.get("branchBCode") == 0,
                       f"branchB.code={body.get('branchBCode')}")
 
-                # 并行耗时验证: 应 < 串行和 + 1s 开销
+                ea = body.get("branchAEcho", {})
+                eb = body.get("branchBEcho", {})
+                os_ok(ea.get("task") == invoke_task_a, f"branchA echo.task={ea.get('task')}")
+                os_ok(ea.get("priority") == invoke_priority, f"branchA echo.priority={ea.get('priority')}")
+                os_ok(eb.get("task") == invoke_task_b, f"branchB echo.task={eb.get('task')}")
+                os_ok(eb.get("priority") == invoke_priority + 1, f"branchB echo.priority={eb.get('priority')}")
+
                 os_ok(elapsed < individual_sum + 1.0,
                       f"并行耗时={elapsed:.2f}s < 串行和+1s={individual_sum+1.0:.1f}s")
                 os_ok(elapsed < max_delay + 2.0,

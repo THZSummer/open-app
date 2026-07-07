@@ -43,6 +43,56 @@ _RUN_ID = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
 MOCK_PORT = 18986; MOCK_URL = f"http://localhost:{MOCK_PORT}"
 
 
+# --- shared data transformations ---
+
+def _user_data(name, email, age):
+    return {
+        "display_name": name.upper(),
+        "email_domain": email.split("@")[-1] if "@" in email else "",
+        "age_group": "adult" if int(age) >= 18 else "minor",
+    }
+
+ORDER_STATUSES = ["delivered", "processing", "shipped", "cancelled", "refunded"]
+ORDER_AMOUNTS = [299.90, 99.90, 199.90, 0, 49.95]
+
+def _order_data(name):
+    idx = sum(ord(c) for c in name) % 5
+    return {
+        "status": ORDER_STATUSES[idx],
+        "amount": ORDER_AMOUNTS[idx],
+        "customer": name.upper(),
+    }
+
+STATUS_VERSIONS = [
+    {"server": "healthy", "version": "v2.1.0", "uptime_hours": 128},
+    {"server": "degraded", "version": "v2.0.9", "uptime_hours": 96},
+    {"server": "maintenance", "version": "v2.2.0", "uptime_hours": 72},
+]
+
+def _status_data(name):
+    return STATUS_VERSIONS[sum(ord(c) for c in name) % 3]
+
+
+_RUN_DATA = {
+    "user": {
+        "name": ''.join(random.choices(string.ascii_lowercase, k=5)),
+        "email": f"u{_RUN_ID}@company.com",
+        "age": 30,
+    },
+    "order": {
+        "name": ''.join(random.choices(string.ascii_lowercase, k=5)),
+    },
+    "status": {
+        "name": ''.join(random.choices(string.ascii_lowercase, k=4)),
+    },
+    "default": {
+        "name": ''.join(random.choices(string.ascii_lowercase, k=5)),
+        "email": f"d{_RUN_ID}@school.edu",
+        "age": 15,
+    },
+}
+
+
 class MockServer:
     """提供 3 个端点供脚本 ctx.http 条件调用"""
 
@@ -79,41 +129,25 @@ class MockServer:
                 elif path == "/api/order":
                     q = self._query()
                     name = q.get("name", ["unknown"])[0]
-                    self._json(200, {
-                        "code": 0,
-                        "data": {
-                            "order_id": f"ORD-{state['call_count']:03d}",
-                            "status": "processing",
-                            "amount": 99.90,
-                            "customer": name.upper(),
-                        }
-                    })
+                    data = _order_data(name)
+                    data["order_id"] = f"ORD-{state['call_count']:03d}"
+                    self._json(200, {"code": 0, "data": data})
 
                 elif path == "/api/status":
-                    self._json(200, {
-                        "code": 0,
-                        "data": {
-                            "server": "healthy",
-                            "version": "v2.1.0",
-                            "uptime_hours": 128,
-                        }
-                    })
+                    q = self._query()
+                    name = q.get("name", ["unknown"])[0]
+                    self._json(200, {"code": 0, "data": _status_data(name)})
 
             def do_POST(self):
                 state["call_count"] += 1
                 body = self._body()
-                name = body.get("name") or "unknown"
-                email = body.get("email") or ""
-                age = body.get("age") or 0
-                self._json(200, {
-                    "code": 0,
-                    "data": {
-                        "display_name": name.upper(),
-                        "email_domain": email.split("@")[-1] if "@" in email else "",
-                        "age_group": "adult" if int(age) >= 18 else "minor",
-                        "call_number": state["call_count"],
-                    }
-                })
+                data = _user_data(
+                    body.get("name") or "unknown",
+                    body.get("email") or "",
+                    body.get("age") or 0,
+                )
+                data["call_number"] = state["call_count"]
+                self._json(200, {"code": 0, "data": data})
 
         return H
 
@@ -280,7 +314,7 @@ def test_full_flow_script():
                 "    }\n"
                 "\n"
                 "    if (action === 'status') {\n"
-                "        var resp = ctx.http.get('" + MOCK_URL + "/api/status');\n"
+                "        var resp = ctx.http.get('" + MOCK_URL + "/api/status?name=' + encodeURIComponent(name));\n"
                 "        var d = resp.body.data;\n"
                 "        return { result: d.server, domain: d.version, group: String(d.uptime_hours) + 'h', path: 'status' };\n"
                 "    }\n"
@@ -461,33 +495,41 @@ def test_full_flow_script():
                     ok = False
             return ok
 
+        def _expected_user_resp(name, email, age):
+            u = _user_data(name, email, age)
+            return {"result": u["display_name"], "domain": u["email_domain"], "group": u["age_group"], "path": "user"}
+
+        def _expected_order_resp(name):
+            o = _order_data(name)
+            return {"domain": o["status"], "group": str(o["amount"]), "path": "order"}
+
+        def _expected_status_resp(name):
+            s = _status_data(name)
+            return {"result": s["server"], "domain": s["version"], "group": f"{s['uptime_hours']}h", "path": "status"}
+
+        u = _RUN_DATA["user"]
         def s12():
             return _invoke_and_verify("Branch=user POST", {
-                "action": "user", "name": "zhang san", "email": "z@company.com", "age": 30,
-            }, {
-                "result": "ZHANG SAN", "domain": "company.com", "group": "adult", "path": "user",
-            })
+                "action": "user", "name": u["name"], "email": u["email"], "age": u["age"],
+            }, _expected_user_resp(u["name"], u["email"], u["age"]))
 
+        o = _RUN_DATA["order"]
         def s13():
             return _invoke_and_verify("Branch=order GET", {
-                "action": "order", "name": "zhang san",
-            }, {
-                "domain": "processing", "group": "99.9", "path": "order",
-            })
+                "action": "order", "name": o["name"],
+            }, _expected_order_resp(o["name"]))
 
+        s = _RUN_DATA["status"]
         def s14():
             return _invoke_and_verify("Branch=status GET", {
-                "action": "status", "name": "test",
-            }, {
-                "result": "healthy", "domain": "v2.1.0", "group": "128h", "path": "status",
-            })
+                "action": "status", "name": s["name"],
+            }, _expected_status_resp(s["name"]))
 
+        d = _RUN_DATA["default"]
         def s15():
             return _invoke_and_verify("Default→user POST", {
-                "name": "xiao ming", "email": "xm@school.edu", "age": 15,
-            }, {
-                "result": "XIAO MING", "domain": "school.edu", "group": "minor", "path": "user",
-            })
+                "name": d["name"], "email": d["email"], "age": d["age"],
+            }, _expected_user_resp(d["name"], d["email"], d["age"]))
 
         def s16():
             time.sleep(0.5)
