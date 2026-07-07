@@ -81,6 +81,28 @@ def _find_approval(flow_version_id):
     return 0
 
 
+def _find_capability_approval(business_id, business_type):
+    """查询能力开放平台资源的审批记录 ID"""
+    r = api("GET", f"/approvals/pending?businessType={business_type}&page=1&size=50")
+    items = r.json().get("data", [])
+    if isinstance(items, dict):
+        items = items.get("items", items.get("data", []))
+    for item in (items if isinstance(items, list) else []):
+        if str(item.get("businessId")) == str(business_id):
+            return int(item["id"])
+    return 0
+
+
+def _approve_capability_resource(resource_id, business_type):
+    """审批准能力开放平台资源（api_register / event_register / callback_register）"""
+    aid = _find_capability_approval(resource_id, business_type)
+    if aid:
+        api("POST", f"/approvals/{aid}/approve", {"comment": "auto"})
+    aid2 = _find_capability_approval(resource_id, business_type)
+    if aid2:
+        api("POST", f"/approvals/{aid2}/approve", {"comment": "auto"})
+
+
 # ═══════════════════════════════════════════════════════════
 # 连接器 fixtures
 # ═══════════════════════════════════════════════════════════
