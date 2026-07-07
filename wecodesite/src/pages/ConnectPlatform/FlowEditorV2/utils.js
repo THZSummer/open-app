@@ -715,7 +715,7 @@ const collectScriptRefs = (params) => {
     node,
     scope: 'output',
     carriers: ['temporary'], // 脚本节点无需body、header和query路径，此处仅做适配结果处理
-    sourceMap: { body: node.outputParams || [] }, // 脚本节点无需body、header和query路径，此处仅做适配结果处理
+    sourceMap: { temporary: node.outputParams || [] }, // 脚本节点无需body、header和query路径，此处仅做适配结果处理
   });
 };
 
