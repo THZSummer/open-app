@@ -165,7 +165,6 @@ def category(request):
     r = api("POST", "/categories", {
         "nameCn": f"pytest_{tag}",
         "nameEn": f"pytest_{tag}",
-        "categoryAlias": "api",
     })
     return int(_get_data(r)["id"])
 
