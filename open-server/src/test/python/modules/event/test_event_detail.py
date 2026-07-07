@@ -9,13 +9,13 @@ def _uid():
     return int(time.time() * 1000) % 1000000
 
 
-def _helper_create(category):
+def _create(category):
     uid = _uid()
     r = api("POST", "/events", {
-        "nameCn": "detail_ev", "nameEn": "detail_ev",
-        "categoryId": str(category), "topic": f"pytest.detail.event.{uid}",
-        "permission": {"nameCn": "dp", "nameEn": "dp",
-                       "scope": f"event:test:detail{uid}"},
+        "nameCn": f"detail_ok_{uid}", "nameEn": f"detail_ok_{uid}",
+        "categoryId": str(category), "topic": f"pytest.detail.{uid}",
+        "permission": {"nameCn": f"p_detail_{uid}", "nameEn": f"p_detail_{uid}",
+                       "scope": f"event:test:v{uid}"},
     })
     assert r.status_code == 200
     return r.json()["data"]["id"]
@@ -24,11 +24,10 @@ def _helper_create(category):
 class TestEventDetail:
     @pytest.mark.L1
     def test_detail_ok(self, category):
-        eid = _helper_create(category)
+        eid = _create(category)
         resp = api("GET", f"/events/{eid}")
         assert resp.status_code == 200
-        data = resp.json()["data"]
-        assert str(data["id"]) == str(eid)
+        assert str(resp.json()["data"]["id"]) == str(eid)
 
     @pytest.mark.L4
     def test_detail_not_found(self):

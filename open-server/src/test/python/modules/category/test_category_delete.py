@@ -1,14 +1,20 @@
 #!/usr/bin/env python3
 """DELETE /categories/{id} — 删除分类"""
+import time
 import pytest
 from conftest import api
+
+
+def _uid():
+    return int(time.time() * 1000) % 1000000
 
 
 class TestCategoryDelete:
     @pytest.mark.L1
     def test_delete_ok(self):
+        uid = _uid()
         r = api("POST", "/categories", {
-            "nameCn": "to_delete", "nameEn": "to_delete",
+            "nameCn": f"delete_ok_{uid}", "nameEn": f"delete_ok_{uid}",
         })
         cid = r.json()["data"]["id"]
         resp = api("DELETE", f"/categories/{cid}")

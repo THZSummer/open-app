@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """POST /apps/{appId}/callbacks/subscribe — 订阅回调权限
 
-前端抽屉调用 GET /categories?categoryAlias=callback 查找分类。
-完整链路: 分类可见→回调上架→出现在目录→订阅→审批→已授权。
+前端抽屉: GET /categories?categoryAlias=callback
+完整链路: 分类可见→上架→出现在目录→订阅→审批订阅→已授权
 """
 import time
 import pytest
@@ -16,20 +16,20 @@ def _uid():
 def _create_category():
     uid = _uid()
     r = api("POST", "/categories", {
-        "nameCn": f"cat_cb_{uid}", "nameEn": f"cat_cb_{uid}",
+        "nameCn": f"cat_cb_sub_{uid}", "nameEn": f"cat_cb_sub_{uid}",
         "categoryAlias": "callback",
     })
     assert r.status_code == 200
     return r.json()["data"]["id"]
 
 
-def _create_and_publish(category_id):
+def _create_and_publish(category_id, scenario):
     uid = _uid()
     r = api("POST", "/callbacks", {
-        "nameCn": "sc", "nameEn": "sc",
+        "nameCn": f"{scenario}_{uid}", "nameEn": f"{scenario}_{uid}",
         "categoryId": str(category_id),
-        "permission": {"nameCn": "s", "nameEn": "s",
-                       "scope": f"callback:test:sc{uid}"},
+        "permission": {"nameCn": f"p_{scenario}_{uid}", "nameEn": f"p_{scenario}_{uid}",
+                       "scope": f"callback:test:v{uid}"},
     })
     assert r.status_code == 200
     cid = r.json()["data"]["id"]
@@ -43,32 +43,26 @@ class TestSubscribeCallbacks:
     def test_rejected_for_draft(self, category):
         uid = _uid()
         r = api("POST", "/callbacks", {
-            "nameCn": "dr", "nameEn": "dr",
+            "nameCn": f"draft_reject_{uid}", "nameEn": f"draft_reject_{uid}",
             "categoryId": str(category),
-            "permission": {"nameCn": "d", "nameEn": "d",
-                           "scope": f"callback:test:dr{uid}"},
+            "permission": {"nameCn": f"p_draft_reject_{uid}", "nameEn": f"p_draft_reject_{uid}",
+                           "scope": f"callback:test:v{uid}"},
         })
         pid = r.json()["data"]["permission"]["id"]
-        resp = api("POST", f"/apps/{INTERNAL_APP_ID}/callbacks/subscribe", {
-            "permissionIds": [pid],
-        })
+        resp = api("POST", f"/apps/{INTERNAL_APP_ID}/callbacks/subscribe", {"permissionIds": [pid]})
         assert resp is not None
         body = resp.json()
         assert "已发布" in body.get("messageZh", "") or body.get("code") != "200"
 
     @pytest.mark.L2
     def test_subscribe_and_approve(self):
-        """完整链路: 分类可见→回调上架→出现在目录→订阅→审批→已授权"""
         cid = _create_category()
-        pid = _create_and_publish(cid)
+        pid = _create_and_publish(cid, "sub_approve")
 
         r0 = api("GET", f"/categories/{cid}/callbacks")
-        cat_items = r0.json().get("data", [])
-        assert len(cat_items) > 0, "已上架的回调应出现在分类订阅目录中"
+        assert len(r0.json().get("data", [])) > 0, "已上架的回调应出现在分类订阅目录中"
 
-        resp = api("POST", f"/apps/{INTERNAL_APP_ID}/callbacks/subscribe", {
-            "permissionIds": [pid],
-        })
+        resp = api("POST", f"/apps/{INTERNAL_APP_ID}/callbacks/subscribe", {"permissionIds": [pid]})
         assert resp.status_code in (200, 201)
         sub_id = resp.json()["data"]["records"][0]["id"]
 
@@ -83,5 +77,4 @@ class TestSubscribeCallbacks:
     def test_category_discoverable_by_frontend(self):
         cid = _create_category()
         resp = api("GET", "/categories?categoryAlias=callback")
-        items = resp.json().get("data", [])
-        assert len(items) > 0, "前端应能通过别名 callback 找到分类"
+        assert len(resp.json().get("data", [])) > 0, "前端应能通过别名 callback 找到分类"

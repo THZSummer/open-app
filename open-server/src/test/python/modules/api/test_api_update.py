@@ -9,14 +9,14 @@ def _uid():
     return int(time.time() * 1000) % 1000000
 
 
-def _helper_create(category):
+def _create(category):
     uid = _uid()
     r = api("POST", "/apis", {
-        "nameCn": "update_test", "nameEn": "update_test",
+        "nameCn": f"update_ok_{uid}", "nameEn": f"update_ok_{uid}",
         "categoryId": str(category), "method": "GET",
-        "path": f"/update/test/{uid}",
-        "permission": {"nameCn": "up", "nameEn": "up",
-                       "scope": f"api:test:update{uid}"},
+        "path": f"/api/update/{uid}",
+        "permission": {"nameCn": f"p_update_{uid}", "nameEn": f"p_update_{uid}",
+                       "scope": f"api:test:v{uid}"},
     })
     assert r.status_code == 200
     return r.json()["data"]["id"]
@@ -25,15 +25,13 @@ def _helper_create(category):
 class TestApiUpdate:
     @pytest.mark.L1
     def test_update_ok(self, category):
-        aid = _helper_create(category)
+        aid = _create(category)
         resp = api("PUT", f"/apis/{aid}", {
-            "nameCn": "updated_api", "nameEn": "updated_api",
+            "nameCn": f"updated_{aid}", "nameEn": f"updated_{aid}",
         })
         assert resp.status_code == 200
 
     @pytest.mark.L4
     def test_update_not_found(self):
-        resp = api("PUT", "/apis/999999999999999999", {
-            "nameCn": "x", "nameEn": "x",
-        })
+        resp = api("PUT", "/apis/999999999999999999", {"nameCn": "x", "nameEn": "x"})
         assert resp is not None

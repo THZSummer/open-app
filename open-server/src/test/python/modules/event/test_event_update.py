@@ -9,13 +9,13 @@ def _uid():
     return int(time.time() * 1000) % 1000000
 
 
-def _helper_create(category):
+def _create(category):
     uid = _uid()
     r = api("POST", "/events", {
-        "nameCn": "update_ev", "nameEn": "update_ev",
-        "categoryId": str(category), "topic": f"pytest.update.event.{uid}",
-        "permission": {"nameCn": "up", "nameEn": "up",
-                       "scope": f"event:test:update{uid}"},
+        "nameCn": f"update_ok_{uid}", "nameEn": f"update_ok_{uid}",
+        "categoryId": str(category), "topic": f"pytest.update.{uid}",
+        "permission": {"nameCn": f"p_update_{uid}", "nameEn": f"p_update_{uid}",
+                       "scope": f"event:test:v{uid}"},
     })
     assert r.status_code == 200
     return r.json()["data"]["id"]
@@ -24,8 +24,8 @@ def _helper_create(category):
 class TestEventUpdate:
     @pytest.mark.L1
     def test_update_ok(self, category):
-        eid = _helper_create(category)
+        eid = _create(category)
         resp = api("PUT", f"/events/{eid}", {
-            "nameCn": "updated_ev", "nameEn": "updated_ev",
+            "nameCn": f"updated_{eid}", "nameEn": f"updated_{eid}",
         })
         assert resp.status_code == 200

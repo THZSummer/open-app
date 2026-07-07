@@ -13,7 +13,7 @@ class TestCategoryList:
         assert data["code"] == "200"
         assert isinstance(data.get("data"), list)
 
-    @pytest.mark.L1
+    @pytest.mark.L3
     def test_list_with_newly_created(self, category):
         resp = api("GET", "/categories")
         items = resp.json().get("data", [])

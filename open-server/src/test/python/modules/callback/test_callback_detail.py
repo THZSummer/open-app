@@ -9,13 +9,13 @@ def _uid():
     return int(time.time() * 1000) % 1000000
 
 
-def _helper_create(category):
+def _create(category):
     uid = _uid()
     r = api("POST", "/callbacks", {
-        "nameCn": "detail_cb", "nameEn": "detail_cb",
+        "nameCn": f"detail_ok_{uid}", "nameEn": f"detail_ok_{uid}",
         "categoryId": str(category),
-        "permission": {"nameCn": "dp", "nameEn": "dp",
-                       "scope": f"callback:test:detail{uid}"},
+        "permission": {"nameCn": f"p_detail_{uid}", "nameEn": f"p_detail_{uid}",
+                       "scope": f"callback:test:v{uid}"},
     })
     assert r.status_code == 200
     return r.json()["data"]["id"]
@@ -24,11 +24,10 @@ def _helper_create(category):
 class TestCallbackDetail:
     @pytest.mark.L1
     def test_detail_ok(self, category):
-        cid = _helper_create(category)
+        cid = _create(category)
         resp = api("GET", f"/callbacks/{cid}")
         assert resp.status_code == 200
-        data = resp.json()["data"]
-        assert str(data["id"]) == str(cid)
+        assert str(resp.json()["data"]["id"]) == str(cid)
 
     @pytest.mark.L4
     def test_detail_not_found(self):

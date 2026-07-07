@@ -8,8 +8,7 @@ class TestCategoryUpdate:
     @pytest.mark.L1
     def test_update_ok(self, category):
         resp = api("PUT", f"/categories/{category}", {
-            "nameCn": "updated", "nameEn": "updated_en",
+            "nameCn": f"updated_{category}", "nameEn": f"updated_{category}",
         })
         assert resp.status_code == 200
-        data = resp.json()["data"]
-        assert data.get("nameCn") == "updated"
+        assert resp.json()["data"].get("nameCn") == f"updated_{category}"
