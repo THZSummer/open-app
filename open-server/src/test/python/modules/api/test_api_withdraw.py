@@ -1,22 +1,31 @@
 #!/usr/bin/env python3
-"""POST /apis/{id}/withdraw — 撤回审核中的 API"""
+"""DELETE /apis/{id} + POST /apis/{id}/withdraw"""
+import time
 import pytest
 from conftest import api
 
 
-def _create_api(category):
+def _uid():
+    return int(time.time() * 1000) % 1000000
+
+
+def _helper_create(category):
+    uid = _uid()
     r = api("POST", "/apis", {
-        "nameCn": "withdraw_test", "nameEn": "withdraw_test",
-        "categoryId": category, "method": "GET",
-        "path": "/withdraw/test",
+        "nameCn": "wd_test", "nameEn": "wd_test",
+        "categoryId": str(category), "method": "GET",
+        "path": f"/wd/test/{uid}",
+        "permission": {"nameCn": "wp", "nameEn": "wp",
+                       "scope": f"api:test:wd{uid}"},
     })
+    assert r.status_code == 200
     return r.json()["data"]["id"]
 
 
 class TestApiWithdraw:
     @pytest.mark.L2
     def test_withdraw(self, category):
-        aid = _create_api(category)
+        aid = _helper_create(category)
         resp = api("POST", f"/apis/{aid}/withdraw")
         assert resp is not None
 

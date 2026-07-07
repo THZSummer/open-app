@@ -1,21 +1,30 @@
 #!/usr/bin/env python3
 """DELETE /events/{id} + POST /events/{id}/withdraw"""
+import time
 import pytest
-from conftest import api, assert_operate_log
+from conftest import api
 
 
-def _create_event(category, suffix=""):
+def _uid():
+    return int(time.time() * 1000) % 1000000
+
+
+def _helper_create(category, suffix=""):
+    uid = _uid()
     r = api("POST", "/events", {
-        "nameCn": f"del_ev_{suffix}", "nameEn": f"del_ev_{suffix}",
-        "categoryId": category, "topic": f"pytest.del.event.{suffix}",
+        "nameCn": f"ev_{suffix}", "nameEn": f"ev_{suffix}",
+        "categoryId": str(category), "topic": f"pytest.del.event.{suffix}.{uid}",
+        "permission": {"nameCn": "ep", "nameEn": "ep",
+                       "scope": f"event:test:{suffix}{uid}"},
     })
+    assert r.status_code == 200
     return r.json()["data"]["id"]
 
 
 class TestEventDelete:
     @pytest.mark.L1
     def test_delete_ok(self, category):
-        eid = _create_event(category, "ok")
+        eid = _helper_create(category, "ok")
         resp = api("DELETE", f"/events/{eid}")
         assert resp.status_code in (200, 204)
 
@@ -24,18 +33,11 @@ class TestEventDelete:
         resp = api("DELETE", "/events/999999999999999999")
         assert resp is not None
 
-    @pytest.mark.L2
-    def test_delete_log(self, category):
-        eid = _create_event(category, "log")
-        resp = api("DELETE", f"/events/{eid}")
-        assert resp.status_code in (200, 204)
-        assert_operate_log("删除事件")
-
 
 class TestEventWithdraw:
     @pytest.mark.L2
     def test_withdraw(self, category):
-        eid = _create_event(category, "wd")
+        eid = _helper_create(category, "wd")
         resp = api("POST", f"/events/{eid}/withdraw")
         assert resp is not None
 

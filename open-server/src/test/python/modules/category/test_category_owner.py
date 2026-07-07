@@ -8,7 +8,8 @@ class TestCategoryOwner:
     @pytest.mark.L2
     def test_owner_crud(self, category):
         r = api("POST", f"/categories/{category}/owners", {
-            "members": [{"userId": "tester", "userName": "Test User"}],
+            "userId": "tester",
+            "userName": "Test User",
         })
         assert r.status_code in (200, 201)
 

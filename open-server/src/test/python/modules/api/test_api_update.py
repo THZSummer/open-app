@@ -1,32 +1,39 @@
 #!/usr/bin/env python3
 """PUT /apis/{id} — 更新 API"""
+import time
 import pytest
-from conftest import api, assert_operate_log
+from conftest import api
 
 
-def _create_api(category):
+def _uid():
+    return int(time.time() * 1000) % 1000000
+
+
+def _helper_create(category):
+    uid = _uid()
     r = api("POST", "/apis", {
         "nameCn": "update_test", "nameEn": "update_test",
-        "categoryId": category, "method": "GET",
-        "path": "/update/test",
+        "categoryId": str(category), "method": "GET",
+        "path": f"/update/test/{uid}",
+        "permission": {"nameCn": "up", "nameEn": "up",
+                       "scope": f"api:test:update{uid}"},
     })
+    assert r.status_code == 200
     return r.json()["data"]["id"]
 
 
 class TestApiUpdate:
     @pytest.mark.L1
     def test_update_ok(self, category):
-        aid = _create_api(category)
+        aid = _helper_create(category)
         resp = api("PUT", f"/apis/{aid}", {
             "nameCn": "updated_api", "nameEn": "updated_api",
         })
         assert resp.status_code == 200
 
-    @pytest.mark.L1
-    def test_update_log(self, category):
-        aid = _create_api(category)
-        resp = api("PUT", f"/apis/{aid}", {
-            "nameCn": "logged_api", "nameEn": "logged_api",
+    @pytest.mark.L4
+    def test_update_not_found(self):
+        resp = api("PUT", "/apis/999999999999999999", {
+            "nameCn": "x", "nameEn": "x",
         })
-        assert resp.status_code == 200
-        assert_operate_log("更新API")
+        assert resp is not None

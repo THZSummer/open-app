@@ -18,11 +18,11 @@ class TestCategoryCreate:
     @pytest.mark.L1
     def test_create_with_parent(self, category):
         resp = api("POST", "/categories", {
-            "nameCn": "child", "nameEn": "child", "parentId": category,
+            "nameCn": "child", "nameEn": "child", "parentId": str(category),
         })
         assert resp.status_code in (200, 201)
         data = resp.json()["data"]
-        assert int(data["parentId"]) == category
+        assert str(data.get("parentId")) == str(category)
 
     @pytest.mark.L4
     def test_create_empty_name(self):

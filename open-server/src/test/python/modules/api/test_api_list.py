@@ -9,8 +9,7 @@ class TestApiList:
     def test_list_ok(self):
         resp = api("GET", "/apis")
         assert resp.status_code == 200
-        data = resp.json()
-        assert data["code"] == "200"
+        assert resp.json()["code"] == "200"
 
     @pytest.mark.L1
     def test_list_by_category(self, category):

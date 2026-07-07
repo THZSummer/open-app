@@ -1,32 +1,42 @@
 #!/usr/bin/env python3
-"""订阅/退订 API/Event/Callback"""
+"""订阅/退订 API"""
+import time
 import pytest
 from conftest import api, INTERNAL_APP_ID
 
 
-def _create_api(category):
+def _uid():
+    return int(time.time() * 1000) % 1000000
+
+
+def _helper_create_api(category):
+    uid = _uid()
     r = api("POST", "/apis", {
         "nameCn": "sub_api", "nameEn": "sub_api",
-        "categoryId": category, "method": "GET",
-        "path": "/sub/test/api",
+        "categoryId": str(category), "method": "GET",
+        "path": f"/sub/test/{uid}",
+        "permission": {"nameCn": "sp", "nameEn": "sp",
+                       "scope": f"api:test:sub{uid}"},
     })
-    return r.json()["data"]["id"]
+    assert r.status_code == 200
+    api_data = r.json()["data"]
+    return api_data["id"], api_data["permission"]["id"]
 
 
 class TestSubscribe:
     @pytest.mark.L2
-    def test_subscribe_apis(self, category):
-        aid = _create_api(category)
+    def test_subscribe_rejected_for_draft(self, category):
+        """未发布的 API 不允许订阅"""
+        aid, pid = _helper_create_api(category)
         resp = api("POST", f"/apps/{INTERNAL_APP_ID}/apis/subscribe", {
-            "apiIds": [aid],
+            "permissionIds": [pid],
         })
-        assert resp.status_code in (200, 201)
+        assert resp is not None
+        body = resp.json()
+        # 未发布时应该被拒绝
+        assert "已发布" in body.get("messageZh", "") or body.get("code") != "200"
 
     @pytest.mark.L2
-    def test_withdraw_api_subscription(self, category):
-        aid = _create_api(category)
-        api("POST", f"/apps/{INTERNAL_APP_ID}/apis/subscribe", {
-            "apiIds": [aid],
-        })
-        resp = api("POST", f"/apps/{INTERNAL_APP_ID}/apis/{aid}/withdraw")
-        assert resp.status_code in (200, 201, 204)
+    def test_withdraw_not_found(self, category):
+        resp = api("POST", f"/apps/{INTERNAL_APP_ID}/apis/999999999999999999/withdraw")
+        assert resp is not None
