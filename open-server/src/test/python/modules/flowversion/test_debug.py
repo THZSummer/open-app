@@ -37,7 +37,7 @@ _SIMPLE_ORCH = json.dumps({
             "data": {
                 "type": "exit",
                 "labelCn": "返回", "labelEn": "Ret",
-                "outputMapping": {
+                "output": {
                     "header": {"type": "object", "properties": {}},
                     "body": {"type": "object", "properties": {"echo": {"type": "string", "value": "${$.node.node_trigger.input.body.msg}"}}}
                 }
@@ -98,7 +98,23 @@ class TestFlowVersionDebug:
     def test_debug_draft_version(self, draft_flow):
         """FR-041: 草稿版本调试触发，验证返回有效响应"""
         fid, fvid = draft_flow
-        resp = api("POST", f"/flows/{fid}/versions/{fvid}/debug", {"triggerData": {"message": "hello"}})
+        api("PUT", f"/flows/{fid}/versions/{fvid}", {
+            "orchestrationConfig": {
+                "nodes": [
+                    {"id": "trigger", "type": "trigger", "data": {
+                        "type": "trigger", "triggerType": "http",
+                        "input": {"protocol": "HTTP", "body": {"type": "object", "properties": {"msg": {"type": "string"}}}},
+                    }},
+                    {"id": "exit", "type": "exit", "data": {
+                        "type": "exit",
+                        "output": {"body": {"type": "object", "properties": {"echo": {"type": "string", "value": "${$.node.trigger.input.body.msg}"}}}},
+                    }},
+                ],
+                "edges": [{"id": "e1", "source": "trigger", "target": "exit"}],
+                "flowConfig": {"flowMode": "serial"},
+            }
+        })
+        resp = api("POST", f"/flows/{fid}/versions/{fvid}/debug", {"triggerData": {"msg": "hello"}})
         assert resp is not None
         assert resp.status_code in (200, 201), f"Expected 200/201, got {resp.status_code}"
         data = resp.json()
