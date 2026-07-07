@@ -103,6 +103,16 @@ def _approve_capability_resource(resource_id, business_type):
         api("POST", f"/approvals/{aid2}/approve", {"comment": "auto"})
 
 
+def _approve_subscription(sub_id, business_type):
+    """审批订阅申请（api_permission_apply / event_permission_apply / callback_permission_apply）"""
+    aid = _find_capability_approval(sub_id, business_type)
+    if aid:
+        api("POST", f"/approvals/{aid}/approve", {"comment": "auto"})
+    aid2 = _find_capability_approval(sub_id, business_type)
+    if aid2:
+        api("POST", f"/approvals/{aid2}/approve", {"comment": "auto"})
+
+
 # ═══════════════════════════════════════════════════════════
 # 连接器 fixtures
 # ═══════════════════════════════════════════════════════════
@@ -155,6 +165,7 @@ def category(request):
     r = api("POST", "/categories", {
         "nameCn": f"pytest_{tag}",
         "nameEn": f"pytest_{tag}",
+        "categoryAlias": "api",
     })
     return int(_get_data(r)["id"])
 

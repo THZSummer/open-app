@@ -2,7 +2,7 @@
 """POST /apps/{appId}/callbacks/subscribe — 订阅回调权限"""
 import time
 import pytest
-from conftest import api, INTERNAL_APP_ID, _approve_capability_resource
+from conftest import api, INTERNAL_APP_ID, _approve_capability_resource, _approve_subscription
 
 
 def _uid():
@@ -27,7 +27,6 @@ def _create_and_publish(category):
 class TestSubscribeCallbacks:
     @pytest.mark.L2
     def test_rejected_for_draft(self, category):
-        """未发布的回调不允许订阅"""
         uid = _uid()
         r = api("POST", "/callbacks", {
             "nameCn": "dr", "nameEn": "dr",
@@ -44,10 +43,19 @@ class TestSubscribeCallbacks:
         assert "已发布" in body.get("messageZh", "") or body.get("code") != "200"
 
     @pytest.mark.L2
-    def test_subscribe_published(self, category):
-        """已上架的回调可成功订阅"""
+    def test_subscribe_and_approve(self, category):
+        """注册→审批→订阅→审批订阅→status=1 已授权"""
         pid = _create_and_publish(category)
+
         resp = api("POST", f"/apps/{INTERNAL_APP_ID}/callbacks/subscribe", {
             "permissionIds": [pid],
         })
         assert resp.status_code in (200, 201)
+        sub_id = resp.json()["data"]["records"][0]["id"]
+
+        _approve_subscription(sub_id, "callback_permission_apply")
+
+        r2 = api("GET", f"/apps/{INTERNAL_APP_ID}/callbacks")
+        items = r2.json().get("data", [])
+        matching = [it for it in items if str(it.get("id")) == str(sub_id)]
+        assert len(matching) > 0, "已授权的订阅应出现在应用列表中"
