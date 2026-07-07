@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Upload, message, Spin } from 'antd';
 import { PlusOutlined, EyeOutlined, CloseOutlined } from '@ant-design/icons';
-import { validateFile, validateImageDimensions } from '../../utils/common';
+import { validateFile, validateImageDimensions, UPLOAD_IMAGE_TYPE } from '../../utils/common';
 import { FILE_VALIDATION } from '../../utils/constants';
-import { uploadImage, fetchDefaultIcons, UPLOAD_IMAGE_TYPE } from '../../pages/AppList/thunk';
+import { uploadImage, fetchDefaultIcons } from '../../pages/AppList/thunk';
 
 import './IconPicker.m.less';
 

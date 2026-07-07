@@ -193,6 +193,22 @@ export const API_CONFIG = {
   },
 };
 
+// ==================== 灰度发布：新旧路由映射 ====================
+// key = 旧路由，value = 新路由
+// 后续手动替换新路由实现时，只改这里即可
+export const ROUTE_VERSION_MAP = {
+  '/':                  '/app-list-v2',
+  '/basic-info':        '/basic-info-v2',
+  '/members':           '/members-v2',
+  '/capabilities':      '/capabilities-v2',
+  '/capability-detail': '/capability-detail-v2',
+  '/version-release':   '/version-release-v2',
+  '/operation-log':     '/operation-log-v2',
+};
+
+// 灰度发布场景使用的新页面路由列表（用于快速判断"当前是否新页面"）
+export const NEW_PAGE_ROUTES = Object.values(ROUTE_VERSION_MAP);
+
 export const buildApiUrl = (template, params = {}) => {
   let url = template;
   Object.keys(params).forEach(key => {
@@ -227,5 +243,5 @@ export const fetchApi = async (url, options = {}) => {
       ...fetchOptions.headers,
     },
   });
-  return response;
+  return response.json();
 };

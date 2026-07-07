@@ -13,10 +13,11 @@ import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { message, Spin, Pagination } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import AppCard from '../../components/AppCard/AppCard';
+import EmptyState from '../../components/EmptyState/EmptyState';
 import CardGrid from '../../components/CardGrid/CardGrid';
 import { fetchAppList, createApp } from './thunk';
 import { INIT_PAGECONFIG } from '../../utils/constants';
-import { DEFAULT_GRID_COLUMNS, DEFAULT_GRID_GAP } from './constant';
+import { EMPTY_CONFIG, DEFAULT_GRID_COLUMNS, DEFAULT_GRID_GAP } from './constant';
 
 import './AppList.m.less';
 

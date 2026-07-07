@@ -15,7 +15,8 @@ function BasicInfoCard() {
   const [searchParams] = useSearchParams();
   const appId = searchParams.get('appId');
   const dispatch = useDispatch();
-  const { appBaseInfo: appData } = useSelector('state => state.app');
+  // 从 Redux store 中获取应用基本信息，选择器必须为函数
+  const { appBaseInfo: appData } = useSelector(state => state.app);
   const [editing, setEditing] = useState(false);
   const [editForm] = Form.useForm();
   const [diagram, setDiagram] = useState(null);
@@ -188,7 +189,7 @@ function BasicInfoCard() {
                   name="nameEn" rules={[
                   { required: true, message: "应用英文名不能为空" },
                   { max: 255, message: "不超过255字符" },
-                  { validator: (_, value) => validateSpace(value, '前后不能有空格')},,
+                  { validator: (_, value) => validateSpace(value, '前后不能有空格')},
                   ]}
                   style={{ marginBottom: 0 }}
                 >

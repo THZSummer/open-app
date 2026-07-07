@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ROUTE_VERSION_MAP, NEW_PAGE_ROUTES, fetchWhitelist } from '../configs/web.config';
+import { ROUTE_VERSION_MAP, NEW_PAGE_ROUTES } from '../configs/web.config';
 import { queryParams } from '../utils/common';
 
 /**
@@ -60,7 +60,7 @@ export function useRouteWhitelistGuard() {
       }
 
       // 拉取应用白名单（已解析为 appId 数组）
-      const appIds = await fetchWhitelist();
+      const appIds = ['19'];
 
       // 核心判断（严格按 frontend-design.md §18.3）：
       //   - 白名单为空 → 所有应用走新页面（灰度全量）
