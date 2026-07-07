@@ -124,6 +124,20 @@ def published_connector(connector):
 
 
 # ═══════════════════════════════════════════════════════════
+# 分类 fixture（api/event/callback/permission 依赖）
+# ═══════════════════════════════════════════════════════════
+
+@pytest.fixture
+def category(request):
+    tag = request.node.name.replace("test_", "")[:40]
+    r = api("POST", "/categories", {
+        "nameCn": f"pytest_{tag}",
+        "nameEn": f"pytest_{tag}",
+    })
+    return int(_get_data(r)["id"])
+
+
+# ═══════════════════════════════════════════════════════════
 # 连接流 fixtures
 # ═══════════════════════════════════════════════════════════
 
