@@ -23,7 +23,6 @@ const APPROVAL_FLOW_CODE_OPTIONS = [
   { value: 'api_permission_apply', label: 'api_permission_apply - API权限申请审批' },
   { value: 'event_permission_apply', label: 'event_permission_apply - 事件权限申请审批' },
   { value: 'callback_permission_apply', label: 'callback_permission_apply - 回调权限申请审批' },
-  { value: 'connector_flow', label: 'connector_flow - 连接流版本审批' },
   { value: 'connector_flow_version_publish', label: 'connector_flow_version_publish - 应用版本审批' },
 ];
 

@@ -65,20 +65,17 @@ function VersionRelease() {
 
   const loadVersions = useCallback(async (params = { curPage: 1, pageSize: 10 }) => {
     setLoading(true);
-    try {
-      const result = await fetchVersionList(appId, params);
-      if (result?.code === '200') {
-        setVersions(result.data || []);
-        setPagination(result.page ? {
-          ...result.page,
-          total: parseInt(result.page.total, 10) || 0,
-        } : INIT_PAGECONFIG);
-      }
-    } catch (error) {
-      message.error('加载版本列表失败');
-    } finally {
-      setLoading(false);
+    const result = await fetchVersionList(appId, params);
+    if (result?.code === '200') {
+      setVersions(result.data || []);
+      setPagination(result.page ? {
+        ...result.page,
+        total: parseInt(result.page.total, 10) || 0,
+      } : INIT_PAGECONFIG);
+    } else {
+      message.error(result.messageZh || '加载版本列表失败');
     }
+    setLoading(false);
   }, [appId]);
 
   useEffect(() => {
@@ -97,17 +94,19 @@ function VersionRelease() {
     fetchSubscribedAbilities(appId).then((abilityRes) => {
       if (abilityRes?.code === '200' && Array.isArray(abilityRes.data)) {
         setSubscribedAbilities(abilityRes.data);
+      } else {
+        message.error(abilityRes.messageZh || '加载应用能力数据失败')
       }
     });
 
     // 如果有versionId参数，直接进入查看模式
-    if(versionId && mode === MODE.LIST){
+    if (versionId && mode === MODE.LIST){
       enterView(versionId);
       return;
     }
 
     // 每次依赖变化都刷新（仅在列表模式下）
-    if(!versionId){
+    if (!versionId){
       setMode(MODE.LIST);
       setVersionDetail(null);
       loadVersions();
@@ -141,26 +140,20 @@ function VersionRelease() {
     // 更新URL，添加versionId参数，支持刷新保持状态
     navigate(`/version-release?appId=${appId}&versionId=${versionId}`,{ replace: true });
 
-    try {
-      const result = await fetchVersionDetail(appId, versionId);
-      if (result?.code === '200') {
-        const data = result.data;
-        setVersionDetail(data);
-        form.setFieldsValue({
-          versionCode: data.versionCode,
-          versionDescCn: data.versionDescCn,
-          versionDescEn: data.versionDescEn,
-        });
-      } else {
-        message.error(result?.messageZh || '加载版本详情失败');
-        backToList();
-      }
-    } catch (error) {
-      message.error('加载版本详情失败');
+    const result = await fetchVersionDetail(appId, versionId);
+    if (result?.code === '200') {
+      const data = result.data;
+      setVersionDetail(data);
+      form.setFieldsValue({
+        versionCode: data.versionCode,
+        versionDescCn: data.versionDescCn,
+        versionDescEn: data.versionDescEn,
+      });
+    } else {
+      message.error(result?.messageZh || '加载版本详情失败');
       backToList();
-    } finally {
-      setDetailLoading(false);
     }
+    setDetailLoading(false);
   };
 
   // 进入编辑模式（从查看进入）
@@ -486,8 +479,8 @@ function VersionRelease() {
               {/* 创建/编辑模式：保存和取消 */}
               {(isCreate || (!isCreate && !isReadOnly)) && (
                 <div className="version-form-actions">
-                  <Button onClick={()=>{
-                    if(isCreate){
+                  <Button onClick={() => {
+                    if (isCreate){
                       backToList();
                     } else {
                       // 编辑模式取消：恢复原始数据，不重新请求接口

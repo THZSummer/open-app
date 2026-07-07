@@ -57,7 +57,7 @@ export const getMoreMenuKeys = (status) => {
       return ['copy', 'copyId', 'deploy', 'stop'];
     case FLOW_LIFECYCLE_STATUS.INVALID:
       // 已失效：可恢复、可删除
-      return ['copyId', 'restore', 'delete'];
+      return ['copy', 'copyId', 'restore', 'delete'];
     default:
       // 未知状态仅保留低风险定位能力
       return ['copyId'];

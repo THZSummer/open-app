@@ -193,22 +193,6 @@ export const API_CONFIG = {
   },
 };
 
-// ==================== 灰度发布：新旧路由映射 ====================
-// key = 旧路由，value = 新路由
-// 后续手动替换新路由实现时，只改这里即可
-export const ROUTE_VERSION_MAP = {
-  '/':                  '/app-list-v2',
-  '/basic-info':        '/basic-info-v2',
-  '/members':           '/members-v2',
-  '/capabilities':      '/capabilities-v2',
-  '/capability-detail': '/capability-detail-v2',
-  '/version-release':   '/version-release-v2',
-  '/operation-log':     '/operation-log-v2',
-};
-
-// 灰度发布场景使用的新页面路由列表（用于快速判断"当前是否新页面"）
-export const NEW_PAGE_ROUTES = Object.values(ROUTE_VERSION_MAP);
-
 export const buildApiUrl = (template, params = {}) => {
   let url = template;
   Object.keys(params).forEach(key => {
@@ -216,9 +200,6 @@ export const buildApiUrl = (template, params = {}) => {
   });
   return url;
 };
-
-// 请求去重缓存：同一个 URL 的并发 GET 请求只发一次
-const _pendingRequests = new Map();
 
 export const fetchApi = async (url, options = {}) => {
   const { params, rawBody, ...fetchOptions } = options;
@@ -228,32 +209,11 @@ export const fetchApi = async (url, options = {}) => {
     fullUrl = queryString ? `${fullUrl}?${queryString}` : fullUrl;
   }
 
-  // GET 请求去重：如果同一个 URL 正在请求中，复用 Promise
-  const method = (fetchOptions.method || 'GET').toUpperCase();
-  if (method === 'GET') {
-    const cached = _pendingRequests.get(fullUrl);
-    if (cached) return cached;
-    const promise = _doFetch(fullUrl, fetchOptions, rawBody);
-    _pendingRequests.set(fullUrl, promise);
-    try {
-      return await promise;
-    } catch (e) {
-      _pendingRequests.delete(fullUrl);
-      throw e;
-    } finally {
-      _pendingRequests.delete(fullUrl);
-    }
+  const headers = {};
+  // 只有在 rawBody=false 且没有显示设置 Content-Type 时才默认设置值
+  if (!rawBody && !(fetchOptions.headers?.['Content-Type'])) {
+    headers['Content-Type'] = 'application/json';
   }
-
-  return _doFetch(fullUrl, fetchOptions, rawBody);
-};
-
-const _doFetch = async (fullUrl, fetchOptions, rawBody) => {
-  // rawBody=true 时（如 FormData 上传），不设置 Content-Type，让浏览器自动处理 boundary
-  const headers = rawBody
-    ? { ...fetchOptions.headers }
-    : { 'Content-Type': 'application/json', ...fetchOptions.headers };
-
   const appId = queryParams('appId');
   if (appId) {
     headers['X-App-Id'] = appId;
@@ -262,47 +222,10 @@ const _doFetch = async (fullUrl, fetchOptions, rawBody) => {
   const response = await fetch(fullUrl, {
     ...fetchOptions,
     credentials: 'include',
-    headers,
+    headers: {
+      ...headers,
+      ...fetchOptions.headers,
+    },
   });
-  return response.json();
-};
-
-// ==================== 灰度发布：白名单拉取（带缓存） ====================
-// 内存缓存：整个会话内只拉一次
-let _whitelistCache = null;
-let _whitelistPromise = null;
-
-/**
- * 获取灰度白名单（应用白名单，appId 列表）
- * - 后端从 openplatform_lookup_item_t 表 item_code = whiteAppList 的 item_value 中读取
- * - 返回格式：字符串，如 '["app_001","app_002"]'，由前端 JSON.parse 解析
- * - 成功：缓存并返回 appId 数组
- * - 失败：降级为空数组（白名单空 = 所有应用走新页面）
- */
-export const fetchWhitelist = async () => {
-  if (_whitelistCache !== null) return _whitelistCache;
-  if (_whitelistPromise) return _whitelistPromise;
-
-  _whitelistPromise = (async () => {
-    try {
-      const url = buildApiUrl(API_CONFIG.LOOKUP.WHITELIST, {});
-      const res = await fetchApi(url);
-      // 后端返回字符串，如 '["app_001","app_002"]'，解析为数组
-      const raw = res?.data;
-      if (typeof raw === 'string' && raw.trim()) {
-        _whitelistCache = JSON.parse(raw);
-      } else if (Array.isArray(raw)) {
-        _whitelistCache = raw;
-      } else {
-        _whitelistCache = [];
-      }
-    } catch (e) {
-      _whitelistCache = [];
-    } finally {
-      _whitelistPromise = null;
-    }
-    return _whitelistCache;
-  })();
-
-  return _whitelistPromise;
+  return response;
 };

@@ -29,7 +29,7 @@ function BasicInfo() {
     <div className="basic-info-page">
       <AppCredentials />
       <BasicInfoCard />
-      {appBaseInfo.appType !== 0 && <><AuthMethodCard /><CardSettings /></>}
+      {appBaseInfo?.appType !== 0 && <><AuthMethodCard /><CardSettings /></>}
     </div>
   );
 }

@@ -1,6 +1,9 @@
-export const ROUTE_PATH = '/members';
-
-export const ROUTE_CONFIG = {
-  path: ROUTE_PATH,
-  name: '成员管理',
-};
+export default {
+  path: '/membersManagement',
+  auth: false,
+  preload: false,
+  isStatic: true,
+  key: 'membersManagement',
+  layout: 'inner',
+  component: () => import('./Members'),
+}

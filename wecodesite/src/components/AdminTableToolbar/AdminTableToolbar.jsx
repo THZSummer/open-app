@@ -20,7 +20,8 @@ const AdminTableToolbar = ({
   ],
   onStatusChange,
 }) => {
-  const [searchKey, setSearchKey] = useState('')
+  const [searchKey, setSearchKey] = useState('');
+  
   return (
     <div className="admin-toolbar">
       <Search

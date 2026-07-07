@@ -87,7 +87,7 @@ export const ACTION_CONFIG = {
   disable: {
     content: '确定要失效吗？',
     confirmButtonText: '确认失效',
-    loadingText: '处理中...',
+    loadingText: '失效中...',
     dangerColor: '#ff4d4f'
   }
 };

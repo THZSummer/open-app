@@ -240,7 +240,7 @@ const MoreConfigDrawer = (props) => {
                   <span className="cache-key-index">{idx + 1}</span>
                   <Select
                     style={{ flex: 1 }}
-                    value={keyValue || undefined}
+                    value={keyValue}
                     placeholder="从触发器入参中选择字段"
                     disabled={!editable}
                     onChange={(value) => handleUpdateCacheKey({ index: idx, value })}

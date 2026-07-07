@@ -58,7 +58,7 @@ function CategoryFormModal({
     if (result && result.code === '200') {
       form.resetFields();
     } else {
-      message.error(result.message || result.messageZh || '提交失败')
+      message.error(result?.messageZh || '提交失败')
     }
     setLoading(false);
   };

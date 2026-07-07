@@ -63,7 +63,7 @@ const createListOperations = (state, options) => {
     if (result && result.code === '200') {
       handleListResponse(result, setData, setPagination, finalPage, finalSize);
     } else {
-      message.error(result.messageZh || result.message || '加载数据失败');
+      message.error(result?.messageZh || result.message || '加载数据失败');
     }
     setLoading(false);
   }, [keyword, categoryId, status, pagination.curPage, pagination.pageSize]);

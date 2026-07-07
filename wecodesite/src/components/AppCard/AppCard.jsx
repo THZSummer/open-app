@@ -44,7 +44,7 @@ function AppCard(props) {
     if (onClick) {
       onClick();
     } else {
-      navigate(`/basic-info?appId=${app.appId}`);
+      navigate(`/appBaseInfo?appId=${app.appId}`);
     }
   };
 

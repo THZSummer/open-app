@@ -15,10 +15,10 @@
  */
 
 import React from 'react';
-import { Drawer, Button, message } from 'antd';
+import { Drawer, message } from 'antd';
 import { LinkOutlined, CopyOutlined } from '@ant-design/icons';
 import { VERSION_STATUS, VERSION_STATUS_MAP } from '../constants';
-import { copyToClipboard, extractEflowId } from '../../../../utils/common';
+import { copyToClipboard } from '../../../../utils/common';
 import '../FlowEditorV2.m.less';
 
 /**
@@ -146,8 +146,8 @@ const VersionDetailDrawer = (props) => {
         <div className="drawer-section">
           <div className="section-title">失效信息</div>
           <div className="kv-grid">
-            <KvRow label="失效人" value={versionInfo.expireBy} />
-            <KvRow label="失效时间" value={versionInfo.expireTime} />
+            <KvRow label="失效人" value={versionInfo.lastUpdateBy} />
+            <KvRow label="失效时间" value={versionInfo.lastUpdateTime} />
           </div>
         </div>
       )}
@@ -190,11 +190,10 @@ const VersionDetailDrawer = (props) => {
         <div className="drawer-section">
           <div className="section-title">驳回信息</div>
           <div className="kv-grid" style={{ marginBottom: 12 }}>
-            <KvRow label="驳回人" value={versionInfo.rejector} />
+            <KvRow label="驳回人" value={versionInfo.latestApprovalLog.operatorName} />
+            <KvRow label="驳回时间" value={versionInfo.latestApprovalLog.actionTime} />
           </div>
-          {versionInfo.rejectReason && (
-            <div className="callout-error">{versionInfo.rejectReason}</div>
-          )}
+          <div className="callout-error">{versionInfo.latestApprovalLog.comment}</div>
         </div>
       )}
 
@@ -203,8 +202,8 @@ const VersionDetailDrawer = (props) => {
         <div className="drawer-section">
           <div className="section-title">撤回信息</div>
           <div className="kv-grid">
-            <KvRow label="撤回人" value={versionInfo.lastUpdateBy} />
-            <KvRow label="撤回时间" value={versionInfo.lastUpdateTime} />
+            <KvRow label="撤回人" value={versionInfo.latestApprovalLog.operatorName} />
+            <KvRow label="撤回时间" value={versionInfo.latestApprovalLog.actionTime} />
           </div>
         </div>
       )}

@@ -114,7 +114,7 @@ function CallbackConfigDrawer({ open, onClose, onSave, callback }) {
               ]}
               validateFirst={true}
             >
-              <Input placeholder="https://your-domain.com/webhook" />
+              <Input placeholder="请输入回调地址" />
             </Form.Item>
             <Form.Item name="authType" label="认证方式">
               <Radio.Group>

@@ -10,6 +10,10 @@ const getLookupName = (lookupKey) => {
     }
 }
 
+export const changeAppBaseInfo = () => {
+    return ''
+}
+
 const demo = {
     code: 200,
     message: 'success',

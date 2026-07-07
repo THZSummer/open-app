@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Form, Input, message, Tooltip } from 'antd';
 import { QuestionCircleOutlined } from '@ant-design/icons';
-import { fetchEamapOptions } from '../../pages/AppList/thunk';
 import BindEamapSelect from '../BindEamapSelect/BindEamapSelect';
 import IconPicker from '../IconPicker/IconPicker';
 
@@ -29,8 +28,6 @@ function CreateAppModal(props) {
   const [form] = Form.useForm();
   const [iconId, setIconId] = useState('');
   const [iconUrl, setIconUrl] = useState('');
-  const [eamapOptions, setEamapOptions] = useState([]);
-  const [eamapLoading, setEamapLoading] = useState(false);
 
   // 弹窗打开时：重置表单和图标，加载EAMAP数据
   useEffect(() => {
@@ -38,23 +35,8 @@ function CreateAppModal(props) {
       form.resetFields();
       setIconId('');
       setIconUrl('');
-      loadEamapOptions();
     }
   }, [visible]);
-
-  const loadEamapOptions = async () => {
-    setEamapLoading(true);
-    try {
-      const result = await fetchEamapOptions({ curPage: 1, pageSize: 100 });
-      if (result?.code === '200') {
-        setEamapOptions(result.data || []);
-      }
-    } catch (error) {
-      message.error('加载EAMAP选项失败');
-    } finally {
-      setEamapLoading(false);
-    }
-  };
 
   // 提交
   const handleSubmit = async () => {
@@ -66,6 +48,13 @@ function CreateAppModal(props) {
     });
   };
 
+  const validateSpace = (value, message) => {
+    if (value && (value.startsWith(" ") || value.endsWith(" "))) {
+      return Promise.reject(message);
+    }
+    return Promise.resolve();
+  }
+
   return (
     <Modal
       title="创建WeLink应用"
@@ -76,15 +65,16 @@ function CreateAppModal(props) {
       cancelText="取消"
       width={600}
       destroyOnClose
+      maskClosable={false}
       confirmLoading={confirmLoading}
       centered
       bodyStyle={{ paddingTop: 16 }}
     >
       <Form form={form} layout="vertical" className="create-app-form">
         {/* 图标选择 — 使用公共 IconPicker */}
-          <Form.Item name="icon" label={<span><span className="required-mark">*</span> 应用图标</span>}
-            rules={[{ required: true, message: '请上传应用图标' }]}
-          >
+        <Form.Item name="icon" label="应用图标"
+          rules={[{ required: true, message: '请上传应用图标' }]}
+        >
           <IconPicker
             value={iconId}
             uploadedUrl={iconUrl}
@@ -101,12 +91,7 @@ function CreateAppModal(props) {
           rules={[
             { required: true, message: '应用中文名不能为空' },
             { max: 255, message: '不超过255字符' },
-            { validator: (_, value) => {
-              if (value && (value.startsWith(' ') || value.endsWith(' '))) {
-                return Promise.reject(new Error('前后不能有空格'));
-              }
-              return Promise.resolve();
-            } },
+            { validator: (_, value) => validateSpace(value, '前后不能有空格') },
           ]}
         >
           <Input placeholder="请输入应用中文名称" maxLength={255} showCount />
@@ -118,12 +103,7 @@ function CreateAppModal(props) {
           rules={[
             { required: true, message: '应用英文名不能为空' },
             { max: 255, message: '不超过255字符' },
-            { validator: (_, value) => {
-              if (value && (value.startsWith(' ') || value.endsWith(' '))) {
-                return Promise.reject(new Error('前后不能有空格'));
-              }
-              return Promise.resolve();
-            } },
+            { validator: (_, value) => validateSpace(value, '前后不能有空格') },
           ]}
         >
           <Input placeholder="请输入应用英文名称" maxLength={255} showCount />
@@ -151,8 +131,8 @@ function CreateAppModal(props) {
             <span>
               绑定到应用服务
               <Tooltip
-                placement="topRight"
-                align={{ offset: [20, 0] }}
+                placement="topLeft"
+                align={{ offset: [-8, 0] }}
                 overlayStyle={{ maxWidth: 'none' }}
                 color="#eef4ff"
                 title={<span className="eamap-tooltip-text">开放平台按照应用服务维度做权限隔离，如需申请API权限等开放能力需要先绑定应用服务，如无权限请前往应用中心查询对应责任人</span>}
@@ -164,8 +144,6 @@ function CreateAppModal(props) {
           rules={[{ required: true, message: '请选择应用服务' }]}
         >
           <BindEamapSelect
-            eamapOptions={eamapOptions}
-            loading={eamapLoading}
             placeholder="选择应用服务"
           />
         </Form.Item>

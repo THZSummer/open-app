@@ -206,7 +206,7 @@ const SchemaParamItem = (props) => {
         <div className="schema-children-container">
           {(param.children || []).map((child, idx) => (
             <SchemaParamItem
-              key={idx}
+              key={`${param.paramName}_${path.join('_')}`}
               param={child}
               path={[...path, idx]}
               depth={depth + 1}

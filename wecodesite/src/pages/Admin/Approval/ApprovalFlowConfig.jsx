@@ -84,7 +84,7 @@ function ApprovalFlowConfig() {
       setEditingFlow(result.data);
       setModalVisible(true);
     } else {
-      message.error('获取流程详情失败');
+      message.error(result.messageZh || '获取流程详情失败');
     }
   };
 
@@ -102,7 +102,7 @@ function ApprovalFlowConfig() {
       setDeleteModalVisible(false);
       loadFlowList();
     } else {
-      message.error(result.messageZh || '删除失败');
+      message.error(result?.messageZh || '删除失败');
     }
   };
 
@@ -120,7 +120,7 @@ function ApprovalFlowConfig() {
       setEditingFlow(null);
       loadFlowList();
     } else {
-      message.error(result.messageZh || '操作失败');
+      message.error(result?.messageZh || '操作失败');
     }
   };
 

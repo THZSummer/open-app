@@ -57,8 +57,6 @@ const buildAuthParam = (options) => {
   // options.paramName: 参数名称
   // options.fixedValue: 固定值，用于页面值来源展示
   const { paramName, fixedValue } = options;
-  console.log('paramName', paramName);
-  console.log('fixedValue', fixedValue);
   return {
     paramName,
     fixedValue,

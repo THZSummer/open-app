@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Input } from 'antd';
+import { ExclamationCircleOutlined } from '@ant-design/icons';
 
 
 function DeleteConfirmModal({
@@ -8,7 +9,8 @@ function DeleteConfirmModal({
   onConfirm,
   modalInfo,
   loading,
-  requireConfirmText = null
+  requireConfirmText = null,
+  showIcon = true
 }) {
   const [confirmText, setConfirmText] = useState('');
 
@@ -32,11 +34,6 @@ function DeleteConfirmModal({
     }
   };
 
-  // 兼容 content 为字符串（主调方传整段文案）或对象（{confirmText, impactText}）
-  const rawContent = modalInfo?.content;
-  const confirmTextLine = typeof rawContent === 'string' ? rawContent : (rawContent?.confirmText || '');
-  const impactTextLine = (rawContent && typeof rawContent === 'object') ? (rawContent.impactText || '') : '';
-
   return (
     <Modal
       title={null}
@@ -47,10 +44,10 @@ function DeleteConfirmModal({
       width={400}
     >
       <div style={{ textAlign: 'center', padding: '20px 0' }}>
-
+        {showIcon && <ExclamationCircleOutlined style={{ fontSize: 48, color: '#faad14', marginBottom: 16 }}></ExclamationCircleOutlined>}
         <div style={{ color: '#8c8c8c', textAlign: 'left' }}>
-          {confirmTextLine ? <div style={{ marginBottom: 8 }}>{confirmTextLine}</div> : null}
-          {impactTextLine ? <div>{impactTextLine}</div> : null}
+          <div style={{ marginBottom: 8 }}>{modalInfo.content.confirmTextLine}</div>
+          <div>{modalInfo.content.impactTextLine}</div>
         </div>
       </div>
 

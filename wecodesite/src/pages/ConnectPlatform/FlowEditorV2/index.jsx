@@ -147,7 +147,7 @@ function FlowEditorV2() {
     };
 
     initPage();
-  }, [flowId]);
+  }, [flowId, appId]);
 
   /**
    * 加载版本列表
@@ -274,6 +274,8 @@ function FlowEditorV2() {
     });
     if (res?.code === '200') {
       setVersionDetailInfo(res.data);
+    } else {
+      message.error(res.messageZh || '获取版本详情失败')
     }
   };
 
@@ -675,10 +677,6 @@ function FlowEditorV2() {
    * 打开调试抽屉
    */
   const handleOpenDebug = () => {
-    if (!isDraft && !isPublished) {
-      message.warning('仅草稿和已发布版本支持调试');
-      return;
-    }
     setDebugResult(null);
     setDebugVisible(true);
   };

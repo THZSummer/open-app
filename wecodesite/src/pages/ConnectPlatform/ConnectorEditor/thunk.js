@@ -746,22 +746,6 @@ const validateParamTree = (options) => {
     if (!allowedTypes.includes(p.paramType)) {
       return `${sectionLabel}参数 ${p.paramName} 类型非法`;
     }
-    // 复杂类型必须包含基础类型子参数
-    if (p.paramType === 'object' || p.paramType === 'array') {
-      const children = p.children || [];
-      const hasPrimitive = children.some((c) => ['string', 'number', 'boolean'].includes(c.paramType));
-      if (!hasPrimitive) {
-        return `${sectionLabel}参数 ${p.paramName} 必须包含至少一个基础类型子参数`;
-      }
-      // 递归校验子参数
-      const childErr = validateParamTree({
-        params: children,
-        depth: depth + 1,
-        maxDepth,
-        sectionLabel,
-      });
-      if (childErr) return childErr;
-    }
   }
   return null;
 };

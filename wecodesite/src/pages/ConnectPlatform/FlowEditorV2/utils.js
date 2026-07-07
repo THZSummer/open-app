@@ -347,13 +347,8 @@ export const computeInsertableTypes = (params) => {
       result.push(NODE_TYPE.CONNECTOR);
     }
 
-    // 脚本：不能与脚本相邻
-    const prev = steps[insertIndex - 1];
-    const next = steps[insertIndex];
-    const isAdjacentScript = prev?.type === NODE_TYPE.SCRIPT || next?.type === NODE_TYPE.SCRIPT;
-    if (!isAdjacentScript) {
-      result.push(NODE_TYPE.SCRIPT);
-    }
+    // 脚本：脚本不受限制
+    result.push(NODE_TYPE.SCRIPT);
 
     return result;
   }
@@ -401,10 +396,9 @@ export const canDeleteNode = (params) => {
   if (node.type === NODE_TYPE.CONNECTOR) {
     // 单节点模式：固定连接器，不可删
     if (flowMode === FLOW_MODE.SINGLE) return false;
-    // 串行模式：连接器数量 > 1 时可删
+    // 串行模式：连接器节点可为0
     if (flowMode === FLOW_MODE.SERIAL) {
-      const connectorCount = steps.filter(item => item.type === NODE_TYPE.CONNECTOR).length;
-      return connectorCount > 1;
+      return true;
     }
     // 并行模式：分支内连接器不可删
     return false;
@@ -629,7 +623,7 @@ const getNodeTypeLabel = (nodeType) => {
 const pushUpstreamRef = (params) => {
   // params.refs / params.nodeId / params.nodeType / params.scope / params.carrier / params.name / params.type / params.groupName
   const { refs, nodeId, nodeType, scope, carrier, name, type, groupName } = params;
-  const path = `${nodeId}.${scope}.${carrier}.${name}`;
+  const path = nodeType === 'script' ? `${nodeId}.${scope}.${name}` : `${nodeId}.${scope}.${carrier}.${name}`;
   refs.push({
     nodeId,
     nodeType,
@@ -720,8 +714,8 @@ const collectScriptRefs = (params) => {
     refs,
     node,
     scope: 'output',
-    carriers: ['body'],
-    sourceMap: { body: node.outputParams || [] },
+    carriers: ['temporary'], // 脚本节点无需body、header和query路径，此处仅做适配结果处理
+    sourceMap: { body: node.outputParams || [] }, // 脚本节点无需body、header和query路径，此处仅做适配结果处理
   });
 };
 

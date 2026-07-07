@@ -904,6 +904,10 @@ const buildJsonFieldFromOutputParam = (param) => {
     return {
       type: 'object',
       properties: childrenObject.properties,
+      value: buildValueExpression({
+        mode: param.sourceType === 'ref' ? 'ref' : 'static',
+        value: param.paramValue,
+      }),
     };
   }
 
@@ -911,6 +915,10 @@ const buildJsonFieldFromOutputParam = (param) => {
     return {
       type: 'array',
       items: buildJsonObjectFromOutputParams(param.children || []),
+      value: buildValueExpression({
+        mode: param.sourceType === 'ref' ? 'ref' : 'static',
+        value: param.paramValue,
+      }),
     };
   }
 
@@ -1341,10 +1349,6 @@ const buildOrchestrationConfig = (flowData) => {
     nodes: graph.nodes,
     edges: graph.edges,
   };
-};
-
-export const __testables = {
-  buildOrchestrationConfig,
 };
 
 /**

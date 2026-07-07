@@ -3,6 +3,7 @@ import { Drawer, Table, Button, Pagination, Input, Select, message } from 'antd'
 import { PAGE_SIZE_OPTIONS, INIT_PAGECONFIG } from '../../utils/constants';
 import { NEED_REVIEW_OPTIONS } from '../../utils/commonTableConfigs';
 import { createDrawerColumns } from '../../utils/commonTableConfigs';
+const { Search } = Input;
 
 function ResourceDrawer({
   open,
@@ -51,7 +52,7 @@ function ResourceDrawer({
       setAllItems(resultData);
       setPagination(prev => ({ ...prev, total: result.page.total }));
     } else {
-      message.error(result?.messageZh || result?.message || '加载列表失败');
+      message.error(result?.messageZh || '加载列表失败');
       setAllItems([]);
       setPagination(prev => ({ ...prev, total: 0 }));
     }
@@ -75,7 +76,7 @@ function ResourceDrawer({
           await loadData({ categoryId: rootId, needReview: 'all', keyword: '' });
         }
       } else {
-        message.error(categoriesRes?.messageZh || categoriesRes?.message || '加载分类失败');
+        message.error(categoriesRes?.messageZh|| '加载分类失败');
       }
     };
 
@@ -101,11 +102,9 @@ function ResourceDrawer({
     onClose();
   };
 
-  const handleFilterChange = async (e) => {
-    const keyword = e.target.value;
-    setFilterKeyword(keyword);
+  const handleFilterChange = async () => {
     setPagination(INIT_PAGECONFIG);
-    await loadData({ keyword, curPage: 1 });
+    await loadData({ keyword: filterKeyword, curPage: 1 });
   };
 
   const handleNeedReviewChange = async (value) => {
@@ -148,12 +147,12 @@ function ResourceDrawer({
     >
       <div className={`${className}-content`}>
         <div className={`${className}-filter`}>
-          <Input
+          <Search
             placeholder='权限名称/Scope'
             value={filterKeyword}
-            onChange={handleFilterChange}
+            onChange={e => setFilterKeyword(e.target.value)}
             style={{ width: 200 }}
-            allowClear
+            onSearch={handleFilterChange}
           />
           <Select
             placeholder="是否需要审核"

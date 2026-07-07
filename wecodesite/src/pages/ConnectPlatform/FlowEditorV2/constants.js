@@ -111,20 +111,24 @@ export const VERSION_ACTIONS = {
   [VERSION_STATUS.EXPIRED]: [
     { label: '新增草稿', action: 'newDraft', type: 'default' },
     { label: '更多配置', action: 'moreConfig', type: 'default' },
+    { label: '调试', action: 'debug', type: 'default' },
     { label: '恢复', action: 'restore', type: 'primary' },
     { label: '删除', action: 'delete', type: 'default', danger: true },
   ],
   [VERSION_STATUS.APPROVING]: [
     { label: '更多配置', action: 'moreConfig', type: 'default' },
+    { label: '调试', action: 'debug', type: 'default' },
     { label: '撤回', action: 'withdraw', type: 'default', danger: true },
   ],
   [VERSION_STATUS.REJECTED]: [
     { label: '更多配置', action: 'moreConfig', type: 'default' },
+    { label: '调试', action: 'debug', type: 'default' },
     { label: '保存', action: 'save', type: 'primary' },
     { label: '删除', action: 'delete', type: 'default', danger: true },
   ],
   [VERSION_STATUS.WITHDRAWN]: [
     { label: '更多配置', action: 'moreConfig', type: 'default' },
+    { label: '调试', action: 'debug', type: 'default' },
     { label: '保存', action: 'save', type: 'primary' },
     { label: '删除', action: 'delete', type: 'default', danger: true },
   ],
@@ -159,20 +163,20 @@ export const FLOW_APP_CONFIG_LOOKUP_KEY = 'CEC.Open/Connector.Platform.Config';
 /**
  * 连接流应用级配置 lookup 查询键
  */
-export const FLOW_APP_INSTANCE_CONFIG_LOOKUP_KEY = 'CEC.Open/Connector.Platform.{appId}}.Config';
+export const FLOW_APP_INSTANCE_CONFIG_LOOKUP_KEY = 'CEC.Open/Connector.Platform.{appId}.Config';
 
 /**
  * 连接流 lookup 配置字段映射
  */
 export const FLOW_APP_CONFIG_FIELD_MAP = {
   /** 限流配置 */
-  flow_max_qps: 'rateLimitMax',
+  'Flow.Max.Qps': 'rateLimitMax',
   /** 串行编排连接器节点最大上限 */
-  flow_max_serial_connector_nodes: 'serialConnectorMax',
+  'Flow.Max.Serial.Connector.Nodes': 'serialConnectorMax',
   /** 并行编排并行节点并行分支上限 */
-  flow_max_parallel_branches: 'parallelBranchMax',
+  'Flow.Max.Parallel.Branches': 'parallelBranchMax',
   /** 连接器超时时间配置 */
-  node_max_timeout_seconds: 'connectorTimeoutMax',
+  'Node.Max.Timeout.Seconds': 'connectorTimeoutMax',
 };
 
 /**

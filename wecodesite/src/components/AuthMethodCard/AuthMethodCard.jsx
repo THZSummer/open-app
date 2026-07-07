@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
 import { Card, Checkbox, Input, message, Modal, Spin } from 'antd';
 import { EditOutlined, WarningOutlined } from '@ant-design/icons';
 import { VERIFY_TYPE_MAP, FORM_VALIDATION_RULES } from '../../utils/constants';
-import { fetchAppDetail } from '../../store/appSlice';
 import { fetchVerifyType, updateVerifyType } from './thunk';
 
 import './AuthMethodCard.m.less';
@@ -17,7 +15,6 @@ const AUTH_WARNING_TEXT = '认证方式切换后,将影响已发送卡片的数�
 
 function AuthMethodCard() {
   const [searchParams] = useSearchParams();
-  const dispatch = useDispatch();
   const appId = searchParams.get('appId');
   const [verifyType, setVerifyType] = useState([0]);
   const [apiSecret, setApiSecret] = useState('');
@@ -65,10 +62,10 @@ function AuthMethodCard() {
     }
   };
 
-  function maskSecret(secret) {
-    if (!secret) return '';
-    if (secret.length <= 6) return secret.slice(0, 2) + '****';
-    return secret.slice(0, 4) + '****' + secret.slice(-4);
+  const maskSecret = (s) => {
+    if (!s) return '';
+    if (s.length <= 8) return s.slice(0, 2) + '****' + s.slice(-2);
+    return s.slice(0, 4) + '********' + secret.slice(-4);
   }
 
   const handleSecretChange = (e) => {
@@ -109,7 +106,6 @@ function AuthMethodCard() {
           setEditing(false);
           setVerifyType(selectedTypes);
           setApiSecret(secret);
-          dispatch(fetchAppDetail(appId));
         } else {
           message.error(result?.messageZh || '保存失败');
         }

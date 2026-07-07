@@ -12,7 +12,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { Modal, Spin, Empty, Tag, Table } from 'antd';
+import { Modal, Spin, Empty, Tag, Table, message } from 'antd';
 import { fetchPublishedVersions } from '../../pages/ConnectPlatform/Flow/thunk';
 import { VERSION_STATUS_MAP } from '../../pages/ConnectPlatform/FlowEditorV2/constants';
 import './DeployFlowModal.m.less';
@@ -69,6 +69,7 @@ function DeployFlowModal(props) {
         }
       } else {
         setVersions([]);
+        message.error(res?.messageZh || '获取数据失败');
       }
       setVersionsLoading(false);
     };

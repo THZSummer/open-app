@@ -76,6 +76,11 @@ export const validateFile = (file, config) => {
   return { valid: true, message: '' };
 };
 
+export const UPLOAD_IMAGE_TYPE = {
+  icon: 1, // 图标
+  diagram: 2, // 功能示意图
+}
+
 /**
  * 校验图片尺寸
  * @param {File} file - 文件对象
@@ -217,14 +222,12 @@ export const normalizeJsonConfig = (rawConfig) => {
 };
 
 /**
- * 构建并排序版本摘要列表
+ * 构建版本摘要列表
  * @param {Array} versions 后端版本列表
- * @returns {Array} 按创建时间倒序排列的版本摘要列表
  */
 export const buildSortedVersionSummaries = (versions = []) => {
   return (versions || [])
     .map(buildVersionSummary)
-    .sort((a, b) => (a.createTime < b.createTime ? 1 : -1));
 };
 
 /**

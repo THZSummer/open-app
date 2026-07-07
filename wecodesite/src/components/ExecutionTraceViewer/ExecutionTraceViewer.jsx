@@ -21,12 +21,6 @@ import './ExecutionTraceViewer.m.less';
  * 步骤状态展示配置。
  */
 const STEP_STATUS_MAP = {
-  success: { text: '成功', pillClass: 'pill-success' },
-  failed: { text: '失败', pillClass: 'pill-error' },
-  fail: { text: '失败', pillClass: 'pill-error' },
-  error: { text: '失败', pillClass: 'pill-error' },
-  timeout: { text: '超时', pillClass: 'pill-error' },
-  not_executed: { text: '未执行', pillClass: '' },
   0: { text: '成功', pillClass: 'pill-success' },
   1: { text: '失败', pillClass: 'pill-error' },
   2: { text: '超时', pillClass: 'pill-error' },
@@ -37,17 +31,10 @@ const STEP_STATUS_MAP = {
  * 节点类型展示配置。
  */
 const NODE_TYPE_MAP = {
-  trigger: { text: '触发器', className: 'node-trigger', icon: <ThunderboltOutlined /> },
-  connector: { text: '连接器', className: 'node-connector', icon: <ApiOutlined /> },
-  script: { text: '数据处理', className: 'node-processor', icon: <NodeIndexOutlined /> },
-  processor: { text: '数据处理', className: 'node-processor', icon: <NodeIndexOutlined /> },
-  output: { text: '出口', className: 'node-exit', icon: <ExportOutlined /> },
-  exit: { text: '出口', className: 'node-exit', icon: <ExportOutlined /> },
   1: { text: '触发器', className: 'node-trigger', icon: <ThunderboltOutlined /> },
   2: { text: '连接器', className: 'node-connector', icon: <ApiOutlined /> },
   3: { text: '数据处理', className: 'node-processor', icon: <NodeIndexOutlined /> },
   4: { text: '出口', className: 'node-exit', icon: <ExportOutlined /> },
-  5: { text: '出口', className: 'node-exit', icon: <ExportOutlined /> },
 };
 
 /**
@@ -77,19 +64,44 @@ const parseJsonValue = (data) => {
 };
 
 /**
- * 格式化 JSON 数据。
+ * 格式化 JSON 数据（用于展示）。
  *
  * @param {any} data 输入或输出数据
  * @returns {string} 展示用字符串
  */
 const formatJson = (data) => {
   if (data == null || data === '') return '-';
-  const parsedData = parseJsonValue(data);
-  if (typeof parsedData === 'string') return parsedData;
+  let finishStr = '';
+  if (typeof data === 'string') {
+    finishStr = data;
+  } else {
+    try {
+      finishStr = JSON.stringify(data, null, 2);
+    } catch (error) {
+      finishStr = '数据处理失败';
+    }
+  }
+  const maxSize = 100000;
+  if (finishStr.length > maxSize) {
+    const truncated = finishStr.substring(0, maxSize);
+    finishStr = `${truncated}\n\n... [结果超大，已截断显示。完整数据长度：${finishStr.length} 字符，请使用复制按钮获取完整数据]`;
+  }
+  return finishStr;
+};
+
+/**
+ * 格式化 JSON 数据（用于复制，不截断）。
+ *
+ * @param {any} data 输入或输出数据
+ * @returns {string} 展示用字符串
+ */
+const formatJsonForCopy = (data) => {
+  if (data == null || data === '') return '-';
+  if (typeof data === 'string') return data;
   try {
-    return JSON.stringify(parsedData, null, 2);
-  } catch (err) {
-    return String(parsedData);
+    return JSON.stringify(data, null, 2);
+  } catch (error) {
+    return String(data);
   }
 };
 
@@ -161,44 +173,6 @@ const getDurationRatio = (params) => {
 };
 
 /**
- * 渲染 JSON 高亮信息。
- *
- * @param {string} text 格式化后的 JSON 文本
- * @returns {React.ReactNode} 高亮后的节点
- */
-const renderHighlightedJson = (text) => {
-  if (!text || text === '-') return text;
-  const tokenReg = /("(?:\\u[\da-fA-F]{4}|\\[^u]|[^\\"])*"(?=\s*:))|("(?:\\u[\da-fA-F]{4}|\\[^u]|[^\\"])*")|\b(true|false|null)\b|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?/g;
-  const nodes = [];
-  let lastIndex = 0;
-  let match;
-  let index = 0;
-
-  while ((match = tokenReg.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      nodes.push(text.slice(lastIndex, match.index));
-    }
-
-    // 根据 token 类型设置高亮 class。
-    const token = match[0];
-    let className = 'json-number';
-    if (match[1]) className = 'json-key';
-    if (match[2]) className = 'json-string';
-    if (match[3]) className = 'json-literal';
-
-    nodes.push(<span key={`${token}-${index}`} className={className}>{token}</span>);
-    lastIndex = tokenReg.lastIndex;
-    index += 1;
-  }
-
-  if (lastIndex < text.length) {
-    nodes.push(text.slice(lastIndex));
-  }
-
-  return nodes;
-};
-
-/**
  * 渲染代码面板。
  *
  * @param {Object} params 参数对象
@@ -214,7 +188,8 @@ const CodePanel = (params) => {
     onCopy,
     showSuccessEmpty,
   } = params;
-  const text = formatJson(data);
+  const displayText = formatJson(data);
+  const copyText = formatJsonForCopy(data);
   const isCopied = copiedKey === copyKey;
 
   if (showSuccessEmpty && isOnlySuccessStatus(data)) {
@@ -238,13 +213,13 @@ const CodePanel = (params) => {
         <button
           type="button"
           className="code-copy-btn"
-          onClick={() => onCopy({ copyKey, text })}
+          onClick={() => onCopy({ copyKey, text: copyText })}
         >
           {isCopied ? <CheckOutlined /> : <CopyOutlined />}
           {isCopied ? '已复制' : '复制'}
         </button>
       </div>
-      <pre className="code-panel">{renderHighlightedJson(text)}</pre>
+      <pre className="code-panel">{displayText}</pre>
     </div>
   );
 };
@@ -340,7 +315,6 @@ const ExecutionTraceViewer = (props) => {
     try {
       await navigator.clipboard.writeText(text);
       setCopiedKey(copyKey);
-      window.setTimeout(() => setCopiedKey(''), 1200);
     } catch (err) {
       setCopiedKey('');
     }

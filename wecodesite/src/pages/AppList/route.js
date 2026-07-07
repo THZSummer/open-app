@@ -2,10 +2,12 @@
  * 应用列表 - 路由配置
  */
 export default {
-  path: '/',
-  auth: true,
+  path: '/appList',
+  auth: false,
   preload: false,
-  layout: 'inner',
-  component: () => import('./AppList'),
+  isStatic: true,
+  key: 'appList',
+  layout: 'outer', // outer 一级菜单 inner 二级菜单
+  component: () => import('./AppList')
 };
 

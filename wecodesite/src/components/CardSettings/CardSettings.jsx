@@ -30,8 +30,10 @@ function CardSettings() {
   useEffect(() => {
     if (!appId) return;
     fetchCardSetting(appId).then((res) => {
-      if (res?.code === '200' || res?.code === 200) {
+      if (res?.code === '200') {
         setCardSetting(res.data || { expirationDays: null, deletionDays: null });
+      } else {
+        message.error(res.messageZh || '获取卡片设置失败');
       }
     });
   }, [appId]);
@@ -72,25 +74,25 @@ function CardSettings() {
       return;
     }
     if (draftValue > constraint.max) {
+      message.error('输入值超出最大值');
       return;
     }
     setCardSettingRowSaving({ ...cardSettingRowSaving, [field]: true });
-    try {
-      const result = await updateCardPeriod(appId, constraint.periodType, draftValue);
-      if (result?.code === '200' || result?.code === 200) {
+    const result = await updateCardPeriod(appId, constraint.periodType, draftValue);
+      if (result?.code === '200') {
         message.success('保存成功');
         const fresh = await fetchCardSetting(appId);
-        if (fresh?.code === '200' || fresh?.code === 200) {
+        if (fresh?.code === '200') {
           setCardSetting(fresh.data || { expirationDays: null, deletionDays: null });
+        } else {
+          message.error(fresh.messageZh || '获取卡片设置失败');
         }
         setCardSettingDraft({ ...cardSettingDraft, [field]: null });
         setCardSettingRowEditing({ ...cardSettingRowEditing, [field]: false });
       } else {
         message.error(result?.messageZh || '保存失败');
       }
-    } finally {
       setCardSettingRowSaving({ ...cardSettingRowSaving, [field]: false });
-    }
   };
 
   return (
@@ -99,7 +101,11 @@ function CardSettings() {
         <div className="info-row">
           <span className="info-label">
             定期失效时间
-            <Tooltip title="根据每张消息卡片第一次投放时间开始计算，系统按设置的时间自动对卡片进行失效，失效的卡片在端侧不再支持交互">
+            <Tooltip 
+              placement='topLeft'
+              align={{ offset: [-8, 0] }}
+              title="根据每张消息卡片第一次投放时间开始计算，系统按设置的时间自动对卡片进行失效，失效的卡片在端侧不再支持交互"
+            >
               <QuestionCircleOutlined style={{ marginLeft: 4, color: 'rgba(0,0,0,0.45)', cursor: 'help' }} />
             </Tooltip>
           </span>
@@ -137,7 +143,11 @@ function CardSettings() {
         <div className="info-row">
           <span className="info-label">
             定期删除时间
-            <Tooltip title="只有失效的卡片可以删除，根据每张消息卡片失效时间开始计算，系统按照设置的时间自动对卡片进行删除">
+            <Tooltip 
+              placement='topLeft'
+              align={{ offset: [-8, 0] }}
+              title="只有失效的卡片可以删除，根据每张消息卡片失效时间开始计算，系统按照设置的时间自动对卡片进行删除"
+            >
               <QuestionCircleOutlined style={{ marginLeft: 4, color: 'rgba(0,0,0,0.45)', cursor: 'help' }} />
             </Tooltip>
           </span>

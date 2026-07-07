@@ -83,7 +83,11 @@ const BranchConnectorEditor = (props) => {
     let cancelled = false;
     fetchConnectorList().then((res) => {
       if (cancelled) return;
-      if (res?.code === '200') setConnectorList(res.data || []);
+      if (res?.code === '200') {
+        setConnectorList(res.data || []);
+      } else {
+        message.error(res.messageZh || '获取连接器列表失败');
+      }
     });
     return () => {
       cancelled = true;
@@ -101,7 +105,11 @@ const BranchConnectorEditor = (props) => {
     let cancelled = false;
     fetchConnectorVersions(connector.connectorId).then((res) => {
       if (cancelled) return;
-      if (res?.code === '200') setVersionList(res.data || []);
+      if (res?.code === '200') {
+        setVersionList(res.data || []);
+      } else {
+        message.error(res.messageZh || '获取连接器版本列表失败');
+      }
     });
     return () => {
       cancelled = true;
@@ -150,6 +158,8 @@ const BranchConnectorEditor = (props) => {
             authMethodId: res.data?.authType || connector.authMethodId,
           });
         }
+      } else {
+        message.error(res.messageZh || '获取连接器入参失败');
       }
     });
     return () => {

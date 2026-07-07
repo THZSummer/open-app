@@ -3,7 +3,7 @@ import { Upload, message, Spin } from 'antd';
 import { PlusOutlined, EyeOutlined, CloseOutlined } from '@ant-design/icons';
 import { validateFile, validateImageDimensions } from '../../utils/common';
 import { FILE_VALIDATION } from '../../utils/constants';
-import { uploadImage, fetchDefaultIcons } from '../../pages/AppList/thunk';
+import { uploadImage, fetchDefaultIcons, UPLOAD_IMAGE_TYPE } from '../../pages/AppList/thunk';
 
 import './IconPicker.m.less';
 
@@ -37,16 +37,13 @@ function IconPicker({ value, uploadedUrl, onChange }) {
 
   const loadPresetIcons = async () => {
     setPresetLoading(true);
-    try {
-      const result = await fetchDefaultIcons();
-      if (result?.code === '200' && Array.isArray(result.data)) {
-        setPresetIcons(result.data);
-      }
-    } catch {
-      console.warn('加载预设图标失败');
-    } finally {
-      setPresetLoading(false);
+    const result = await fetchDefaultIcons();
+    if (result?.code === '200' && Array.isArray(result.data)) {
+      setPresetIcons(result.data);
+    } else {
+      message.error(result.messageZh || '加载预设图标失败');
     }
+    setPresetLoading(false);
   };
 
   // 判断当前选中的是否为上传的自定义图标
@@ -83,13 +80,13 @@ function IconPicker({ value, uploadedUrl, onChange }) {
     try {
       const formData = new FormData();
       formData.append('file', rawFile);
-      const result = await uploadImage(1, formData);
+      const result = await uploadImage(UPLOAD_IMAGE_TYPE.icon, formData);
       if (result?.code === '200' && result.data) {
         setLocalUploadedUrl(result.data.url);
         onChange && onChange(result.data.fileId, result.data.url);
         message.success('图标上传成功');
       } else {
-        message.error('图标上传失败');
+        message.error(result.messageZh || '图标上传失败');
       }
     } catch {
       message.error('图标上传失败');

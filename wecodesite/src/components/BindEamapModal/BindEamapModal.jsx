@@ -15,7 +15,7 @@ import BindEamapSelect from '../BindEamapSelect/BindEamapSelect';
  * @param {string} props.currentEamap - 当前绑定的 EAMAP
  */
 function BindEamapModal(props) {
-  const { visible, onCancel, onOk, appId, eamapOptions = [], currentEamap } = props;
+  const { visible, onCancel, onOk, currentEamap } = props;
   const [form] = Form.useForm();
 
   useEffect(() => {
@@ -23,7 +23,7 @@ function BindEamapModal(props) {
       form.resetFields();
       form.setFieldsValue({ eamap: currentEamap });
     }
-  }, [visible, form, currentEamap]);
+  }, [visible]);
 
   const handleSubmit = async () => {
     try {
@@ -65,7 +65,6 @@ function BindEamapModal(props) {
           rules={[{ required: true, message: '请选择应用服务' }]}
         >
           <BindEamapSelect
-            eamapOptions={eamapOptions}
             placeholder="选择应用服务"
           />
         </Form.Item>

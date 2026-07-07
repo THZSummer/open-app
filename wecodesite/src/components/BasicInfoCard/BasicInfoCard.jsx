@@ -1,20 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
 import { Card, Button, Form, Input, message, Upload, Modal } from 'antd';
 import { EditOutlined, EyeOutlined, CloseOutlined, PlusOutlined } from '@ant-design/icons';
-import { useDispatch, useSelector } from 'react-redux';
 import { fetchAppDetail } from '../../store/appSlice';
 import IconPicker from '../../components/IconPicker/IconPicker';
 import { updateApp, uploadImage } from './thunk';
 import './BasicInfoCard.m.less';
-import { validateFile, validateImageDimensions } from '../../utils/common';
+import { validateFile, validateImageDimensions, UPLOAD_IMAGE_TYPE } from '../../utils/common';
 import { FILE_VALIDATION } from '../../utils/constants';
+import { changeAppBaseInfo } from '../../../routes-redBlue/utils/common'
 
 function BasicInfoCard() {
   const [searchParams] = useSearchParams();
   const appId = searchParams.get('appId');
   const dispatch = useDispatch();
-  const { appBaseInfo: appData } = useSelector(state => state.app);
+  const { appBaseInfo: appData } = useSelector('state => state.app');
   const [editing, setEditing] = useState(false);
   const [editForm] = Form.useForm();
   const [diagram, setDiagram] = useState(null);
@@ -36,7 +37,7 @@ function BasicInfoCard() {
       descCn: appData.descCn,
       descEn: appData.descEn,
     });
-  }, [appData]);
+  }, []);
 
   const handleSave = async () => {
     try {
@@ -58,6 +59,20 @@ function BasicInfoCard() {
       if (result?.code === '200') {
         message.success('保存成功');
         setEditing(false);
+
+        const updatedData = {
+          ...appData,
+          nameCn: values.nameCn,
+          nameEn: values.nameEn,
+          descCn: values.descCn || '',
+          descEn: values.descEn || '',
+          icon: {
+            fileId: finalIconId,
+            url: iconUrl || appData.icon?.url || '',
+          },
+          iconId: finalIconId,
+          diagramIdList: diagram ? [diagram] : [],
+        };
         dispatch(fetchAppDetail(appId));
       } else {
         message.error(result?.messageZh || '保存失败');
@@ -100,12 +115,12 @@ function BasicInfoCard() {
     }
     const formData = new FormData();
     formData.append('file', file);
-    const result = await uploadImage(2, formData);
+    const result = await uploadImage(UPLOAD_IMAGE_TYPE.diagram, formData);
     if (result?.code === '200' && result.data) {
       setDiagram({ fileId: result.data.fileId, url: result.data.url });
       message.success('示意图上传成功');
     } else {
-      message.error('示意图上传失败');
+      message.error(result.messageZh || '示意图上传失败');
     }
     return false;
   };
@@ -113,6 +128,13 @@ function BasicInfoCard() {
   const handleDeleteDiagram = () => {
     setDiagram(null);
   };
+
+  const validateSpace = (value, message) => {
+    if (value && (value.startsWith(" ") || value.endsWith(" "))) {
+      return Promise.reject(message);
+    } 
+    return Promise.resolve();
+  }
 
   return (
     <>
@@ -132,7 +154,7 @@ function BasicInfoCard() {
         {editing ? (
           <Form form={editForm} layout="vertical" className="basic-info-edit-form">
             <div className="edit-form-row">
-              <div className="edit-form-label">应用图标</div>
+              <div className="edit-form-label"><span className="edit-form-required">*</span> 应用图标</div>
               <div className="edit-form-field">
                 <IconPicker
                   value={iconId}
@@ -145,16 +167,15 @@ function BasicInfoCard() {
             <div className="edit-form-row">
               <div className="edit-form-label"><span className="edit-form-required">*</span> 中文名称</div>
               <div className="edit-form-field">
-                <Form.Item name="nameCn" rules={[
-                  { required: true, message: '应用中文名不能为空' },
-                  { max: 255, message: '不超过255字符' },
-                  { validator: (_, value) => {
-                    if (value && (value.startsWith(' ') || value.endsWith(' '))) {
-                      return Promise.reject(new Error('前后不能有空格'));
-                    }
-                    return Promise.resolve();
-                  } },
-                ]} style={{ marginBottom: 0 }}>
+                <Form.Item 
+                  name="nameCn" 
+                  rules={[
+                    { required: true, message: "应用中文名不能为空" },
+                    { max: 255, message: "不超过255字符" },
+                    { validator: (_, value) => validateSpace(value, '前后不能有空格')},
+                  ]}
+                  style={{ marginBottom: 0 }}
+                >
                   <Input maxLength={255} showCount />
                 </Form.Item>
               </div>
@@ -163,16 +184,14 @@ function BasicInfoCard() {
             <div className="edit-form-row">
               <div className="edit-form-label"><span className="edit-form-required">*</span> 英文名称</div>
               <div className="edit-form-field">
-                <Form.Item name="nameEn" rules={[
-                  { required: true, message: '应用英文名不能为空' },
-                  { max: 255, message: '不超过255字符' },
-                  { validator: (_, value) => {
-                    if (value && (value.startsWith(' ') || value.endsWith(' '))) {
-                      return Promise.reject(new Error('前后不能有空格'));
-                    }
-                    return Promise.resolve();
-                  } },
-                ]} style={{ marginBottom: 0 }}>
+                <Form.Item 
+                  name="nameEn" rules={[
+                  { required: true, message: "应用英文名不能为空" },
+                  { max: 255, message: "不超过255字符" },
+                  { validator: (_, value) => validateSpace(value, '前后不能有空格')},,
+                  ]}
+                  style={{ marginBottom: 0 }}
+                >
                   <Input maxLength={255} showCount />
                 </Form.Item>
               </div>

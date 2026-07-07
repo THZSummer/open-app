@@ -19,14 +19,6 @@ export const DEFAULT_GRID_GAP = 16;
 /** 创建应用弹窗宽度 */
 export const CREATE_APP_MODAL_WIDTH = 600;
 
-// ========== Hero 区域文案 ==========
-
-export const HERO_CONFIG = {
-  title: '创建你的WeLink群应用',
-  description: '快来开放平台创建你的WeLink群应用',
-  buttonText: '立即创建',
-};
-
 // ========== 空状态配置 ==========
 
 export const EMPTY_CONFIG = {

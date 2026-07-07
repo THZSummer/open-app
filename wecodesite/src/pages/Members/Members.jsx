@@ -22,18 +22,14 @@ function useUserSearch(appId) {
         return;
       }
       setFetching(true);
-      try {
-        const result = await searchUsers(appId, keyword.trim());
-        if (result?.code === '200') {
-          setResults(result.data || []);
-        } else {
-          setResults([]);
-        }
-      } catch {
+      const result = await searchUsers(appId, keyword.trim());
+      if (result?.code === '200') {
+        setResults(result.data || []);
+      } else {
+        message.error(result.messageZh || '查询成员失败')
         setResults([]);
-      } finally {
-        setFetching(false);
       }
+      setFetching(false);
     };
   }, [appId]);
 
@@ -103,20 +99,17 @@ function Members() {
 
   const loadMembers = async (params = { curPage: 1, pageSize: 10 }) => {
     setLoading(true);
-    try {
-      const membersRes = await fetchMemberList(appId, params);
-      if (membersRes?.code === '200') {
-        setMembers(membersRes.data || []);
-        setPagination(membersRes.page ? {
-          ...membersRes.page,
-          total: parseInt(membersRes.page.total, 10) || 0,
-        } : INIT_PAGECONFIG);
-      }
-    } catch (error) {
+    const membersRes = await fetchMemberList(appId, params);
+    if (membersRes?.code === '200') {
+      setMembers(membersRes.data || []);
+      setPagination(membersRes.page ? {
+        ...membersRes.page,
+        total: parseInt(membersRes.page.total, 10) || 0,
+      } : INIT_PAGECONFIG);
+    } else {
       message.error('加载成员列表失败');
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   };
 
   // 分页变化
@@ -187,6 +180,7 @@ function Members() {
     }
   };
 
+  // 当前用户权限
   const isOwner = roleType === 1;
   const isAdmin = roleType === 2;
   const isDeveloper = roleType === 0;

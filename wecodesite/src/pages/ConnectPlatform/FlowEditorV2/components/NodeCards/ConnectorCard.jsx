@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Select, Input, InputNumber, Tabs, AutoComplete, Tag } from 'antd';
+import { Select, Input, InputNumber, Tabs, AutoComplete, Tag, message } from 'antd';
 import { CARRIER_TABS } from '../../constants';
 import { VERSION_STATUS_MAP as CONNECTOR_VERSION_STATUS_MAP } from '../../../ConnectorEditor/constants';
 import { fetchConnectorList, fetchConnectorVersions, fetchConnectorInputParams } from '../../thunk';
@@ -69,6 +69,8 @@ const ConnectorCard = (props) => {
       if (cancelled) return;
       if (res?.code === '200') {
         setConnectorList(res.data || []);
+      } else {
+        message.error(res.messageZh || '获取连接器列表失败');
       }
     });
     return () => {
@@ -89,6 +91,8 @@ const ConnectorCard = (props) => {
       if (cancelled) return;
       if (res?.code === '200') {
         setVersionList(res.data || []);
+      } else {
+        message.error(res.messageZh || '获取连接器版本列表失败');
       }
     });
     return () => {
@@ -138,6 +142,8 @@ const ConnectorCard = (props) => {
             authMethodId: res.data?.authType || node.authMethodId,
           });
         }
+      } else {
+        message.error(res.messageZh || '获取版本入参失败');
       }
     });
     return () => {

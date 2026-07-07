@@ -10,15 +10,13 @@
  * - 创建应用弹窗
  */
 import React, { useState, useEffect, lazy, Suspense } from 'react';
-import { Button, message, Spin, Pagination } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import { message, Spin, Pagination } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import AppCard from '../../components/AppCard/AppCard';
-import EmptyState from '../../components/EmptyState/EmptyState';
 import CardGrid from '../../components/CardGrid/CardGrid';
 import { fetchAppList, createApp } from './thunk';
 import { INIT_PAGECONFIG } from '../../utils/constants';
-import { HERO_CONFIG, EMPTY_CONFIG, DEFAULT_GRID_COLUMNS, DEFAULT_GRID_GAP } from './constant';
+import { DEFAULT_GRID_COLUMNS, DEFAULT_GRID_GAP } from './constant';
 
 import './AppList.m.less';
 
@@ -48,24 +46,18 @@ function AppList() {
   // 加载应用列表
   const loadAppList = async (params = { curPage: 1, pageSize: 10 }) => {
     setLoading(true);
-    try {
-      const result = await fetchAppList(params);
-      if (result && result.code === '200') {
-        setApps(result.data || []);
-        setPagination(result.page ? {
-          ...result.page,
-          total: parseInt(result.page.total, 10) || 0,
-        } : INIT_PAGECONFIG);
-      } else {
-        message.error(result?.messageZh || '加载应用列表失败');
-        setApps([]);
-      }
-    } catch (error) {
-      message.error('加载应用列表失败');
+    const result = await fetchAppList(params);
+    if (result && result.code === '200') {
+      setApps(result.data || []);
+      setPagination(result.page ? {
+        ...result.page,
+        total: parseInt(result.page.total, 10) || 0,
+      } : INIT_PAGECONFIG);
+    } else {
+       message.error(result?.messageZh || '加载应用列表失败');
       setApps([]);
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   };
 
   // 分页变化
@@ -86,34 +78,29 @@ function AppList() {
   // 创建应用
   const handleCreateApp = async (values) => {
     setModalLoading(true);
-    try {
-      // 前端表单字段映射到后端字段
-      const payload = {
-        nameCn: values.chineseName,
-        nameEn: values.englishName,
-        descCn: values.chineseDesc || '',
-        descEn: values.englishDesc || '',
-        iconId: values.icon || '',
-        eamapAppCode: values.eamap || '',
-      };
-      const result = await createApp(payload);
-      if (result && result.code === '200') {
-        message.success('创建应用成功');
-        setModalVisible(false);
-        const newAppId = result.data?.appId;
-        if (newAppId) {
-          navigate(`/basic-info?appId=${newAppId}`);
-        } else {
-          loadAppList();
-        }
+    // 前端表单字段映射到后端字段
+    const payload = {
+      nameCn: values.chineseName,
+      nameEn: values.englishName,
+      descCn: values.chineseDesc || '',
+      descEn: values.englishDesc || '',
+      iconId: values.icon || '',
+      eamapAppCode: values.eamap || '',
+    };
+    const result = await createApp(payload);
+    if (result && result.code === '200') {
+      message.success('创建应用成功');
+      setModalVisible(false);
+      const newAppId = result.data?.appId;
+      if (newAppId) {
+        navigate(`/basic-info?appId=${newAppId}`);
       } else {
-        message.error(result?.messageZh || '创建应用失败');
+        loadAppList();
       }
-    } catch (error) {
-      message.error('创建应用失败');
-    } finally {
-      setModalLoading(false);
+    } else {
+      message.error(result?.messageZh || '创建应用失败');
     }
+    setModalLoading(false);
   };
 
   // 渲染单个卡片
@@ -123,18 +110,9 @@ function AppList() {
 
   return (
     <div className="app-list-page">
-      {/* Hero 区域 */}
-      <div className="app-list-hero">
-        <h1 className="hero-title">{HERO_CONFIG.title}</h1>
-        <p className="hero-desc">{HERO_CONFIG.description}</p>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          className="hero-btn"
-          onClick={() => setModalVisible(true)}
-        >
-          {HERO_CONFIG.buttonText}
-        </Button>
+      <div className='homeBanner'>
+        <div style={{ width: 1200, height: 283, background: '#66ccff' }}></div>
+        <div className='bannerButton' onClick={() => setModalLoading(true)}></div>
       </div>
 
       {/* 应用列表 */}
@@ -145,7 +123,6 @@ function AppList() {
             <>
               <CardGrid items={apps} renderItem={renderAppCard} columns={DEFAULT_GRID_COLUMNS} gap={DEFAULT_GRID_GAP} />
               <div className="app-list-pagination">
-                <span className="pagination-total">共 {pagination.total} 条</span>
                 <Pagination
                   current={pagination.curPage}
                   pageSize={pagination.pageSize}

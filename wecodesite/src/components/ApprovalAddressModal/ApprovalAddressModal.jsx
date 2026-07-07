@@ -42,7 +42,7 @@ function ApprovalAddressModal({ open, onClose, approver, approvalUrl, businessTy
       message.success('催办成功');
       onClose();
     } else {
-      message.error(result.messageZh || '催办失败');
+      message.error(result?.messageZh || '催办失败');
     }
     
     setRemindLoading(false);

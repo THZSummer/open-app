@@ -100,10 +100,13 @@ const SchemaEditorV2 = (props) => {
     // 同步到 form.apiConfig，保证后续 getFieldValue 能拿到最新数据
     if (form && form.setFieldsValue) {
       const currentConfig = form.getFieldValue('apiConfig') || {};
+      // 获取其他位置的数据保存下来
+      const otherCarrierList = currentConfig[schemaType].filter(item => item.carrier !== carrierFilter);
+      const currentCarrierList = newSchema.filter(item => item.carrier === carrierFilter);
       form.setFieldsValue({
         apiConfig: {
           ...currentConfig,
-          [schemaType]: newSchema,
+          [schemaType]: otherCarrierList.concat(currentCarrierList), // 完整数据为： 其他位置数据 + 当前位置最新数据
         },
       });
     }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Drawer, Tabs, Table, Button, Pagination, Input, Select, message } from 'antd';
 const { TabPane } = Tabs;
+const { Search } = Input;
 import { fetchApis, fetchCategories, fetchTabConfig } from './thunk';
 import { useSelector } from 'react-redux';
 import { PAGE_SIZE_OPTIONS, INIT_PAGECONFIG } from '../../utils/constants';
@@ -172,7 +173,7 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appId }) {
       setModulesData(transformedModules);
       return transformedModules;
     } else {
-      message.error(categoriesRes?.messageZh || categoriesRes?.message || '加载分类失败');
+      message.error(categoriesRes?.message || '加载分类失败');
       setModulesData([]);
       return [];
     }
@@ -241,15 +242,9 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appId }) {
     setSelectedRowKeys([]);
     
     const initData = async () => {
-      // 0. 从 Context 获取应用详情，判断应用类型
-      let resolvedAppType = 'person';
-      if (appBaseInfo) {
-        resolvedAppType = (appBaseInfo.appType === 1 || appBaseInfo.eamap) ? 'business' : 'person';
-      }
-      setAppType(resolvedAppType);
 
-      // 1. 加载Tab配置（传入解析后的 appType）
-      const tabResult = await loadTabConfig(resolvedAppType);
+      // 1. 加载Tab配置
+      const tabResult = await loadTabConfig();
       
       if (!tabResult) {
         return;
@@ -369,10 +364,8 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appId }) {
    * 处理关键词输入变化
    */
   const handleFilterChange = (e) => {
-    const keyword = e.target.value;
-    setFilterKeyword(keyword);
     setPagination(INIT_PAGECONFIG);
-    loadApis({ keyword, curPage: 1 }, null, activeModule);
+    loadApis({ keyword: filterKeyword, curPage: 1 }, null, activeModule);
   };
 
   /**
@@ -470,12 +463,12 @@ function ApiPermissionDrawer({ open, onClose, onConfirm, appId }) {
         {renderFirstLevelTabs()}
         {renderSecondLevelTabs()}
         <div className="drawer-filter">
-          <Input
-            placeholder="权限名称/Scope"
+          <Search
+            placeholder="权限名称/ScopeId"
             value={filterKeyword}
-            onChange={handleFilterChange}
+            onChange={e => setFilterKeyword(e.target.value)}
+            onSearch={handleFilterChange}
             style={{ width: 200 }}
-            allowClear
           />
           <Select
             placeholder="是否需要审核"
