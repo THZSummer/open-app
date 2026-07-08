@@ -88,8 +88,8 @@ public class ScriptHttpClient {
 
     @HostAccess.Export
     public Map<String, Object> request(String method, String url, Map<String, Object> opts) {
-        Map<String, String> headers = extractHeaders(opts);
-        Object body = resolveBody((opts != null) ? opts.get("body") : null);
+        Map<String, String> headers = extractHeadersDirect(opts);
+        Object body = (opts != null) ? resolveBody(opts.get("body")) : null;
 
         Callable<Map<String, Object>> task = () -> {
             try {
@@ -178,19 +178,15 @@ public class ScriptHttpClient {
     }
 
     @SuppressWarnings("unchecked")
-    private Map<String, String> extractHeaders(Map<String, Object> opts) {
-        if (opts == null) {
-            return null;
-        }
+    private Map<String, String> extractHeadersDirect(Map<String, Object> opts) {
+        if (opts == null) return null;
         Object raw = opts.get("headers");
-        if (raw == null || !(raw instanceof Map)) {
-            return null;
-        }
+        if (!(raw instanceof Map)) return null;
         Map<String, String> result = new HashMap<>();
         for (Map.Entry<?, ?> entry : ((Map<?, ?>) raw).entrySet()) {
-            String key = String.valueOf(entry.getKey());
-            String val = entry.getValue() != null ? String.valueOf(entry.getValue()) : "";
-            result.put(key, val);
+            if (entry.getKey() != null && entry.getValue() != null) {
+                result.put(String.valueOf(entry.getKey()), String.valueOf(entry.getValue()));
+            }
         }
         return result;
     }

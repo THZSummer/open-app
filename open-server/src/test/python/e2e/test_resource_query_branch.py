@@ -2,13 +2,12 @@
 """
 连接器或连接流列表数据查询 E2E - trigger -> script(ctx.http 条件分支) -> exit
 
-场景: Script 内根据 type 路由到不同 OpenAPI:
-  type="connectors" -> 查询连接器列表
-  type="flows"      -> 查询连接流列表
-  无 type            -> 默认查连接器
+入参按 HTTP 语义分布在 Header/Query/Body:
+  Header: X-Type (路由) / X-App-Id / Cookie
+  Query:  curPage / pageSize / keyword
+  Body:   X-Echo-To-Header (透传回响应头)
 
-调用方传入 {type, query, header}，Script 透传 header 到 ctx.http.request，
-直接调用真实 open-server API。数据完全真实，不做假数据。
+响应: body 透传原始 API 数据, X-Type / X-Echo-To-Header 响应头
 
 Prerequisites:
   - open-server running on localhost:18080
@@ -35,6 +34,7 @@ os_done = _osm.done
 from client import CONNECTOR_API_BASE, CONNECTOR_API_HEALTH, OPEN_SERVER_BASE, TEST_APP_ID
 
 import pytest, requests, random, string
+from urllib.parse import unquote
 
 _RUN_ID = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
 
@@ -45,13 +45,13 @@ def snow_id():
     return int(time.time() * 1000000) % 100000000000000000
 
 
-def api_connector(method, path, body=None, headers=None):
+def api_connector(method, path, body=None, headers=None, params=None):
     url = f"{CONNECTOR_API_BASE}{path}"
     h = {"Content-Type": "application/json"}
     if headers:
         h.update(headers)
     try:
-        return requests.request(method, url, json=body, headers=h, timeout=10)
+        return requests.request(method, url, json=body, headers=h, params=params, timeout=10)
     except requests.ConnectionError:
         return None
 
@@ -169,16 +169,26 @@ def test_resource_query_branch():
             nid_s = "script"
             nid_e = "exit"
 
-            Q = "'"
             script_src = (
                 "function main(ctx) {\n"
-                "    var input = ctx.trigger.input.body;\n"
-                "    var type = input.type || 'connectors';\n"
-                "    var q = input.query || {};\n"
-                "    var hdrs = input.header || {};\n"
-                "    var curPage = q.curPage || 1;\n"
-                "    var keyword = q.keyword || '';\n"
-                "    var pageSize = q.pageSize || 10;\n"
+                "    var hdrs = ctx.trigger.input.header;\n"
+                "    var q = ctx.trigger.input.query;\n"
+                "    var body = ctx.trigger.input.body;\n"
+                "    // debug mode: fallback to body when header/query are empty\n"
+                "    if (!hdrs || !hdrs['X-App-Id']) {\n"
+                "        hdrs = (body && body.header) ? body.header : {};\n"
+                "        q = (body && body.query) ? body.query : {};\n"
+                "    }\n"
+                "    var type = hdrs['X-Type'] || (body && body.type) || 'connectors';\n"
+                "    var curPage = (q && q.curPage) || 1;\n"
+                "    var keyword = (q && q.keyword) || '';\n"
+                "    var pageSize = (q && q.pageSize) || 10;\n"
+                "\n"
+                "    // build plain headers object (PolyglotMap key access works, but Object.keys/enum doesn't)\n"
+                "    var plainHdrs = {};\n"
+                "    ['X-App-Id', 'Cookie'].forEach(function(k) {\n"
+                "        if (hdrs[k]) plainHdrs[k] = hdrs[k];\n"
+                "    });\n"
                 "\n"
                 "    var path = (type === 'flows') ? '/flows' : '/connectors';\n"
                 "    var url = '" + OPEN_SERVER_BASE + "/service/open/v2'\n"
@@ -186,9 +196,12 @@ def test_resource_query_branch():
                 "        + '&keyword=' + encodeURIComponent(keyword)\n"
                 "        + '&pageSize=' + pageSize;\n"
                 "\n"
-                "    var resp = ctx.http.request('GET', url, {headers: hdrs});\n"
-                "    var items = resp.body.data || [];\n"
-                "    return { result: items, domain: String(items.length), group: items.length > 0 ? items[0].nameCn : '-', path: type === 'flows' ? 'flows' : 'connectors' };\n"
+                "    var resp = ctx.http.request('GET', url, {headers: plainHdrs});\n"
+                "    return {\n"
+                "        result: resp.body,\n"
+                "        type: type,\n"
+                "        echoTo: (body && body['X-Echo-To-Header']) || ''\n"
+                "    };\n"
                 "}"
             )
 
@@ -206,22 +219,20 @@ def test_resource_query_branch():
                             }],
                             "input": {
                                 "protocol": "HTTP",
-                                "header": {"type": "object", "properties": {}, "required": []},
-                                "query": {"type": "object", "properties": {}, "required": []},
+                                "header": {"type": "object", "properties": {
+                                    "X-Type": {"type": "string"},
+                                    "X-App-Id": {"type": "string"},
+                                    "Cookie": {"type": "string"},
+                                }, "required": []},
+                                "query": {"type": "object", "properties": {
+                                    "curPage": {"type": "number"},
+                                    "pageSize": {"type": "number"},
+                                    "keyword": {"type": "string"},
+                                }, "required": []},
                                 "body": {
                                     "type": "object",
                                     "properties": {
-                                        "type": {"type": "string"},
-                                        "query": {"type": "object", "properties": {
-                                            "curPage": {"type": "number"},
-                                            "pageSize": {"type": "number"},
-                                            "keyword": {"type": "string"},
-                                        }, "required": []},
-                                        "header": {"type": "object", "properties": {
-                                            "X-App-Id": {"type": "string"},
-                                            "Cookie": {"type": "string"},
-                                        }, "required": []},
-                                        "body": {"type": "object"},
+                                        "X-Echo-To-Header": {"type": "string"},
                                     },
                                     "required": [],
                                 },
@@ -234,24 +245,26 @@ def test_resource_query_branch():
                             "output": {
                                 "type": "object",
                                 "properties": {
-                                    "result": {"type": "array"},
-                                    "domain": {"type": "string"},
-                                    "group": {"type": "string"},
-                                    "path": {"type": "string"},
+                                    "result": {"type": "object"},
+                                    "type": {"type": "string"},
+                                    "echoTo": {"type": "string"},
                                 },
                             },
                         }},
                         {"id": nid_e, "type": "exit", "data": {
                             "type": "exit",
                             "output": {
-                                "header": {"type": "object", "properties": {}},
+                                "header": {
+                                    "type": "object",
+                                    "properties": {
+                                        "X-Type": {"type": "string", "value": "${$.node.script.output.type}"},
+                                        "X-Echo-To-Header": {"type": "string", "value": "${$.node.script.output.echoTo}"},
+                                    },
+                                },
                                 "body": {
                                     "type": "object",
                                     "properties": {
-                                        "result": {"type": "string", "value": "${$.node.script.output.result}"},
-                                        "domain": {"type": "string", "value": "${$.node.script.output.domain}"},
-                                        "group": {"type": "string", "value": "${$.node.script.output.group}"},
-                                        "path": {"type": "string", "value": "${$.node.script.output.path}"},
+                                        "value": {"type": "object", "value": "${$.node.script.output.result}"},
                                     },
                                 },
                             },
@@ -274,7 +287,7 @@ def test_resource_query_branch():
         print("\n-- Phase 2: Debug Draft --")
         def s4():
             r = os_api("POST", f"/flows/{fid}/versions/{fvid}/debug", {
-                "triggerData": {"type": "connectors", "query": {"curPage": 1, "pageSize": 10, "keyword": ""}, "header": AUTH_HEADERS},
+                "triggerData": {"type": "connectors", "query": {"curPage": 1, "pageSize": 10, "keyword": ""}, "header": AUTH_HEADERS, "X-Echo-To-Header": "debug-echo"},
             })
             ok = check_ok(r, "DEBUG draft")
             if ok:
@@ -342,26 +355,28 @@ def test_resource_query_branch():
                 return False
             return True
 
-        def _invoke_and_verify(label, payload, expected):
-            r = api_connector("POST", f"/flows/{fid}/invoke", payload, headers={"X-Sys-Token": "tester"})
+        def _invoke_and_verify(label, payload, expected_headers, extra_headers, params):
+            r = api_connector("POST", f"/flows/{fid}/invoke", payload,
+                              headers={**{"X-Sys-Token": "tester"}, **extra_headers},
+                              params=params)
             if r is None:
                 os_fail(f"{label}: connector-api unreachable")
                 return False
             if r.status_code not in (200, 201):
                 os_fail(f"{label}: HTTP {r.status_code}, body={r.text[:200]}")
                 return False
-            body = r.json()
+            body = r.json() if r.text else {}
             print(f"  [OK] {label} HTTP {r.status_code}")
-            print(f"    body: {json.dumps(body, ensure_ascii=False)[:400]}")
+            data_count = len(body.get("data", []))
+            print(f"    body: {{code:{body.get('code')}, data:[{data_count} items]}}")
             ok = True
-            result = body.get("result")
-            if isinstance(result, list) and len(result) == int(body.get("domain", 0)):
-                print(f"    [OK] result={len(result)} items")
+            if body.get("code") in ("200", 200) and data_count > 0:
+                print(f"    [OK] code=200, data={data_count} items")
             else:
-                os_fail(f"{label}: result not a list or length mismatch, got {type(result).__name__} len={len(result) if isinstance(result, list) else 'N/A'}")
+                os_fail(f"{label}: unexpected response code={body.get('code')}, data_count={data_count}")
                 ok = False
-            for key, val in expected.items():
-                actual = body.get(key)
+            for key, val in expected_headers.items():
+                actual = unquote(r.headers.get(key, ''))
                 if actual == val:
                     print(f"    [OK] {key}={val}")
                 else:
@@ -369,25 +384,28 @@ def test_resource_query_branch():
                     ok = False
             return ok
 
-        def _expected_connectors():
-            r = os_api("GET", "/connectors")
-            items = r.json().get("data", []) if r else []
-            return {"domain": str(min(len(items), 10)),
-                    "group": items[0]["nameCn"] if items else "-", "path": "connectors"}
+        ECHO_VAL = "echo-resource-query"
 
-        def _expected_flows():
-            r = os_api("GET", "/flows")
-            items = r.json().get("data", []) if r else []
-            return {"domain": str(min(len(items), 10)),
-                    "group": items[0]["nameCn"] if items else "-", "path": "flows"}
+        def _expected_headers(rtype):
+            return {"X-Type": rtype, "X-Echo-To-Header": ECHO_VAL}
 
         def s12():
-            payload = {"type": "connectors", "query": {"curPage": 1, "pageSize": 10, "keyword": ""}, "header": AUTH_HEADERS}
-            return _invoke_and_verify("Type=connectors -> 真实API", payload, _expected_connectors())
+            return _invoke_and_verify(
+                "Type=connectors -> 真实API",
+                {"X-Echo-To-Header": ECHO_VAL},
+                _expected_headers("connectors"),
+                {**{"X-Type": "connectors"}, **AUTH_HEADERS},
+                {"curPage": 1, "pageSize": 10, "keyword": ""},
+            )
 
         def s13():
-            payload = {"type": "flows", "query": {"curPage": 1, "pageSize": 10, "keyword": ""}, "header": AUTH_HEADERS}
-            return _invoke_and_verify("Type=flows -> 真实API", payload, _expected_flows())
+            return _invoke_and_verify(
+                "Type=flows -> 真实API",
+                {"X-Echo-To-Header": ECHO_VAL},
+                _expected_headers("flows"),
+                {**{"X-Type": "flows"}, **AUTH_HEADERS},
+                {"curPage": 1, "pageSize": 10, "keyword": ""},
+            )
 
         def s14():
             time.sleep(0.5)

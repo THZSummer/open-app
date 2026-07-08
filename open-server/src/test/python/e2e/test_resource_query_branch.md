@@ -58,41 +58,97 @@ curl -X GET 'http://localhost:18080/open-server/service/open/v2/flows?curPage=1&
 }
 ```
 
-### 2.3 连接流封装设计
+### 2.3 连接流接口设计
 
-将上述原始 API 封装为统一的 Flow 入口，调用方只需传入 `{type, query, header, body}`，由 Script 节点路由并透传：
+将原始 OpenAPI 封装为统一 Flow 入口。入参按 HTTP 语义分布在 Header/Query/Body 中，响应透传原始数据。
 
 **查询连接器列表：**
 
+请求：
+
 ```bash
-curl -X POST 'http://open-server:18080/api/v1/flows/{flowId}/invoke' \
+curl -X POST 'http://open-server:18080/api/v1/flows/{flowId}/invoke?curPage=1&pageSize=10&keyword=' \
   -H 'Content-Type: application/json' \
+  -H 'X-Type: connectors' \
+  -H 'X-App-Id: 20250730213114178360970' \
+  -H 'Cookie: user_id=admin' \
   -H 'X-Sys-Token: tester' \
-  -d '{
-    "type": "connectors",
-    "query": {"curPage": 1, "pageSize": 10, "keyword": ""},
-    "header": {"X-App-Id": "20250730213114178360970", "Cookie": "user_id=admin"},
-    "body": {}
-  }'
+  -d '{"X-Echo-To-Header": "echo-value"}'
+```
+
+响应：
+
+```
+HTTP 200
+X-Type: connectors
+X-Echo-To-Header: echo-value
+Content-Type: application/json
+
+{
+    "code": "200",
+    "messageZh": "操作成功",
+    "data": [
+        {"connectorId": "9000", "nameCn": "连接器A", "status": 2},
+        {"connectorId": "9001", "nameCn": "连接器B", "status": 2}
+    ]
+}
 ```
 
 **查询连接流列表：**
 
+请求：
+
 ```bash
-curl -X POST 'http://open-server:18080/api/v1/flows/{flowId}/invoke' \
+curl -X POST 'http://open-server:18080/api/v1/flows/{flowId}/invoke?curPage=1&pageSize=10&keyword=' \
   -H 'Content-Type: application/json' \
+  -H 'X-Type: flows' \
+  -H 'X-App-Id: 20250730213114178360970' \
+  -H 'Cookie: user_id=admin' \
   -H 'X-Sys-Token: tester' \
-  -d '{
-    "type": "flows",
-    "query": {"curPage": 1, "pageSize": 10, "keyword": ""},
-    "header": {"X-App-Id": "20250730213114178360970", "Cookie": "user_id=admin"},
-    "body": {}
-  }'
+  -d '{"X-Echo-To-Header": "echo-value"}'
 ```
+
+响应：
+
+```
+HTTP 200
+X-Type: flows
+X-Echo-To-Header: echo-value
+Content-Type: application/json
+
+{
+    "code": "200",
+    "messageZh": "操作成功",
+    "data": [
+        {"id": "8000", "nameCn": "审批流", "lifecycleStatus": 1},
+        {"id": "8001", "nameCn": "数据同步流", "lifecycleStatus": 2}
+    ]
+}
+```
+
+**入参说明：**
+
+| 位置 | 字段 | 类型 | 说明 |
+|------|------|------|------|
+| Header | `X-Type` | `string` | 路由类型: `connectors` / `flows` |
+| Header | `X-App-Id` | `string` | 应用 ID，鉴权必填 |
+| Header | `Cookie` | `string` | 用户身份 |
+| Query | `curPage` | `number` | 页码，默认 1 |
+| Query | `pageSize` | `number` | 每页条数，默认 10 |
+| Query | `keyword` | `string` | 搜索关键字 |
+| Body | `X-Echo-To-Header` | `string` | 透传回响应头 |
+
+**响应说明：**
+
+| 位置 | 字段 | 类型 | 说明 |
+|------|------|------|------|
+| Body | `{}` | `object` | 透传原始 API 响应体 `{code, data[], ...}` |
+| Header | `X-Type` | `string` | 路由类型标识，与入参一致 |
+| Header | `X-Echo-To-Header` | `string` | 与入参 Body 的 `X-Echo-To-Header` 一致 |
 
 ### 2.4 条件路由规则
 
-| 入参 type | 路由目标 | API 路径 |
+| `X-Type` | 路由目标 | API 路径 |
 |-----------|---------|----------|
 | `flows` | Flow 列表 API | `GET /open-server/service/open/v2/flows` |
 | `connectors` 或无 | Connector 列表 API | `GET /open-server/service/open/v2/connectors` |
@@ -100,75 +156,28 @@ curl -X POST 'http://open-server:18080/api/v1/flows/{flowId}/invoke' \
 ### 2.5 参数透传链路
 
 ```
-调用方传入 {type, query, header, body}
+调用方:
+  Header: X-Type / X-App-Id / Cookie
+  Query:  curPage / pageSize / keyword
+  Body:   {X-Echo-To-Header}
   ↓
-Flow Trigger 接收
+Flow Trigger 接收:
+  - ctx.trigger.input.header = {X-Type, X-App-Id, Cookie}
+  - ctx.trigger.input.query  = {curPage, pageSize, keyword}
+  - ctx.trigger.input.body   = {X-Echo-To-Header}
   ↓
 Script 节点:
-  1. 按 type 选择路由
-  2. query -> 拼接到 URL (?curPage=&keyword=&pageSize=)
-  3. header -> 传递给 ctx.http.request 的 opts.headers
-  4. body  -> 预留 POST 场景
+  1. X-Type -> 选择路由 (/connectors 或 /flows)
+  2. query -> 拼接到 URL
+  3. header -> 透传至 ctx.http.request
+  4. X-Echo-To-Header -> 透传至响应头
   ↓
 ctx.http.request('GET', url, {headers: hdrs})  ->  开放平台 OpenAPI
   ↓
-返回 {code, data[]}
-  ↓
-Script 提取 data[] -> {result, domain, group, path}
-  ↓
-Exit 节点映射到 HTTP 响应
+Exit 节点:
+  - header -> X-Type / X-Echo-To-Header
+  - body   -> 透传原始响应体
 ```
-
-### 2.6 响应效果
-
-**请求 connectors：**
-
-```
-POST /api/v1/flows/{flowId}/invoke
-Body: {"type": "connectors", "query": {"curPage": 1, "pageSize": 10, "keyword": ""}, ...}
-```
-
-```json
-HTTP 200
-{
-    "result": [
-        {"connectorId": "9000", "nameCn": "连接器A", "status": 2},
-        {"connectorId": "9001", "nameCn": "连接器B", "status": 2}
-    ],
-    "domain": "2",
-    "group": "连接器A",
-    "path": "connectors"
-}
-```
-
-**请求 flows：**
-
-```
-POST /api/v1/flows/{flowId}/invoke
-Body: {"type": "flows", "query": {"curPage": 1, "pageSize": 10, "keyword": ""}, ...}
-```
-
-```json
-HTTP 200
-{
-    "result": [
-        {"id": "8000", "nameCn": "审批流", "lifecycleStatus": 1},
-        {"id": "8001", "nameCn": "数据同步流", "lifecycleStatus": 2}
-    ],
-    "domain": "2",
-    "group": "审批流",
-    "path": "flows"
-}
-```
-
-**字段说明：**
-
-| 字段 | 类型 | 说明 | 数据来源 |
-|------|------|------|---------|
-| `result` | `array` | 原始列表数据 | 原始 API `data[]` 直接透传 |
-| `domain` | `string` | 返回条目数 | 原始 API `data.length` |
-| `group` | `string` | 首条记录名称 | 原始 API `data[0].nameCn` |
-| `path` | `string` | 路由类型标识 | 入参 `type` |
 
 ## 3. 配置详情
 
@@ -182,23 +191,39 @@ Trigger Node -> Script Node -> Exit Node
 
 - **类型**: HTTP Trigger
 - **鉴权**: SYSTOKEN，白名单 `["tester"]`
-- **入参 Body Schema**:
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `type` | `string` | 否 | 路由类型，默认 `connectors` |
-| `query` | `object` | 否 | URL 查询参数 `{curPage, pageSize, keyword}` |
-| `header` | `object` | 否 | HTTP 请求头 `{X-App-Id, Cookie}` |
-| `body` | `object` | 否 | HTTP 请求体（预留 POST 场景） |
+**入参 Schema：**
+
+| 位置 | 字段 | 类型 | 必填 | 说明 |
+|------|------|------|:--:|------|
+| Header | `X-Type` | `string` | 否 | 路由类型，默认 `connectors` |
+| Header | `X-App-Id` | `string` | 是 | 应用 ID |
+| Header | `Cookie` | `string` | 否 | 用户身份 |
+| Query | `curPage` | `number` | 否 | 页码，默认 1 |
+| Query | `pageSize` | `number` | 否 | 每页条数，默认 10 |
+| Query | `keyword` | `string` | 否 | 搜索关键字 |
+
+| Body | `X-Echo-To-Header` | `string` | 否 | 透传回响应头 |
+
+**调用示例：**
+
+```bash
+curl -X POST 'http://open-server:18080/api/v1/flows/{flowId}/invoke?curPage=1&pageSize=10&keyword=' \
+  -H 'X-Type: connectors' \
+  -H 'X-App-Id: 20250730213114178360970' \
+  -H 'Cookie: user_id=admin' \
+  -H 'X-Sys-Token: tester' \
+  -d '{"X-Echo-To-Header": "echo-value"}'
+```
 
 ### 3.3 Script 节点逻辑
 
 ```javascript
 function main(ctx) {
-    var input = ctx.trigger.input.body;
-    var type = input.type || 'connectors';
-    var q = input.query || {};
-    var hdrs = input.header || {};
+    var hdrs = ctx.trigger.input.header;
+    var q = ctx.trigger.input.query;
+    var body = ctx.trigger.input.body;
+    var type = hdrs['X-Type'] || 'connectors';
     var curPage = q.curPage || 1;
     var keyword = q.keyword || '';
     var pageSize = q.pageSize || 10;
@@ -210,13 +235,11 @@ function main(ctx) {
         + '&pageSize=' + pageSize;
 
     var resp = ctx.http.request('GET', url, {headers: hdrs});
-    var items = resp.body.data || [];
 
     return {
-        result: items,
-        domain: String(items.length),
-        group: items.length > 0 ? items[0].nameCn : '-',
-        path: type === 'flows' ? 'flows' : 'connectors'
+        result: resp.body,
+        type: type,
+        echoTo: body['X-Echo-To-Header'] || ''
     };
 }
 ```
@@ -225,19 +248,17 @@ function main(ctx) {
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `result` | `array` | 原始列表数据，直接透传 API `data[]` |
-| `domain` | `string` | 列表条目数 |
-| `group` | `string` | 首条名称 |
-| `path` | `string` | 路由类型标识 |
+| `result` | `object` | 透传原始 API 响应体 |
+| `type` | `string` | 路由类型标识 |
+| `echoTo` | `string` | 透传回响应头 |
 
 ### 3.5 Exit 节点映射
 
-| 响应字段 | 来源 |
-|----------|------|
-| `result` | `${$.node.script.output.result}` |
-| `domain` | `${$.node.script.output.domain}` |
-| `group` | `${$.node.script.output.group}` |
-| `path` | `${$.node.script.output.path}` |
+| 位置 | 字段 | 表达式 |
+|------|------|--------|
+| Header | `X-Type` | `${$.node.script.output.type}` |
+| Header | `X-Echo-To-Header` | `${$.node.script.output.echoTo}` |
+| Body | `{}` | `${$.node.script.output.result}` (value 键透传) |
 
 ### 3.6 对外 API 地址
 
