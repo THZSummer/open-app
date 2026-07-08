@@ -555,6 +555,7 @@ def test_resource_query_parallel():
                 return False
             body = r.json() if r.text else {}
             print(f"  [OK] {label} HTTP {r.status_code}")
+            print(f"    body: {json.dumps(body, ensure_ascii=False, default=str)}")
             c_count = len(body.get("connectors", []))
             f_count = len(body.get("flows", []))
             print(f"    connectors={c_count} items, flows={f_count} items")
