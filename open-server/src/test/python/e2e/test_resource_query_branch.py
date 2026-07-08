@@ -3,7 +3,7 @@
 连接器或连接流列表数据查询 E2E - trigger -> script(ctx.http 条件分支) -> exit
 
 入参按 HTTP 语义分布在 Header/Query/Body:
-  Header: X-Type (路由) / X-App-Id / Cookie
+  Header: X-Type (路由) / X-App-Id / Cookie / X-XSRF-TOKEN
   Query:  curPage / pageSize / keyword
   Body:   X-Echo-To-Header (透传回响应头)
 
@@ -38,7 +38,7 @@ from urllib.parse import unquote
 
 _RUN_ID = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
 
-AUTH_HEADERS = {"X-App-Id": TEST_APP_ID, "Cookie": "user_id=admin"}
+AUTH_HEADERS = {"X-App-Id": TEST_APP_ID, "Cookie": "user_id=admin", "X-XSRF-TOKEN": "user_id=admin"}
 
 
 def snow_id():
@@ -186,7 +186,7 @@ def test_resource_query_branch():
                 "\n"
                 "    // build plain headers object (PolyglotMap key access works, but Object.keys/enum doesn't)\n"
                 "    var plainHdrs = {};\n"
-                "    ['X-App-Id', 'Cookie'].forEach(function(k) {\n"
+                "    ['X-App-Id', 'Cookie', 'X-XSRF-TOKEN'].forEach(function(k) {\n"
                 "        if (hdrs[k]) plainHdrs[k] = hdrs[k];\n"
                 "    });\n"
                 "\n"
@@ -223,6 +223,7 @@ def test_resource_query_branch():
                                     "X-Type": {"type": "string"},
                                     "X-App-Id": {"type": "string"},
                                     "Cookie": {"type": "string"},
+                                    "X-XSRF-TOKEN": {"type": "string"},
                                 }, "required": []},
                                 "query": {"type": "object", "properties": {
                                     "curPage": {"type": "number"},
@@ -245,8 +246,25 @@ def test_resource_query_branch():
                             "output": {
                                 "type": "object",
                                 "properties": {
-                                    "result": {"type": "object"},
-                                    "type": {"type": "string"},
+                                    "result": {
+                                        "type": "object",
+                                        "properties": {
+                                            "code":       {"type": "string"},
+                                            "messageZh":  {"type": "string"},
+                                            "messageEn":  {"type": "string"},
+                                            "data":       {"type": "array", "items": {"type": "object", "properties": {}}},
+                                            "page": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "curPage":    {"type": "number"},
+                                                    "pageSize":   {"type": "number"},
+                                                    "total":      {"type": "number"},
+                                                    "totalPages": {"type": "number"},
+                                                },
+                                            },
+                                        },
+                                    },
+                                    "type":   {"type": "string"},
                                     "echoTo": {"type": "string"},
                                 },
                             },
@@ -264,7 +282,19 @@ def test_resource_query_branch():
                                 "body": {
                                     "type": "object",
                                     "properties": {
-                                        "value": {"type": "object", "value": "${$.node.script.output.result}"},
+                                        "code":       {"type": "string", "value": "${$.node.script.output.result.code}"},
+                                        "messageZh":  {"type": "string", "value": "${$.node.script.output.result.messageZh}"},
+                                        "messageEn":  {"type": "string", "value": "${$.node.script.output.result.messageEn}"},
+                                        "data":       {"type": "array", "items": {"type": "object", "properties": {}}, "value": "${$.node.script.output.result.data}"},
+                                        "page": {
+                                            "type": "object",
+                                            "properties": {
+                                                "curPage":    {"type": "number", "value": "${$.node.script.output.result.page.curPage}"},
+                                                "pageSize":   {"type": "number", "value": "${$.node.script.output.result.page.pageSize}"},
+                                                "total":      {"type": "number", "value": "${$.node.script.output.result.page.total}"},
+                                                "totalPages": {"type": "number", "value": "${$.node.script.output.result.page.totalPages}"},
+                                            },
+                                        },
                                     },
                                 },
                             },

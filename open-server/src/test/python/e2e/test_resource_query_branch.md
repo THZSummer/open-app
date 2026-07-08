@@ -21,7 +21,8 @@ Script 节点最终调用的底层开放平台 API：
 ```bash
 curl -X GET 'http://localhost:18080/open-server/service/open/v2/connectors?curPage=1&keyword=&pageSize=3' \
   -H 'X-App-Id: 20250730213114178360970' \
-  -H 'Cookie: user_id=admin'
+  -H 'Cookie: user_id=admin' \
+  -H 'X-XSRF-TOKEN: user_id=admin'
 ```
 
 响应：
@@ -42,7 +43,8 @@ curl -X GET 'http://localhost:18080/open-server/service/open/v2/connectors?curPa
 ```bash
 curl -X GET 'http://localhost:18080/open-server/service/open/v2/flows?curPage=1&keyword=&pageSize=3' \
   -H 'X-App-Id: 20250730213114178360970' \
-  -H 'Cookie: user_id=admin'
+  -H 'Cookie: user_id=admin' \
+  -H 'X-XSRF-TOKEN: user_id=admin'
 ```
 
 响应：
@@ -72,6 +74,7 @@ curl -X POST 'http://open-server:18080/api/v1/flows/{flowId}/invoke?curPage=1&pa
   -H 'X-Type: connectors' \
   -H 'X-App-Id: 20250730213114178360970' \
   -H 'Cookie: user_id=admin' \
+  -H 'X-XSRF-TOKEN: user_id=admin' \
   -H 'X-Sys-Token: tester' \
   -d '{"X-Echo-To-Header": "echo-value"}'
 ```
@@ -104,6 +107,7 @@ curl -X POST 'http://open-server:18080/api/v1/flows/{flowId}/invoke?curPage=1&pa
   -H 'X-Type: flows' \
   -H 'X-App-Id: 20250730213114178360970' \
   -H 'Cookie: user_id=admin' \
+  -H 'X-XSRF-TOKEN: user_id=admin' \
   -H 'X-Sys-Token: tester' \
   -d '{"X-Echo-To-Header": "echo-value"}'
 ```
@@ -133,6 +137,7 @@ Content-Type: application/json
 | Header | `X-Type` | `string` | 路由类型: `connectors` / `flows` |
 | Header | `X-App-Id` | `string` | 应用 ID，鉴权必填 |
 | Header | `Cookie` | `string` | 用户身份 |
+| Header | `X-XSRF-TOKEN` | `string` | CSRF 令牌，值与 Cookie 相同 |
 | Query | `curPage` | `number` | 页码，默认 1 |
 | Query | `pageSize` | `number` | 每页条数，默认 3 |
 | Query | `keyword` | `string` | 搜索关键字 |
@@ -157,12 +162,12 @@ Content-Type: application/json
 
 ```
 调用方:
-  Header: X-Type / X-App-Id / Cookie
+  Header: X-Type / X-App-Id / Cookie / X-XSRF-TOKEN
   Query:  curPage / pageSize / keyword
   Body:   {X-Echo-To-Header}
   ↓
 Flow Trigger 接收:
-  - ctx.trigger.input.header = {X-Type, X-App-Id, Cookie}
+  - ctx.trigger.input.header = {X-Type, X-App-Id, Cookie, X-XSRF-TOKEN}
   - ctx.trigger.input.query  = {curPage, pageSize, keyword}
   - ctx.trigger.input.body   = {X-Echo-To-Header}
   ↓
@@ -274,6 +279,7 @@ GET http://localhost:18080/open-server/service/open/v2/flows
 | `keyword` | query | 搜索关键字 |
 | `X-App-Id` | header | 应用 ID，必填 |
 | `Cookie` | header | 用户身份 `user_id=admin` |
+| `X-XSRF-TOKEN` | header | CSRF 令牌，与 Cookie 值相同 |
 
 ### 3.7 响应格式
 

@@ -98,21 +98,13 @@ public class ExitNodeExecutor implements NodeExecutor {
                 } else {
                     Map<String, Object> responseBody = new HashMap<>();
                     Map<String, Object> bodyMap = normalizeMappingSegment(bodyMapping);
-                    // 单一 value 键 → 直接透传, 不包裹在 Map 中
-                    if (bodyMap.size() == 1 && bodyMap.containsKey("value")) {
-                        Object resolved = resolveValue(context, bodyMap.get("value"));
+                    for (Map.Entry<String, Object> entry : bodyMap.entrySet()) {
+                        Object resolved = resolveValue(context, entry.getValue());
                         if (resolved != null) {
-                            outputData.put("body", resolved);
+                            responseBody.put(entry.getKey(), resolved);
                         }
-                    } else {
-                        for (Map.Entry<String, Object> entry : bodyMap.entrySet()) {
-                            Object resolved = resolveValue(context, entry.getValue());
-                            if (resolved != null) {
-                                responseBody.put(entry.getKey(), resolved);
-                            }
-                        }
-                        outputData.put("body", responseBody);
                     }
+                    outputData.put("body", responseBody);
                 }
 
             } else {
