@@ -1,0 +1,14 @@
+/* 子应用 C 样式 */
+.sub-app-c {
+  padding: 20px;
+}
+
+.sub-app-c h2 {
+  color: #52c41a;
+  margin-bottom: 12px;
+}
+
+.sub-app-c p {
+  color: #666;
+  line-height: 1.8;
+}

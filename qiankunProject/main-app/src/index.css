@@ -1,0 +1,60 @@
+/* 全局重置 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+/* 整体布局 */
+.layout {
+  display: flex;
+  height: 100%;
+}
+
+/* 侧边导航 */
+.sidebar {
+  width: 200px;
+  background: #001529;
+  color: #fff;
+  padding: 20px 0;
+}
+
+.logo {
+  font-size: 18px;
+  text-align: center;
+  padding: 10px 0 30px;
+}
+
+.nav-link {
+  display: block;
+  padding: 12px 24px;
+  color: #fff;
+  text-decoration: none;
+}
+
+.nav-link:hover {
+  background: #1890ff;
+}
+
+/* 内容区 */
+.content {
+  flex: 1;
+  padding: 24px;
+  overflow: auto;
+}
+
+.home {
+  font-size: 20px;
+  color: #333;
+}
+
+/* 子应用挂载容器 */
+#sub-app-viewport {
+  height: 100%;
+}

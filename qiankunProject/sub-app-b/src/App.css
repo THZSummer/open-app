@@ -1,0 +1,14 @@
+/* 子应用 B 样式 */
+.sub-app-b {
+  padding: 20px;
+}
+
+.sub-app-b h2 {
+  color: #1890ff;
+  margin-bottom: 12px;
+}
+
+.sub-app-b p {
+  color: #666;
+  line-height: 1.8;
+}
