@@ -17,6 +17,8 @@ function App() {
             <Link to="/" className="nav-link">首页</Link>
             <Link to="/sub-b" className="nav-link">子应用 B</Link>
             <Link to="/sub-c" className="nav-link">子应用 C</Link>
+            <Link to="/sub-d" className="nav-link">子应用 D</Link>
+            <Link to="/sub-e" className="nav-link">子应用 E</Link>
           </nav>
         </aside>
         {/* 内容区域：主应用自身页面 + 子应用挂载容器 */}

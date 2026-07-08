@@ -19,6 +19,18 @@ const microApps = [
     entry: '//localhost:8081',
     container: '#sub-app-viewport',
     activeRule: '/sub-c'
+  },
+  {
+    name: 'sub-app-d',
+    entry: '//localhost:8082',
+    container: '#sub-app-viewport',
+    activeRule: '/sub-d'
+  },
+  {
+    name: 'sub-app-e',
+    entry: '//localhost:5174',
+    container: '#sub-app-viewport',
+    activeRule: '/sub-e'
   }
 ];
 
