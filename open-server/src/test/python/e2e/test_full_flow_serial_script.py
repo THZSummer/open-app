@@ -3,9 +3,9 @@
 Serial mode script E2E — trigger → script(ctx.http 条件分支) → exit
 
 Script 内根据入参 action 字段条件路由到不同 mock 端点:
-  action="user"   → ctx.http.post(/api/user)    → 返回用户信息
-  action="order"  → ctx.http.get(/api/order?...) → 返回订单数据
-  action="status" → ctx.http.get(/api/status)    → 返回服务状态
+  action="user"   → ctx.http.request('POST', /api/user)    → 返回用户信息
+  action="order"  → ctx.http.request('GET', /api/order?...) → 返回订单数据
+  action="status" → ctx.http.request('GET', /api/status)    → 返回服务状态
   无 action       → 走默认 user 分支
 
 exit 统一映射脚本返回的 {result, domain, group, path} 到 HTTP 响应。
@@ -308,22 +308,22 @@ def test_full_flow_script():
                 "    var name = input.name || 'unknown';\n"
                 "\n"
                 "    if (action === 'order') {\n"
-                "        var resp = ctx.http.get('" + MOCK_URL + "/api/order?name=' + encodeURIComponent(name));\n"
+                "        var resp = ctx.http.request('GET', '" + MOCK_URL + "/api/order?name=' + encodeURIComponent(name));\n"
                 "        var d = resp.body.data;\n"
                 "        return { result: d.order_id, domain: d.status, group: String(d.amount), path: 'order' };\n"
                 "    }\n"
                 "\n"
                 "    if (action === 'status') {\n"
-                "        var resp = ctx.http.get('" + MOCK_URL + "/api/status?name=' + encodeURIComponent(name));\n"
+                "        var resp = ctx.http.request('GET', '" + MOCK_URL + "/api/status?name=' + encodeURIComponent(name));\n"
                 "        var d = resp.body.data;\n"
                 "        return { result: d.server, domain: d.version, group: String(d.uptime_hours) + 'h', path: 'status' };\n"
                 "    }\n"
                 "\n"
-                "    var resp = ctx.http.post('" + MOCK_URL + "/api/user', {\n"
+                "    var resp = ctx.http.request('POST', '" + MOCK_URL + "/api/user', {body: {\n"
                 "        name: name,\n"
                 "        email: input.email || '',\n"
                 "        age: input.age || 0\n"
-                "    });\n"
+                "    }});\n"
                 "    var d = resp.body.data;\n"
                 "    return {\n"
                 "        result: d.display_name,\n"
@@ -411,7 +411,10 @@ def test_full_flow_script():
             r = os_api("POST", f"/flows/{fid}/versions/{fvid}/debug", {
                 "triggerData": {"action": "user", "name": "debug", "email": "d@t.com", "age": 20},
             })
-            return check_ok(r, "DEBUG draft")
+            ok = check_ok(r, "DEBUG draft")
+            if ok:
+                print(f"    body: {r.text}")
+            return ok
 
         if not failed and not step("DEBUG draft", s4): failed = True
         print(f"  {'[OK]' if not failed else '[FAIL]'} Phase 2")

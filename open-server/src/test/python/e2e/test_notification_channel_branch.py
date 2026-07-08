@@ -314,35 +314,35 @@ def test_notification_channel_branch():
                 "    var channel = input.channel || 'log';\n"
                 "\n"
                 "    if (channel === 'email') {\n"
-                "        var resp = ctx.http.post('" + MOCK_URL + "/api/notify/email', {\n"
+                "        var resp = ctx.http.request('POST', '" + MOCK_URL + "/api/notify/email', {body: {\n"
                 "            recipient: input.recipient,\n"
                 "            subject: input.subject\n"
-                "        });\n"
+                "        }});\n"
                 "        var d = resp.body.data;\n"
                 "        return { result: d.message_id, domain: d.status, group: d.recipient, path: 'email' };\n"
                 "    }\n"
                 "\n"
                 "    if (channel === 'sms') {\n"
-                "        var resp = ctx.http.post('" + MOCK_URL + "/api/notify/sms', {\n"
+                "        var resp = ctx.http.request('POST', '" + MOCK_URL + "/api/notify/sms', {body: {\n"
                 "            phone: input.phone,\n"
                 "            text: input.text\n"
-                "        });\n"
+                "        }});\n"
                 "        var d = resp.body.data;\n"
                 "        return { result: d.message_id, domain: d.status, group: String(d.cost_credits), path: 'sms' };\n"
                 "    }\n"
                 "\n"
                 "    if (channel === 'webhook') {\n"
-                "        var resp = ctx.http.post('" + MOCK_URL + "/api/notify/webhook', {\n"
+                "        var resp = ctx.http.request('POST', '" + MOCK_URL + "/api/notify/webhook', {body: {\n"
                 "            url: input.url\n"
-                "        });\n"
+                "        }});\n"
                 "        var d = resp.body.data;\n"
                 "        return { result: d.call_id, domain: d.status, group: String(d.http_code), path: 'webhook' };\n"
                 "    }\n"
                 "\n"
-                "    var resp = ctx.http.post('" + MOCK_URL + "/api/notify/log', {\n"
+                "    var resp = ctx.http.request('POST', '" + MOCK_URL + "/api/notify/log', {body: {\n"
                 "        source: input.source || 'default',\n"
                 "        level: input.level || 'info'\n"
-                "    });\n"
+                "    }});\n"
                 "    var d = resp.body.data;\n"
                 "    return { result: d.log_id, domain: d.status, group: d.source, path: 'log' };\n"
                 "}"
@@ -429,7 +429,10 @@ def test_notification_channel_branch():
             r = os_api("POST", f"/flows/{fid}/versions/{fvid}/debug", {
                 "triggerData": {"channel": "email", "recipient": "debug@t.com", "subject": "Debug"},
             })
-            return check_ok(r, "DEBUG draft")
+            ok = check_ok(r, "DEBUG draft")
+            if ok:
+                print(f"    body: {r.text}")
+            return ok
 
         if not failed and not step("DEBUG draft", s4): failed = True
         print(f"  {'[OK]' if not failed else '[FAIL]'} Phase 2")

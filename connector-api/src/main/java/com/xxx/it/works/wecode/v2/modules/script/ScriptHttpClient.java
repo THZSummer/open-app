@@ -1,5 +1,6 @@
 package com.xxx.it.works.wecode.v2.modules.script;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.graalvm.polyglot.HostAccess;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,13 +17,15 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Script-side HTTP client exposed to GraalJS sandbox via {@code ctx.http}.
  *
- * <p>Scripts call {@code ctx.http.get(url)} or {@code ctx.http.post(url, body)}
- * to make HTTP calls through this Java wrapper.
- * Methods are exposed via {@link HostAccess.Export} for polyglot access.</p>
+ * <p>Single unified entry: {@code ctx.http.request(method, url, opts)}.
+ * Acts as a transparent proxy from JS to JVM HTTP — no restrictions on
+ * method, headers, or body format. All future parameters extend {@code opts}.</p>
  *
  * <p>Controlled by Spring property {@code script.http.client.enabled} (default true).
  * When enabled, {@code ctx.http} is injected into the script context.</p>
@@ -37,10 +40,12 @@ public class ScriptHttpClient {
 
     private static final Logger log = LoggerFactory.getLogger(ScriptHttpClient.class);
 
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
     private static final int DEFAULT_TIMEOUT_SECONDS = 10;
+    private static final int FUTURE_TIMEOUT_SECONDS = 3;
 
     private static final ExecutorService SHARED_EXECUTOR;
-
     private static final HttpClient SHARED_HTTP_CLIENT;
 
     static {
@@ -65,38 +70,26 @@ public class ScriptHttpClient {
         this.executor = SHARED_EXECUTOR;
     }
 
+    /**
+     * Unified HTTP request method — the only entry point exposed to GraalJS.
+     *
+     * @param method HTTP method string, no whitelist (any value passthrough)
+     * @param url    full URL including query parameters
+     * @param opts   optional config: { headers: {...}, body: ... }
+     *               body as JS object → JSON serialized;
+     *               body as string → direct passthrough;
+     *               body omitted → no body
+     * @return response map: { status, body, headers }
+     */
     @HostAccess.Export
-    public Map<String, Object> get(String url) {
-        return get(url, null);
+    public Map<String, Object> request(String method, String url) {
+        return request(method, url, null);
     }
 
     @HostAccess.Export
-    public Map<String, Object> get(String url, Map<String, String> headers) {
-        return execute("GET", url, headers, null);
-    }
-
-    @HostAccess.Export
-    public Map<String, Object> post(String url, Object body) {
-        return post(url, body, null);
-    }
-
-    @HostAccess.Export
-    public Map<String, Object> post(String url, Object body, Map<String, String> headers) {
-        return execute("POST", url, headers, body);
-    }
-
-    @HostAccess.Export
-    public Map<String, Object> put(String url, Object body) {
-        return put(url, body, null);
-    }
-
-    @HostAccess.Export
-    public Map<String, Object> put(String url, Object body, Map<String, String> headers) {
-        return execute("PUT", url, headers, body);
-    }
-
-    private Map<String, Object> execute(String method, String url, Map<String, String> headers, Object body) {
-        Map<String, Object> resolvedBody = resolveBody(body);
+    public Map<String, Object> request(String method, String url, Map<String, Object> opts) {
+        Map<String, String> headers = extractHeaders(opts);
+        Object body = resolveBody((opts != null) ? opts.get("body") : null);
 
         Callable<Map<String, Object>> task = () -> {
             try {
@@ -105,17 +98,24 @@ public class ScriptHttpClient {
                         .timeout(Duration.ofSeconds(DEFAULT_TIMEOUT_SECONDS));
 
                 if (headers != null) {
-                    headers.forEach(builder::header);
+                    headers.forEach((k, v) -> {
+                        if (k != null && v != null) {
+                            builder.header(k, v);
+                        }
+                    });
                 }
 
-                if (resolvedBody != null && !"GET".equalsIgnoreCase(method)) {
-                    String jsonBody = new com.fasterxml.jackson.databind.ObjectMapper()
-                            .writeValueAsString(resolvedBody);
-                    builder.header("Content-Type", "application/json");
-                    builder.method(method, HttpRequest.BodyPublishers.ofString(jsonBody));
-                } else if (body instanceof String && !"GET".equalsIgnoreCase(method)) {
-                    builder.header("Content-Type", "application/json");
-                    builder.method(method, HttpRequest.BodyPublishers.ofString((String) body));
+                if (body != null) {
+                    String bodyStr;
+                    if (body instanceof String) {
+                        bodyStr = (String) body;
+                    } else {
+                        bodyStr = OBJECT_MAPPER.writeValueAsString(body);
+                        if (!hasContentType(headers)) {
+                            builder.header("Content-Type", "application/json");
+                        }
+                    }
+                    builder.method(method, HttpRequest.BodyPublishers.ofString(bodyStr));
                 } else {
                     builder.method(method, HttpRequest.BodyPublishers.noBody());
                 }
@@ -128,79 +128,34 @@ public class ScriptHttpClient {
                 result.put("body", tryParseJson(response.body()));
                 result.put("headers", flattenHeaders(response.headers().map()));
 
-                log.debug("Script HTTP {} {} → {}", method, url, response.statusCode());
+                log.debug("Script HTTP {} {} -> {}", method, url, response.statusCode());
                 return result;
 
             } catch (Exception e) {
                 log.warn("Script HTTP call failed: {} {}, error={}", method, url, e.getMessage());
-                Map<String, Object> result = new HashMap<>();
-                result.put("status", 0);
-                Map<String, Object> error = new HashMap<>();
-                error.put("message", "HTTP call failed: " + e.getClass().getSimpleName());
-                error.put("detail", e.getMessage() != null ? e.getMessage() : e.toString());
-                result.put("body", error);
-                result.put("headers", new HashMap<>());
-                return result;
+                return errorResult("HTTP call failed: " + e.getClass().getSimpleName(), e.getMessage());
             }
         };
 
         Future<Map<String, Object>> future = executor.submit(task);
         try {
-            return future.get(3, java.util.concurrent.TimeUnit.SECONDS);
-        } catch (java.util.concurrent.TimeoutException e) {
+            return future.get(FUTURE_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        } catch (TimeoutException e) {
             future.cancel(true);
-            log.warn("Script HTTP timeout: {} {} (>3s)", method, url);
-            Map<String, Object> result = new HashMap<>();
-            result.put("status", 0);
-            Map<String, Object> error = new HashMap<>();
-            error.put("message", "HTTP call timed out");
-            error.put("detail", "Request exceeded 3s timeout");
-            result.put("body", error);
-            result.put("headers", new HashMap<>());
-            return result;
+            log.warn("Script HTTP timeout: {} {} (>{}s)", method, url, FUTURE_TIMEOUT_SECONDS);
+            return errorResult("HTTP call timed out",
+                    "Request exceeded " + FUTURE_TIMEOUT_SECONDS + "s timeout");
         } catch (Exception e) {
             log.warn("Script HTTP executor error: {} {}, error={}", method, url, e.getMessage());
-            Map<String, Object> result = new HashMap<>();
-            result.put("status", 0);
-            Map<String, Object> error = new HashMap<>();
-            error.put("message", "HTTP call failed: " + e.getClass().getSimpleName());
-            error.put("detail", e.getMessage() != null ? e.getMessage() : e.toString());
-            result.put("body", error);
-            result.put("headers", new HashMap<>());
-            return result;
+            return errorResult("HTTP call failed: " + e.getClass().getSimpleName(), e.getMessage());
         }
     }
 
-    @SuppressWarnings("unchecked")
-    private Object tryParseJson(String text) {
-        if (text == null || text.isBlank()) return "";
-        try {
-            return new com.fasterxml.jackson.databind.ObjectMapper().readValue(text, Map.class);
-        } catch (Exception e) {
-            return text;
-        }
-    }
-
-    private String toJson(Object obj) {
-        try {
-            if (obj instanceof String) return (String) obj;
-            return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(obj);
-        } catch (Exception e) {
-            return String.valueOf(obj);
-        }
-    }
-
-    private Map<String, Object> resolveBody(Object body) {
+    private Object resolveBody(Object body) {
         if (body == null) return null;
-        if (body instanceof Map) {
-            Map<String, Object> result = new HashMap<>();
-            for (Map.Entry<?, ?> entry : ((Map<?, ?>) body).entrySet()) {
-                result.put(String.valueOf(entry.getKey()), resolveValue(entry.getValue()));
-            }
-            return result;
-        }
-        if (body instanceof String) return null;
-        return null;
+        if (body instanceof String) return body;
+        if (body instanceof Map) return resolveValue(body);
+        return body;
     }
 
     @SuppressWarnings("unchecked")
@@ -222,11 +177,60 @@ public class ScriptHttpClient {
         return val;
     }
 
+    @SuppressWarnings("unchecked")
+    private Map<String, String> extractHeaders(Map<String, Object> opts) {
+        if (opts == null) {
+            return null;
+        }
+        Object raw = opts.get("headers");
+        if (raw == null || !(raw instanceof Map)) {
+            return null;
+        }
+        Map<String, String> result = new HashMap<>();
+        for (Map.Entry<?, ?> entry : ((Map<?, ?>) raw).entrySet()) {
+            String key = String.valueOf(entry.getKey());
+            String val = entry.getValue() != null ? String.valueOf(entry.getValue()) : "";
+            result.put(key, val);
+        }
+        return result;
+    }
+
+    private boolean hasContentType(Map<String, String> headers) {
+        if (headers == null) {
+            return false;
+        }
+        return headers.keySet().stream()
+                .anyMatch(k -> k != null && k.equalsIgnoreCase("Content-Type"));
+    }
+
+    @SuppressWarnings("unchecked")
+    private Object tryParseJson(String text) {
+        if (text == null || text.isBlank()) {
+            return "";
+        }
+        try {
+            return OBJECT_MAPPER.readValue(text, Map.class);
+        } catch (Exception e) {
+            return text;
+        }
+    }
+
     private Map<String, String> flattenHeaders(Map<String, java.util.List<String>> map) {
         Map<String, String> flat = new HashMap<>();
         if (map != null) {
             map.forEach((k, v) -> flat.put(k, v != null && !v.isEmpty() ? v.get(0) : ""));
         }
         return flat;
+    }
+
+    private Map<String, Object> errorResult(String message, String detail) {
+        Map<String, Object> result = new HashMap<>();
+        result.put("status", 0);
+        Map<String, Object> error = new HashMap<>();
+        error.put("message", message);
+        error.put("detail", detail != null ? detail : "");
+        result.put("body", error);
+        result.put("headers", new HashMap<>());
+        return result;
     }
 }

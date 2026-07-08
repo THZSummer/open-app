@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-连接器或连接流列表数据查询 E2E — trigger → script(ctx.http 条件分支) → exit
+连接器或连接流列表数据查询 E2E - trigger -> script(ctx.http 条件分支) -> exit
 
 场景: Script 内根据 type 路由到不同 OpenAPI:
-  type="connectors" → 查询连接器列表
-  type="flows"      → 查询连接流列表
-  无 type            → 默认查连接器
+  type="connectors" -> 查询连接器列表
+  type="flows"      -> 查询连接流列表
+  无 type            -> 默认查连接器
 
-Mock 作为 Auth Proxy: 补 X-App-Id/Cookie Header 后透传到真实 open-server API。
-数据完全真实，不做假数据。
+调用方传入 {type, query, header}，Script 透传 header 到 ctx.http.request，
+直接调用真实 open-server API。数据完全真实，不做假数据。
 
 Prerequisites:
   - open-server running on localhost:18080
@@ -18,10 +18,8 @@ Usage:
   cd open-server/src/test/python
   python3 e2e/test_resource_query_branch.py
 """
-import os, sys, json, time, threading
+import os, sys, json, time
 import importlib.util
-from http.server import HTTPServer, BaseHTTPRequestHandler
-from urllib.parse import urlparse, parse_qs
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(TEST_DIR), "common"))
@@ -39,77 +37,8 @@ from client import CONNECTOR_API_BASE, CONNECTOR_API_HEALTH, OPEN_SERVER_BASE, T
 import pytest, requests, random, string
 
 _RUN_ID = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
-MOCK_PORT = 18989; MOCK_URL = f"http://localhost:{MOCK_PORT}"
-OPEN_API_BASE = "http://localhost:18080/open-server/service/open/v2"
 
-
-class AuthProxy:
-    """透传代理: 添加 X-App-Id Header 后转发到真实 open-server API"""
-
-    def __init__(self):
-        self._server = None
-        self._headers = {
-            "X-App-Id": TEST_APP_ID,
-            "Cookie": "user_id=admin",
-        }
-
-    def _make_handler(self):
-        class H(BaseHTTPRequestHandler):
-            def log_message(self, f, *a): pass
-
-            def _respond(self, code, headers, body):
-                self.send_response(code)
-                for k, v in headers.items():
-                    self.send_header(k, v)
-                self.end_headers()
-                if body:
-                    self.wfile.write(body)
-
-            def _proxy(self):
-                q = urlparse(self.path).query
-                real_url = f"{OPEN_API_BASE}{self.path}"
-                try:
-                    r = requests.get(real_url, headers=self._headers, timeout=10)
-                    self._respond(r.status_code, dict(r.headers), r.content)
-                except Exception as e:
-                    self._respond(502, {"Content-Type": "application/json"},
-                                  json.dumps({"code": 502, "message": str(e)}).encode())
-
-            def do_GET(self):
-                path = urlparse(self.path).path
-                if path == "/api/health":
-                    self._respond(200, {"Content-Type": "application/json"},
-                                  json.dumps({"status": "ok"}).encode())
-                elif path.startswith("/service/open/v2/"):
-                    self._proxy()
-                else:
-                    self._respond(404, {"Content-Type": "application/json"},
-                                  json.dumps({"code": 404, "message": "unknown"}).encode())
-
-            def do_POST(self):
-                self._respond(405, {"Content-Type": "application/json"},
-                              json.dumps({"code": 405, "message": "method not allowed"}).encode())
-
-        # 将当前实例的 headers 绑定到 handler 类
-        H._headers = self._headers
-        return H
-
-    def start(self):
-        self._server = HTTPServer(("localhost", MOCK_PORT), self._make_handler())
-        threading.Thread(target=self._server.serve_forever, daemon=True).start()
-        for _ in range(20):
-            try:
-                if requests.get(f"{MOCK_URL}/api/health", timeout=1).status_code == 200:
-                    print(f"  [OK] AuthProxy ready :{MOCK_PORT}")
-                    return True
-            except Exception:
-                pass
-            time.sleep(0.5)
-        return False
-
-    def stop(self):
-        if self._server:
-            self._server.shutdown()
+AUTH_HEADERS = {"X-App-Id": TEST_APP_ID, "Cookie": "user_id=admin"}
 
 
 def snow_id():
@@ -171,7 +100,7 @@ def get_data(resp):
 def test_resource_query_branch():
     print("=" * 60)
     print("  连接器或连接流列表数据查询")
-    print("  trigger → script(ctx.http 条件分支 → AuthProxy → 真实API) → exit")
+    print("  trigger -> script(ctx.http 条件分支 -> 真实API) -> exit")
     print(f"  Run: {_RUN_ID}")
     print("=" * 60)
 
@@ -204,11 +133,6 @@ def test_resource_query_branch():
             "nodes": [{"userId": "tester", "userName": "Test Approver"}],
         })
     print("  [OK] approval template ready")
-
-    proxy = AuthProxy()
-    if not proxy.start():
-        print("[FAIL] AuthProxy failed to start")
-        return
 
     fid = fvid = aid = None
     failed = False
@@ -250,28 +174,21 @@ def test_resource_query_branch():
                 "function main(ctx) {\n"
                 "    var input = ctx.trigger.input.body;\n"
                 "    var type = input.type || 'connectors';\n"
-                "    var keyword = input.keyword || '';\n"
-                "    var curPage = input.curPage || 1;\n"
-                "    var pageSize = input.pageSize || 10;\n"
-                "    var baseUrl = '" + MOCK_URL + "/service/open/v2';\n"
-                "\n"
-                "    function formatItems(items, keys) {\n"
-                "      var out = '';\n"
-                "      for (var i = 0; i < items.length; i++) {\n"
-                "        if (i > 0) out += '|';\n"
-                "        for (var k = 0; k < keys.length; k++) {\n"
-                "          if (k > 0) out += ',';\n"
-                "          out += items[i][keys[k]];\n"
-                "        }\n"
-                "      }\n"
-                "      return out;\n"
-                "    }\n"
+                "    var q = input.query || {};\n"
+                "    var hdrs = input.header || {};\n"
+                "    var curPage = q.curPage || 1;\n"
+                "    var keyword = q.keyword || '';\n"
+                "    var pageSize = q.pageSize || 10;\n"
                 "\n"
                 "    var path = (type === 'flows') ? '/flows' : '/connectors';\n"
-                "    var resp = ctx.http.get(baseUrl + path + " + Q + "?curPage=" + Q + " + curPage + " + Q + "&keyword=" + Q + " + encodeURIComponent(keyword) + " + Q + "&pageSize=" + Q + " + pageSize);\n"
+                "    var url = '" + OPEN_SERVER_BASE + "/service/open/v2'\n"
+                "        + path + '?curPage=' + curPage\n"
+                "        + '&keyword=' + encodeURIComponent(keyword)\n"
+                "        + '&pageSize=' + pageSize;\n"
+                "\n"
+                "    var resp = ctx.http.request('GET', url, {headers: hdrs});\n"
                 "    var items = resp.body.data || [];\n"
-                "    var keys = (type === 'flows') ? ['flowId', 'nameCn', 'lifecycleStatus'] : ['connectorId', 'nameCn', 'status'];\n"
-                "    return { result: formatItems(items, keys), domain: String(items.length), group: items.length > 0 ? items[0].nameCn : '-', path: type === 'flows' ? 'flows' : 'connectors' };\n"
+                "    return { result: items, domain: String(items.length), group: items.length > 0 ? items[0].nameCn : '-', path: type === 'flows' ? 'flows' : 'connectors' };\n"
                 "}"
             )
 
@@ -295,9 +212,16 @@ def test_resource_query_branch():
                                     "type": "object",
                                     "properties": {
                                         "type": {"type": "string"},
-                                        "keyword": {"type": "string"},
-                                        "curPage": {"type": "number"},
-                                        "pageSize": {"type": "number"},
+                                        "query": {"type": "object", "properties": {
+                                            "curPage": {"type": "number"},
+                                            "pageSize": {"type": "number"},
+                                            "keyword": {"type": "string"},
+                                        }, "required": []},
+                                        "header": {"type": "object", "properties": {
+                                            "X-App-Id": {"type": "string"},
+                                            "Cookie": {"type": "string"},
+                                        }, "required": []},
+                                        "body": {"type": "object"},
                                     },
                                     "required": [],
                                 },
@@ -310,7 +234,7 @@ def test_resource_query_branch():
                             "output": {
                                 "type": "object",
                                 "properties": {
-                                    "result": {"type": "string"},
+                                    "result": {"type": "array"},
                                     "domain": {"type": "string"},
                                     "group": {"type": "string"},
                                     "path": {"type": "string"},
@@ -350,9 +274,12 @@ def test_resource_query_branch():
         print("\n-- Phase 2: Debug Draft --")
         def s4():
             r = os_api("POST", f"/flows/{fid}/versions/{fvid}/debug", {
-                "triggerData": {"type": "connectors", "keyword": "debug"},
+                "triggerData": {"type": "connectors", "query": {"curPage": 1, "pageSize": 10, "keyword": ""}, "header": AUTH_HEADERS},
             })
-            return check_ok(r, "DEBUG draft")
+            ok = check_ok(r, "DEBUG draft")
+            if ok:
+                print(f"    body: {r.text}")
+            return ok
 
         if not failed and not step("DEBUG draft", s4): failed = True
         print(f"  {'[OK]' if not failed else '[FAIL]'} Phase 2")
@@ -427,6 +354,12 @@ def test_resource_query_branch():
             print(f"  [OK] {label} HTTP {r.status_code}")
             print(f"    body: {json.dumps(body, ensure_ascii=False)[:400]}")
             ok = True
+            result = body.get("result")
+            if isinstance(result, list) and len(result) == int(body.get("domain", 0)):
+                print(f"    [OK] result={len(result)} items")
+            else:
+                os_fail(f"{label}: result not a list or length mismatch, got {type(result).__name__} len={len(result) if isinstance(result, list) else 'N/A'}")
+                ok = False
             for key, val in expected.items():
                 actual = body.get(key)
                 if actual == val:
@@ -436,28 +369,25 @@ def test_resource_query_branch():
                     ok = False
             return ok
 
-        def _fmt(items, keys):
-            return '|'.join(','.join(str(it[k]) for k in keys) for it in items[:10])
-
         def _expected_connectors():
             r = os_api("GET", "/connectors")
             items = r.json().get("data", []) if r else []
-            return {"result": _fmt(items, ["connectorId", "nameCn", "status"]),
-                    "domain": str(min(len(items), 10)),
+            return {"domain": str(min(len(items), 10)),
                     "group": items[0]["nameCn"] if items else "-", "path": "connectors"}
 
         def _expected_flows():
             r = os_api("GET", "/flows")
             items = r.json().get("data", []) if r else []
-            return {"result": _fmt(items, ["flowId", "nameCn", "lifecycleStatus"]),
-                    "domain": str(min(len(items), 10)),
+            return {"domain": str(min(len(items), 10)),
                     "group": items[0]["nameCn"] if items else "-", "path": "flows"}
 
         def s12():
-            return _invoke_and_verify("Type=connectors -> 真实API", {}, _expected_connectors())
+            payload = {"type": "connectors", "query": {"curPage": 1, "pageSize": 10, "keyword": ""}, "header": AUTH_HEADERS}
+            return _invoke_and_verify("Type=connectors -> 真实API", payload, _expected_connectors())
 
         def s13():
-            return _invoke_and_verify("Type=flows -> 真实API", {"type": "flows"}, _expected_flows())
+            payload = {"type": "flows", "query": {"curPage": 1, "pageSize": 10, "keyword": ""}, "header": AUTH_HEADERS}
+            return _invoke_and_verify("Type=flows -> 真实API", payload, _expected_flows())
 
         def s14():
             time.sleep(0.5)
@@ -479,7 +409,6 @@ def test_resource_query_branch():
         assert not failed
 
     finally:
-        proxy.stop()
         os_done()
 
 
