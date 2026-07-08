@@ -228,7 +228,11 @@ function main(ctx) {
     var hdrs = ctx.trigger.input.header;
     var q = ctx.trigger.input.query;
     var body = ctx.trigger.input.body;
-    var type = hdrs['X-Type'] || 'connectors';
+    // case-insensitive header lookup (nginx/HTTP2 lowercases headers)
+    function hdr(name) {
+        return hdrs[name] || hdrs[name.toLowerCase()] || hdrs[name.toUpperCase()];
+    }
+    var type = hdr('X-Type') || 'connectors';
     var curPage = q.curPage || 1;
     var keyword = q.keyword || '';
     var pageSize = q.pageSize || 3;
