@@ -138,6 +138,22 @@ def db_val(sql):
     return None
 
 # ═══════════════════════════════════════════════════════════
+# Lookup 配置管理
+# ═══════════════════════════════════════════════════════════
+
+_LOOKUP_PATH = "CEC.Open"
+_LOOKUP_CLASSIFY = "Connector.Platform.Config"
+
+def set_lookup_config(item_code: str, value: str):
+    """设置 Connector.Platform.Config 下指定 item_code 的值（测试用）"""
+    db(f"""UPDATE openplatform_lookup_item_t i
+JOIN openplatform_lookup_classify_t c ON i.classify_id = c.classify_id
+SET i.item_value = '{value}'
+WHERE c.path = '{_LOOKUP_PATH}' AND c.classify_code = '{_LOOKUP_CLASSIFY}'
+AND i.item_code = '{item_code}'""")
+
+
+# ═══════════════════════════════════════════════════════════
 # 断言
 # ═══════════════════════════════════════════════════════════
 def ok(resp_or_cond, expected=None, name=""):
