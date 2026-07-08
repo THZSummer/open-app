@@ -182,7 +182,7 @@ def test_resource_query_branch():
                 "    var type = hdrs['X-Type'] || (body && body.type) || 'connectors';\n"
                 "    var curPage = (q && q.curPage) || 1;\n"
                 "    var keyword = (q && q.keyword) || '';\n"
-                "    var pageSize = (q && q.pageSize) || 10;\n"
+                "    var pageSize = (q && q.pageSize) || 3;\n"
                 "\n"
                 "    // build plain headers object (PolyglotMap key access works, but Object.keys/enum doesn't)\n"
                 "    var plainHdrs = {};\n"
@@ -287,7 +287,7 @@ def test_resource_query_branch():
         print("\n-- Phase 2: Debug Draft --")
         def s4():
             r = os_api("POST", f"/flows/{fid}/versions/{fvid}/debug", {
-                "triggerData": {"type": "connectors", "query": {"curPage": 1, "pageSize": 10, "keyword": ""}, "header": AUTH_HEADERS, "X-Echo-To-Header": "debug-echo"},
+                "triggerData": {"type": "connectors", "query": {"curPage": 1, "pageSize": 3, "keyword": ""}, "header": AUTH_HEADERS, "X-Echo-To-Header": "debug-echo"},
             })
             ok = check_ok(r, "DEBUG draft")
             if ok:
@@ -368,7 +368,7 @@ def test_resource_query_branch():
             body = r.json() if r.text else {}
             print(f"  [OK] {label} HTTP {r.status_code}")
             data_count = len(body.get("data", []))
-            print(f"    body: {{code:{body.get('code')}, data:[{data_count} items]}}")
+            print(f"    body: {json.dumps(body, ensure_ascii=False)}")
             ok = True
             if body.get("code") in ("200", 200) and data_count > 0:
                 print(f"    [OK] code=200, data={data_count} items")
@@ -395,7 +395,7 @@ def test_resource_query_branch():
                 {"X-Echo-To-Header": ECHO_VAL},
                 _expected_headers("connectors"),
                 {**{"X-Type": "connectors"}, **AUTH_HEADERS},
-                {"curPage": 1, "pageSize": 10, "keyword": ""},
+                {"curPage": 1, "pageSize": 3, "keyword": ""},
             )
 
         def s13():
@@ -404,7 +404,7 @@ def test_resource_query_branch():
                 {"X-Echo-To-Header": ECHO_VAL},
                 _expected_headers("flows"),
                 {**{"X-Type": "flows"}, **AUTH_HEADERS},
-                {"curPage": 1, "pageSize": 10, "keyword": ""},
+                {"curPage": 1, "pageSize": 3, "keyword": ""},
             )
 
         def s14():

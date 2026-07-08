@@ -19,7 +19,7 @@ Script 节点最终调用的底层开放平台 API：
 **查询连接器列表：**
 
 ```bash
-curl -X GET 'http://localhost:18080/open-server/service/open/v2/connectors?curPage=1&keyword=&pageSize=10' \
+curl -X GET 'http://localhost:18080/open-server/service/open/v2/connectors?curPage=1&keyword=&pageSize=3' \
   -H 'X-App-Id: 20250730213114178360970' \
   -H 'Cookie: user_id=admin'
 ```
@@ -40,7 +40,7 @@ curl -X GET 'http://localhost:18080/open-server/service/open/v2/connectors?curPa
 **查询连接流列表：**
 
 ```bash
-curl -X GET 'http://localhost:18080/open-server/service/open/v2/flows?curPage=1&keyword=&pageSize=10' \
+curl -X GET 'http://localhost:18080/open-server/service/open/v2/flows?curPage=1&keyword=&pageSize=3' \
   -H 'X-App-Id: 20250730213114178360970' \
   -H 'Cookie: user_id=admin'
 ```
@@ -67,7 +67,7 @@ curl -X GET 'http://localhost:18080/open-server/service/open/v2/flows?curPage=1&
 请求：
 
 ```bash
-curl -X POST 'http://open-server:18080/api/v1/flows/{flowId}/invoke?curPage=1&pageSize=10&keyword=' \
+curl -X POST 'http://open-server:18080/api/v1/flows/{flowId}/invoke?curPage=1&pageSize=3&keyword=' \
   -H 'Content-Type: application/json' \
   -H 'X-Type: connectors' \
   -H 'X-App-Id: 20250730213114178360970' \
@@ -99,7 +99,7 @@ Content-Type: application/json
 请求：
 
 ```bash
-curl -X POST 'http://open-server:18080/api/v1/flows/{flowId}/invoke?curPage=1&pageSize=10&keyword=' \
+curl -X POST 'http://open-server:18080/api/v1/flows/{flowId}/invoke?curPage=1&pageSize=3&keyword=' \
   -H 'Content-Type: application/json' \
   -H 'X-Type: flows' \
   -H 'X-App-Id: 20250730213114178360970' \
@@ -134,7 +134,7 @@ Content-Type: application/json
 | Header | `X-App-Id` | `string` | 应用 ID，鉴权必填 |
 | Header | `Cookie` | `string` | 用户身份 |
 | Query | `curPage` | `number` | 页码，默认 1 |
-| Query | `pageSize` | `number` | 每页条数，默认 10 |
+| Query | `pageSize` | `number` | 每页条数，默认 3 |
 | Query | `keyword` | `string` | 搜索关键字 |
 | Body | `X-Echo-To-Header` | `string` | 透传回响应头 |
 
@@ -200,7 +200,7 @@ Trigger Node -> Script Node -> Exit Node
 | Header | `X-App-Id` | `string` | 是 | 应用 ID |
 | Header | `Cookie` | `string` | 否 | 用户身份 |
 | Query | `curPage` | `number` | 否 | 页码，默认 1 |
-| Query | `pageSize` | `number` | 否 | 每页条数，默认 10 |
+| Query | `pageSize` | `number` | 否 | 每页条数，默认 3 |
 | Query | `keyword` | `string` | 否 | 搜索关键字 |
 
 | Body | `X-Echo-To-Header` | `string` | 否 | 透传回响应头 |
@@ -208,7 +208,7 @@ Trigger Node -> Script Node -> Exit Node
 **调用示例：**
 
 ```bash
-curl -X POST 'http://open-server:18080/api/v1/flows/{flowId}/invoke?curPage=1&pageSize=10&keyword=' \
+curl -X POST 'http://open-server:18080/api/v1/flows/{flowId}/invoke?curPage=1&pageSize=3&keyword=' \
   -H 'X-Type: connectors' \
   -H 'X-App-Id: 20250730213114178360970' \
   -H 'Cookie: user_id=admin' \
@@ -226,7 +226,7 @@ function main(ctx) {
     var type = hdrs['X-Type'] || 'connectors';
     var curPage = q.curPage || 1;
     var keyword = q.keyword || '';
-    var pageSize = q.pageSize || 10;
+    var pageSize = q.pageSize || 3;
 
     var path = (type === 'flows') ? '/flows' : '/connectors';
     var url = 'http://localhost:18080/open-server/service/open/v2'
@@ -270,7 +270,7 @@ GET http://localhost:18080/open-server/service/open/v2/flows
 | 参数 | 类型 | 说明 |
 |------|------|------|
 | `curPage` | query | 页码，默认 1 |
-| `pageSize` | query | 每页条数，默认 10 |
+| `pageSize` | query | 每页条数，默认 3 |
 | `keyword` | query | 搜索关键字 |
 | `X-App-Id` | header | 应用 ID，必填 |
 | `Cookie` | header | 用户身份 `user_id=admin` |
