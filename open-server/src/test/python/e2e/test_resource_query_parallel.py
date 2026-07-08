@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
 """
-连接器与连接流并行数据查询 E2E — trigger -> script(ctx.http 并行查询) -> exit
+连接器与连接流并行数据查询 E2E
+
+拓扑: trigger → script_prepare → parallel → [connector_connectors ‖ connector_flows] → script_merge → exit
+
+并行节点分流两个 Connector 分支，分别调用 open-server 的连接器列表 API 和连接流列表 API，
+合并节点汇总后统一输出。
 
 入参按 HTTP 语义分布在 Header/Query/Body:
   Header: X-App-Id / Cookie / X-XSRF-TOKEN
   Query:  curPage / pageSize / keyword
   Body:   X-Echo-To-Header (透传回响应头)
 
-Script 同时查询 connectors + flows，合并后返回 {connectors[], flows[]}。
-响应: X-Echo-To-Header 响应头透传
+响应: X-Echo-To-Header / X-Connector-Date / X-Flow-Date 响应头，body 含 connectors[] 和 flows[]
 """
 
 import os, sys, json, time
@@ -88,11 +92,78 @@ def get_data(resp):
         return {}
 
 
+def create_and_publish_connector(label_cn, label_en, target_url, method="GET"):
+    """通过 open-server API 创建连接器 -> 创建草稿 -> 配置 -> 发布"""
+    cid = snow_id()
+    r = os_api("POST", "/connectors", {
+        "nameCn": label_cn, "nameEn": label_en, "connectorType": 1
+    })
+    d = get_data(r) if r else {}
+    cid_val = d.get("connectorId") if d else None
+    if cid_val:
+        cid = int(cid_val)
+    if not check_ok(r, f"CREATE {label_en}", "POST /connectors"):
+        return None, None, None
+
+    os_api("POST", f"/connectors/{cid}/versions", {})
+    r2 = os_api("GET", f"/connectors/{cid}/versions")
+    vlist = get_data(r2)
+    if isinstance(vlist, dict):
+        vlist = vlist.get("items", vlist.get("data", []))
+    if not isinstance(vlist, list) or len(vlist) == 0:
+        os_fail("版本列表为空")
+        return None, None, None
+    cvid = int(vlist[0].get("versionId", vlist[0].get("id", 0)))
+
+    config = {
+        "protocol": "HTTP",
+        "protocolConfig": {"url": target_url, "method": method},
+        "authConfigs": [{"type": "NONE"}],
+        "input": {
+            "protocol": "HTTP",
+            "header": {
+                "type": "object",
+                "properties": {
+                    "X-App-Id": {"type": "string"},
+                    "Cookie": {"type": "string"},
+                    "X-XSRF-TOKEN": {"type": "string"},
+                },
+            },
+            "query": {
+                "type": "object",
+                "properties": {
+                    "curPage": {"type": "number"},
+                    "pageSize": {"type": "number"},
+                    "keyword": {"type": "string"},
+                },
+            },
+        },
+        "output": {
+            "protocol": "HTTP",
+            "body": {
+                "type": "object",
+                "properties": {
+                    "code": {"type": "string"},
+                    "messageZh": {"type": "string"},
+                    "data": {"type": "array", "items": {"type": "object", "properties": {}}},
+                },
+            },
+        },
+        "timeoutMs": 5000,
+    }
+    os_api("PUT", f"/connectors/{cid}/versions/{cvid}", {
+        "connectionConfig": config
+    })
+    os_api("PUT", f"/connectors/{cid}/versions/{cvid}/publish")
+    print(f"    {label_en}: cid={cid}, cvid={cvid}")
+    return cid, cvid, config
+
+
 @pytest.mark.L3
 def test_resource_query_parallel():
     print("=" * 60)
     print("  连接器与连接流并行数据查询")
-    print("  trigger -> script(ctx.http 并行查询 两API) -> exit")
+    print("  trigger → script_prepare → parallel → [connector ‖ connector] → script_merge → exit")
     print(f"  Run: {_RUN_ID}")
     print("=" * 60)
 
@@ -126,6 +197,21 @@ def test_resource_query_parallel():
         })
     print("  [OK] approval template ready")
 
+    # 创建两个并行分支的连接器
+    print("\n-- Phase 0b: Create Parallel Connectors --")
+    conn_api_url = f"{OPEN_SERVER_BASE}/service/open/v2/connectors"
+    flow_api_url = f"{OPEN_SERVER_BASE}/service/open/v2/flows"
+
+    cid_c, cvid_c, config_c = create_and_publish_connector(
+        f"QueryConnectors_{_RUN_ID}", f"query_connectors_{_RUN_ID}", conn_api_url, "GET")
+    cid_f, cvid_f, config_f = create_and_publish_connector(
+        f"QueryFlows_{_RUN_ID}", f"query_flows_{_RUN_ID}", flow_api_url, "GET")
+
+    if not cid_c or not cid_f:
+        print("[FAIL] Failed to create connectors")
+        return
+    print("  [OK] connectors ready")
+
     fid = fvid = aid = None
     failed = False
 
@@ -157,11 +243,16 @@ def test_resource_query_parallel():
             return True
 
         def s3():
-            nid_t = "trigger"
-            nid_s = "script"
-            nid_e = "exit"
+            nid_t  = "trigger"
+            nid_sp = "script_prepare"
+            nid_p  = "parallel"
+            nid_c  = "conn_connectors"
+            nid_f  = "conn_flows"
+            nid_sm = "script_merge"
+            nid_e  = "exit"
 
-            script_src = (
+            # 预处理脚本: 从 trigger 提取 headers/query，供两个分支共用
+            script_prepare_src = (
                 "function main(ctx) {\n"
                 "    var hdrs = ctx.trigger.input.header;\n"
                 "    var q = ctx.trigger.input.query;\n"
@@ -173,30 +264,33 @@ def test_resource_query_parallel():
                 "        hdrs = (body && body.header) ? body.header : {};\n"
                 "        q = (body && body.query) ? body.query : {};\n"
                 "    }\n"
-                "    var curPage = (q && q.curPage) || 1;\n"
-                "    var keyword = (q && q.keyword) || '';\n"
-                "    var pageSize = (q && q.pageSize) || 3;\n"
-                "\n"
-                "    var baseUrl = '" + OPEN_SERVER_BASE + "/service/open/v2';\n"
-                "    var params = '?curPage=' + curPage\n"
-                "        + '&keyword=' + encodeURIComponent(keyword)\n"
-                "        + '&pageSize=' + pageSize;\n"
-                "\n"
-                "    var plainHdrs = {};\n"
-                "    ['X-App-Id', 'Cookie', 'X-XSRF-TOKEN'].forEach(function(k) {\n"
-                "        if (hdrs[k]) plainHdrs[k] = hdrs[k];\n"
-                "    });\n"
-                "\n"
-                "    var connectorsResp = ctx.http.request('GET', baseUrl + '/connectors' + params, {headers: plainHdrs});\n"
-                "    var flowsResp = ctx.http.request('GET', baseUrl + '/flows' + params, {headers: plainHdrs});\n"
-                "\n"
+                "    return {\n"
+                "        appId: hdr('X-App-Id') || '',\n"
+                "        cookie: hdr('Cookie') || '',\n"
+                "        xsrfToken: hdr('X-XSRF-TOKEN') || '',\n"
+                "        curPage: (q && q.curPage) || 1,\n"
+                "        pageSize: (q && q.pageSize) || 3,\n"
+                "        keyword: (q && q.keyword) || '',\n"
+                "        echoTo: (body && body['X-Echo-To-Header']) || ''\n"
+                "    };\n"
+                "}"
+            )
+
+            # 合并脚本: 汇总两个连接器的结果
+            script_merge_src = (
+                "function main(ctx) {\n"
+                "    var c = ctx['" + nid_c + "'].output || {};\n"
+                "    var f = ctx['" + nid_f + "'].output || {};\n"
+                "    var p = ctx['" + nid_sp + "'].output || {};\n"
                 "    return {\n"
                 "        code: '200',\n"
-                "        messageZh: '操作成功',\n"
+                "        messageZh: '\u64CD\u4F5C\u6210\u529F',\n"
                 "        messageEn: 'Success',\n"
-                "        connectors: connectorsResp.body.data || [],\n"
-                "        flows: flowsResp.body.data || [],\n"
-                "        echoTo: (body && body['X-Echo-To-Header']) || ''\n"
+                "        connectors: c.data || [],\n"
+                "        flows: f.data || [],\n"
+                "        connectorDate: '',\n"
+                "        flowDate: '',\n"
+                "        echoTo: p.echoTo || ''\n"
                 "    };\n"
                 "}"
             )
@@ -227,26 +321,93 @@ def test_resource_query_parallel():
                                 }, "required": []},
                                 "body": {
                                     "type": "object",
-                                    "properties": {
-                                        "X-Echo-To-Header": {"type": "string"},
-                                    },
+                                    "properties": {"X-Echo-To-Header": {"type": "string"}},
                                     "required": [],
                                 },
                             },
                         }},
-                        {"id": nid_s, "type": "script", "data": {
-                            "type": "script",
-                            "script": script_src,
-                            "timeoutMs": 5000,
+                        {"id": nid_sp, "type": "script", "data": {
+                            "type": "script", "labelCn": "预处理",
+                            "script": script_prepare_src, "timeoutMs": 5000,
                             "output": {
                                 "type": "object",
                                 "properties": {
-                                    "code":       {"type": "string"},
-                                    "messageZh":  {"type": "string"},
-                                    "messageEn":  {"type": "string"},
-                                    "connectors": {"type": "array", "items": {"type": "object", "properties": {}}},
-                                    "flows":      {"type": "array", "items": {"type": "object", "properties": {}}},
-                                    "echoTo":     {"type": "string"},
+                                    "appId": {"type": "string"},
+                                    "cookie": {"type": "string"},
+                                    "xsrfToken": {"type": "string"},
+                                    "curPage": {"type": "number"},
+                                    "pageSize": {"type": "number"},
+                                    "keyword": {"type": "string"},
+                                    "echoTo": {"type": "string"},
+                                },
+                            },
+                        }},
+                        {"id": nid_p, "type": "parallel",
+                            "data": {"type": "parallel"}},
+                        {"id": nid_c, "type": "connector", "data": {
+                            "type": "connector", "labelCn": "查询连接器",
+                            "connectorId": str(cid_c),
+                            "connectorVersionId": str(cvid_c),
+                            "connectorVersionConfig": config_c,
+                            "timeoutMs": 5000,
+                            "input": {
+                                "header": {
+                                    "type": "object",
+                                    "properties": {
+                                        "X-App-Id": {"type": "string", "value": "${$.node." + nid_sp + ".output.appId}"},
+                                        "Cookie": {"type": "string", "value": "${$.node." + nid_sp + ".output.cookie}"},
+                                        "X-XSRF-TOKEN": {"type": "string", "value": "${$.node." + nid_sp + ".output.xsrfToken}"},
+                                    },
+                                },
+                                "query": {
+                                    "type": "object",
+                                    "properties": {
+                                        "curPage": {"type": "number", "value": "${$.node." + nid_sp + ".output.curPage}"},
+                                        "pageSize": {"type": "number", "value": "${$.node." + nid_sp + ".output.pageSize}"},
+                                        "keyword": {"type": "string", "value": "${$.node." + nid_sp + ".output.keyword}"},
+                                    },
+                                },
+                            },
+                        }},
+                        {"id": nid_f, "type": "connector", "data": {
+                            "type": "connector", "labelCn": "查询连接流",
+                            "connectorId": str(cid_f),
+                            "connectorVersionId": str(cvid_f),
+                            "connectorVersionConfig": config_f,
+                            "timeoutMs": 5000,
+                            "input": {
+                                "header": {
+                                    "type": "object",
+                                    "properties": {
+                                        "X-App-Id": {"type": "string", "value": "${$.node." + nid_sp + ".output.appId}"},
+                                        "Cookie": {"type": "string", "value": "${$.node." + nid_sp + ".output.cookie}"},
+                                        "X-XSRF-TOKEN": {"type": "string", "value": "${$.node." + nid_sp + ".output.xsrfToken}"},
+                                    },
+                                },
+                                "query": {
+                                    "type": "object",
+                                    "properties": {
+                                        "curPage": {"type": "number", "value": "${$.node." + nid_sp + ".output.curPage}"},
+                                        "pageSize": {"type": "number", "value": "${$.node." + nid_sp + ".output.pageSize}"},
+                                        "keyword": {"type": "string", "value": "${$.node." + nid_sp + ".output.keyword}"},
+                                    },
+                                },
+                            },
+                        }},
+                        {"id": nid_sm, "type": "script", "data": {
+                            "type": "script", "labelCn": "合并结果",
+                            "script": script_merge_src, "timeoutMs": 5000,
+                            "output": {
+                                "type": "object",
+                                "properties": {
+                                    "code":          {"type": "string"},
+                                    "messageZh":     {"type": "string"},
+                                    "messageEn":     {"type": "string"},
+                                    "connectors":    {"type": "array", "items": {"type": "object", "properties": {}}},
+                                    "flows":         {"type": "array", "items": {"type": "object", "properties": {}}},
+                                    "connectorDate": {"type": "string"},
+                                    "flowDate":      {"type": "string"},
+                                    "echoTo":        {"type": "string"},
                                 },
                             },
                         }},
@@ -256,28 +417,42 @@ def test_resource_query_parallel():
                                 "header": {
                                     "type": "object",
                                     "properties": {
-                                        "X-Echo-To-Header": {"type": "string", "value": "${$.node.script.output.echoTo}"},
+                                        "X-Echo-To-Header":  {"type": "string", "value": "${$.node." + nid_sm + ".output.echoTo}"},
+                                        "X-Connector-Date": {"type": "string", "value": "${$.node." + nid_sm + ".output.connectorDate}"},
+                                        "X-Flow-Date":       {"type": "string", "value": "${$.node." + nid_sm + ".output.flowDate}"},
                                     },
                                 },
                                 "body": {
                                     "type": "object",
                                     "properties": {
-                                        "code":       {"type": "string", "value": "${$.node.script.output.code}"},
-                                        "messageZh":  {"type": "string", "value": "${$.node.script.output.messageZh}"},
-                                        "messageEn":  {"type": "string", "value": "${$.node.script.output.messageEn}"},
-                                        "connectors": {"type": "array", "items": {"type": "object", "properties": {}}, "value": "${$.node.script.output.connectors}"},
-                                        "flows":      {"type": "array", "items": {"type": "object", "properties": {}}, "value": "${$.node.script.output.flows}"},
+                                        "code":       {"type": "string", "value": "${$.node." + nid_sm + ".output.code}"},
+                                        "messageZh":  {"type": "string", "value": "${$.node." + nid_sm + ".output.messageZh}"},
+                                        "messageEn":  {"type": "string", "value": "${$.node." + nid_sm + ".output.messageEn}"},
+                                        "connectors": {"type": "array", "items": {"type": "object", "properties": {}}, "value": "${$.node." + nid_sm + ".output.connectors}"},
+                                        "flows":      {"type": "array", "items": {"type": "object", "properties": {}}, "value": "${$.node." + nid_sm + ".output.flows}"},
                                     },
                                 },
                             },
                         }},
                     ],
                     "edges": [
-                        {"id": "e1", "source": nid_t, "target": nid_s},
-                        {"id": "e2", "source": nid_s, "target": nid_e},
+                        {"id": "e1", "source": nid_t, "target": nid_sp,
+                         "type": "smoothstep", "data": {"businessType": "default", "connectionMode": "serial"}},
+                        {"id": "e2", "source": nid_sp, "target": nid_p,
+                         "type": "smoothstep", "data": {"businessType": "default", "connectionMode": "serial"}},
+                        {"id": "e3", "source": nid_p, "target": nid_c,
+                         "type": "smoothstep", "data": {"businessType": "default", "connectionMode": "parallel"}},
+                        {"id": "e4", "source": nid_p, "target": nid_f,
+                         "type": "smoothstep", "data": {"businessType": "default", "connectionMode": "parallel"}},
+                        {"id": "e5", "source": nid_c, "target": nid_sm,
+                         "type": "smoothstep", "data": {"businessType": "default", "connectionMode": "parallel"}},
+                        {"id": "e6", "source": nid_f, "target": nid_sm,
+                         "type": "smoothstep", "data": {"businessType": "default", "connectionMode": "parallel"}},
+                        {"id": "e7", "source": nid_sm, "target": nid_e,
+                         "type": "smoothstep", "data": {"businessType": "default", "connectionMode": "serial"}},
                     ],
-                    "flowConfig": {"flowMode": "serial", "rateLimitConfig": {"maxQps": 50}},
-                }
+                    "flowConfig": {"flowMode": "parallel", "rateLimitConfig": {"maxQps": 50, "maxConcurrency": 10}},
+                },
             })
             return check_ok(r, "UPDATE orchestration", f"PUT /flows/{fid}/versions/{fvid}")
 
@@ -286,9 +461,7 @@ def test_resource_query_parallel():
         if not failed and not step("UPDATE orchestration", s3): failed = True
         print(f"  {'[OK]' if not failed else '[FAIL]'} Phase 1")
 
-        # Phase 2: Debug Draft
         print("\n-- Phase 2: Debug Draft --")
-
         def s4():
             r = os_api("POST", f"/flows/{fid}/versions/{fvid}/debug", {
                 "triggerData": {"query": {"curPage": 1, "pageSize": 3, "keyword": ""}, "header": AUTH_HEADERS, "X-Echo-To-Header": "debug-echo"},
@@ -301,9 +474,7 @@ def test_resource_query_parallel():
         if not failed and not step("DEBUG draft", s4): failed = True
         print(f"  {'[OK]' if not failed else '[FAIL]'} Phase 2")
 
-        # Phase 3: Publish + Approve
         print("\n-- Phase 3: Publish + Approve --")
-
         def s5():
             return check_ok(os_api("POST", f"/flows/{fid}/versions/{fvid}/publish"), "PUBLISH submit")
 
@@ -347,9 +518,7 @@ def test_resource_query_parallel():
         if not failed and not step("Verify published", s9): failed = True
         print(f"  {'[OK]' if not failed else '[FAIL]'} Phase 3")
 
-        # Phase 4: Deploy + Invoke
         print("\n-- Phase 4: Deploy + Real-API Invoke --")
-
         def s10():
             return check_ok(os_api("POST", f"/flows/{fid}/deploy", {"versionId": fvid}), "DEPLOY")
 
@@ -387,12 +556,15 @@ def test_resource_query_parallel():
             else:
                 os_fail(f"{label}: code={body.get('code')}, connectors={c_count}, flows={f_count}")
                 ok = False
-            actual_echo = unquote(r.headers.get("X-Echo-To-Header", ""))
+            actual_echo = r.headers.get("X-Echo-To-Header", "")
             if actual_echo == ECHO_VAL:
                 print(f"    [OK] X-Echo-To-Header={ECHO_VAL}")
             else:
                 os_fail(f"{label}: X-Echo-To-Header={actual_echo}, expected={ECHO_VAL}")
                 ok = False
+            connector_date = unquote(r.headers.get("X-Connector-Date", ""))
+            flow_date = unquote(r.headers.get("X-Flow-Date", ""))
+            print(f"    X-Connector-Date={connector_date or '(empty)'}, X-Flow-Date={flow_date or '(empty)'}")
             return ok
 
         def s12():
@@ -409,6 +581,7 @@ def test_resource_query_parallel():
         if not failed and not step("DEPLOY", s10): failed = True
         if not failed and not step("START", s11): failed = True
         if not failed and not step("Invoke parallel", s12): failed = True
+        if not failed and not step("STOP", s13): failed = True
         print(f"  {'[OK]' if not failed else '[FAIL]'} Phase 4")
 
         if failed:
