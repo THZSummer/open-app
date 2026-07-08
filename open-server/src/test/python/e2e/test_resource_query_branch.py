@@ -31,14 +31,14 @@ os_api = _osm.api
 os_ok = _osm.ok
 os_fail = _osm.fail
 os_done = _osm.done
-from client import CONNECTOR_API_BASE, CONNECTOR_API_HEALTH, OPEN_SERVER_BASE, TEST_APP_ID
+from client import CONNECTOR_API_BASE, CONNECTOR_API_HEALTH, OPEN_SERVER_BASE, TEST_APP_ID, TEST_COOKIE, TEST_XSRF_TOKEN
 
 import pytest, requests, random, string
 from urllib.parse import unquote
 
 _RUN_ID = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
 
-AUTH_HEADERS = {"X-App-Id": TEST_APP_ID, "Cookie": "user_id=admin", "X-XSRF-TOKEN": "user_id=admin"}
+AUTH_HEADERS = {"X-App-Id": TEST_APP_ID, "Cookie": TEST_COOKIE, "X-XSRF-TOKEN": TEST_XSRF_TOKEN}
 
 
 def snow_id():

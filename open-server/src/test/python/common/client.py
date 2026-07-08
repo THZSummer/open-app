@@ -20,6 +20,8 @@ import requests
 _API_BASE = "http://localhost:18080/open-server"
 TEST_APP_ID = "20250730213114178360970"
 INTERNAL_APP_ID = 328225464973787136  # App.id for TEST_APP_ID
+TEST_COOKIE = "user_id=admin"
+TEST_XSRF_TOKEN = "user_id=admin"
 _DEFAULT_USER  = "admin"
 _DB = {"host": "192.168.3.155", "user": "openapp", "passwd": "openapp", "db": "openapp"}
 # Redis 集群节点（full_flow 测试用）
@@ -63,7 +65,8 @@ def api(method, path, body=None, *, app_id=None, user=None, headers=None, timeou
     if aid is not None:
         h["X-App-Id"] = aid
     if usr is not None:
-        h["Cookie"] = f"user_id={usr}"
+        h["Cookie"] = TEST_COOKIE
+        h["X-XSRF-TOKEN"] = TEST_XSRF_TOKEN
     if headers:
         h.update(headers)
 
