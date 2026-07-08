@@ -445,11 +445,12 @@ def test_full_flow_serial():
                                 "labelCn": "响应处理",
                                 "script": (
                                     "function main(ctx) {\n"
-                                    "  var code = ctx['" + nid_conn + "'].output.code;\n"
-                                    "  var msg = ctx['" + nid_conn + "'].output.message;\n"
-                                    "  var callNum = ctx['" + nid_conn + "'].output.data.call_number;\n"
-                                    "  var time = ctx['" + nid_conn + "'].output.data.server_time;\n"
-                                    "  var echoBody = ctx['" + nid_conn + "'].output.data.echo_body;\n"
+                                    "  var c = ctx['" + nid_conn + "'].output.body || {};\n"
+                                    "  var code = c.code;\n"
+                                    "  var msg = c.message;\n"
+                                    "  var callNum = c.data.call_number;\n"
+                                    "  var time = c.data.server_time;\n"
+                                    "  var echoBody = c.data.echo_body;\n"
                                     "  var msgProp = (echoBody && echoBody.message) ? echoBody.message : '';\n"
                                     "  return {\n"
                                     "    resultCode: code,\n"

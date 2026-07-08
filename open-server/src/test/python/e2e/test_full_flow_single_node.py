@@ -404,15 +404,15 @@ def test_full_flow_single_node():
                                         "properties": {
                                             "code": {
                                                 "type": "number",
-                                                "value": "${$.node." + nid_conn + ".output.code}"
+                                                "value": "${$.node." + nid_conn + ".output.body.code}"
                                             },
                                             "message": {
                                                 "type": "string",
-                                                "value": "${$.node." + nid_conn + ".output.message}"
+                                                "value": "${$.node." + nid_conn + ".output.body.message}"
                                             },
                                             "callNumber": {
                                                 "type": "number",
-                                                "value": "${$.node." + nid_conn + ".output.data.call_number}"
+                                                "value": "${$.node." + nid_conn + ".output.body.data.call_number}"
                                             }
                                         }
                                     }
