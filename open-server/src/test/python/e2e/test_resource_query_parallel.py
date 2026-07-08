@@ -573,11 +573,8 @@ def test_resource_query_parallel():
                 ok = False
             connector_date = unquote(r.headers.get("X-Connector-Date", ""))
             flow_date = unquote(r.headers.get("X-Flow-Date", ""))
-            connector_date_raw = r.headers.get("X-Connector-Date", "MISSING")
-            flow_date_raw = r.headers.get("X-Flow-Date", "MISSING")
-            print(f"    X-Connector-Date raw=[{connector_date_raw}] decoded=[{connector_date}]")
-            print(f"    X-Flow-Date       raw=[{flow_date_raw}] decoded=[{flow_date}]")
-            print(f"    all-resp-headers: {dict(((k,v) for k,v in r.headers.items() if k.startswith('X-')))}")
+            print(f"    [OK] X-Connector-Date={connector_date}")
+            print(f"    [OK] X-Flow-Date={flow_date}")
             return ok
 
         def s12():
