@@ -60,7 +60,7 @@ public class OpDebugProxyService {
         try {
             // 构建请求体 - 透传 triggerData（已使用 v5.5 新字段名：authConfig/inputContract/outputContract/rateLimitConfig）
             Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("triggerData", triggerData != null ? triggerData : new HashMap<>());
+            requestBody.put("mockTriggerData", triggerData != null ? triggerData : new HashMap<>());
             requestBody.put("credentials", credentials != null ? credentials : new HashMap<>());
 
             HttpHeaders headers = new HttpHeaders();

@@ -96,15 +96,12 @@ public class FlowVersionDebugService {
                     context.setTriggerType(3);
                     context.setDebug(true);
 
-                    // 建立触发节点的 NodeContext
+                    // 建立触发节点的 NodeContext (结构化: {header, query, body})
                     if (triggerNodeId != null) {
                         NodeContext triggerNodeCtx = new NodeContext();
                         triggerNodeCtx.setNodeId(triggerNodeId);
                         triggerNodeCtx.setNodeType("trigger");
-                        Map<String, Object> input = new HashMap<>();
-                        if (mockTriggerData != null) {
-                            input.putAll(mockTriggerData);
-                        }
+                        Map<String, Object> input = buildDebugTriggerInput(mockTriggerData);
                         triggerNodeCtx.setInput(input);
                         triggerNodeCtx.setOutput(new HashMap<>());
                         triggerNodeCtx.setStatus("success");
@@ -160,6 +157,43 @@ public class FlowVersionDebugService {
         // 退化为第一个节点
         Object id = nodes.get(0).get("id");
         return id != null ? id.toString() : null;
+    }
+
+    /**
+     * 构建调试模式的 trigger input 结构 ({header, query, body})
+     * <p>
+     * mockTriggerData 中可能有 {@code header}/{@code query} 子对象，
+     * 提取后剩余字段放入 body。
+     * </p>
+     */
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> buildDebugTriggerInput(Map<String, Object> mockTriggerData) {
+        Map<String, Object> input = new HashMap<>();
+        Map<String, Object> headerPart = new HashMap<>();
+        Map<String, Object> queryPart = new HashMap<>();
+        Map<String, Object> bodyPart = new HashMap<>();
+
+        if (mockTriggerData != null) {
+            Object h = mockTriggerData.get("header");
+            if (h instanceof Map) {
+                headerPart.putAll((Map<String, Object>) h);
+            }
+            Object q = mockTriggerData.get("query");
+            if (q instanceof Map) {
+                queryPart.putAll((Map<String, Object>) q);
+            }
+            for (Map.Entry<String, Object> entry : mockTriggerData.entrySet()) {
+                String key = entry.getKey();
+                if (!"header".equals(key) && !"query".equals(key)) {
+                    bodyPart.put(key, entry.getValue());
+                }
+            }
+        }
+
+        input.put("header", headerPart);
+        input.put("query", queryPart);
+        input.put("body", bodyPart);
+        return input;
     }
 
     /**
