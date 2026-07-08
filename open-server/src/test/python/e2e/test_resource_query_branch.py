@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 """
-Serial mode script E2E — trigger → script(ctx.http 条件分支) → exit
+连接器或连接流列表数据查询 E2E - trigger -> script(ctx.http 条件分支) -> exit
 
-Script 内根据入参 action 字段条件路由到不同 mock 端点:
-  action="user"   → ctx.http.request('POST', /api/user)    → 返回用户信息
-  action="order"  → ctx.http.request('GET', /api/order?...) → 返回订单数据
-  action="status" → ctx.http.request('GET', /api/status)    → 返回服务状态
-  无 action       → 走默认 user 分支
+入参按 HTTP 语义分布在 Header/Query/Body:
+  Header: X-Type (路由) / X-App-Id / Cookie / X-XSRF-TOKEN
+  Query:  curPage / pageSize / keyword
+  Body:   X-Echo-To-Header (透传回响应头)
 
-exit 统一映射脚本返回的 {result, domain, group, path} 到 HTTP 响应。
+响应: body 透传原始 API 数据, X-Type / X-Echo-To-Header 响应头
 
 Prerequisites:
   - open-server running on localhost:18080
@@ -16,12 +15,10 @@ Prerequisites:
 
 Usage:
   cd open-server/src/test/python
-  python3 e2e/test_full_flow_script.py
+  python3 e2e/test_resource_query_branch.py
 """
-import os, sys, json, time, threading
+import os, sys, json, time
 import importlib.util
-from http.server import HTTPServer, BaseHTTPRequestHandler
-from urllib.parse import urlparse, parse_qs
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(TEST_DIR), "common"))
@@ -34,152 +31,27 @@ os_api = _osm.api
 os_ok = _osm.ok
 os_fail = _osm.fail
 os_done = _osm.done
-from client import CONNECTOR_API_BASE, CONNECTOR_API_HEALTH
+from client import CONNECTOR_API_BASE, CONNECTOR_API_HEALTH, OPEN_SERVER_BASE, TEST_APP_ID
 
 import pytest, requests, random, string
+from urllib.parse import unquote
 
-TEST_APP_ID = _osm.TEST_APP_ID
 _RUN_ID = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
-MOCK_PORT = 18986; MOCK_URL = f"http://localhost:{MOCK_PORT}"
 
-
-# --- shared data transformations ---
-
-def _user_data(name, email, age):
-    return {
-        "display_name": name.upper(),
-        "email_domain": email.split("@")[-1] if "@" in email else "",
-        "age_group": "adult" if int(age) >= 18 else "minor",
-    }
-
-ORDER_STATUSES = ["delivered", "processing", "shipped", "cancelled", "refunded"]
-ORDER_AMOUNTS = [299.90, 99.90, 199.90, 0, 49.95]
-
-def _order_data(name):
-    idx = sum(ord(c) for c in name) % 5
-    return {
-        "status": ORDER_STATUSES[idx],
-        "amount": ORDER_AMOUNTS[idx],
-        "customer": name.upper(),
-    }
-
-STATUS_VERSIONS = [
-    {"server": "healthy", "version": "v2.1.0", "uptime_hours": 128},
-    {"server": "degraded", "version": "v2.0.9", "uptime_hours": 96},
-    {"server": "maintenance", "version": "v2.2.0", "uptime_hours": 72},
-]
-
-def _status_data(name):
-    return STATUS_VERSIONS[sum(ord(c) for c in name) % 3]
-
-
-_RUN_DATA = {
-    "user": {
-        "name": ''.join(random.choices(string.ascii_lowercase, k=5)),
-        "email": f"u{_RUN_ID}@company.com",
-        "age": 30,
-    },
-    "order": {
-        "name": ''.join(random.choices(string.ascii_lowercase, k=5)),
-    },
-    "status": {
-        "name": ''.join(random.choices(string.ascii_lowercase, k=4)),
-    },
-    "default": {
-        "name": ''.join(random.choices(string.ascii_lowercase, k=5)),
-        "email": f"d{_RUN_ID}@school.edu",
-        "age": 15,
-    },
-}
-
-
-class MockServer:
-    """提供 3 个端点供脚本 ctx.http 条件调用"""
-
-    def __init__(self):
-        self._server = None
-
-    def _make_handler(self):
-        state = {"call_count": 0}
-
-        class H(BaseHTTPRequestHandler):
-            def log_message(self, f, *a): pass
-
-            def _json(self, code, body):
-                self.send_response(code)
-                self.send_header("Content-Type", "application/json")
-                self.end_headers()
-                self.wfile.write(json.dumps(body, ensure_ascii=False).encode())
-
-            def _body(self):
-                cl = int(self.headers.get("Content-Length", 0))
-                return json.loads(self.rfile.read(cl)) if cl > 0 else {}
-
-            def _query(self):
-                parsed = urlparse(self.path)
-                return parse_qs(parsed.query)
-
-            def do_GET(self):
-                state["call_count"] += 1
-                path = urlparse(self.path).path
-
-                if path == "/api/health":
-                    self._json(200, {"status": "ok"})
-
-                elif path == "/api/order":
-                    q = self._query()
-                    name = q.get("name", ["unknown"])[0]
-                    data = _order_data(name)
-                    data["order_id"] = f"ORD-{state['call_count']:03d}"
-                    self._json(200, {"code": 0, "data": data})
-
-                elif path == "/api/status":
-                    q = self._query()
-                    name = q.get("name", ["unknown"])[0]
-                    self._json(200, {"code": 0, "data": _status_data(name)})
-
-            def do_POST(self):
-                state["call_count"] += 1
-                body = self._body()
-                data = _user_data(
-                    body.get("name") or "unknown",
-                    body.get("email") or "",
-                    body.get("age") or 0,
-                )
-                data["call_number"] = state["call_count"]
-                self._json(200, {"code": 0, "data": data})
-
-        return H
-
-    def start(self):
-        self._server = HTTPServer(("localhost", MOCK_PORT), self._make_handler())
-        threading.Thread(target=self._server.serve_forever, daemon=True).start()
-        for _ in range(20):
-            try:
-                if requests.get(f"{MOCK_URL}/api/health", timeout=1).status_code == 200:
-                    print(f"  [OK] Mock ready :{MOCK_PORT}")
-                    return True
-            except Exception:
-                pass
-            time.sleep(0.5)
-        return False
-
-    def stop(self):
-        if self._server:
-            self._server.shutdown()
+AUTH_HEADERS = {"X-App-Id": TEST_APP_ID, "Cookie": "user_id=admin", "X-XSRF-TOKEN": "user_id=admin"}
 
 
 def snow_id():
     return int(time.time() * 1000000) % 100000000000000000
 
 
-def api_connector(method, path, body=None, headers=None):
+def api_connector(method, path, body=None, headers=None, params=None):
     url = f"{CONNECTOR_API_BASE}{path}"
     h = {"Content-Type": "application/json"}
     if headers:
         h.update(headers)
     try:
-        return requests.request(method, url, json=body, headers=h, timeout=10)
+        return requests.request(method, url, json=body, headers=h, params=params, timeout=10)
     except requests.ConnectionError:
         return None
 
@@ -225,9 +97,10 @@ def get_data(resp):
 
 
 @pytest.mark.L3
-def test_full_flow_script():
+def test_resource_query_branch():
     print("=" * 60)
-    print("  Script E2E: trigger → script(ctx.http 条件分支) → exit")
+    print("  连接器或连接流列表数据查询")
+    print("  trigger -> script(ctx.http 条件分支 -> 真实API) -> exit")
     print(f"  Run: {_RUN_ID}")
     print("=" * 60)
 
@@ -261,11 +134,6 @@ def test_full_flow_script():
         })
     print("  [OK] approval template ready")
 
-    mock = MockServer()
-    if not mock.start():
-        print("[FAIL] Mock failed")
-        return
-
     fid = fvid = aid = None
     failed = False
 
@@ -276,8 +144,8 @@ def test_full_flow_script():
             nonlocal fid
             fid = snow_id()
             r = os_api("POST", "/flows", {
-                "nameCn": f"ScriptBranch_{_RUN_ID}",
-                "nameEn": f"script_branch_{_RUN_ID}",
+                "nameCn": f"ResourceQuery_{_RUN_ID}",
+                "nameEn": f"resource_query_{_RUN_ID}",
             })
             if not check_ok(r, "CREATE flow"):
                 return False
@@ -303,33 +171,36 @@ def test_full_flow_script():
 
             script_src = (
                 "function main(ctx) {\n"
-                "    var input = ctx.trigger.input.body;\n"
-                "    var action = input.action || 'user';\n"
-                "    var name = input.name || 'unknown';\n"
-                "\n"
-                "    if (action === 'order') {\n"
-                "        var resp = ctx.http.request('GET', '" + MOCK_URL + "/api/order?name=' + encodeURIComponent(name));\n"
-                "        var d = resp.body.data;\n"
-                "        return { result: d.order_id, domain: d.status, group: String(d.amount), path: 'order' };\n"
+                "    var hdrs = ctx.trigger.input.header;\n"
+                "    var q = ctx.trigger.input.query;\n"
+                "    var body = ctx.trigger.input.body;\n"
+                "    // debug mode: fallback to body when header/query are empty\n"
+                "    if (!hdrs || !hdrs['X-App-Id']) {\n"
+                "        hdrs = (body && body.header) ? body.header : {};\n"
+                "        q = (body && body.query) ? body.query : {};\n"
                 "    }\n"
+                "    var type = hdrs['X-Type'] || (body && body.type) || 'connectors';\n"
+                "    var curPage = (q && q.curPage) || 1;\n"
+                "    var keyword = (q && q.keyword) || '';\n"
+                "    var pageSize = (q && q.pageSize) || 3;\n"
                 "\n"
-                "    if (action === 'status') {\n"
-                "        var resp = ctx.http.request('GET', '" + MOCK_URL + "/api/status?name=' + encodeURIComponent(name));\n"
-                "        var d = resp.body.data;\n"
-                "        return { result: d.server, domain: d.version, group: String(d.uptime_hours) + 'h', path: 'status' };\n"
-                "    }\n"
+                "    // build plain headers object (PolyglotMap key access works, but Object.keys/enum doesn't)\n"
+                "    var plainHdrs = {};\n"
+                "    ['X-App-Id', 'Cookie', 'X-XSRF-TOKEN'].forEach(function(k) {\n"
+                "        if (hdrs[k]) plainHdrs[k] = hdrs[k];\n"
+                "    });\n"
                 "\n"
-                "    var resp = ctx.http.request('POST', '" + MOCK_URL + "/api/user', {body: {\n"
-                "        name: name,\n"
-                "        email: input.email || '',\n"
-                "        age: input.age || 0\n"
-                "    }});\n"
-                "    var d = resp.body.data;\n"
+                "    var path = (type === 'flows') ? '/flows' : '/connectors';\n"
+                "    var url = '" + OPEN_SERVER_BASE + "/service/open/v2'\n"
+                "        + path + '?curPage=' + curPage\n"
+                "        + '&keyword=' + encodeURIComponent(keyword)\n"
+                "        + '&pageSize=' + pageSize;\n"
+                "\n"
+                "    var resp = ctx.http.request('GET', url, {headers: plainHdrs});\n"
                 "    return {\n"
-                "        result: d.display_name,\n"
-                "        domain: d.email_domain,\n"
-                "        group: d.age_group,\n"
-                "        path: 'user'\n"
+                "        result: resp.body,\n"
+                "        type: type,\n"
+                "        echoTo: (body && body['X-Echo-To-Header']) || ''\n"
                 "    };\n"
                 "}"
             )
@@ -348,17 +219,23 @@ def test_full_flow_script():
                             }],
                             "input": {
                                 "protocol": "HTTP",
-                                "header": {"type": "object", "properties": {}, "required": []},
-                                "query": {"type": "object", "properties": {}, "required": []},
+                                "header": {"type": "object", "properties": {
+                                    "X-Type": {"type": "string"},
+                                    "X-App-Id": {"type": "string"},
+                                    "Cookie": {"type": "string"},
+                                    "X-XSRF-TOKEN": {"type": "string"},
+                                }, "required": []},
+                                "query": {"type": "object", "properties": {
+                                    "curPage": {"type": "number"},
+                                    "pageSize": {"type": "number"},
+                                    "keyword": {"type": "string"},
+                                }, "required": []},
                                 "body": {
                                     "type": "object",
                                     "properties": {
-                                        "action": {"type": "string"},
-                                        "name": {"type": "string"},
-                                        "email": {"type": "string"},
-                                        "age": {"type": "number"},
+                                        "X-Echo-To-Header": {"type": "string"},
                                     },
-                                    "required": ["name"],
+                                    "required": [],
                                 },
                             },
                         }},
@@ -369,24 +246,55 @@ def test_full_flow_script():
                             "output": {
                                 "type": "object",
                                 "properties": {
-                                    "result": {"type": "string"},
-                                    "domain": {"type": "string"},
-                                    "group": {"type": "string"},
-                                    "path": {"type": "string"},
+                                    "result": {
+                                        "type": "object",
+                                        "properties": {
+                                            "code":       {"type": "string"},
+                                            "messageZh":  {"type": "string"},
+                                            "messageEn":  {"type": "string"},
+                                            "data":       {"type": "array", "items": {"type": "object", "properties": {}}},
+                                            "page": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "curPage":    {"type": "number"},
+                                                    "pageSize":   {"type": "number"},
+                                                    "total":      {"type": "number"},
+                                                    "totalPages": {"type": "number"},
+                                                },
+                                            },
+                                        },
+                                    },
+                                    "type":   {"type": "string"},
+                                    "echoTo": {"type": "string"},
                                 },
                             },
                         }},
                         {"id": nid_e, "type": "exit", "data": {
                             "type": "exit",
                             "output": {
-                                "header": {"type": "object", "properties": {}},
+                                "header": {
+                                    "type": "object",
+                                    "properties": {
+                                        "X-Type": {"type": "string", "value": "${$.node.script.output.type}"},
+                                        "X-Echo-To-Header": {"type": "string", "value": "${$.node.script.output.echoTo}"},
+                                    },
+                                },
                                 "body": {
                                     "type": "object",
                                     "properties": {
-                                        "result": {"type": "string", "value": "${$.node.script.output.result}"},
-                                        "domain": {"type": "string", "value": "${$.node.script.output.domain}"},
-                                        "group": {"type": "string", "value": "${$.node.script.output.group}"},
-                                        "path": {"type": "string", "value": "${$.node.script.output.path}"},
+                                        "code":       {"type": "string", "value": "${$.node.script.output.result.code}"},
+                                        "messageZh":  {"type": "string", "value": "${$.node.script.output.result.messageZh}"},
+                                        "messageEn":  {"type": "string", "value": "${$.node.script.output.result.messageEn}"},
+                                        "data":       {"type": "array", "items": {"type": "object", "properties": {}}, "value": "${$.node.script.output.result.data}"},
+                                        "page": {
+                                            "type": "object",
+                                            "properties": {
+                                                "curPage":    {"type": "number", "value": "${$.node.script.output.result.page.curPage}"},
+                                                "pageSize":   {"type": "number", "value": "${$.node.script.output.result.page.pageSize}"},
+                                                "total":      {"type": "number", "value": "${$.node.script.output.result.page.total}"},
+                                                "totalPages": {"type": "number", "value": "${$.node.script.output.result.page.totalPages}"},
+                                            },
+                                        },
                                     },
                                 },
                             },
@@ -409,7 +317,7 @@ def test_full_flow_script():
         print("\n-- Phase 2: Debug Draft --")
         def s4():
             r = os_api("POST", f"/flows/{fid}/versions/{fvid}/debug", {
-                "triggerData": {"action": "user", "name": "debug", "email": "d@t.com", "age": 20},
+                "triggerData": {"type": "connectors", "query": {"curPage": 1, "pageSize": 3, "keyword": ""}, "header": AUTH_HEADERS, "X-Echo-To-Header": "debug-echo"},
             })
             ok = check_ok(r, "DEBUG draft")
             if ok:
@@ -463,7 +371,7 @@ def test_full_flow_script():
         if not failed and not step("Verify published", s9): failed = True
         print(f"  {'[OK]' if not failed else '[FAIL]'} Phase 3")
 
-        print("\n-- Phase 4: Deploy + Multi-Branch Invoke --")
+        print("\n-- Phase 4: Deploy + Real-API Invoke --")
         def s10():
             return check_ok(os_api("POST", f"/flows/{fid}/deploy", {"versionId": fvid}), "DEPLOY")
 
@@ -477,20 +385,28 @@ def test_full_flow_script():
                 return False
             return True
 
-        def _invoke_and_verify(label, payload, expected):
-            r = api_connector("POST", f"/flows/{fid}/invoke", payload, headers={"X-Sys-Token": "tester"})
+        def _invoke_and_verify(label, payload, expected_headers, extra_headers, params):
+            r = api_connector("POST", f"/flows/{fid}/invoke", payload,
+                              headers={**{"X-Sys-Token": "tester"}, **extra_headers},
+                              params=params)
             if r is None:
                 os_fail(f"{label}: connector-api unreachable")
                 return False
             if r.status_code not in (200, 201):
                 os_fail(f"{label}: HTTP {r.status_code}, body={r.text[:200]}")
                 return False
-            body = r.json()
+            body = r.json() if r.text else {}
             print(f"  [OK] {label} HTTP {r.status_code}")
-            print(f"    body: {json.dumps(body, ensure_ascii=False)[:300]}")
+            data_count = len(body.get("data", []))
+            print(f"    body: {json.dumps(body, ensure_ascii=False)}")
             ok = True
-            for key, val in expected.items():
-                actual = body.get(key)
+            if body.get("code") in ("200", 200) and data_count > 0:
+                print(f"    [OK] code=200, data={data_count} items")
+            else:
+                os_fail(f"{label}: unexpected response code={body.get('code')}, data_count={data_count}")
+                ok = False
+            for key, val in expected_headers.items():
+                actual = unquote(r.headers.get(key, ''))
                 if actual == val:
                     print(f"    [OK] {key}={val}")
                 else:
@@ -498,67 +414,51 @@ def test_full_flow_script():
                     ok = False
             return ok
 
-        def _expected_user_resp(name, email, age):
-            u = _user_data(name, email, age)
-            return {"result": u["display_name"], "domain": u["email_domain"], "group": u["age_group"], "path": "user"}
+        ECHO_VAL = "echo-resource-query"
 
-        def _expected_order_resp(name):
-            o = _order_data(name)
-            return {"domain": o["status"], "group": str(o["amount"]), "path": "order"}
+        def _expected_headers(rtype):
+            return {"X-Type": rtype, "X-Echo-To-Header": ECHO_VAL}
 
-        def _expected_status_resp(name):
-            s = _status_data(name)
-            return {"result": s["server"], "domain": s["version"], "group": f"{s['uptime_hours']}h", "path": "status"}
-
-        u = _RUN_DATA["user"]
         def s12():
-            return _invoke_and_verify("Branch=user POST", {
-                "action": "user", "name": u["name"], "email": u["email"], "age": u["age"],
-            }, _expected_user_resp(u["name"], u["email"], u["age"]))
+            return _invoke_and_verify(
+                "Type=connectors -> 真实API",
+                {"X-Echo-To-Header": ECHO_VAL},
+                _expected_headers("connectors"),
+                {**{"X-Type": "connectors"}, **AUTH_HEADERS},
+                {"curPage": 1, "pageSize": 3, "keyword": ""},
+            )
 
-        o = _RUN_DATA["order"]
         def s13():
-            return _invoke_and_verify("Branch=order GET", {
-                "action": "order", "name": o["name"],
-            }, _expected_order_resp(o["name"]))
+            return _invoke_and_verify(
+                "Type=flows -> 真实API",
+                {"X-Echo-To-Header": ECHO_VAL},
+                _expected_headers("flows"),
+                {**{"X-Type": "flows"}, **AUTH_HEADERS},
+                {"curPage": 1, "pageSize": 3, "keyword": ""},
+            )
 
-        s = _RUN_DATA["status"]
         def s14():
-            return _invoke_and_verify("Branch=status GET", {
-                "action": "status", "name": s["name"],
-            }, _expected_status_resp(s["name"]))
-
-        d = _RUN_DATA["default"]
-        def s15():
-            return _invoke_and_verify("Default→user POST", {
-                "name": d["name"], "email": d["email"], "age": d["age"],
-            }, _expected_user_resp(d["name"], d["email"], d["age"]))
-
-        def s16():
             time.sleep(0.5)
             return check_ok(os_api("POST", f"/flows/{fid}/stop"), "STOP")
 
         if not failed and not step("DEPLOY", s10): failed = True
         if not failed and not step("START", s11): failed = True
-        if not failed and not step("Invoke branch=user (POST /api/user)", s12): failed = True
-        if not failed and not step("Invoke branch=order (GET /api/order)", s13): failed = True
-        if not failed and not step("Invoke branch=status (GET /api/status)", s14): failed = True
-        if not failed and not step("Invoke default→user (no action)", s15): failed = True
-        if not failed and not step("STOP", s16): failed = True
+        if not failed and not step("Invoke type=connectors", s12): failed = True
+        if not failed and not step("Invoke type=flows", s13): failed = True
+        if not failed and not step("STOP", s14): failed = True
         print(f"  {'[OK]' if not failed else '[FAIL]'} Phase 4")
 
         print("\n" + "=" * 60)
         if failed:
-            print("  [FAIL] Script full-flow test FAILED")
+            print("  [FAIL] Resource query branch test FAILED")
         else:
-            print("  [PASS] Script full-flow test PASSED!")
+            print("  [PASS] Resource query branch test PASSED!")
         print("=" * 60)
         assert not failed
 
     finally:
-        mock.stop()
         os_done()
 
 
 if __name__ == "__main__":
-    test_full_flow_script()
+    test_resource_query_branch()

@@ -86,20 +86,26 @@ public class ExitNodeExecutor implements NodeExecutor {
                         responseHeaders.put(entry.getKey(), resolved);
                     }
                 }
+                outputData.put("header", responseHeaders);
 
                 // 处理 body 映射
                 Object bodyMapping = outputMapping.get("body");
-                Map<String, Object> responseBody = new HashMap<>();
-                Map<String, Object> bodyMap = normalizeMappingSegment(bodyMapping);
-                for (Map.Entry<String, Object> entry : bodyMap.entrySet()) {
-                    Object resolved = resolveValue(context, entry.getValue());
+                if (bodyMapping instanceof String) {
+                    Object resolved = resolveValue(context, bodyMapping);
                     if (resolved != null) {
-                        responseBody.put(entry.getKey(), resolved);
+                        outputData.put("body", resolved);
                     }
+                } else {
+                    Map<String, Object> responseBody = new HashMap<>();
+                    Map<String, Object> bodyMap = normalizeMappingSegment(bodyMapping);
+                    for (Map.Entry<String, Object> entry : bodyMap.entrySet()) {
+                        Object resolved = resolveValue(context, entry.getValue());
+                        if (resolved != null) {
+                            responseBody.put(entry.getKey(), resolved);
+                        }
+                    }
+                    outputData.put("body", responseBody);
                 }
-
-                outputData.put("header", responseHeaders);
-                outputData.put("body", responseBody);
 
             } else {
                 outputData = collectFallbackOutputs(context);

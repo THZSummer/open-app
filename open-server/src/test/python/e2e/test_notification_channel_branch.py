@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 """
-Serial mode script E2E — trigger → script(ctx.http 条件分支) → exit
+多渠道通知服务 E2E — trigger → script(ctx.http 条件分支) → exit
 
-Script 内根据入参 action 字段条件路由到不同 mock 端点:
-  action="user"   → ctx.http.request('POST', /api/user)    → 返回用户信息
-  action="order"  → ctx.http.request('GET', /api/order?...) → 返回订单数据
-  action="status" → ctx.http.request('GET', /api/status)    → 返回服务状态
-  无 action       → 走默认 user 分支
-
-exit 统一映射脚本返回的 {result, domain, group, path} 到 HTTP 响应。
+场景: 根据 channel 字段路由到不同通知渠道:
+  channel="email"   → POST /api/notify/email   → 发送邮件通知
+  channel="sms"      → POST /api/notify/sms     → 发送短信通知
+  channel="webhook"  → POST /api/notify/webhook → 调用外部 webhook
+  无 channel         → POST /api/notify/log     → 记录通知日志
 
 Prerequisites:
   - open-server running on localhost:18080
@@ -16,12 +14,11 @@ Prerequisites:
 
 Usage:
   cd open-server/src/test/python
-  python3 e2e/test_full_flow_script.py
+  python3 e2e/test_notification_channel_branch.py
 """
 import os, sys, json, time, threading
 import importlib.util
 from http.server import HTTPServer, BaseHTTPRequestHandler
-from urllib.parse import urlparse, parse_qs
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(TEST_DIR), "common"))
@@ -40,61 +37,69 @@ import pytest, requests, random, string
 
 TEST_APP_ID = _osm.TEST_APP_ID
 _RUN_ID = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
-MOCK_PORT = 18986; MOCK_URL = f"http://localhost:{MOCK_PORT}"
+MOCK_PORT = 18987; MOCK_URL = f"http://localhost:{MOCK_PORT}"
 
 
 # --- shared data transformations ---
 
-def _user_data(name, email, age):
+def _email_data(recipient, subject):
     return {
-        "display_name": name.upper(),
-        "email_domain": email.split("@")[-1] if "@" in email else "",
-        "age_group": "adult" if int(age) >= 18 else "minor",
+        "message_id": f"MSG-{_RUN_ID}-{hash(recipient) % 10000:04d}",
+        "status": "queued",
+        "recipient": recipient,
+        "subject_preview": (subject or "(no subject)")[:40],
     }
 
-ORDER_STATUSES = ["delivered", "processing", "shipped", "cancelled", "refunded"]
-ORDER_AMOUNTS = [299.90, 99.90, 199.90, 0, 49.95]
-
-def _order_data(name):
-    idx = sum(ord(c) for c in name) % 5
+def _sms_data(phone, text):
     return {
-        "status": ORDER_STATUSES[idx],
-        "amount": ORDER_AMOUNTS[idx],
-        "customer": name.upper(),
+        "message_id": f"SMS-{_RUN_ID}-{hash(phone) % 10000:04d}",
+        "status": "sent",
+        "phone": phone,
+        "cost_credits": max(1, (len(text or "") // 10) + 1),
     }
 
-STATUS_VERSIONS = [
-    {"server": "healthy", "version": "v2.1.0", "uptime_hours": 128},
-    {"server": "degraded", "version": "v2.0.9", "uptime_hours": 96},
-    {"server": "maintenance", "version": "v2.2.0", "uptime_hours": 72},
-]
+WEBHOOK_STATUSES = ["pending", "delivered", "failed", "retrying"]
 
-def _status_data(name):
-    return STATUS_VERSIONS[sum(ord(c) for c in name) % 3]
+def _webhook_data(url):
+    idx = sum(ord(c) for c in (url or "")) % 4
+    http_codes = [202, 200, 500, 503]
+    return {
+        "call_id": f"WH-{_RUN_ID}-{idx:04d}",
+        "status": WEBHOOK_STATUSES[idx],
+        "target_url": url or "https://default.example.com/hook",
+        "http_code": http_codes[idx],
+    }
+
+def _log_data(source, level):
+    return {
+        "log_id": f"LOG-{_RUN_ID}-{random.randint(1000, 9999)}",
+        "status": "stored",
+        "source": source or "unknown",
+        "stored_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    }
 
 
 _RUN_DATA = {
-    "user": {
-        "name": ''.join(random.choices(string.ascii_lowercase, k=5)),
-        "email": f"u{_RUN_ID}@company.com",
-        "age": 30,
+    "email": {
+        "recipient": f"user-{_RUN_ID}@example.com",
+        "subject": f"Test Notification {_RUN_ID}",
     },
-    "order": {
-        "name": ''.join(random.choices(string.ascii_lowercase, k=5)),
+    "sms": {
+        "phone": f"+8613{random.randint(100000000, 999999999)}",
+        "text": f"【验证码】您的验证码是 {random.randint(100000, 999999)}，5分钟内有效。",
     },
-    "status": {
-        "name": ''.join(random.choices(string.ascii_lowercase, k=4)),
+    "webhook": {
+        "url": f"https://hook.example.com/events/{_RUN_ID}",
     },
     "default": {
-        "name": ''.join(random.choices(string.ascii_lowercase, k=5)),
-        "email": f"d{_RUN_ID}@school.edu",
-        "age": 15,
+        "source": f"app-{_RUN_ID}",
+        "level": "info",
     },
 }
 
 
 class MockServer:
-    """提供 3 个端点供脚本 ctx.http 条件调用"""
+    """提供 4 个通知渠道端点供脚本 ctx.http 条件调用"""
 
     def __init__(self):
         self._server = None
@@ -115,39 +120,41 @@ class MockServer:
                 cl = int(self.headers.get("Content-Length", 0))
                 return json.loads(self.rfile.read(cl)) if cl > 0 else {}
 
-            def _query(self):
-                parsed = urlparse(self.path)
-                return parse_qs(parsed.query)
-
             def do_GET(self):
-                state["call_count"] += 1
-                path = urlparse(self.path).path
-
-                if path == "/api/health":
-                    self._json(200, {"status": "ok"})
-
-                elif path == "/api/order":
-                    q = self._query()
-                    name = q.get("name", ["unknown"])[0]
-                    data = _order_data(name)
-                    data["order_id"] = f"ORD-{state['call_count']:03d}"
-                    self._json(200, {"code": 0, "data": data})
-
-                elif path == "/api/status":
-                    q = self._query()
-                    name = q.get("name", ["unknown"])[0]
-                    self._json(200, {"code": 0, "data": _status_data(name)})
+                self._json(200, {"status": "ok"})
 
             def do_POST(self):
                 state["call_count"] += 1
                 body = self._body()
-                data = _user_data(
-                    body.get("name") or "unknown",
-                    body.get("email") or "",
-                    body.get("age") or 0,
-                )
-                data["call_number"] = state["call_count"]
-                self._json(200, {"code": 0, "data": data})
+                path = self.path
+
+                if path == "/api/notify/email":
+                    data = _email_data(
+                        body.get("recipient", ""),
+                        body.get("subject", ""),
+                    )
+                    self._json(200, {"code": 0, "data": data})
+
+                elif path == "/api/notify/sms":
+                    data = _sms_data(
+                        body.get("phone", ""),
+                        body.get("text", ""),
+                    )
+                    self._json(200, {"code": 0, "data": data})
+
+                elif path == "/api/notify/webhook":
+                    data = _webhook_data(body.get("url", ""))
+                    self._json(200, {"code": 0, "data": data})
+
+                elif path == "/api/notify/log":
+                    data = _log_data(
+                        body.get("source", ""),
+                        body.get("level", ""),
+                    )
+                    self._json(200, {"code": 0, "data": data})
+
+                else:
+                    self._json(404, {"code": 404, "message": "unknown endpoint"})
 
         return H
 
@@ -156,7 +163,7 @@ class MockServer:
         threading.Thread(target=self._server.serve_forever, daemon=True).start()
         for _ in range(20):
             try:
-                if requests.get(f"{MOCK_URL}/api/health", timeout=1).status_code == 200:
+                if requests.get(f"{MOCK_URL}/api/notify/email", timeout=1).status_code == 200:
                     print(f"  [OK] Mock ready :{MOCK_PORT}")
                     return True
             except Exception:
@@ -225,9 +232,9 @@ def get_data(resp):
 
 
 @pytest.mark.L3
-def test_full_flow_script():
+def test_notification_channel_branch():
     print("=" * 60)
-    print("  Script E2E: trigger → script(ctx.http 条件分支) → exit")
+    print("  多渠道通知: trigger → script(ctx.http 条件分支) → exit")
     print(f"  Run: {_RUN_ID}")
     print("=" * 60)
 
@@ -276,8 +283,8 @@ def test_full_flow_script():
             nonlocal fid
             fid = snow_id()
             r = os_api("POST", "/flows", {
-                "nameCn": f"ScriptBranch_{_RUN_ID}",
-                "nameEn": f"script_branch_{_RUN_ID}",
+                "nameCn": f"NotifyBranch_{_RUN_ID}",
+                "nameEn": f"notify_branch_{_RUN_ID}",
             })
             if not check_ok(r, "CREATE flow"):
                 return False
@@ -304,33 +311,40 @@ def test_full_flow_script():
             script_src = (
                 "function main(ctx) {\n"
                 "    var input = ctx.trigger.input.body;\n"
-                "    var action = input.action || 'user';\n"
-                "    var name = input.name || 'unknown';\n"
+                "    var channel = input.channel || 'log';\n"
                 "\n"
-                "    if (action === 'order') {\n"
-                "        var resp = ctx.http.request('GET', '" + MOCK_URL + "/api/order?name=' + encodeURIComponent(name));\n"
+                "    if (channel === 'email') {\n"
+                "        var resp = ctx.http.request('POST', '" + MOCK_URL + "/api/notify/email', {body: {\n"
+                "            recipient: input.recipient,\n"
+                "            subject: input.subject\n"
+                "        }});\n"
                 "        var d = resp.body.data;\n"
-                "        return { result: d.order_id, domain: d.status, group: String(d.amount), path: 'order' };\n"
+                "        return { result: d.message_id, domain: d.status, group: d.recipient, path: 'email' };\n"
                 "    }\n"
                 "\n"
-                "    if (action === 'status') {\n"
-                "        var resp = ctx.http.request('GET', '" + MOCK_URL + "/api/status?name=' + encodeURIComponent(name));\n"
+                "    if (channel === 'sms') {\n"
+                "        var resp = ctx.http.request('POST', '" + MOCK_URL + "/api/notify/sms', {body: {\n"
+                "            phone: input.phone,\n"
+                "            text: input.text\n"
+                "        }});\n"
                 "        var d = resp.body.data;\n"
-                "        return { result: d.server, domain: d.version, group: String(d.uptime_hours) + 'h', path: 'status' };\n"
+                "        return { result: d.message_id, domain: d.status, group: String(d.cost_credits), path: 'sms' };\n"
                 "    }\n"
                 "\n"
-                "    var resp = ctx.http.request('POST', '" + MOCK_URL + "/api/user', {body: {\n"
-                "        name: name,\n"
-                "        email: input.email || '',\n"
-                "        age: input.age || 0\n"
+                "    if (channel === 'webhook') {\n"
+                "        var resp = ctx.http.request('POST', '" + MOCK_URL + "/api/notify/webhook', {body: {\n"
+                "            url: input.url\n"
+                "        }});\n"
+                "        var d = resp.body.data;\n"
+                "        return { result: d.call_id, domain: d.status, group: String(d.http_code), path: 'webhook' };\n"
+                "    }\n"
+                "\n"
+                "    var resp = ctx.http.request('POST', '" + MOCK_URL + "/api/notify/log', {body: {\n"
+                "        source: input.source || 'default',\n"
+                "        level: input.level || 'info'\n"
                 "    }});\n"
                 "    var d = resp.body.data;\n"
-                "    return {\n"
-                "        result: d.display_name,\n"
-                "        domain: d.email_domain,\n"
-                "        group: d.age_group,\n"
-                "        path: 'user'\n"
-                "    };\n"
+                "    return { result: d.log_id, domain: d.status, group: d.source, path: 'log' };\n"
                 "}"
             )
 
@@ -353,12 +367,16 @@ def test_full_flow_script():
                                 "body": {
                                     "type": "object",
                                     "properties": {
-                                        "action": {"type": "string"},
-                                        "name": {"type": "string"},
-                                        "email": {"type": "string"},
-                                        "age": {"type": "number"},
+                                        "channel": {"type": "string"},
+                                        "recipient": {"type": "string"},
+                                        "subject": {"type": "string"},
+                                        "phone": {"type": "string"},
+                                        "text": {"type": "string"},
+                                        "url": {"type": "string"},
+                                        "source": {"type": "string"},
+                                        "level": {"type": "string"},
                                     },
-                                    "required": ["name"],
+                                    "required": [],
                                 },
                             },
                         }},
@@ -409,7 +427,7 @@ def test_full_flow_script():
         print("\n-- Phase 2: Debug Draft --")
         def s4():
             r = os_api("POST", f"/flows/{fid}/versions/{fvid}/debug", {
-                "triggerData": {"action": "user", "name": "debug", "email": "d@t.com", "age": 20},
+                "triggerData": {"channel": "email", "recipient": "debug@t.com", "subject": "Debug"},
             })
             ok = check_ok(r, "DEBUG draft")
             if ok:
@@ -463,7 +481,7 @@ def test_full_flow_script():
         if not failed and not step("Verify published", s9): failed = True
         print(f"  {'[OK]' if not failed else '[FAIL]'} Phase 3")
 
-        print("\n-- Phase 4: Deploy + Multi-Branch Invoke --")
+        print("\n-- Phase 4: Deploy + Multi-Channel Invoke --")
         def s10():
             return check_ok(os_api("POST", f"/flows/{fid}/deploy", {"versionId": fvid}), "DEPLOY")
 
@@ -498,41 +516,44 @@ def test_full_flow_script():
                     ok = False
             return ok
 
-        def _expected_user_resp(name, email, age):
-            u = _user_data(name, email, age)
-            return {"result": u["display_name"], "domain": u["email_domain"], "group": u["age_group"], "path": "user"}
+        def _expected_email_resp(recipient):
+            d = _email_data(recipient, _RUN_DATA["email"]["subject"])
+            return {"result": d["message_id"], "domain": d["status"], "group": d["recipient"], "path": "email"}
 
-        def _expected_order_resp(name):
-            o = _order_data(name)
-            return {"domain": o["status"], "group": str(o["amount"]), "path": "order"}
+        def _expected_sms_resp(phone, text):
+            d = _sms_data(phone, text)
+            return {"result": d["message_id"], "domain": d["status"], "group": str(d["cost_credits"]), "path": "sms"}
 
-        def _expected_status_resp(name):
-            s = _status_data(name)
-            return {"result": s["server"], "domain": s["version"], "group": f"{s['uptime_hours']}h", "path": "status"}
+        def _expected_webhook_resp(url):
+            d = _webhook_data(url)
+            return {"result": d["call_id"], "domain": d["status"], "group": str(d["http_code"]), "path": "webhook"}
 
-        u = _RUN_DATA["user"]
+        def _expected_log_resp(source):
+            return {"domain": "stored", "group": source, "path": "log"}
+
+        e = _RUN_DATA["email"]
         def s12():
-            return _invoke_and_verify("Branch=user POST", {
-                "action": "user", "name": u["name"], "email": u["email"], "age": u["age"],
-            }, _expected_user_resp(u["name"], u["email"], u["age"]))
+            return _invoke_and_verify("Channel=email", {
+                "channel": "email", "recipient": e["recipient"], "subject": e["subject"],
+            }, _expected_email_resp(e["recipient"]))
 
-        o = _RUN_DATA["order"]
+        s = _RUN_DATA["sms"]
         def s13():
-            return _invoke_and_verify("Branch=order GET", {
-                "action": "order", "name": o["name"],
-            }, _expected_order_resp(o["name"]))
+            return _invoke_and_verify("Channel=sms", {
+                "channel": "sms", "phone": s["phone"], "text": s["text"],
+            }, _expected_sms_resp(s["phone"], s["text"]))
 
-        s = _RUN_DATA["status"]
+        w = _RUN_DATA["webhook"]
         def s14():
-            return _invoke_and_verify("Branch=status GET", {
-                "action": "status", "name": s["name"],
-            }, _expected_status_resp(s["name"]))
+            return _invoke_and_verify("Channel=webhook", {
+                "channel": "webhook", "url": w["url"],
+            }, _expected_webhook_resp(w["url"]))
 
         d = _RUN_DATA["default"]
         def s15():
-            return _invoke_and_verify("Default→user POST", {
-                "name": d["name"], "email": d["email"], "age": d["age"],
-            }, _expected_user_resp(d["name"], d["email"], d["age"]))
+            return _invoke_and_verify("Default→log", {
+                "source": d["source"], "level": d["level"],
+            }, _expected_log_resp(d["source"]))
 
         def s16():
             time.sleep(0.5)
@@ -540,18 +561,18 @@ def test_full_flow_script():
 
         if not failed and not step("DEPLOY", s10): failed = True
         if not failed and not step("START", s11): failed = True
-        if not failed and not step("Invoke branch=user (POST /api/user)", s12): failed = True
-        if not failed and not step("Invoke branch=order (GET /api/order)", s13): failed = True
-        if not failed and not step("Invoke branch=status (GET /api/status)", s14): failed = True
-        if not failed and not step("Invoke default→user (no action)", s15): failed = True
+        if not failed and not step("Invoke channel=email", s12): failed = True
+        if not failed and not step("Invoke channel=sms", s13): failed = True
+        if not failed and not step("Invoke channel=webhook", s14): failed = True
+        if not failed and not step("Invoke default→log", s15): failed = True
         if not failed and not step("STOP", s16): failed = True
         print(f"  {'[OK]' if not failed else '[FAIL]'} Phase 4")
 
         print("\n" + "=" * 60)
         if failed:
-            print("  [FAIL] Script full-flow test FAILED")
+            print("  [FAIL] Notification channel branch test FAILED")
         else:
-            print("  [PASS] Script full-flow test PASSED!")
+            print("  [PASS] Notification channel branch test PASSED!")
         print("=" * 60)
         assert not failed
 
@@ -561,4 +582,4 @@ def test_full_flow_script():
 
 
 if __name__ == "__main__":
-    test_full_flow_script()
+    test_notification_channel_branch()
