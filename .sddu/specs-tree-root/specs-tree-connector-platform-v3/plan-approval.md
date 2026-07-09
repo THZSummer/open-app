@@ -108,14 +108,13 @@ global 层 = selectByCodeAndAppId("global", appId)   ← 应用专属全场景
 
 #### 资源注册类（`_register`：2 级）
 
-`api_register` / `event_register` / `callback_register`。各级别均支持 app 专属 + NULL 叠加。
+`api_register` / `event_register` / `callback_register`。按 §2.4 优先级叠加，无资源审批。
 
-| 单场景·单应用<br>scene(app) | 单场景·全应用<br>scene(null) | 全场景·单应用<br>global(app) | 全场景·全应用<br>global(null) | 审批链 |
+| 单场景·单应用<br>scene(app) | 全场景·单应用<br>global(app) | 单场景·全应用<br>scene(null) | 全场景·全应用<br>global(null) | 审批链 |
 |---|---|---|---|---|
-| ✅ | ✅ | ✅ | ✅ | scene(app+null) → global(app+null) |
-| ✅ | ✅ | ❌ | ✅ | scene(app+null) → global(null) |
-| ✅ | ❌ | ❌ | ✅ | scene(app) → global(null) |
-| ❌ | ✅ | ❌ | ✅ | scene(null) → global(null) |
+| ✅ | ✅ | ✅ | ✅ | scene(app) → global(app) → scene(null) → global(null) |
+| ✅ | ❌ | ✅ | ✅ | scene(app) → scene(null) → global(null) |
+| ❌ | ❌ | ✅ | ✅ | scene(null) → global(null) |
 | ❌ | ❌ | ❌ | ✅ | global(null) |
 | ❌ | ❌ | ❌ | ❌ | 空 → 400 |
 
@@ -135,13 +134,13 @@ global 层 = selectByCodeAndAppId("global", appId)   ← 应用专属全场景
 
 #### 版本发布类（default 2 级）
 
-`connector_flow_version_publish`。与 `_register` 同属 2 级，叠加逻辑一致。
+`connector_flow_version_publish`。按 §2.4 优先级叠加，无资源审批。
 
-| 单场景·单应用<br>scene(app) | 单场景·全应用<br>scene(null) | 全场景·单应用<br>global(app) | 全场景·全应用<br>global(null) | 审批链 |
+| 单场景·单应用<br>scene(app) | 全场景·单应用<br>global(app) | 单场景·全应用<br>scene(null) | 全场景·全应用<br>global(null) | 审批链 |
 |---|---|---|---|---|
-| ✅ | ✅ | ❌ | ✅ | scene(app+null) → global(null) |
-| ✅ | ❌ | ❌ | ✅ | scene(app) → global(null) |
-| ❌ | ✅ | ❌ | ✅ | scene(null) → global(null) |
+| ✅ | ✅ | ✅ | ✅ | scene(app) → global(app) → scene(null) → global(null) |
+| ✅ | ❌ | ✅ | ✅ | scene(app) → scene(null) → global(null) |
+| ❌ | ❌ | ✅ | ✅ | scene(null) → global(null) |
 | ❌ | ❌ | ❌ | ✅ | global(null) |
 | ❌ | ❌ | ❌ | ❌ | 空 → 400 |
 
@@ -154,7 +153,8 @@ global 层 = selectByCodeAndAppId("global", appId)   ← 应用专属全场景
 审批链中节点按优先级从高到低排列——范围越窄越靠前：
 
 ```
-审批顺序：
+  ⓪ 资源审批节点    resource nodes          （仅 _permission_apply 类型）
+  ↓
   ① 单场景·单应用  scene(app)
   ↓
   ② 全场景·单应用  global(app)
@@ -164,15 +164,21 @@ global 层 = selectByCodeAndAppId("global", appId)   ← 应用专属全场景
   ④ 全场景·全应用  global(null)
 ```
 
-> 每层无匹配或无审批人时跳过，不影响后续层。`_permission_apply` 类型在①之前额外插入资源审批节点（来自 `permission_t.resource_nodes`）。
+> 每层无匹配或无审批人时跳过，不影响后续层。资源审批节点来自 `permission_t.resource_nodes`，不参与 template 叠加。
 
 对应 `composeApprovalNodes` 伪代码：
 
 ```java
-if (appId != null) combinedNodes.addAll(loadFlowNodes(sceneCode, appId));   // ①
-if (appId != null) combinedNodes.addAll(loadFlowNodes("global", appId));    // ②
-combinedNodes.addAll(loadFlowNodes(sceneCode, null));                        // ③
-combinedNodes.addAll(loadFlowNodes("global", null));                         // ④
+// ⓪ 资源审批（仅 _permission_apply）
+if (isPermissionApply) combinedNodes.addAll(getResourceApprovalNodes(permissionId));
+// ① 单场景·单应用
+if (appId != null) combinedNodes.addAll(loadFlowNodes(sceneCode, appId));
+// ② 全场景·单应用
+if (appId != null) combinedNodes.addAll(loadFlowNodes("global", appId));
+// ③ 单场景·全应用
+combinedNodes.addAll(loadFlowNodes(sceneCode, null));
+// ④ 全场景·全应用
+combinedNodes.addAll(loadFlowNodes("global", null));
 ```
 
 > 存量 6 种类型传 `appId=null`，①和②为空，实际效果为 scene(null) → global(null)，与旧行为一致。
