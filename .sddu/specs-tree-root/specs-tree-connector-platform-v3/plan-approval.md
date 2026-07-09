@@ -51,8 +51,8 @@ open-server 审批引擎支持 8 种业务类型，覆盖能力开放平台（V2
 
 | 维度 | 字段 | 值 | 语义 |
 |---|---|---|---|
-| 场景维度 | `code` | 具体场景编码（如 `connector_flow_version_publish`） | 仅该场景生效 |
-| | `code` | **`global`** | **全部场景**生效（全局审批，所有场景的最后一关） |
+| 应用范围维度 | `code` | 具体场景编码（如 `connector_flow_version_publish`） | 仅该场景生效（单场景） |
+| | `code` | **`global`** | **全部场景**生效（全场景审批，所有场景的最后一关） |
 | 应用范围维度 | `appId` | 具体值（如 328...） | 仅该应用生效 |
 | | `appId` | **NULL** | **全部应用范围**生效 |
 
@@ -97,7 +97,7 @@ open-server 审批引擎支持 8 种业务类型，覆盖能力开放平台（V2
 scene 层 = selectByCodeAndAppId(sceneCode, appId)   ← 应用专属（有则加入）
          + selectByCodeAndAppId(sceneCode, null)    ← 全部应用范围（有则加入）
 
-global 层 = selectByCodeAndAppId("global", appId)   ← 应用专属全局
+global 层 = selectByCodeAndAppId("global", appId)   ← 应用专属全场景
           + selectByCodeAndAppId("global", null)    ← 全部应用范围 + 全部场景
 ```
 
@@ -109,7 +109,7 @@ global 层 = selectByCodeAndAppId("global", appId)   ← 应用专属全局
 
 `api_register` / `event_register` / `callback_register`。各级别均支持 app 专属 + NULL 叠加。
 
-| 场景·单应用<br>scene(app) | 场景·全部应用<br>scene(null) | 全局·单应用<br>global(app) | 全局·全部场景+全部应用<br>global(null) | 审批链 |
+| 单场景·单应用<br>scene(app) | 单场景·全应用<br>scene(null) | 全场景·单应用<br>global(app) | 全场景·全应用<br>global(null) | 审批链 |
 |---|---|---|---|---|
 | ✅ | ✅ | ✅ | ✅ | scene(app+null) → global(app+null) |
 | ✅ | ✅ | ❌ | ✅ | scene(app+null) → global(null) |
@@ -120,9 +120,9 @@ global 层 = selectByCodeAndAppId("global", appId)   ← 应用专属全局
 
 #### 权限申请类（`_permission_apply`：3 级）
 
-`api_permission_apply` / `event_permission_apply` / `callback_permission_apply`。资源级来自 `permission_t.resource_nodes`（无叠加），场景级和全局级各自叠加。
+`api_permission_apply` / `event_permission_apply` / `callback_permission_apply`。资源级来自 `permission_t.resource_nodes`（无叠加），单场景级和全场景级各自叠加。
 
-| 资源审批<br>resource | 场景·单应用<br>scene(app) | 场景·全部应用<br>scene(null) | 全局·全部场景+全部应用<br>global(null) | 审批链 |
+| 资源审批<br>resource | 单场景·单应用<br>scene(app) | 单场景·全应用<br>scene(null) | 全场景·全应用<br>global(null) | 审批链 |
 |---|---|---|---|---|
 | ✅ | ✅ | ✅ | ✅ | resource → scene(app+null) → global(null) |
 | ✅ | ✅ | ❌ | ✅ | resource → scene(app) → global(null) |
@@ -136,7 +136,7 @@ global 层 = selectByCodeAndAppId("global", appId)   ← 应用专属全局
 
 `connector_flow_version_publish`。与 `_register` 同属 2 级，叠加逻辑一致。
 
-| 场景·单应用<br>scene(app) | 场景·全部应用<br>scene(null) | 全局·单应用<br>global(app) | 全局·全部场景+全部应用<br>global(null) | 审批链 |
+| 单场景·单应用<br>scene(app) | 单场景·全应用<br>scene(null) | 全场景·单应用<br>global(app) | 全场景·全应用<br>global(null) | 审批链 |
 |---|---|---|---|---|
 | ✅ | ✅ | ❌ | ✅ | scene(app+null) → global(null) |
 | ✅ | ❌ | ❌ | ✅ | scene(app) → global(null) |
@@ -201,8 +201,8 @@ List<ApprovalNodeDto> getSceneApprovalNodes(String businessType, Long appId) {
 
 List<ApprovalNodeDto> getGlobalApprovalNodes(Long appId) {
     List<ApprovalNodeDto> result = new ArrayList<>();
-    if (appId != null) result.addAll(loadFlowNodes("global", appId));  // 应用专属全局
-    result.addAll(loadFlowNodes("global", null));                       // 全部场景
+    if (appId != null) result.addAll(loadFlowNodes("global", appId));  // 应用专属全场景
+    result.addAll(loadFlowNodes("global", null));                       // 全场景·全应用
     return result;
 }
 
@@ -220,7 +220,7 @@ List<ApprovalNodeDto> loadFlowNodes(String code, Long appId) {
 `_permission_apply` 类型在场景层之前额外增加**资源审批级**，形成 3 级审批链：
 
 ```
-资源审批 (resource) → 场景审批 (scene) → 全局审批 (global)
+资源审批 (resource) → 单场景审批 (scene) → 全场景审批 (global)
 ```
 
 资源审批等级特殊——其审批人**不来自 `approval_flow_t` 模板表**，而是直接从权限记录 `permission_t.resource_nodes` 内联读取：
@@ -235,7 +235,7 @@ List<ApprovalNodeDto> getResourceApprovalNodes(Long permissionId) {
 }
 ```
 
-| 维度 | 资源审批 | 场景审批 / 全局审批 |
+| 维度 | 资源审批 | 单场景审批 / 全场景审批 |
 |---|---|---|
 | 数据来源 | `permission_t.resource_nodes` | `approval_flow_t.nodes` |
 | 配置者 | 资源提供方 | 平台管理员 |
