@@ -11,6 +11,10 @@ import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowVersionReadRepos
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.NodeExecutor;
 import io.netty.channel.ChannelOption;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;
+import com.xxx.it.works.wecode.v2.modules.runtime.node.ConnectorNodeExecutor;
+import com.xxx.it.works.wecode.v2.modules.runtime.node.DataProcessorExecutor;
+import com.xxx.it.works.wecode.v2.modules.runtime.node.TriggerNodeExecutor;
+import com.xxx.it.works.wecode.v2.modules.runtime.node.ExitNodeExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.DagScheduler;
 import com.xxx.it.works.wecode.v2.modules.runtime.FlowConfigParser;
 import com.xxx.it.works.wecode.v2.modules.runtime.FlowRuntimeEngine;
