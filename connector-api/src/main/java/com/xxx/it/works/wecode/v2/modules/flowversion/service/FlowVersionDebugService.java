@@ -113,7 +113,7 @@ public class FlowVersionDebugService {
 
                     // 执行连接流 (debug 不写执行记录, 统一使用 DagScheduler)
                     return dagScheduler.schedule(orchConfig, context)
-                            .map(updatedCtx -> buildDebugResult(updatedCtx, executionId));
+                            .map(updatedCtx -> buildDebugResult(updatedCtx, executionId, nodes));
                 })
                 .onErrorResume(PreCheckException.class, e -> {
                     log.warn("Pre-check failed for debug: flowId={}, versionId={}, code={}, msg={}",
@@ -222,7 +222,18 @@ public class FlowVersionDebugService {
     /**
      * 从 ExecutionContext 构建 ExecutionResult (debug 专用, 不写执行记录)
      */
-    private ExecutionResult buildDebugResult(ExecutionContext ctx, String executionId) {
+    private ExecutionResult buildDebugResult(ExecutionContext ctx, String executionId,
+                                               List<Map<String, Object>> nodes) {
+        Map<String, Map<String, Object>> nodeMap = new HashMap<>();
+        if (nodes != null) {
+            for (Map<String, Object> node : nodes) {
+                Object id = node.get("id");
+                if (id != null) {
+                    nodeMap.put(id.toString(), node);
+                }
+            }
+        }
+
         ExecutionResult result = new ExecutionResult();
         result.setExecutionId(executionId);
         result.setFlowId(ctx.getFlowId());
@@ -246,6 +257,15 @@ public class FlowVersionDebugService {
             step.setStatus(nodeCtx.getStatus());
             step.setDurationMs(nodeCtx.getDurationMs());
             step.setErrorInfo(nodeCtx.getErrorInfo());
+
+            Map<String, Object> nodeConfig = nodeMap.get(nodeCtx.getNodeId());
+            if (nodeConfig != null) {
+                Map<String, Object> data = (Map<String, Object>) nodeConfig.get("data");
+                if (data != null) {
+                    step.setLabelCn((String) data.get("labelCn"));
+                    step.setLabelEn((String) data.get("labelEn"));
+                }
+            }
 
             if ("failed".equals(nodeCtx.getStatus()) || "timeout".equals(nodeCtx.getStatus())) {
                 anyFailed = true;
