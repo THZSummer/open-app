@@ -740,9 +740,9 @@ market-server 无需改动。`CacheServiceV2.clearLookUpItemCache(path, classify
 
 | 接口 | 方法 | 路径 | 生效配置 | 与 invoke 差异 |
 |------|------|------|---------|---------------|
-| 调试连接流 | POST | `/api/v1/flows/{flowId}/versions/{versionId}/debug` | #6, #8, #9, #10, #14 | 不包含 #5（debug 不写运行记录）、#15（debug 不写执行日志）；走 `FlowVersionDebugService.executeTestRun()` 独立路径 |
+| 调试连接流 | POST | `/api/v1/flows/{flowId}/versions/{versionId}/debug` | #6, #8, #9, #14 | 不包含 #5（不写运行记录）、#10（不走缓存，`FlowCacheManager` 仅在 invoke 路径调用）、#15（不写执行日志）；走 `FlowVersionDebugService.executeTestRun()` 独立路径 |
 
-> **说明**：debug 与 invoke 的执行管线（DAG 调度/节点执行/缓存）共享同一套 executor，因此 #6, #8, #9, #10, #14 两路径同时生效。但 debug 不产生持久化运行记录，因此 #5（记录条数上限）、#15（日志采集开关）仅对 invoke 生效。
+> **说明**：debug 与 invoke 的执行管线（DAG 调度/节点执行）共享同一套 executor，因此 #6, #8, #9, #14 两路径同时生效。但 debug 不产生持久化运行记录（#5、#15），也不经过缓存读写（#10），这些仅对 invoke 生效。
 
 ### 4.3 汇总速查表
 
@@ -757,7 +757,7 @@ market-server 无需改动。`CacheServiceV2.clearLookUpItemCache(path, classify
 | #7 | 连接流配置 JSON 长度上限 | 发布连接流版本 | 设计态 |
 | #8 | 连接流最大 QPS | 发布 + invoke + debug | 设计态 + 运行态 |
 | #9 | 连接流最大并发 | 发布 + invoke + debug | 设计态 + 运行态 |
-| #10 | 连接流缓存 TTL 上限 | 发布 + invoke + debug | 设计态 + 运行态 |
+| #10 | 连接流缓存 TTL 上限 | 发布 + invoke | 设计态 + 运行态（debug 不走缓存） |
 | #11 | 连接流并行分支上限 | 发布连接流版本 | 设计态 |
 | #12 | 串行编排连接器节点上限 | 发布连接流版本 | 设计态 |
 | #13 | 脚本源码长度上限 | 发布连接流版本 | 设计态 |
