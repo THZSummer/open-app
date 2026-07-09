@@ -469,6 +469,12 @@ public class ApprovalEngine {
         // 5. 获取当前节点信息
         ApprovalNodeDto currentNode = combinedNodes.get(currentNodeIndex);
 
+        // 校验：操作人必须是当前节点的审批人
+        if (currentNode.getUserId() != null && !currentNode.getUserId().equals(operatorId)) {
+            throw new BusinessException("403", "非当前节点审批人，无法审批",
+                    "Operator is not the assigned approver for this node");
+        }
+
         // 6. ✅ 记录审批日志（含 level 字段）
         ApprovalLog approvalLog = new ApprovalLog();
         approvalLog.setId(idGenerator.nextId());
@@ -555,6 +561,12 @@ public class ApprovalEngine {
         // 3. ✅ 从 combinedNodes 解析审批节点（v2.8.0核心变更）
         List<ApprovalNodeDto> combinedNodes = parseNodes(record.getCombinedNodes());
         ApprovalNodeDto currentNode = combinedNodes.get(record.getCurrentNode());
+
+        // 校验：操作人必须是当前节点的审批人
+        if (currentNode.getUserId() != null && !currentNode.getUserId().equals(operatorId)) {
+            throw new BusinessException("403", "非当前节点审批人，无法驳回",
+                    "Operator is not the assigned approver for this node");
+        }
 
         // 4. ✅ 记录审批日志（含 level 字段）
         ApprovalLog approvalLog = new ApprovalLog();

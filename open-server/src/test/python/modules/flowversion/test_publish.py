@@ -249,7 +249,7 @@ class TestFlowVersionPublish:
         fid, fvid = draft_flow
         cid, cvid = published_connector
         _ensure_global_flow()
-        _upsert_scene_flow(INTERNAL_APP_ID, [{"userId": "tester", "userName": "AppApprover"}])
+        _upsert_scene_flow(INTERNAL_APP_ID, [{"userId": "admin", "userName": "AppApprover"}])
         try:
             _set_orchestration(fid, fvid, cid, cvid)
             aid = _find_approval(fvid)
@@ -267,7 +267,7 @@ class TestFlowVersionPublish:
         fid, fvid = draft_flow
         cid, cvid = published_connector
         _ensure_global_flow()
-        _upsert_scene_flow(None, [{"userId": "tester", "userName": "GlobalApprover"}])
+        _upsert_scene_flow(None, [{"userId": "admin", "userName": "GlobalApprover"}])
         try:
             _set_orchestration(fid, fvid, cid, cvid)
             aid = _find_approval(fvid)
@@ -285,8 +285,8 @@ class TestFlowVersionPublish:
         fid, fvid = draft_flow
         cid, cvid = published_connector
         _ensure_global_flow()
-        _upsert_scene_flow(INTERNAL_APP_ID, [{"userId": "tester", "userName": "AppSpecific"}])
-        _upsert_scene_flow(None, [{"userId": "other", "userName": "GlobalFallback"}])
+        _upsert_scene_flow(INTERNAL_APP_ID, [{"userId": "admin", "userName": "AppSpecific"}])
+        _upsert_scene_flow(None, [{"userId": "admin", "userName": "GlobalFallback"}])
         try:
             _set_orchestration(fid, fvid, cid, cvid)
             aid = _find_approval(fvid)
@@ -316,7 +316,7 @@ def _ensure_global_flow():
     if exists:
         return
     fid = _snow_id()
-    nodes = json.dumps([{"userId": "tester", "userName": "全局审批人"}])
+    nodes = json.dumps([{"userId": "admin", "userName": "全场景全应用"}])
     from common import db as _db
     _db(f"INSERT INTO openplatform_v2_approval_flow_t (id, name_cn, name_en, code, app_id, nodes, status, create_time, last_update_time, create_by, last_update_by) VALUES ({fid}, '全局审批', 'global', 'global', NULL, '{nodes}', 1, NOW(), NOW(), 'admin', 'admin')")
 
