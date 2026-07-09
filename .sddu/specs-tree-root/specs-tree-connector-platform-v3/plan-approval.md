@@ -109,7 +109,7 @@ global 层 = selectByCodeAndAppId("global", appId)   ← 应用专属全场景
 5 级优先级统一适用于所有业务类型，配了哪些就哪些生效（`app_version_publish` 除外，直接免审）。
 
 | ⓪ 资源<br>resource | ① 单场景·单应用<br>scene(app) | ② 全场景·单应用<br>global(app) | ③ 单场景·全应用<br>scene(null) | ④ 全场景·全应用<br>global(null) | 审批链 |
-|---|---|---|---|---|---|---|
+|---|---|---|---|---|---|
 | ✅ | ✅ | ✅ | ✅ | ✅ | ⓪ → ① → ② → ③ → ④ |
 | — | ✅ | ✅ | ✅ | ✅ | ① → ② → ③ → ④ |
 | — | ✅ | ❌ | ✅ | ✅ | ① → ③ → ④ |
