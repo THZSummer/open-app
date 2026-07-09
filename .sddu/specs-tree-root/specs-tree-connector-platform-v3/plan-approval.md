@@ -121,15 +121,15 @@ global 层 = selectByCodeAndAppId("global", appId)   ← 应用专属全场景
 
 #### 权限申请类（`_permission_apply`：3 级）
 
-`api_permission_apply` / `event_permission_apply` / `callback_permission_apply`。资源级来自 `permission_t.resource_nodes`（无叠加），单场景级和全场景级各自叠加。
+`api_permission_apply` / `event_permission_apply` / `callback_permission_apply`。资源级来自 `permission_t.resource_nodes`（无叠加），其余四级按 §2.4 优先级叠加。
 
-| 资源审批<br>resource | 单场景·单应用<br>scene(app) | 单场景·全应用<br>scene(null) | 全场景·全应用<br>global(null) | 审批链 |
-|---|---|---|---|---|
-| ✅ | ✅ | ✅ | ✅ | resource → scene(app+null) → global(null) |
-| ✅ | ✅ | ❌ | ✅ | resource → scene(app) → global(null) |
-| ✅ | ❌ | ✅ | ✅ | resource → scene(null) → global(null) |
-| ✅ | ❌ | ❌ | ✅ | resource → global(null) |
-| ❌ (need_approval=0) | ✅ | ✅ | ✅ | scene(app+null) → global(null) |
+| 资源审批<br>resource | 单场景·单应用<br>scene(app) | 全场景·单应用<br>global(app) | 单场景·全应用<br>scene(null) | 全场景·全应用<br>global(null) | 审批链 |
+|---|---|---|---|---|---|---|
+| ✅ | ✅ | ✅ | ✅ | ✅ | resource → scene(app) → global(app) → scene(null) → global(null) |
+| ✅ | ✅ | ❌ | ✅ | ✅ | resource → scene(app) → scene(null) → global(null) |
+| ✅ | ❌ | ❌ | ✅ | ✅ | resource → scene(null) → global(null) |
+| ✅ | ❌ | ❌ | ❌ | ✅ | resource → global(null) |
+| ❌ (need_approval=0) | ✅ | ✅ | ✅ | ✅ | scene(app) → global(app) → scene(null) → global(null) |
 
 > 资源审批节点为空且 `need_approval=1` 时该级无审批人，但仍不跳过——审批链中 resource 级为空节点，审批引擎将无法推进。应在配置阶段保证 `need_approval=1` 时 `resource_nodes` 非空。
 
