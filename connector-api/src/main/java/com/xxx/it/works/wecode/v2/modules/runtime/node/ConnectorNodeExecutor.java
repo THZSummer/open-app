@@ -376,9 +376,20 @@ public class ConnectorNodeExecutor implements NodeExecutor {
         }
 
         return requestSpec
-                .exchangeToMono(response -> response.bodyToMono(String.class)
-                        .timeout(Duration.ofMillis(timeoutMs))
-                        .map(responseBody -> {
+                .exchangeToMono(response -> {
+                    if (response.statusCode().isError()) {
+                        long duration = System.currentTimeMillis() - startTime;
+                        log.warn("Connector HTTP call downstream error: nodeId={}, url={}, status={}",
+                                nodeId, url, response.rawStatusCode());
+                        return response.bodyToMono(String.class)
+                                .defaultIfEmpty("")
+                                .map(downstreamBody -> buildDownstreamErrorOutput(
+                                        nodeId, url, response.rawStatusCode(),
+                                        downstreamBody, input, duration));
+                    }
+                    return response.bodyToMono(String.class)
+                            .timeout(Duration.ofMillis(timeoutMs))
+                            .map(responseBody -> {
                             log.info("Connector HTTP call succeeded: nodeId={}, status=success", nodeId);
                             Map<String, Object> outputData = new HashMap<>();
 
@@ -407,7 +418,8 @@ public class ConnectorNodeExecutor implements NodeExecutor {
                             output.setStatus("success");
                             output.setDurationMs(System.currentTimeMillis() - startTime);
                             return output;
-                        }))
+                        });
+                })
                 .onErrorResume(e -> {
                     log.warn("Connector HTTP call failed: url={}, error={}", url, e.getMessage());
                     return Mono.just(buildErrorOutput(nodeId, url, timeoutMs, startTime, input, e));
@@ -453,6 +465,34 @@ public class ConnectorNodeExecutor implements NodeExecutor {
         output.setStatus("failed");
         output.setErrorInfo(errorInfo);
         output.setDurationMs(System.currentTimeMillis() - startTime);
+        return output;
+    }
+
+    /**
+     * 构建下游 HTTP 4xx/5xx 错误输出
+     */
+    private NodeOutput buildDownstreamErrorOutput(String nodeId, String url, int downstreamStatus,
+                                                   String downstreamBody, Map<String, Object> input,
+                                                   long duration) {
+        NodeOutput output = new NodeOutput();
+        output.setNodeId(nodeId);
+        output.setNodeType("connector");
+        output.setInput(input);
+
+        Map<String, Object> errorInfo = new HashMap<>();
+        errorInfo.put("code", String.valueOf(downstreamStatus));
+        errorInfo.put("messageZh", "下游服务返回错误 [" + downstreamStatus + "]，地址 [" + url + "]");
+        errorInfo.put("messageEn", "Downstream returned " + downstreamStatus);
+
+        Map<String, Object> outputData = new HashMap<>();
+        outputData.put("__status", "failed");
+        if (downstreamBody != null && !downstreamBody.isEmpty()) {
+            outputData.put("body", downstreamBody);
+        }
+        output.setOutput(outputData);
+        output.setStatus("failed");
+        output.setErrorInfo(errorInfo);
+        output.setDurationMs(duration);
         return output;
     }
 }
