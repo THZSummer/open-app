@@ -353,7 +353,7 @@
 | **按应用区分** | ❌ |
 | **实现状态** | ✅ 已实现 |
 | **实现位置** | `AppWhitelistInterceptor.preHandle()` → `AppWhitelistService.isWhitelisted(appId)` → `LookupWhitelistMapper.selectItemValuesByClassifyCode("Connector.Platform.AppWhitelist")` |
-| **生效说明** | 拦截 `/service/open/v2/connectors/**` 和 `/service/open/v2/flows/**`，从 `X-App-Id` Header 取 appId，不在白名单 → 403。空白名单 = 全部拒绝（secure default）。 |
+| **生效说明** | 拦截 `/service/open/v2/connectors/**`、`/service/open/v2/flows/**`、`/service/open/v2/executions/**`，从 `X-App-Id` Header 取 appId，不在白名单 → 403。空白名单 = 全部拒绝（secure default）。 |
 | **状态更新** | v2.2 验证通过：已接入 Lookup，secure default 行为正确 |
 
 ---
@@ -720,7 +720,7 @@ market-server 无需改动。`CacheServiceV2.clearLookUpItemCache(path, classify
 
 | 拦截范围 | 路径模式 | 生效配置 | 校验逻辑 |
 |---------|---------|---------|----------|
-| 连接器/连接流所有管理面接口 | `/service/open/v2/connectors/**` `/service/open/v2/flows/**` | #16 连接器平台开放应用范围清单 | 从 `X-App-Id` Header 取 appId，不在白名单 → 403 |
+| 连接器/连接流/运行记录所有管理面接口 | `/service/open/v2/connectors/**` `/service/open/v2/flows/**` `/service/open/v2/executions/**` | #16 连接器平台开放应用范围清单 | 从 `X-App-Id` Header 取 appId，不在白名单 → 403 |
 
 ### 4.2 执行面 — 运行态实施
 
@@ -763,7 +763,7 @@ market-server 无需改动。`CacheServiceV2.clearLookUpItemCache(path, classify
 | #13 | 脚本源码长度上限 | 发布连接流版本 | 设计态 |
 | #14 | 脚本超时范围 | 发布 + invoke + debug | 设计态 + 运行态 |
 | #15 | 日志采集开关 | invoke | 运行态 |
-| #16 | 开放应用范围清单 | 所有 /service/open/v2/connectors/** 和 /service/open/v2/flows/** | 设计态（HTTP 拦截器） |
+| #16 | 开放应用范围清单 | 所有 /service/open/v2/connectors/**、/service/open/v2/flows/**、/service/open/v2/executions/** | 设计态（HTTP 拦截器） |
 
 ## 附录 A：平台配置能力
 

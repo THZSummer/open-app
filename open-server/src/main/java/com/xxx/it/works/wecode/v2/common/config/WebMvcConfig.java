@@ -47,7 +47,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
         // 注册应用白名单拦截器
         // 优先级 20：在用户解析之后执行白名单准入校验（#15 app_whitelist）
         registry.addInterceptor(appWhitelistInterceptor)
-                .addPathPatterns("/service/open/v2/connectors/**", "/service/open/v2/flows/**")
+                .addPathPatterns("/service/open/v2/connectors/**", "/service/open/v2/flows/**", "/service/open/v2/executions/**")
                 .order(20);
     }
 
