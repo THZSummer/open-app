@@ -362,26 +362,38 @@ public class ConnectorNodeExecutor implements NodeExecutor {
         }
 
         return requestSpec
-                .retrieve()
-                .bodyToMono(String.class)
-                .timeout(Duration.ofMillis(timeoutMs))
-                .map(responseBody -> {
-                    log.info("Connector HTTP call succeeded: nodeId={}, status=success", nodeId);
-                    Map<String, Object> outputData = new HashMap<>();
-                    if (responseBody != null) {
-                        try {
-                            Map<String, Object> parsed = objectMapper.readValue(responseBody, Map.class);
-                            outputData.putAll(parsed);
-                        } catch (Exception e) {
-                            outputData.put("rawResponse", responseBody);
-                        }
-                    }
-                    outputData.put("__status", "success");
-                    output.setOutput(outputData);
-                    output.setStatus("success");
-                    output.setDurationMs(System.currentTimeMillis() - startTime);
-                    return output;
-                })
+                .exchangeToMono(response -> response.bodyToMono(String.class)
+                        .timeout(Duration.ofMillis(timeoutMs))
+                        .map(responseBody -> {
+                            log.info("Connector HTTP call succeeded: nodeId={}, status=success", nodeId);
+                            Map<String, Object> outputData = new HashMap<>();
+
+                            // response headers (plan-json-schema §3.2: output.header)
+                            Map<String, Object> respHeaders = new HashMap<>();
+                            response.headers().asHttpHeaders().forEach((k, v) -> {
+                                if (v != null && !v.isEmpty()) {
+                                    respHeaders.put(k, v.size() == 1 ? v.get(0) : v);
+                                }
+                            });
+                            outputData.put("header", respHeaders);
+
+                            // response body (plan-json-schema §3.2: output.body)
+                            Map<String, Object> bodyData = new HashMap<>();
+                            if (responseBody != null) {
+                                try {
+                                    Map<String, Object> parsed = objectMapper.readValue(responseBody, Map.class);
+                                    bodyData.putAll(parsed);
+                                } catch (Exception e) {
+                                    bodyData.put("rawResponse", responseBody);
+                                }
+                            }
+                            outputData.put("body", bodyData);
+                            outputData.put("__status", "success");
+                            output.setOutput(outputData);
+                            output.setStatus("success");
+                            output.setDurationMs(System.currentTimeMillis() - startTime);
+                            return output;
+                        }))
                 .onErrorResume(e -> {
                     log.warn("Connector HTTP call failed: url={}, error={}", url, e.getMessage());
                     return Mono.just(buildErrorOutput(nodeId, url, timeoutMs, startTime, input, e));

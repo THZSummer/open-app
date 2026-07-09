@@ -243,19 +243,35 @@ public class ScriptNodeExecutor implements NodeExecutor {
             }
             return value.asDouble();
         }
-        if (value.hasMembers()) {
-            Map<String, Object> map = new HashMap<>();
-            for (String key : value.getMemberKeys()) {
-                map.put(key, safeConvertValue(value.getMember(key)));
-            }
-            return map;
-        }
         if (value.hasArrayElements()) {
+            if (value.isHostObject()) {
+                Object host = value.as(Object.class);
+                if (host instanceof java.util.List) {
+                    @SuppressWarnings("unchecked")
+                    java.util.List<Object> list = (java.util.List<Object>) host;
+                    return list;
+                }
+            }
             java.util.List<Object> list = new java.util.ArrayList<>();
             for (long i = 0; i < value.getArraySize(); i++) {
                 list.add(safeConvertValue(value.getArrayElement(i)));
             }
             return list;
+        }
+        if (value.hasMembers()) {
+            if (value.isHostObject()) {
+                Object host = value.as(Object.class);
+                if (host instanceof Map) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> map = (Map<String, Object>) host;
+                    return map;
+                }
+            }
+            Map<String, Object> map = new HashMap<>();
+            for (String key : value.getMemberKeys()) {
+                map.put(key, safeConvertValue(value.getMember(key)));
+            }
+            return map;
         }
         return value.as(Object.class);
     }

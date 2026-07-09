@@ -20,6 +20,8 @@ import requests
 _API_BASE = "http://localhost:18080/open-server"
 TEST_APP_ID = "20250730213114178360970"
 INTERNAL_APP_ID = 328225464973787136  # App.id for TEST_APP_ID
+TEST_COOKIE = "user_id=admin"
+TEST_XSRF_TOKEN = "user_id=admin"
 _DEFAULT_USER  = "admin"
 _DB = {"host": "192.168.3.155", "user": "openapp", "passwd": "openapp", "db": "openapp"}
 # Redis 集群节点（full_flow 测试用）
@@ -63,7 +65,8 @@ def api(method, path, body=None, *, app_id=None, user=None, headers=None, timeou
     if aid is not None:
         h["X-App-Id"] = aid
     if usr is not None:
-        h["Cookie"] = f"user_id={usr}"
+        h["Cookie"] = TEST_COOKIE
+        h["X-XSRF-TOKEN"] = TEST_XSRF_TOKEN
     if headers:
         h.update(headers)
 
@@ -133,6 +136,22 @@ def db_val(sql):
         first_col = list(rows[0].values())[0]
         return str(first_col) if first_col is not None else None
     return None
+
+# ═══════════════════════════════════════════════════════════
+# Lookup 配置管理
+# ═══════════════════════════════════════════════════════════
+
+_LOOKUP_PATH = "CEC.Open"
+_LOOKUP_CLASSIFY = "Connector.Platform.Config"
+
+def set_lookup_config(item_code: str, value: str):
+    """设置 Connector.Platform.Config 下指定 item_code 的值（测试用）"""
+    db(f"""UPDATE openplatform_lookup_item_t i
+JOIN openplatform_lookup_classify_t c ON i.classify_id = c.classify_id
+SET i.item_value = '{value}'
+WHERE c.path = '{_LOOKUP_PATH}' AND c.classify_code = '{_LOOKUP_CLASSIFY}'
+AND i.item_code = '{item_code}'""")
+
 
 # ═══════════════════════════════════════════════════════════
 # 断言

@@ -777,20 +777,20 @@ def test_full_flow():
                                 "header": {
                                     "type": "object",
                                     "properties": {
-                                        "X-Echo-Count": {"type": "string", "value": "${$.node." + nid_conn + ".output.data.call_number}"}
+                                        "X-Echo-Count": {"type": "string", "value": "${$.node." + nid_conn + ".output.body.data.call_number}"}
                                     }
                                 },
                                 "body": {
                                     "type": "object",
                                     "properties": {
-                                        "code": {"type": "number", "value": "${$.node." + nid_conn + ".output.code}"},
-                                        "message": {"type": "string", "value": "${$.node." + nid_conn + ".output.message}"},
+                                        "code": {"type": "number", "value": "${$.node." + nid_conn + ".output.body.code}"},
+                                        "message": {"type": "string", "value": "${$.node." + nid_conn + ".output.body.message}"},
                                         "data": {
                                             "type": "object",
-                                            "value": "${$.node." + nid_conn + ".output.data.echo_body}"
+                                            "value": "${$.node." + nid_conn + ".output.body.data.echo_body}"
                                         },
-                                        "serverTime": {"type": "string", "value": "${$.node." + nid_conn + ".output.data.server_time}"},
-                                        "callNumber": {"type": "number", "value": "${$.node." + nid_conn + ".output.data.call_number}"}
+                                        "serverTime": {"type": "string", "value": "${$.node." + nid_conn + ".output.body.data.server_time}"},
+                                        "callNumber": {"type": "number", "value": "${$.node." + nid_conn + ".output.body.data.call_number}"}
                                     }
                                 }
                             }

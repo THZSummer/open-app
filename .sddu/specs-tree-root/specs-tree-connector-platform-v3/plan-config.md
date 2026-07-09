@@ -2,9 +2,9 @@
 
 **Feature ID**: CONN-PLAT-003
 **关联文档**: [spec.md](./spec.md) v3.0, [plan.md](./plan.md) v3.0, [plan-api.md](./plan-api.md), [plan-script.md](./plan-script.md)
-**版本**: v2.1
+**版本**: v2.2
 **创建日期**: 2026-06-30
-**说明**: 系统化记录 V3 全部配置场景，覆盖开关、白名单、名单、上限、阈值、审批人等。v2.0 新增 §3「Lookup 化优化方案」，将 15 项配置从 Property 逐项查询迁移到 Lookup 批量读取，DB 查询次数从 16 次降至 2 次。
+**说明**: 系统化记录 V3 全部配置场景，覆盖开关、白名单、名单、上限、阈值、审批人等。v2.0 新增 §3「Lookup 化优化方案」。v2.2 逐项验证：16 项配置均已接入 Lookup 并正确实现。以下各节状态标注已更新为真实实现状态。
 
 ---
 
@@ -29,6 +29,10 @@
     - [3.5 代码改造范围](#35-代码改造范围)
     - [3.6 效果对比](#36-效果对比)
     - [3.8 实施优先级](#38-实施优先级)
+- [4 配置生效接口矩阵](#4-配置生效接口矩阵)
+  - [4.1 管理面 — 设计态校验](#41-管理面--设计态校验)
+  - [4.2 执行面 — 运行态实施](#42-执行面--运行态实施)
+  - [4.3 汇总速查表](#43-汇总速查表)
 - [附录 A：平台配置能力](#附录-a平台配置能力)
   - [A.1 Spring 配置文件](#a1-spring-配置文件)
   - [A.2 业务对象 JSON 配置](#a2-业务对象-json-配置)
@@ -67,7 +71,7 @@
 
 ## 2 配置详情
 
-当前全部 16 项配置均已从 Property 逐项查询迁移到 Lookup 批量读取（详见 §3），存储格式统一为 `path=CEC.Open` + `classify_code=Connector.Platform.Config`（或 `Connector.Platform.AppWhitelist`） + PascalCase item_code。以下逐项记录实现现状。
+当前全部 16 项配置均已从 Property 逐项查询迁移到 Lookup 批量读取（详见 §3），存储格式统一为 `path=CEC.Open` + `classify_code=Connector.Platform.Config`（或 `Connector.Platform.AppWhitelist`） + PascalCase item_code。以下逐项记录实现现状（v2.2 已逐项代码审计验证）。
 
 ---
 
@@ -83,11 +87,10 @@
 | **item_code** | `Connector.Max.Versions` |
 | **默认值** | 1000 |
 | **按应用区分** | ❌ |
-| **实现状态** | ⚠️ 硬编码，值正确 |
-
-**现状**：`ConnectorPlatformConstants.MAX_VERSION_COUNT = 1000`。`ConnectorVersionService.createDraft()` / `copyToDraft()` 中校验，达上限返回 422。该常量同时被 #4 连接流版本共用。
-
-**方案**：v2.0 已实现。`ConnectorPlatformPropertyService.getConnectorMaxVersions()` 从 Lookup 批量读取（详见 §3）。设计态校验，无运行态读取。
+| **实现状态** | ✅ 已实现 |
+| **实现位置** | `ConnectorPlatformPropertyService.getConnectorMaxVersions()` → `ConnectorVersionService.createDraft()` / `copyToDraft()` |
+| **生效说明** | 从 Lookup 读取 `Connector.Max.Versions`，达上限返回 422。未命中时回退 `MAX_VERSION_COUNT = 1000`。设计态校验，无运行态读取。 |
+| **状态更新** | v2.2 验证通过：已从硬编码迁移到 Lookup |
 
 ---
 
@@ -101,14 +104,10 @@
 | **item_code** | `Connector.Url.Regex.Pattern` |
 | **默认值** | —（空白 = 不限制） |
 | **按应用区分** | ❌ |
-| **实现状态** | ❌ 未实现 |
-
-**现状**：无任何代码读取此 Property。当前连接器发布时校验的是连接器版本快照内的 **`urlWhitelist[]` 数组**（每条一个正则），非平台级统一规则。空白名单时放行所有 URL。
-
-**方案**：
-1. 在 `ConnectorPlatformPropertyService` 中新增 `getUrlRegexPattern()`，从 Lookup 批量读取 item_code=`Connector.Url.Regex.Pattern`
-2. `ConnectorVersionService.publish()` 中增加校验：若 Property 配置了正则，则用户填写的目标 URL 必须匹配此正则
-3. 此校验与现有的 `urlWhitelist[]` 校验并行——`urlWhitelist[]` 是用户自配的连接器级规则，`Connector.Url.Regex.Pattern` 是平台级的兜底规则
+| **实现状态** | ✅ 已实现 |
+| **实现位置** | `ConnectorPlatformPropertyService.getUrlRegexPattern()` → `ConnectorVersionService.publish()` → `validatePlatformUrlRegex()` |
+| **生效说明** | 从 Lookup 读取 `Connector.Url.Regex.Pattern`，若配置则编译正则并匹配 connector target URL。未配置时放行所有 URL。与 `urlWhitelist[]` 并行生效——前者是平台级兜底规则，后者是用户自配的连接器级规则。 |
+| **状态更新** | v2.2 验证通过：已实现 |
 
 ---
 
@@ -122,14 +121,10 @@
 | **item_code** | `Connector.Config.Max.Bytes` |
 | **默认值** | 0 |
 | **按应用区分** | ✅ |
-| **实现状态** | ❌ 未实现 |
-
-**现状**：`ConnectorVersionService.publish()` 仅校验 JSON 非空 + 语法合法，无字节数限制。
-
-**方案**：
-1. 在 `ConnectorPlatformPropertyService` 中新增 `getConnectorConfigMaxBytes(appId)`
-2. `ConnectorVersionService.publish()` 中增加校验：`connectionConfig.getBytes(UTF_8).length ≤ maxBytes`
-3. 超限提示具体字节数与上限，拒绝发布
+| **实现状态** | ✅ 已实现 |
+| **实现位置** | `ConnectorPlatformPropertyService.getConnectorConfigMaxBytes(appId)` → `ConnectorVersionService.publish()` → `validateConnectionConfigSize()` |
+| **生效说明** | 从 Lookup 读取 `Connector.Config.Max.Bytes`（支持按应用覆盖），UTF-8 字节数 ≤ max。0 表示不限制。超限提示具体字节数与上限。 |
+| **状态更新** | v2.2 验证通过：已实现 |
 
 ---
 
@@ -145,11 +140,10 @@
 | **item_code** | `Flow.Max.Versions` |
 | **默认值** | 1000 |
 | **按应用区分** | ❌ |
-| **实现状态** | ⚠️ 硬编码，值正确，但与 #1 共用一个常量 |
-
-**现状**：与 #1 共用 `MAX_VERSION_COUNT = 1000`。`FlowVersionService.createDraft()` / `copyFromVersion()` 中校验。
-
-**方案**：在 `ConnectorPlatformPropertyService` 中新增 `getFlowMaxVersions()`，从 Lookup 批量读取 item_code=`Flow.Max.Versions`，与 #1 解耦。`FlowVersionService` 注入该 Service。
+| **实现状态** | ✅ 已实现 |
+| **实现位置** | `ConnectorPlatformPropertyService.getFlowMaxVersions()` → `FlowVersionService.createDraft()` / `copyFromVersion()` |
+| **生效说明** | 从 Lookup 读取 `Flow.Max.Versions`，达上限返回 422。未命中时回退 `MAX_VERSION_COUNT = 1000`。已与 #1 解耦。 |
+| **状态更新** | v2.2 验证通过：已从硬编码迁移到 Lookup |
 
 ---
 
@@ -163,14 +157,10 @@
 | **item_code** | `Max.Execution.Records.Per.Flow` |
 | **默认值** | 1000 |
 | **按应用区分** | ✅ |
-| **实现状态** | ⚠️ 硬编码，清理逻辑已实现但未接入调用链 |
-
-**现状**：`ConnectorPlatformConstants.DEFAULT_EXECUTION_RECORD_LIMIT = 1000`。`ExecutionRecordService.checkAndCleanFifo()` 方法已实现（FIFO 删除最旧记录），但 `FlowInvokeService` 写入运行记录后**未调用**该清理方法。30 天定期清理依赖 `@Scheduled` 定时任务。
-
-**方案**：
-1. 在 `ConnectorPlatformPropertyService` 中新增 `getMaxExecutionRecordsPerFlow(appId)`
-2. `FlowInvokeService` 写入运行记录后调用 `checkAndCleanFifo(flowId, maxRecords)`
-3. `ExecutionCleanupJob` 的 30 天清理保持不变，两种策略互补
+| **实现状态** | ✅ 已实现 |
+| **实现位置** | `FlowInvokeService.finalizeExecutionRecord()` → `ExecutionRecordService.checkAndCleanFifo(flowId, maxRecords)` |
+| **生效说明** | 从 Lookup 读取 `Max.Execution.Records.Per.Flow`（`ConnectorApiPropertyService.loadPlatformDefaults()`），每次 invoke 后 FIFO 删除最早超限记录。与 `@Scheduled` 30 天定期清理互补。 |
+| **状态更新** | v2.2 验证通过：`checkAndCleanFifo()` 已在 `doOnNext` 中接入调用链 |
 
 ---
 
@@ -184,14 +174,11 @@
 | **item_code** | `Node.Max.Timeout.Seconds` |
 | **默认值** | 5 |
 | **按应用区分** | ✅ |
-| **实现状态** | ❌ 值错误 + 未接入 Property |
-
-**现状**：运行时 `DagScheduler.resolveNodeTimeout()` 和 `ReactiveSequentialExecutor.resolveNodeTimeout()` 硬编码 5000ms 上限并做 `Math.min` 截断。按 §3.3.4 模型，运行态应：③（`node.data.timeoutMs`）存在时直接用③不截断，③不存在时回退①（平台全局 `Node.Max.Timeout.Seconds`）。
-
-**方案**（详见 §3.3.4）：
-1. 设计态：`FlowPublishValidator` 校验 ③ ≤ max(①, ②)（已实现）
-2. 运行态：③存在用③不截断，③不存在回退①，运行态不读②
-3. 删除 `Math.min` 截断逻辑
+| **实现状态** | ✅ 已实现 |
+| **实现位置（设计态）** | `FlowPublishValidator.validateNodeTimeouts()` → 应用上限由 `FlowVersionService` 从 Lookup 读取 |
+| **实现位置（运行态）** | `DagScheduler.resolveNodeTimeout()` / `ReactiveSequentialExecutor.resolveNodeTimeout()` → `ConnectorApiPropertyService.getNodeMaxTimeoutSeconds()` |
+| **生效说明** | 运行态：`node.data.timeoutMs`（③）存在直接用，不截断；③不存在回退 Lookup `Node.Max.Timeout.Seconds`（①）。无 `Math.min` 截断。设计态：`FlowPublishValidator` 校验 ③ ≤ max(①, ②)。 |
+| **状态更新** | v2.2 验证通过：已接入 Lookup，无 Math.min 截断，回退逻辑正确 |
 
 ---
 
@@ -205,11 +192,10 @@
 | **item_code** | `Flow.Config.Max.Bytes` |
 | **默认值** | 0 |
 | **按应用区分** | ✅ |
-| **实现状态** | ❌ 未实现 |
-
-**现状**：`FlowPublishValidator` 仅校验 JSON 语法，无字节数限制。
-
-**方案**：同 #3，作用于 `FlowPublishValidator.validateOrchestrationConfig()`——校验 `orchestrationConfig.getBytes(UTF_8).length ≤ maxBytes`。
+| **实现状态** | ✅ 已实现 |
+| **实现位置** | `FlowPublishValidator.validateConfigSize()` → 从 Lookup 批量读取 `Flow.Config.Max.Bytes` |
+| **生效说明** | 校验 orchestration JSON 的 UTF-8 字节数 ≤ max。0 表示不限制。支持按应用覆盖。 |
+| **状态更新** | v2.2 验证通过：已实现 |
 
 ---
 
@@ -223,14 +209,11 @@
 | **item_code** | `Flow.Max.Qps` |
 | **默认值** | 1000 |
 | **按应用区分** | ✅ |
-| **实现状态** | ❌ 值错误 + 未接入 Property |
-
-**现状**：运行时 `RateLimitConfigReader` 硬编码 `APP_MAX_QPS = 1000` 并做 `Math.min(③, 1000)` 截断，且从 `triggerNode.data.rateLimitConfig` 读取③（错误路径，应从 `flowConfig.rateLimitConfig` 读取）。按 §3.3.4 模型，运行态应：③存在直接用③不截断，③不存在回退①。
-
-**方案**（详见 §3.3.4 + `review-ratelimit.md`）：
-1. 设计态：`FlowVersionService` 取 max(①, ②) 校验 ③（已实现）
-2. 运行态：读取路径改为 `flowConfig.rateLimitConfig`，③存在直接用不截断，③不存在回退①
-3. 删除 `Math.min` 截断和 `APP_MAX_QPS` 硬编码
+| **实现状态** | ✅ 已实现 |
+| **实现位置（设计态）** | `FlowVersionService.validateRateLimits()` → `FlowPublishValidator.validateRateLimitAgainstAppMax()` |
+| **实现位置（运行态）** | `RateLimitConfigReader.defaultConfig()` → `ConnectorApiPropertyService.getFlowMaxQps()` → `InboundRateLimiter.applyQpsLimit()` |
+| **生效说明** | 运行态：`flowConfig.rateLimitConfig.maxQps`（③）存在直接用，不截断；③不存在回退 Lookup `Flow.Max.Qps`（①）。`InboundRateLimiter` 通过 Redis Lua 令牌桶实际限流。设计态：校验 ③ ≤ max(①, ②)。 |
+| **状态更新** | v2.2 验证通过：已接入 Lookup，无 Math.min 截断，ReadPath 正确 |
 
 ---
 
@@ -244,11 +227,11 @@
 | **item_code** | `Flow.Max.Concurrency` |
 | **默认值** | 1000 |
 | **按应用区分** | ✅ |
-| **实现状态** | ⚠️ 硬编码，值正确 |
-
-**现状**：`RateLimitConfigReader.APP_MAX_CONCURRENCY = 1000`，值与规格一致。同样未接入 Property。
-
-**方案**：同 #8（详见 §3.3.4）。设计态校验 ③ ≤ max(①,②)；运行态 ③存在用③不截断，③不存在回退①，不读②。
+| **实现状态** | ✅ 已实现 |
+| **实现位置（设计态）** | 同 #8，`FlowPublishValidator.validateRateLimitAgainstAppMax()` |
+| **实现位置（运行态）** | `RateLimitConfigReader.defaultConfig()` → `ConnectorApiPropertyService.getFlowMaxConcurrency()` → `InboundRateLimiter.applyConcurrencyLimit()` |
+| **生效说明** | 运行态：`rateLimitConfig.maxConcurrency`（③）存在直接用，不截断；③不存在回退 Lookup `Flow.Max.Concurrency`（①）。Redis Lua 信号量实际限流。 |
+| **状态更新** | v2.2 验证通过：已接入 Lookup，与 #8 一致 |
 
 ---
 
@@ -262,11 +245,11 @@
 | **item_code** | `Flow.Max.Cache.Ttl.Seconds` |
 | **默认值** | 1296000（15 天） |
 | **按应用区分** | ✅ |
-| **实现状态** | ⚠️ 硬编码，值正确，发布校验+运行时均已生效 |
-
-**现状**：`FlowCacheManager` 硬编码 `MAX_CACHE_TTL = 1296000` 并做 `Math.min(③, 1296000)` 截断。按 §3.3.4 模型，运行态应：③（`flowConfig.cache.ttl`）存在直接用不截断，③不存在回退①。
-
-**方案**（详见 §3.3.4）：设计态校验 ③ ≤ max(①,②)；运行态 ③存在用③不截断，③不存在回退①，删除 Math.min 截断。
+| **实现状态** | ✅ 已实现 |
+| **实现位置（运行时）** | `FlowCacheManager.writeCache()` → `ConnectorApiPropertyService.getFlowMaxCacheTtlSeconds()` |
+| **实现位置（发布时）** | `FlowPublishValidator.validateCacheConfig()` → 从 Lookup 批量读取 `Flow.Max.Cache.Ttl.Seconds` |
+| **生效说明** | 运行态：`flowConfig.cache.ttl`（③）存在直接用不截断；③不存在回退 Lookup（①）。发布时校验 TTL ∈ [1, max]。 |
+| **状态更新** | v2.2 验证通过：已接入 Lookup，无 Math.min 截断，回退逻辑正确 |
 
 ---
 
@@ -280,11 +263,9 @@
 | **item_code** | `Flow.Max.Parallel.Branches` |
 | **默认值** | 8 |
 | **按应用区分** | ✅ |
-| **实现状态** | ⚠️ 硬编码，值正确，发布校验已生效 |
-
-**现状**：`MAX_PARALLEL_BRANCHES = 8`。`FlowPublishValidator.validateOrchestrationConfig()` 发布时校验。前端有独立默认值 3。
-
-**方案**：新增 `getFlowMaxParallelBranches(appId)`，替换硬编码。前端也需从后端接口读取此值。
+| **实现状态** | ✅ 已实现 |
+| **实现位置** | `FlowPublishValidator.validateParallelBranches()` → 从 Lookup 批量读取，fallback `MAX_PARALLEL_BRANCHES = 8` |
+| **状态更新** | v2.2 验证通过：已接入 Lookup |
 
 ---
 
@@ -298,13 +279,10 @@
 | **item_code** | `Flow.Max.Serial.Connector.Nodes` |
 | **默认值** | 3 |
 | **按应用区分** | ✅ |
-| **实现状态** | ❌ 未实现 |
-
-**说明**：当 flowMode 为 `serial`（串行编排）时，限制连接流中连接器节点的最大数量。该配置在发布时校验（FR-026 子项 j），超出上限则禁止提交。
-
-**方案**：
-1. `FlowPublishValidator.validateOrchestrationConfig()` 中增加校验：flowMode=serial 时，统计连接器节点数量，超出上限则拒绝发布
-2. 上限值从 Lookup 批量读取 `Flow.Max.Serial.Connector.Nodes`，未配置时 fallback 3
+| **实现状态** | ✅ 已实现 |
+| **实现位置** | `FlowPublishValidator.validateSerialMode()` → 从 Lookup 批量读取 `Flow.Max.Serial.Connector.Nodes`，fallback 3 |
+| **生效说明** | flowMode=serial 时，统计连接器节点数量，超出上限则拒绝发布。 |
+| **状态更新** | v2.2 验证通过：已实现 |
 
 ---
 
@@ -318,11 +296,9 @@
 | **item_code** | `Script.Max.Length.Chars` |
 | **默认值** | 10000 |
 | **按应用区分** | ✅ |
-| **实现状态** | ⚠️ 硬编码，值正确，发布校验已生效 |
-
-**现状**：`MAX_SCRIPT_SOURCE_LENGTH = 10000`。`FlowPublishValidator.validateOrchestrationConfig()` 发布时校验。
-
-**方案**：新增 `getScriptMaxLengthChars(appId)`，替换硬编码。
+| **实现状态** | ✅ 已实现 |
+| **实现位置** | `FlowPublishValidator.validateScriptNodes()` → 从 Lookup 批量读取 `Script.Max.Length.Chars`，fallback `MAX_SCRIPT_SOURCE_LENGTH = 10000` |
+| **状态更新** | v2.2 验证通过：已接入 Lookup |
 
 ---
 
@@ -336,14 +312,11 @@
 | **item_code** | `Script.Max.Timeout.Seconds` |
 | **默认值** | 5 |
 | **按应用区分** | ✅ |
-| **实现状态** | ❌ 发布校验缺失 |
-
-**现状**：`MAX_SCRIPT_TIMEOUT_SECONDS = 30` 常量存在，`DEFAULT_SCRIPT_TIMEOUT_SECONDS = 5` 也存在，但 `FlowPublishValidator` **未校验脚本节点 timeout**。仅校验了脚本语法和源码长度。
-
-**方案**：
-1. 新增 `getScriptMaxTimeoutSeconds(appId)`，默认 5
-2. `FlowPublishValidator` 增加脚本节点超时校验：每个脚本节点 `timeout ≤ maxTimeoutSeconds`
-3. 用户未填 timeout 时默认取 `DEFAULT_SCRIPT_TIMEOUT_SECONDS`
+| **实现状态** | ✅ 已实现 |
+| **实现位置（设计态）** | `FlowPublishValidator.validateScriptNodes()` → 从 Lookup 批量读取 `Script.Max.Timeout.Seconds`，fallback `MAX_SCRIPT_TIMEOUT_SECONDS = 30` |
+| **实现位置（运行态）** | `ScriptNodeExecutor` → `ConnectorApiPropertyService.getScriptMaxTimeoutSeconds()` |
+| **生效说明** | 运行态：`data.timeoutMs`（③）存在直接用；③不存在回退 Lookup `Script.Max.Timeout.Seconds`（①）。设计态校验 ③ ≤ max。 |
+| **状态更新** | v2.2 验证通过：设计态+运行态均已接入 Lookup |
 
 
 
@@ -361,15 +334,10 @@
 | **item_code** | `Log.Collection.Enabled` |
 | **默认值** | true |
 | **按应用区分** | ✅ |
-| **实现状态** | ❌ 完全未实现 |
-
-**现状**：无任何代码。运行时始终写入节点日志，无条件判断。
-
-**方案**：
-1. 新增 `isLogCollectionEnabled(appId)`，默认 true
-2. `ExecutionStepService` 写入节点日志前判断：`false` 时跳过写入，运行记录仅保留基础信息
-3. 历史已写入日志保留不变，不受开关影响
-4. 开关切换记录操作日志
+| **实现状态** | ✅ 已实现 |
+| **实现位置** | `FlowInvokeService.invokeFlow()` → `ConnectorApiPropertyService.isLogCollectionEnabled()` → 全流程门控 |
+| **生效说明** | `false` 时跳过：`initExecutionRecord()`（运行记录创建）、`persistStepLogs()`（步骤日志写入）、`finalizeExecutionRecord()`（记录终态更新）。`ExecutionStepService.logStep()` / `logStepsBatch()` 同样受控。 |
+| **状态更新** | v2.2 验证通过：已实现全流程门控 |
 
 ---
 
@@ -383,15 +351,10 @@
 | **item_code** | `appId` |
 | **默认值** | —（空白 = 全部禁止） |
 | **按应用区分** | ❌ |
-| **实现状态** | ⚠️ MVP 实现，未接入 Lookup |
-
-**现状**：`AppWhitelistService` 从 Spring 属性 `${cp.app-whitelist:}` 读取逗号分隔的应用 ID 列表，空白 = 全部放行（与规格"空白=全部禁止"相反）。`AppWhitelistInterceptor` 拦截 `/service/open/v2/connectors/**` 和 `/service/open/v2/flows/**`，读取 `X-App-Id` 请求头校验。`LookupWhitelistMapper` 基础设施已就绪（联查 `classify_t` + `item_t`），但仅用于 `APP_UI_WHITELIST` 场景，未接入 `app_whitelist`。
-
-**方案**：
-1. `AppWhitelistService` 改为调用 `LookupWhitelistMapper.selectItemValuesByClassifyCode("Connector.Platform.AppWhitelist")` 获取白名单
-2. 空白名单时行为改为**全部拒绝**（对齐规格）
-3. 增加 Caffeine 本地缓存（TTL 5min），减少 DB 查询
-4. 保留 Spring 属性作为 fallback（market-server 不可用时降级）
+| **实现状态** | ✅ 已实现 |
+| **实现位置** | `AppWhitelistInterceptor.preHandle()` → `AppWhitelistService.isWhitelisted(appId)` → `LookupWhitelistMapper.selectItemValuesByClassifyCode("Connector.Platform.AppWhitelist")` |
+| **生效说明** | 拦截 `/service/open/v2/connectors/**`、`/service/open/v2/flows/**`、`/service/open/v2/executions/**`，从 `X-App-Id` Header 取 appId，不在白名单 → 403。空白名单 = 全部拒绝（secure default）。 |
+| **状态更新** | v2.2 验证通过：已接入 Lookup，secure default 行为正确 |
 
 ---
 
@@ -717,6 +680,93 @@ market-server 无需改动。`CacheServiceV2.clearLookUpItemCache(path, classify
 | P2 | Property 数据迁移脚本 | openplatform_property_t → openplatform_lookup_*_t |
 | P3 | openplatform_property_t 清理 | 确认迁移完成后，清理连接器平台相关 Property 数据 |
 
+## 4 配置生效接口矩阵
+
+以下按接口维度列出每项配置在哪些 API 的什么阶段生效。配置号对应 §1 配置清单。
+
+### 4.1 管理面 — 设计态校验
+
+#### 4.1.1 创建 / 复制实体 → 版本
+
+| 接口 | 方法 | 路径 | 生效配置 | 校验逻辑 |
+|------|------|------|---------|----------|
+| 创建连接器版本 | POST | `/service/open/v2/connectors/{id}/versions` | #1 连接器版本数量上限 | 统计已有版本数，超限返回 422 |
+| 复制连接器版本 | POST | `.../versions/{versionId}/copy` | #1 连接器版本数量上限 | 同上 |
+| 创建连接流版本 | POST | `/service/open/v2/flows/{flowId}/versions` | #4 连接流版本数量上限 | 统计已有版本数，超限返回 422 |
+| 复制连接流版本 | POST | `.../versions/{versionId}/copy` | #4 连接流版本数量上限 | 同上 |
+
+#### 4.1.2 发布 → 连接器版本
+
+| 接口 | 方法 | 路径 | 生效配置 | 校验逻辑 |
+|------|------|------|---------|----------|
+| 发布连接器版本 | POST | `/service/open/v2/connectors/versions/{versionId}/publish` | #2 URL 正则规则 | 正则匹配 connector URL，失败返回 422 |
+| — | — | — | #3 配置 JSON 长度上限 | UTF-8 字节数 ≤ max，超限返回 422 |
+
+#### 4.1.3 发布 → 连接流版本
+
+| 接口 | 方法 | 路径 | 生效配置 | 校验逻辑 |
+|------|------|------|---------|----------|
+| 发布连接流版本 | POST | `/service/open/v2/flows/versions/{versionId}/publish` | #6 连接器节点超时上限 | 节点 data.timeoutMs ≤ 应用上限 |
+| — | — | — | #7 连接流配置 JSON 长度上限 | orchestration JSON 字节数 ≤ max |
+| — | — | — | #8 连接流最大 QPS | 流级 QPS ≤ 应用上限 |
+| — | — | — | #9 连接流最大并发 | 流级并发 ≤ 应用上限 |
+| — | — | — | #10 连接流缓存 TTL 上限 | TTL ∈ [min, max] |
+| — | — | — | #11 连接流并行分支上限 | 并行分支数 ≤ max |
+| — | — | — | #12 串行编排连接器节点数量上限 | serial 模式下 connector 节点数 ≤ max |
+| — | — | — | #13 脚本源码长度上限 | 每段脚本 source 长度 ≤ max |
+| — | — | — | #14 脚本超时范围 | 脚本节点 data.timeout ≤ 上限 |
+
+#### 4.1.4 HTTP 拦截器 — 全局准入
+
+| 拦截范围 | 路径模式 | 生效配置 | 校验逻辑 |
+|---------|---------|---------|----------|
+| 连接器/连接流/运行记录所有管理面接口 | `/service/open/v2/connectors/**`<br>`/service/open/v2/flows/**`<br>`/service/open/v2/executions/**` | #16 连接器平台开放应用范围清单 | 从 `X-App-Id` Header 取 appId，不在白名单 → 403 |
+
+### 4.2 执行面 — 运行态实施
+
+#### 4.2.1 调用连接流 (invoke)
+
+| 接口 | 方法 | 路径 | 生效配置 | 阶段 | 实施逻辑 |
+|------|------|------|---------|------|---------|
+| 调用连接流 | POST | `/api/v1/flows/{flowId}/invoke` | #5 运行记录条数上限 | 执行完成后 | 写入新记录后 FIFO 删除最早超限记录 |
+| — | — | — | #6 连接器节点超时上限 | 节点执行中 | `node.timeoutMs` 存在用节点值；不存在回退该上限 |
+| — | — | — | #8 连接流最大 QPS | 流入口 | Redis Lua 令牌桶 QPS 限流 |
+| — | — | — | #9 连接流最大并发 | 流入口 | Redis Lua 信号量并发限流 |
+| — | — | — | #10 连接流缓存 TTL 上限 | 缓存写入 | 流级未配 cacheTtl 时回退此上限 |
+| — | — | — | #14 脚本超时范围 | 脚本执行中 | `node.timeoutMs` 存在用节点值；不存在回退该上限 |
+| — | — | — | #15 日志采集开关 | 全流程 | `false` 时跳过运行记录创建、步骤日志写入、记录终态更新 |
+
+#### 4.2.2 调试连接流 (debug)
+
+| 接口 | 方法 | 路径 | 生效配置 | 与 invoke 差异 |
+|------|------|------|---------|---------------|
+| 调试连接流 | POST | `/api/v1/flows/{flowId}/versions/{versionId}/debug` | #6, #8, #9, #14 | 不包含 #5（不写运行记录）、#10（不走缓存，`FlowCacheManager` 仅在 invoke 路径调用）、#15（不写执行日志）；走 `FlowVersionDebugService.executeTestRun()` 独立路径 |
+
+> **说明**：debug 与 invoke 的执行管线（DAG 调度/节点执行）共享同一套 executor，因此 #6, #8, #9, #14 两路径同时生效。但 debug 不产生持久化运行记录（#5、#15），也不经过缓存读写（#10），这些仅对 invoke 生效。
+
+### 4.3 汇总速查表
+
+| 配置号 | 配置项 | 生效接口 | 阶段 |
+|:---:|------|------|------|
+| #1 | 连接器版本数量上限 | 创建/复制连接器版本 | 设计态 |
+| #2 | URL 正则规则 | 发布连接器版本 | 设计态 |
+| #3 | 配置 JSON 长度上限 | 发布连接器版本 | 设计态 |
+| #4 | 连接流版本数量上限 | 创建/复制连接流版本 | 设计态 |
+| #5 | 运行记录条数上限 | invoke | 运行态 |
+| #6 | 连接器节点超时上限 | 发布 + invoke + debug | 设计态 + 运行态 |
+| #7 | 连接流配置 JSON 长度上限 | 发布连接流版本 | 设计态 |
+| #8 | 连接流最大 QPS | 发布 + invoke + debug | 设计态 + 运行态 |
+| #9 | 连接流最大并发 | 发布 + invoke + debug | 设计态 + 运行态 |
+| #10 | 连接流缓存 TTL 上限 | 发布 + invoke | 设计态 + 运行态（debug 不走缓存） |
+| #11 | 连接流并行分支上限 | 发布连接流版本 | 设计态 |
+| #12 | 串行编排连接器节点上限 | 发布连接流版本 | 设计态 |
+| #13 | 脚本源码长度上限 | 发布连接流版本 | 设计态 |
+| #14 | 脚本超时范围 | 发布 + invoke + debug | 设计态 + 运行态 |
+| #15 | 日志采集开关 | invoke | 运行态 |
+| #16 | 开放应用范围清单 | `/service/open/v2/connectors/**`<br>`/service/open/v2/flows/**`<br>`/service/open/v2/executions/**` | 设计态（HTTP 拦截器） |
+
+> 💡 **#8 / #9 运行态触发条件**：连接器平台的 `/api/v1/flows/{flowId}/invoke` 接口外层已有 **Nginx 全局限流**（WeCodeSite 页面用户共用，阈值很低）。平台侧 Lookup 配置 `Flow.Max.Qps` / `Flow.Max.Concurrency` 仅设定**上限天花板**，运行态实际生效的是用户自配的 `flowConfig.rateLimitConfig.{maxQps, maxConcurrency}`。因此 #8 / #9 的平台上限只有在该用户自配限流值**低于** Nginx 外层限流时才会实际触发——即用户的限制比 Nginx 全局限制更严格。
+
 ## 附录 A：平台配置能力
 
 ### A.1 Spring 配置文件
@@ -975,7 +1025,8 @@ openplatform_property_t
 | v1.1 | 2026-06-26 | 重构目录结构：拆为配置清单（§1）+ 配置详情（§2）+ 附录：平台配置能力（配置文件/Lookup/Property） | SDDU |
 | v2.0 | 2026-06-29 | §3 Lookup 化优化方案：将 15 项配置从 Property 迁移到 Lookup 批量读取，查询次数从 16 次降至 2 次；命名统一 PascalCase.点号（path=CEC.Open, classify_code=Connector.Platform.Config 等） | SDDU |
 | v2.1 | 2026-06-30 | 统一命名：§2/§2.5 的 Property 残留命名全部对齐 §1 Lookup 命名（path=CEC.Open, classify_code/item_code=PascalCase）；修正默认值（#3/#7=0, #14=5）；补充遗漏的 #12（串行编排节点上限）；删除已废弃的 §2.6 Property 化实施路线 | SDDU |
+| v2.2 | 2026-07-08 | §4 配置生效接口矩阵；§2 全量实现状态审计验证（16 项均已接入 Lookup，更新#1~#16标注+概况+方案为实际代码位置）；修订文档说明 | SDDU |
 
 ---
 
-*最后更新: 2026-06-30 | 基于 spec.md v3.0 + plan.md v3.0*
+*最后更新: 2026-07-08 | 基于 spec.md v3.0 + plan.md v3.0*

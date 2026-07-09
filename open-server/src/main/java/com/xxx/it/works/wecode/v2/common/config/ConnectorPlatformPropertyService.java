@@ -116,77 +116,9 @@ public class ConnectorPlatformPropertyService {
                 ConnectorPlatformConstants.MAX_VERSION_COUNT);
     }
 
-    // ================================================================
-    // 按应用配置
-    // ================================================================
-
     public int getConnectorConfigMaxBytes(String appId) {
         return getInt(loadConfigBundle(appId),
                 ConnectorPlatformConstants.ITEM_CONNECTOR_CONFIG_MAX_BYTES, 0);
-    }
-
-    public int getMaxExecutionRecordsPerFlow(String appId) {
-        return getInt(loadConfigBundle(appId),
-                ConnectorPlatformConstants.ITEM_MAX_EXECUTION_RECORDS_PER_FLOW,
-                ConnectorPlatformConstants.DEFAULT_EXECUTION_RECORD_LIMIT);
-    }
-
-    public int getNodeMaxTimeoutSeconds(String appId) {
-        return getInt(loadConfigBundle(appId),
-                ConnectorPlatformConstants.ITEM_NODE_MAX_TIMEOUT_SECONDS,
-                ConnectorPlatformConstants.DEFAULT_TIMEOUT_SECONDS);
-    }
-
-    public int getFlowConfigMaxBytes(String appId) {
-        return getInt(loadConfigBundle(appId),
-                ConnectorPlatformConstants.ITEM_FLOW_CONFIG_MAX_BYTES, 0);
-    }
-
-    public int getFlowMaxQps(String appId) {
-        return getInt(loadConfigBundle(appId),
-                ConnectorPlatformConstants.ITEM_FLOW_MAX_QPS,
-                ConnectorPlatformConstants.DEFAULT_QPS_LIMIT);
-    }
-
-    public int getFlowMaxConcurrency(String appId) {
-        return getInt(loadConfigBundle(appId),
-                ConnectorPlatformConstants.ITEM_FLOW_MAX_CONCURRENCY,
-                ConnectorPlatformConstants.DEFAULT_CONCURRENCY_LIMIT);
-    }
-
-    public int getFlowMaxCacheTtlSeconds(String appId) {
-        return getInt(loadConfigBundle(appId),
-                ConnectorPlatformConstants.ITEM_FLOW_MAX_CACHE_TTL_SECONDS,
-                ConnectorPlatformConstants.MAX_CACHE_TTL_SECONDS);
-    }
-
-    public int getFlowMaxParallelBranches(String appId) {
-        return getInt(loadConfigBundle(appId),
-                ConnectorPlatformConstants.ITEM_FLOW_MAX_PARALLEL_BRANCHES,
-                ConnectorPlatformConstants.MAX_PARALLEL_BRANCHES);
-    }
-
-    /** @since v2.0 串行编排连接器节点数量上限 */
-    public int getFlowMaxSerialConnectorNodes(String appId) {
-        return getInt(loadConfigBundle(appId),
-                ConnectorPlatformConstants.ITEM_FLOW_MAX_SERIAL_CONNECTOR_NODES, 3);
-    }
-
-    public int getScriptMaxLengthChars(String appId) {
-        return getInt(loadConfigBundle(appId),
-                ConnectorPlatformConstants.ITEM_SCRIPT_MAX_LENGTH_CHARS,
-                ConnectorPlatformConstants.MAX_SCRIPT_SOURCE_LENGTH);
-    }
-
-    public int getScriptMaxTimeoutSeconds(String appId) {
-        return getInt(loadConfigBundle(appId),
-                ConnectorPlatformConstants.ITEM_SCRIPT_MAX_TIMEOUT_SECONDS,
-                ConnectorPlatformConstants.MAX_SCRIPT_TIMEOUT_SECONDS);
-    }
-
-    public boolean isLogCollectionEnabled(String appId) {
-        return getBoolean(loadConfigBundle(appId),
-                ConnectorPlatformConstants.ITEM_LOG_COLLECTION_ENABLED, true);
     }
 
     // ================================================================
@@ -202,11 +134,6 @@ public class ConnectorPlatformPropertyService {
         return parseIntOrDefault(value, defaultVal);
     }
 
-    private boolean getBoolean(Map<String, String> config, String itemCode, boolean defaultVal) {
-        String value = config.get(itemCode);
-        return parseBooleanOrDefault(value, defaultVal);
-    }
-
     private int parseIntOrDefault(String value, int defaultVal) {
         if (value == null || value.isEmpty()) {
             return defaultVal;
@@ -216,13 +143,7 @@ public class ConnectorPlatformPropertyService {
         } catch (NumberFormatException e) {
             log.warn("Invalid int value '{}', using default {}", value, defaultVal);
             return defaultVal;
-        }
+         }
     }
 
-    private boolean parseBooleanOrDefault(String value, boolean defaultVal) {
-        if (value == null || value.isEmpty()) {
-            return defaultVal;
-        }
-        return "true".equalsIgnoreCase(value.trim()) || "1".equals(value.trim());
-    }
 }

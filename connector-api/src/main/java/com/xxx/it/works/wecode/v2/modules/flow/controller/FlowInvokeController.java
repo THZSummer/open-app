@@ -96,7 +96,7 @@ public class FlowInvokeController {
                     response.getPlatformHeaders().forEach(headers::add);
                     // 再放用户自定义头 (不与平台 X- 头冲突)
                     response.getUserHeaders().forEach((k, v) -> {
-                        if (!k.startsWith("X-Flow-") && !k.startsWith("X-Execution-")
+                        if (!k.startsWith("X-Flow-Id") && !k.startsWith("X-Execution-")
                                 && !k.startsWith("X-Status") && !k.startsWith("X-Duration-")
                                 && !k.startsWith("X-Cache-") && !k.startsWith("X-Code")
                                 && !k.startsWith("X-Message-")) {

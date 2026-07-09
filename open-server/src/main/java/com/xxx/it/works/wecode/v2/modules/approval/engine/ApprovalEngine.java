@@ -4,8 +4,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.common.exception.BusinessException;
 import com.xxx.it.works.wecode.v2.common.id.IdGeneratorStrategy;
-import com.xxx.it.works.wecode.v2.modules.api.entity.Api;
-import com.xxx.it.works.wecode.v2.modules.api.mapper.ApiMapper;
 import com.xxx.it.works.wecode.v2.modules.approval.dto.ApprovalNodeDto;
 import com.xxx.it.works.wecode.v2.modules.approvalflow.entity.ApprovalFlow;
 import com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalLog;
@@ -13,20 +11,6 @@ import com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalRecord;
 import com.xxx.it.works.wecode.v2.modules.approvalflow.mapper.ApprovalFlowMapper;
 import com.xxx.it.works.wecode.v2.modules.approval.mapper.ApprovalLogMapper;
 import com.xxx.it.works.wecode.v2.modules.approval.mapper.ApprovalRecordMapper;
-import com.xxx.it.works.wecode.v2.modules.callback.entity.Callback;
-import com.xxx.it.works.wecode.v2.modules.callback.mapper.CallbackMapper;
-import com.xxx.it.works.wecode.v2.modules.event.entity.Event;
-import com.xxx.it.works.wecode.v2.modules.event.entity.Permission;  // ✅ Permission 在 event 模块
-import com.xxx.it.works.wecode.v2.modules.event.mapper.EventMapper;
-import com.xxx.it.works.wecode.v2.modules.event.mapper.PermissionMapper;  // ✅ PermissionMapper 在 event 模块
-import com.xxx.it.works.wecode.v2.modules.permission.entity.Subscription;
-import com.xxx.it.works.wecode.v2.modules.permission.mapper.SubscriptionMapper;
-import com.xxx.it.works.wecode.v2.modules.version.entity.AppVersion;
-import com.xxx.it.works.wecode.v2.modules.version.enums.VersionStatusEnum;
-import com.xxx.it.works.wecode.v2.modules.version.mapper.AppVersionMapper;
-import com.xxx.it.works.wecode.v2.modules.flowversion.entity.FlowVersion;
-import com.xxx.it.works.wecode.v2.modules.flowversion.mapper.OpFlowVersionMapper;
-import com.xxx.it.works.wecode.v2.common.enums.FlowVersionStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -71,17 +55,9 @@ public class ApprovalEngine {
     private final ApprovalFlowMapper flowMapper;
     private final ApprovalRecordMapper recordMapper;
     private final ApprovalLogMapper logMapper;
-    private final SubscriptionMapper subscriptionMapper;
-    private final PermissionMapper permissionMapper;
     private final IdGeneratorStrategy idGenerator;
     private final ObjectMapper objectMapper;
-
-    // 资源 Mapper
-    private final ApiMapper apiMapper;
-    private final EventMapper eventMapper;
-    private final CallbackMapper callbackMapper;
-    private final AppVersionMapper appVersionMapper;
-    private final OpFlowVersionMapper flowVersionMapper;
+    private final List<ApprovalBusinessHandler> businessHandlers;
 
     /**
      * 审批动作枚举
@@ -164,193 +140,83 @@ public class ApprovalEngine {
         List<ApprovalNodeDto> combinedNodes = new ArrayList<>();
         int order = 1;
 
-        // ✅ 根据 businessType 判断审批级别
-        boolean isRegisterApproval = businessType.endsWith("_register");
-        boolean isPermissionApply = businessType.endsWith("_permission_apply");
+        String sceneCode = getSceneCodeByBusinessType(businessType);
 
-        if (isRegisterApproval) {
-
-            // ==================== 资源注册审批：两级审批 ====================
-            log.info("Resource registration approval: businessType={}, two-level approval (scene+global)", businessType);
-
-            // 第一级：场景审批节点
-            List<ApprovalNodeDto> sceneNodes = getSceneApprovalNodes(businessType);
-            for (ApprovalNodeDto node : sceneNodes) {
+        // ========== 审批优先级（范围从窄到宽） ==========
+        // ⓪ 资源审批（通用槽位，默认不实现；各场景按需扩展）
+        List<ApprovalNodeDto> resourceNodes = getResourceApprovalNodes(businessType, permissionId);
+        for (ApprovalNodeDto node : resourceNodes) {
+            node.setOrder(order++);
+            node.setLevel(Level.RESOURCE);
+            combinedNodes.add(node);
+        }
+        // ① 单应用·单场景
+        if (appId != null) {
+            for (ApprovalNodeDto node : loadFlowNodes(sceneCode, appId)) {
                 node.setOrder(order++);
                 node.setLevel(Level.SCENE);
                 combinedNodes.add(node);
             }
-            log.debug("Scene approval nodes count: {}", sceneNodes.size());
-
-            // 第二级：全局审批节点
-            List<ApprovalNodeDto> globalNodes = getGlobalApprovalNodes();
-            for (ApprovalNodeDto node : globalNodes) {
-                node.setOrder(order++);
-                node.setLevel(Level.GLOBAL);
-                combinedNodes.add(node);
-            }
-            log.debug("Global approval nodes count: {}", globalNodes.size());
-
-        } else if (isPermissionApply) {
-
-            // ==================== 权限申请审批：三级审批 ====================
-            log.info("Permission application approval: businessType={}, three-level approval (resource+scene+global)", businessType);
-
-            // 第一级：资源审批节点（从 permission_t.resource_nodes 读取）
-            List<ApprovalNodeDto> resourceNodes = getResourceApprovalNodes(permissionId);
-            for (ApprovalNodeDto node : resourceNodes) {
-                node.setOrder(order++);
-                node.setLevel(Level.RESOURCE);
-                combinedNodes.add(node);
-            }
-            log.debug("Resource approval nodes count: {}", resourceNodes.size());
-
-            // 第二级：场景审批节点
-            List<ApprovalNodeDto> sceneNodes = getSceneApprovalNodes(businessType);
-            for (ApprovalNodeDto node : sceneNodes) {
-                node.setOrder(order++);
-                node.setLevel(Level.SCENE);
-                combinedNodes.add(node);
-            }
-            log.debug("Scene approval nodes count: {}", sceneNodes.size());
-
-            // 第三级：全局审批节点
-            List<ApprovalNodeDto> globalNodes = getGlobalApprovalNodes();
-            for (ApprovalNodeDto node : globalNodes) {
-                node.setOrder(order++);
-                node.setLevel(Level.GLOBAL);
-                combinedNodes.add(node);
-            }
-            log.debug("Global approval nodes count: {}", globalNodes.size());
-
-        } else {
-            log.warn("Unknown business type: {}, using default two-level approval (scene+global)", businessType);
-
-            // 默认：场景审批 + 全局审批
-            List<ApprovalNodeDto> sceneNodes = getSceneApprovalNodes(businessType);
-            for (ApprovalNodeDto node : sceneNodes) {
-                node.setOrder(order++);
-                node.setLevel(Level.SCENE);
-                combinedNodes.add(node);
-            }
-
-            List<ApprovalNodeDto> globalNodes = getGlobalApprovalNodes();
-            for (ApprovalNodeDto node : globalNodes) {
+        }
+        // ② 单应用·全场景
+        if (appId != null) {
+            for (ApprovalNodeDto node : loadFlowNodes("global", appId)) {
                 node.setOrder(order++);
                 node.setLevel(Level.GLOBAL);
                 combinedNodes.add(node);
             }
         }
+        // ③ 全应用·单场景
+        for (ApprovalNodeDto node : loadFlowNodes(sceneCode, null)) {
+            node.setOrder(order++);
+            node.setLevel(Level.SCENE);
+            combinedNodes.add(node);
+        }
+        // ④ 全应用·全场景
+        for (ApprovalNodeDto node : loadFlowNodes("global", null)) {
+            node.setOrder(order++);
+            node.setLevel(Level.GLOBAL);
+            combinedNodes.add(node);
+        }
 
-        log.info("Combined approval nodes completed: businessType={}, permissionId={}, totalNodes={}, approvalLevel={}",
-                businessType, permissionId, combinedNodes.size(),
-                isRegisterApproval ? "two-level (scene+global)" : "three-level (resource+scene+global)");
+        log.info("Combined approval nodes completed: businessType={}, permissionId={}, appId={}, totalNodes={}",
+                businessType, permissionId, appId, combinedNodes.size());
 
         return combinedNodes;
     }
 
     /**
-     * 从权限表读取资源审批节点
-     *
-     * v2.8.0变更：直接从 permission_t.resource_nodes 读取，无需查询审批流程表
-     *
-     * @param permissionId 权限ID
-     * @return 资源审批节点列表
+     * 解析资源审批节点（⓪级）。
+     * 遍历已注册的 Handler，取 supports 匹配的调用 resolveResourceNodes。
      */
-    private List<ApprovalNodeDto> getResourceApprovalNodes(Long permissionId) {
-        if (permissionId == null) {
-            return Collections.emptyList();
+    private List<ApprovalNodeDto> getResourceApprovalNodes(String businessType, Long businessId) {
+        for (ApprovalBusinessHandler handler : businessHandlers) {
+            if (handler.supportedBusinessType().equals(businessType)) {
+                return handler.resolveResourceNodes(businessId);
+            }
         }
-
-        Permission permission = permissionMapper.selectById(permissionId);
-        if (permission == null) {
-            log.warn("Permission not found: permissionId={}", permissionId);
-            return Collections.emptyList();
-        }
-
-        // 检查是否需要审批
-        if (permission.getNeedApproval() == null || permission.getNeedApproval() != 1) {
-            log.debug("Permission does not require approval: permissionId={}", permissionId);
-            return Collections.emptyList();
-        }
-
-        // 从 resource_nodes 字段解析审批节点
-        String resourceNodesJson = permission.getResourceNodes();
-        if (resourceNodesJson == null || resourceNodesJson.trim().isEmpty() || "[]".equals(resourceNodesJson.trim())) {
-            log.debug("Permission approval nodes config is empty: permissionId={}", permissionId);
-            return Collections.emptyList();
-        }
-
-        List<ApprovalNodeDto> nodes = parseNodes(resourceNodesJson);
-        if (nodes == null || nodes.isEmpty()) {
-            log.debug("Permission approval nodes parse result is empty: permissionId={}", permissionId);
-            return Collections.emptyList();
-        }
-
-        return nodes;
+        return Collections.emptyList();
     }
 
     /**
-     * 从审批流程表读取场景审批节点
-     *
-     * v2.8.0变更：根据业务类型确定场景审批编码
-     *
-     * @param businessType 业务类型
-     * @return 场景审批节点列表
+     * 按 businessType 查找对应的 Handler
      */
-    private List<ApprovalNodeDto> getSceneApprovalNodes(String businessType) {
-
-        // 根据业务类型确定场景审批编码
-        String sceneCode = getSceneCodeByBusinessType(businessType);
-
-        ApprovalFlow sceneFlow = flowMapper.selectByCode(sceneCode);
-        if (sceneFlow == null) {
-            log.warn("Scene approval flow not found: code={}", sceneCode);
-            return Collections.emptyList();
+    private ApprovalBusinessHandler findHandler(String businessType) {
+        for (ApprovalBusinessHandler handler : businessHandlers) {
+            if (handler.supportedBusinessType().equals(businessType)) {
+                return handler;
+            }
         }
-
-        String nodesJson = sceneFlow.getNodes();
-        if (nodesJson == null || nodesJson.trim().isEmpty() || "[]".equals(nodesJson.trim())) {
-            log.debug("Scene approval nodes config is empty: code={}", sceneCode);
-            return Collections.emptyList();
-        }
-
-        List<ApprovalNodeDto> nodes = parseNodes(nodesJson);
-        if (nodes == null || nodes.isEmpty()) {
-            log.debug("Scene approval nodes parse result is empty: code={}", sceneCode);
-            return Collections.emptyList();
-        }
-
-        return nodes;
+        return null;
     }
 
     /**
-     * 从审批流程表读取全局审批节点
-     *
-     * v2.8.0变更：直接查询 code='global' 的审批流程
-     *
-     * @return 全局审批节点列表
+     * 按 code+appId 加载审批流模板的节点列表
      */
-    private List<ApprovalNodeDto> getGlobalApprovalNodes() {
-        ApprovalFlow globalFlow = flowMapper.selectByCode("global");
-        if (globalFlow == null) {
-            log.warn("Global approval flow not found: code=global");
-            return Collections.emptyList();
-        }
-
-        String nodesJson = globalFlow.getNodes();
-        if (nodesJson == null || nodesJson.trim().isEmpty() || "[]".equals(nodesJson.trim())) {
-            log.debug("Global approval nodes config is empty: code=global");
-            return Collections.emptyList();
-        }
-
-        List<ApprovalNodeDto> nodes = parseNodes(nodesJson);
-        if (nodes == null || nodes.isEmpty()) {
-            log.debug("Global approval nodes parse result is empty: code=global");
-            return Collections.emptyList();
-        }
-
-        return nodes;
+    private List<ApprovalNodeDto> loadFlowNodes(String code, Long appId) {
+        ApprovalFlow flow = flowMapper.selectByCodeAndAppId(code, appId);
+        if (flow == null) return Collections.emptyList();
+        return parseNodes(flow.getNodes());
     }
 
     /**
@@ -407,13 +273,8 @@ public class ApprovalEngine {
     public ApprovalRecord createApproval(String businessType, Long permissionId, Long businessId,
                                           String applicantId, String applicantName, String operator, Long appId) {
 
-        // 1. 组合三级审批节点
+        // 1. 组合审批节点
         List<ApprovalNodeDto> combinedNodes = composeApprovalNodes(businessType, permissionId, appId);
-
-        if (combinedNodes.isEmpty() && !BusinessType.OPTIONAL_APPROVER_TYPES.contains(businessType)) {
-            throw new BusinessException("400", "审批节点配置为空，无法创建审批记录",
-                    "Approval nodes configuration is empty, cannot create approval record");
-        }
 
         // 2. 序列化审批节点为 JSON 字符串
         String combinedNodesJson = serializeNodes(combinedNodes);
@@ -421,18 +282,28 @@ public class ApprovalEngine {
         // 3. 创建审批记录
         ApprovalRecord record = new ApprovalRecord();
         record.setId(idGenerator.nextId());
-        record.setCombinedNodes(combinedNodesJson);  // ✅ 直接存储组合节点
+        record.setCombinedNodes(combinedNodesJson);
         record.setBusinessType(businessType);
         record.setBusinessId(businessId);
         record.setApplicantId(applicantId);
         record.setApplicantName(applicantName);
-        record.setStatus(Status.PENDING);
-        record.setCurrentNode(0);  // 当前节点索引（从第一个节点开始）
+        record.setCurrentNode(0);
         record.setCreateTime(new Date());
         record.setLastUpdateTime(new Date());
         record.setCreateBy(operator);
         record.setLastUpdateBy(operator);
 
+        // 无审批人 → 免审通过
+        if (combinedNodes.isEmpty()) {
+            record.setStatus(Status.APPROVED);
+            record.setCompletedAt(new Date());
+            recordMapper.insert(record);
+            dispatchApproved(record);
+            log.info("No approvers configured for {}, auto-approved: recordId={}", businessType, record.getId());
+            return record;
+        }
+
+        record.setStatus(Status.PENDING);
         recordMapper.insert(record);
 
         log.info("Created approval record: id={}, businessType={}, businessId={}, nodesCount={}, applicant={}",
@@ -491,6 +362,12 @@ public class ApprovalEngine {
         // 5. 获取当前节点信息
         ApprovalNodeDto currentNode = combinedNodes.get(currentNodeIndex);
 
+        // 校验：操作人必须是当前节点的审批人
+        if (currentNode.getUserId() != null && !currentNode.getUserId().equals(operatorId)) {
+            throw new BusinessException("403", "非当前节点审批人，无法审批",
+                    "Operator is not the assigned approver for this node");
+        }
+
         // 6. ✅ 记录审批日志（含 level 字段）
         ApprovalLog approvalLog = new ApprovalLog();
         approvalLog.setId(idGenerator.nextId());
@@ -519,11 +396,8 @@ public class ApprovalEngine {
 
             recordMapper.update(record);
 
-            // 更新资源状态（资源注册场景）
-            updateResourceStatus(record, Status.APPROVED);
-
-            // 更新订阅状态（权限申请场景）
-            updateSubscriptionStatus(record, Status.APPROVED);
+            // 回调：各业务场景自行处理审批通过
+            dispatchApproved(record);
 
             log.info("Approval approved: recordId={}, operator={}, level={}",
                     recordId, operatorId, currentNode.getLevel());
@@ -578,6 +452,12 @@ public class ApprovalEngine {
         List<ApprovalNodeDto> combinedNodes = parseNodes(record.getCombinedNodes());
         ApprovalNodeDto currentNode = combinedNodes.get(record.getCurrentNode());
 
+        // 校验：操作人必须是当前节点的审批人
+        if (currentNode.getUserId() != null && !currentNode.getUserId().equals(operatorId)) {
+            throw new BusinessException("403", "非当前节点审批人，无法驳回",
+                    "Operator is not the assigned approver for this node");
+        }
+
         // 4. ✅ 记录审批日志（含 level 字段）
         ApprovalLog approvalLog = new ApprovalLog();
         approvalLog.setId(idGenerator.nextId());
@@ -603,11 +483,8 @@ public class ApprovalEngine {
 
         recordMapper.update(record);
 
-        // 更新资源状态（资源注册场景）
-        updateResourceStatus(record, Status.REJECTED);
-
-        // 更新订阅状态（权限申请场景）
-        updateSubscriptionStatus(record, Status.REJECTED);
+        // 回调：各业务场景自行处理驳回
+        dispatchRejected(record);
 
         log.info("Approval rejected: recordId={}, operator={}, comment={}, level={}",
                 recordId, operatorId, comment, currentNode.getLevel());
@@ -666,179 +543,33 @@ public class ApprovalEngine {
         cancelLog.setLastUpdateBy(operator);
         logMapper.insert(cancelLog);
 
-        // 更新资源状态（资源注册场景）
-        updateResourceStatus(record, Status.CANCELLED);
-
-        // 更新订阅状态（权限申请场景）
-        updateSubscriptionStatus(record, Status.CANCELLED);
+        // 回调：各业务场景自行处理撤回
+        dispatchCancelled(record);
 
         log.info("Approval cancelled: recordId={}", recordId);
 
         return record;
     }
 
-    // ==================== 辅助方法 ====================
+    // ==================== 回调分发 ====================
 
-    /**
-     * 更新资源状态（资源注册场景）
-     *
-     * @param record 审批记录
-     * @param status 审批状态
-     */
-    private void updateResourceStatus(ApprovalRecord record, int status) {
-        String businessType = record.getBusinessType();
-        Long businessId = record.getBusinessId();
-
-        // 审批通过，资源状态改为已发布(2)；审批拒绝/撤销，资源状态改为草稿(0)
-        int resourceStatus = (status == Status.APPROVED) ? 2 : 0;
-
-        try {
-            switch (businessType) {
-                case BusinessType.API_REGISTER:
-                    Api api = apiMapper.selectById(businessId);
-                    if (api != null) {
-                        api.setStatus(resourceStatus);
-                        api.setLastUpdateTime(new Date());
-                        api.setLastUpdateBy(record.getApplicantId());
-                        apiMapper.update(api);
-                        log.info("Updated API status: apiId={}, status={}", businessId, resourceStatus);
-                    }
-                    break;
-
-                case BusinessType.EVENT_REGISTER:
-                    Event event = eventMapper.selectById(businessId);
-                    if (event != null) {
-                        event.setStatus(resourceStatus);
-                        event.setLastUpdateTime(new Date());
-                        event.setLastUpdateBy(record.getApplicantId());
-                        eventMapper.update(event);
-                        log.info("Updated event status: eventId={}, status={}", businessId, resourceStatus);
-                    }
-                    break;
-
-                case BusinessType.CALLBACK_REGISTER:
-                    Callback callback = callbackMapper.selectById(businessId);
-                    if (callback != null) {
-                        callback.setStatus(resourceStatus);
-                        callback.setLastUpdateTime(new Date());
-                        callback.setLastUpdateBy(record.getApplicantId());
-                        callbackMapper.update(callback);
-                        log.info("Updated callback status: callbackId={}, status={}", businessId, resourceStatus);
-                    }
-                    break;
-
-                case BusinessType.APP_VERSION_PUBLISH:
-                    AppVersion version = appVersionMapper.selectById(businessId);
-                    if (version != null) {
-                        // 撤回/拒绝 → 待发布(1)，通过 → 已发布(4)
-                        int versionStatus = (status == Status.APPROVED)
-                                ? VersionStatusEnum.PUBLISHED.getCode()
-                                : VersionStatusEnum.PENDING_RELEASE.getCode();
-                        version.setStatus(versionStatus);
-                        version.setLastUpdateTime(java.time.LocalDateTime.now());
-                        version.setLastUpdateBy(record.getApplicantId());
-                        appVersionMapper.update(version);
-                        log.info("Updated version status: versionId={}, status={}", businessId, versionStatus);
-                    }
-                    break;
-
-                case BusinessType.API_PERMISSION_APPLY:
-                case BusinessType.EVENT_PERMISSION_APPLY:
-                case BusinessType.CALLBACK_PERMISSION_APPLY:
-
-                    // 权限申请场景，由 updateSubscriptionStatus 处理
-                    log.debug("Permission application scenario, not updating resource status");
-                    break;
-
-                case BusinessType.CONNECTOR_FLOW_VERSION_PUBLISH:
-                    FlowVersion flowVersion = flowVersionMapper.selectById(businessId);
-                    if (flowVersion != null) {
-                        Date now = new Date();
-                        if (status == Status.APPROVED) {
-                            // 审批通过 → 已发布
-                            flowVersion.setStatus(FlowVersionStatus.PUBLISHED.getCode());
-                            flowVersion.setPublishedTime(now);
-                            flowVersion.setPublishedBy(record.getApplicantId());
-                        } else if (status == Status.REJECTED) {
-                            // 审批驳回 → 已驳回
-                            flowVersion.setStatus(FlowVersionStatus.REJECTED.getCode());
-                        } else {
-                            // 审批撤销 → 已撤回
-                            flowVersion.setStatus(FlowVersionStatus.WITHDRAWN.getCode());
-                        }
-                        flowVersion.setLastUpdateTime(now);
-                        flowVersion.setLastUpdateBy(record.getApplicantId());
-                        flowVersionMapper.update(flowVersion);
-                        log.info("Updated FlowVersion status: versionId={}, status={}",
-                                businessId, flowVersion.getStatus());
-                    }
-                    break;
-
-                default:
-                    log.warn("Unknown business type: {}", businessType);
-            }
-        } catch (Exception e) {
-            log.error("Failed to update resource status: businessType={}, businessId={}", businessType, businessId, e);
-        }
+    private void dispatchApproved(ApprovalRecord record) {
+        ApprovalBusinessHandler handler = findHandler(record.getBusinessType());
+        if (handler != null) handler.onApproved(record);
     }
 
-    /**
-     * 更新订阅状态
-     *
-     * @param record 审批记录
-     * @param status 审批状态
-     */
-    private void updateSubscriptionStatus(ApprovalRecord record, int status) {
-
-        // 仅处理权限申请类型的审批
-        if (!BusinessType.API_PERMISSION_APPLY.equals(record.getBusinessType()) &&
-            !BusinessType.EVENT_PERMISSION_APPLY.equals(record.getBusinessType()) &&
-            !BusinessType.CALLBACK_PERMISSION_APPLY.equals(record.getBusinessType())) {
-            return;
-        }
-
-        // 查询订阅记录
-        Subscription subscription = subscriptionMapper.selectById(record.getBusinessId());
-        if (subscription == null) {
-            log.warn("Subscription record not found, cannot update status: businessId={}", record.getBusinessId());
-            return;
-        }
-
-        // 根据审批状态更新订阅状态
-        int subscriptionStatus;
-        if (status == Status.APPROVED) {
-            subscriptionStatus = 1; // 已授权
-        } else if (status == Status.REJECTED) {
-            subscriptionStatus = 2; // 已拒绝
-        } else if (status == Status.CANCELLED) {
-            subscriptionStatus = 3; // 已取消
-        } else {
-            return;
-        }
-
-        // 更新订阅状态
-        subscription.setStatus(subscriptionStatus);
-        subscription.setLastUpdateTime(new Date());
-        subscription.setLastUpdateBy(record.getApplicantId());
-
-        if (status == Status.APPROVED) {
-            subscription.setApprovedAt(new Date());
-            subscription.setApprovedBy(record.getApplicantId());
-        }
-
-        subscriptionMapper.update(subscription);
-
-        log.info("Updated subscription status: subscriptionId={}, status={}", subscription.getId(), subscriptionStatus);
+    private void dispatchRejected(ApprovalRecord record) {
+        ApprovalBusinessHandler handler = findHandler(record.getBusinessType());
+        if (handler != null) handler.onRejected(record);
     }
 
-    /**
-     * 解析审批节点配置
-     *
-     * v2.8.0变更：适配 ApprovalNodeDto 的 level 字段
-     *
-     * @param nodesJson 节点 JSON 字符串
-     * @return 节点列表
-     */
+    private void dispatchCancelled(ApprovalRecord record) {
+        ApprovalBusinessHandler handler = findHandler(record.getBusinessType());
+        if (handler != null) handler.onCancelled(record);
+    }
+
+    // ==================== JSON 辅助 ====================
+
     public List<ApprovalNodeDto> parseNodes(String nodesJson) {
         if (nodesJson == null || nodesJson.trim().isEmpty()) {
             return new ArrayList<>();
@@ -854,14 +585,6 @@ public class ApprovalEngine {
         }
     }
 
-    /**
-     * 序列化审批节点配置
-     *
-     * v2.8.0变更：适配 ApprovalNodeDto 的 level 字段
-     *
-     * @param nodes 节点列表
-     * @return JSON 字符串
-     */
     public String serializeNodes(List<ApprovalNodeDto> nodes) {
         try {
             return objectMapper.writeValueAsString(nodes);

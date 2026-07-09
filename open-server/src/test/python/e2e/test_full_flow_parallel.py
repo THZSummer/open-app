@@ -469,8 +469,8 @@ def test_full_flow_parallel():
                                 "labelCn": "结果聚合",
                                 "script": (
                                     "function main(ctx) {\n"
-                                    "  var a = ctx['" + nid_conn_a + "'].output || {};\n"
-                                    "  var b = ctx['" + nid_conn_b + "'].output || {};\n"
+                                    "  var a = (ctx['" + nid_conn_a + "'].output || {}).body || {};\n"
+                                    "  var b = (ctx['" + nid_conn_b + "'].output || {}).body || {};\n"
                                     "  var ac = (a.code != null) ? a.code : -1;\n"
                                     "  var bc = (b.code != null) ? b.code : -1;\n"
                                     "  var ae = (a.data && a.data.echo_body && a.data.echo_body.payload) ? a.data.echo_body.payload : {};\n"

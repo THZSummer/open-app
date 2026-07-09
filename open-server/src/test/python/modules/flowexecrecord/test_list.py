@@ -40,4 +40,11 @@ class TestExecutionRecordList:
         assert resp is not None
         assert resp.status_code == 200  # 不存在的 flowId 返回空列表，不是 404
 
+    @pytest.mark.L4
+    def test_list_unwhitelisted_app(self):
+        """#16 AppWhitelist: 未开通连接器平台的应用查询运行记录被拒 403"""
+        resp = api("GET", "/executions", app_id="00000000000000000000")
+        assert resp.status_code == 403
+        assert resp.json()["code"] == "403"
+
 

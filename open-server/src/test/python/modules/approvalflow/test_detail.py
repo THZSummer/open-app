@@ -5,10 +5,15 @@
 import time
 import pytest
 from conftest import api, TEST_APP_ID
+from common import db
 
 
 def _snow_id():
     return int(time.time() * 1000000) % 100000000000000000
+
+
+def _clean_by_code(code):
+    db(f"DELETE FROM openplatform_v2_approval_flow_t WHERE code = '{code}'")
 
 
 class TestApprovalFlowDetail:
@@ -28,35 +33,41 @@ class TestApprovalFlowDetail:
     def test_detail_app_id_value_matches_created(self):
         """V3: 创建含 appId 的模板后 GET 验证匹配"""
         code = f"pytest_detail_{_snow_id()}"
-        r = api("POST", "/approval-flows", {
-            "nameCn": f"详情_{code}", "nameEn": f"detail_{code}",
-            "code": code, "appId": TEST_APP_ID,
-            "nodes": [{"userId": "tester", "userName": "Test"}]
-        })
-        assert r.status_code in (200, 201), f"创建失败: HTTP {r.status_code}"
-        tid = r.json()["data"]["id"]
-        resp = api("GET", f"/approval-flows/{tid}")
-        assert resp.status_code == 200
-        d = resp.json()["data"]
-        assert "appId" in d
-        assert str(d.get("appId")) == str(TEST_APP_ID)
+        try:
+            r = api("POST", "/approval-flows", {
+                "nameCn": f"详情_{code}", "nameEn": f"detail_{code}",
+                "code": code, "appId": TEST_APP_ID,
+                "nodes": [{"userId": "tester", "userName": "Test"}]
+            })
+            assert r.status_code in (200, 201), f"创建失败: HTTP {r.status_code}"
+            tid = r.json()["data"]["id"]
+            resp = api("GET", f"/approval-flows/{tid}")
+            assert resp.status_code == 200
+            d = resp.json()["data"]
+            assert "appId" in d
+            assert str(d.get("appId")) == str(TEST_APP_ID)
+        finally:
+            _clean_by_code(code)
 
     @pytest.mark.L2
     def test_detail_global_template_app_id_null(self):
         """V3: 全局模板 appId 应为 null"""
         code = f"pytest_global_{_snow_id()}"
-        r = api("POST", "/approval-flows", {
-            "nameCn": f"全局_{code}", "nameEn": f"global_{code}",
-            "code": code,
-            "nodes": [{"userId": "tester", "userName": "Test"}]
-        })
-        assert r.status_code in (200, 201)
-        tid = r.json()["data"]["id"]
-        resp = api("GET", f"/approval-flows/{tid}")
-        assert resp.status_code == 200
-        d = resp.json()["data"]
-        assert "appId" in d
-        assert d.get("appId") is None or str(d.get("appId")) == "null"
+        try:
+            r = api("POST", "/approval-flows", {
+                "nameCn": f"全局_{code}", "nameEn": f"global_{code}",
+                "code": code,
+                "nodes": [{"userId": "tester", "userName": "Test"}]
+            })
+            assert r.status_code in (200, 201)
+            tid = r.json()["data"]["id"]
+            resp = api("GET", f"/approval-flows/{tid}")
+            assert resp.status_code == 200
+            d = resp.json()["data"]
+            assert "appId" in d
+            assert d.get("appId") is None or str(d.get("appId")) == "null"
+        finally:
+            _clean_by_code(code)
 
     @pytest.mark.L4
     def test_detail_not_found(self):
