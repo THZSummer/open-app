@@ -69,7 +69,27 @@ open-server 审批引擎支持 8 种业务类型，覆盖能力开放平台（V2
 | `global` | 328...（应用A） | 应用 A 的全部场景 |
 | `global` | NULL | 全部应用的全部场景（最宽泛） |
 
-### 2.2 叠加规则
+### 2.2 示例：连接流版本发布
+
+用户发布了应用 A 的连接流版本，审批模板配置如下：
+
+| code | appId | nodes | 来源 |
+|---|---|---|---|
+| `connector_flow_version_publish` | 328...(应用A) | [张三] | 应用 A 专属 |
+| `connector_flow_version_publish` | NULL | [李四] | 全部应用范围 |
+| `global` | NULL | [王五] | 全部场景 + 全部应用范围 |
+
+生效的审批链：
+
+```
+第1级 (scene): [张三(应用专属), 李四(全部应用范围)]
+    ↓ 两人都需审批通过
+第2级 (global): [王五(全部场景)]
+    ↓ 需审批通过
+→ 版本发布
+```
+
+### 2.3 叠加规则
 
 V2 时期 `selectByCode(code)` 仅按 code 查一个模板。V3 引入 `appId` 后，同一场景可配置应用专属和全部应用范围两条模板。
 
@@ -93,26 +113,6 @@ global 层 = selectByCodeAndAppId("global", appId)   ← 应用专属全局
 | 仅全部应用范围 | ❌ | ✅ | scene(null) → global(null) |
 | 两者叠加 | ✅ | ✅ | scene(app) + scene(null) → global(null) |
 | 两者皆空 | ❌ | ❌ | global(null)（场景层免审） |
-
-### 2.3 示例：连接流版本发布
-
-用户发布了应用 A 的连接流版本，审批模板配置如下：
-
-| code | appId | nodes | 来源 |
-|---|---|---|---|
-| `connector_flow_version_publish` | 328...(应用A) | [张三] | 应用 A 专属 |
-| `connector_flow_version_publish` | NULL | [李四] | 全部应用范围 |
-| `global` | NULL | [王五] | 全部场景 + 全部应用范围 |
-
-生效的审批链：
-
-```
-第1级 (scene): [张三(应用专属), 李四(全部应用范围)]
-    ↓ 两人都需审批通过
-第2级 (global): [王五(全部场景)]
-    ↓ 需审批通过
-→ 版本发布
-```
 
 ---
 
