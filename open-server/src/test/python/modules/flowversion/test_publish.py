@@ -248,6 +248,7 @@ class TestFlowVersionPublish:
         """仅应用专属审批流模板：发布→两级审批通过→status=5"""
         fid, fvid = draft_flow
         cid, cvid = published_connector
+        _delete_scene_flows()
         _ensure_global_flow()
         _upsert_scene_flow(INTERNAL_APP_ID, [{"userId": "admin", "userName": "AppApprover"}])
         try:
