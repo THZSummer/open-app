@@ -116,7 +116,7 @@ global 层 = selectByCodeAndAppId("global", appId)   ← 应用专属全场景
 | — | ✅ | ❌ | ✅ | ✅ | ① → ③ → ④ |
 | — | ❌ | ❌ | ✅ | ✅ | ③ → ④ |
 | — | ❌ | ❌ | ❌ | ✅ | ④ |
-| — | ❌ | ❌ | ❌ | ❌ | 空 → 400 |
+| — | ❌ | ❌ | ❌ | ❌ | 免审通过 → status=APPROVED → 触发 onApproved 回调 |
 
 > ⓪ 是审批流的固定一环，当前仅 `_permission_apply` 场景实现（从 `permission_t.resource_nodes` 读取）。其余场景未实现，`getResourceApprovalNodes()` 返回空，自然跳过。后续场景如需资源审批，自行扩展即可。
 > appId=null 时①②为 `—`（不触发查询），实际效果为 ③ → ④。
@@ -261,6 +261,7 @@ flowchart TD
 stateDiagram-v2
     [*] --> DRAFT: 创建草稿
     DRAFT --> PENDING: 提交审批<br>POST /flows/{id}/versions/{vid}/publish
+    DRAFT --> PUBLISHED: 无审批人<br>免审通过
 
     state PENDING {
         [*] --> Node0: currentNode=0
@@ -269,17 +270,17 @@ stateDiagram-v2
         Node2 --> LastNode: approve ✓
     }
 
-    PENDING --> PUBLISHED: 全部节点通过<br>→ updateResourceStatus()
+    PENDING --> PUBLISHED: 全部节点通过<br>→ dispatchApproved(record)
     PENDING --> REJECTED: 任一节点驳回<br>POST /approvals/{id}/reject
     PENDING --> WITHDRAWN: 提交人撤回<br>POST /approvals/{id}/cancel
 ```
 
 | 操作 | 发起人 | 接口 | 效果 |
 |---|---|---|---|
-| 提交 | 版本提交人 | `POST /flows/{id}/versions/{vid}/publish` | DRAFT → PENDING_APPROVAL，创建 ApprovalRecord |
-| 通过 | 当前节点审批人 | `POST /approvals/{id}/approve` | 推进 currentNode，末节点则 status=APPROVED → 回调发布 |
-| 驳回 | 当前节点审批人 | `POST /approvals/{id}/reject` | status=REJECTED → 回调标记已驳回 |
-| 撤回 | 审批发起人 | `POST /approvals/{id}/cancel` | status=CANCELLED → 回调标记已撤回 |
+| 提交 | 版本提交人 | `POST /flows/{id}/versions/{vid}/publish` | 有审批人→PENDING_APPROVAL；**无审批人→直接APPROVED+触发回调** |
+| 通过 | 当前节点审批人 | `POST /approvals/{id}/approve` | 推进 currentNode，末节点则 status=APPROVED → 回调 |
+| 驳回 | 当前节点审批人 | `POST /approvals/{id}/reject` | status=REJECTED → 回调 |
+| 撤回 | 审批发起人 | `POST /approvals/{id}/cancel` | status=CANCELLED → 回调 |
 | 催办 | 审批发起人 | `POST /approvals/{id}/urge` | 通知当前节点审批人，可重复 |
 
 ---

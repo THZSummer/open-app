@@ -273,13 +273,8 @@ public class ApprovalEngine {
     public ApprovalRecord createApproval(String businessType, Long permissionId, Long businessId,
                                           String applicantId, String applicantName, String operator, Long appId) {
 
-        // 1. 组合三级审批节点
+        // 1. 组合审批节点
         List<ApprovalNodeDto> combinedNodes = composeApprovalNodes(businessType, permissionId, appId);
-
-        if (combinedNodes.isEmpty() && !BusinessType.OPTIONAL_APPROVER_TYPES.contains(businessType)) {
-            throw new BusinessException("400", "审批节点配置为空，无法创建审批记录",
-                    "Approval nodes configuration is empty, cannot create approval record");
-        }
 
         // 2. 序列化审批节点为 JSON 字符串
         String combinedNodesJson = serializeNodes(combinedNodes);
@@ -287,18 +282,28 @@ public class ApprovalEngine {
         // 3. 创建审批记录
         ApprovalRecord record = new ApprovalRecord();
         record.setId(idGenerator.nextId());
-        record.setCombinedNodes(combinedNodesJson);  // ✅ 直接存储组合节点
+        record.setCombinedNodes(combinedNodesJson);
         record.setBusinessType(businessType);
         record.setBusinessId(businessId);
         record.setApplicantId(applicantId);
         record.setApplicantName(applicantName);
-        record.setStatus(Status.PENDING);
-        record.setCurrentNode(0);  // 当前节点索引（从第一个节点开始）
+        record.setCurrentNode(0);
         record.setCreateTime(new Date());
         record.setLastUpdateTime(new Date());
         record.setCreateBy(operator);
         record.setLastUpdateBy(operator);
 
+        // 无审批人 → 免审通过
+        if (combinedNodes.isEmpty()) {
+            record.setStatus(Status.APPROVED);
+            record.setCompletedAt(new Date());
+            recordMapper.insert(record);
+            dispatchApproved(record);
+            log.info("No approvers configured for {}, auto-approved: recordId={}", businessType, record.getId());
+            return record;
+        }
+
+        record.setStatus(Status.PENDING);
         recordMapper.insert(record);
 
         log.info("Created approval record: id={}, businessType={}, businessId={}, nodesCount={}, applicant={}",
