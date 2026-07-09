@@ -149,6 +149,34 @@ global 层 = selectByCodeAndAppId("global", appId)   ← 应用专属全场景
 
 `app_version_publish`。直接返回空列表，无论模板如何配置，均不创建审批节点。
 
+### 2.4 审批节点顺序
+
+审批链中节点按优先级从高到低排列——范围越窄越靠前：
+
+```
+审批顺序：
+  ① 单场景·单应用  scene(app)
+  ↓
+  ② 全场景·单应用  global(app)
+  ↓
+  ③ 单场景·全应用  scene(null)
+  ↓
+  ④ 全场景·全应用  global(null)
+```
+
+> 每层无匹配或无审批人时跳过，不影响后续层。`_permission_apply` 类型在①之前额外插入资源审批节点（来自 `permission_t.resource_nodes`）。
+
+对应 `composeApprovalNodes` 伪代码：
+
+```java
+if (appId != null) combinedNodes.addAll(loadFlowNodes(sceneCode, appId));   // ①
+if (appId != null) combinedNodes.addAll(loadFlowNodes("global", appId));    // ②
+combinedNodes.addAll(loadFlowNodes(sceneCode, null));                        // ③
+combinedNodes.addAll(loadFlowNodes("global", null));                         // ④
+```
+
+> 存量 6 种类型传 `appId=null`，①和②为空，实际效果为 scene(null) → global(null)，与旧行为一致。
+
 ---
 
 ## 3 审批层级路由策略

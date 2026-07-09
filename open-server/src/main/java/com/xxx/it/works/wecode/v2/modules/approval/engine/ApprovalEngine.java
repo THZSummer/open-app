@@ -164,35 +164,12 @@ public class ApprovalEngine {
         List<ApprovalNodeDto> combinedNodes = new ArrayList<>();
         int order = 1;
 
-        // ✅ 根据 businessType 判断审批级别
-        boolean isRegisterApproval = businessType.endsWith("_register");
+        String sceneCode = getSceneCodeByBusinessType(businessType);
+
+        // ✅ 根据 businessType 判断是否包含资源审批
         boolean isPermissionApply = businessType.endsWith("_permission_apply");
 
-        if (isRegisterApproval) {
-
-            // ==================== 资源注册审批：两级审批 ====================
-            log.info("Resource registration approval: businessType={}, two-level approval (scene+global)", businessType);
-
-            // 第一级：场景审批节点
-            List<ApprovalNodeDto> sceneNodes = getSceneApprovalNodes(businessType, appId);
-            for (ApprovalNodeDto node : sceneNodes) {
-                node.setOrder(order++);
-                node.setLevel(Level.SCENE);
-                combinedNodes.add(node);
-            }
-            log.debug("Scene approval nodes count: {}", sceneNodes.size());
-
-            // 第二级：全局审批节点
-            List<ApprovalNodeDto> globalNodes = getGlobalApprovalNodes(appId);
-            for (ApprovalNodeDto node : globalNodes) {
-                node.setOrder(order++);
-                node.setLevel(Level.GLOBAL);
-                combinedNodes.add(node);
-            }
-            log.debug("Global approval nodes count: {}", globalNodes.size());
-
-        } else if (isPermissionApply) {
-
+        if (isPermissionApply) {
             // ==================== 权限申请审批：三级审批 ====================
             log.info("Permission application approval: businessType={}, three-level approval (resource+scene+global)", businessType);
 
@@ -204,47 +181,40 @@ public class ApprovalEngine {
                 combinedNodes.add(node);
             }
             log.debug("Resource approval nodes count: {}", resourceNodes.size());
+        }
 
-            // 第二级：场景审批节点
-            List<ApprovalNodeDto> sceneNodes = getSceneApprovalNodes(businessType, appId);
-            for (ApprovalNodeDto node : sceneNodes) {
+        // ========== 审批优先级（范围从窄到宽） ==========
+        // ① 单场景·单应用
+        if (appId != null) {
+            for (ApprovalNodeDto node : loadFlowNodes(sceneCode, appId)) {
                 node.setOrder(order++);
                 node.setLevel(Level.SCENE);
                 combinedNodes.add(node);
             }
-            log.debug("Scene approval nodes count: {}", sceneNodes.size());
-
-            // 第三级：全局审批节点
-            List<ApprovalNodeDto> globalNodes = getGlobalApprovalNodes(appId);
-            for (ApprovalNodeDto node : globalNodes) {
-                node.setOrder(order++);
-                node.setLevel(Level.GLOBAL);
-                combinedNodes.add(node);
-            }
-            log.debug("Global approval nodes count: {}", globalNodes.size());
-
-        } else {
-            log.warn("Unknown business type: {}, using default two-level approval (scene+global)", businessType);
-
-            // 默认：场景审批 + 全局审批
-            List<ApprovalNodeDto> sceneNodes = getSceneApprovalNodes(businessType, appId);
-            for (ApprovalNodeDto node : sceneNodes) {
-                node.setOrder(order++);
-                node.setLevel(Level.SCENE);
-                combinedNodes.add(node);
-            }
-
-            List<ApprovalNodeDto> globalNodes = getGlobalApprovalNodes(appId);
-            for (ApprovalNodeDto node : globalNodes) {
+        }
+        // ② 全场景·单应用
+        if (appId != null) {
+            for (ApprovalNodeDto node : loadFlowNodes("global", appId)) {
                 node.setOrder(order++);
                 node.setLevel(Level.GLOBAL);
                 combinedNodes.add(node);
             }
         }
+        // ③ 单场景·全应用
+        for (ApprovalNodeDto node : loadFlowNodes(sceneCode, null)) {
+            node.setOrder(order++);
+            node.setLevel(Level.SCENE);
+            combinedNodes.add(node);
+        }
+        // ④ 全场景·全应用
+        for (ApprovalNodeDto node : loadFlowNodes("global", null)) {
+            node.setOrder(order++);
+            node.setLevel(Level.GLOBAL);
+            combinedNodes.add(node);
+        }
 
-        log.info("Combined approval nodes completed: businessType={}, permissionId={}, totalNodes={}, approvalLevel={}",
-                businessType, permissionId, combinedNodes.size(),
-                isRegisterApproval ? "two-level (scene+global)" : "three-level (resource+scene+global)");
+        log.info("Combined approval nodes completed: businessType={}, permissionId={}, appId={}, totalNodes={}",
+                businessType, permissionId, appId, combinedNodes.size());
 
         return combinedNodes;
     }
@@ -287,38 +257,6 @@ public class ApprovalEngine {
             return Collections.emptyList();
         }
 
-        return nodes;
-    }
-
-    /**
-     * 从审批流程表读取场景审批节点
-     *
-     * <p>叠加查询：同时查应用专属和全部应用范围，有节点的都加入，合并为同级审批节点列表。</p>
-     *
-     * @param businessType 业务类型
-     * @param appId        应用ID
-     * @return 场景审批节点列表
-     */
-    private List<ApprovalNodeDto> getSceneApprovalNodes(String businessType, Long appId) {
-        String sceneCode = getSceneCodeByBusinessType(businessType);
-        List<ApprovalNodeDto> nodes = new ArrayList<>();
-        if (appId != null) nodes.addAll(loadFlowNodes(sceneCode, appId));
-        nodes.addAll(loadFlowNodes(sceneCode, null));
-        return nodes;
-    }
-
-    /**
-     * 从审批流程表读取全场景审批节点
-     *
-     * <p>叠加查询：同时查应用专属和全部应用范围，有节点的都加入。</p>
-     *
-     * @param appId 应用ID
-     * @return 全场景审批节点列表
-     */
-    private List<ApprovalNodeDto> getGlobalApprovalNodes(Long appId) {
-        List<ApprovalNodeDto> nodes = new ArrayList<>();
-        if (appId != null) nodes.addAll(loadFlowNodes("global", appId));
-        nodes.addAll(loadFlowNodes("global", null));
         return nodes;
     }
 
