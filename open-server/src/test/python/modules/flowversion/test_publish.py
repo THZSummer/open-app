@@ -293,9 +293,10 @@ class TestFlowVersionPublish:
             assert aid, "should create approval record (no TooManyResultsException)"
             r = api("GET", f"/approvals/{aid}").json()
             nodes_json = str(r.get("data", {}))
-            assert "AppSpecific" in nodes_json, f"should pick app-specific template: {nodes_json}"
-            assert "GlobalFallback" not in nodes_json, f"should NOT pick global fallback: {nodes_json}"
-            api("POST", f"/approvals/{aid}/approve", {"comment": "L1 scene"})
+            assert "AppSpecific" in nodes_json, f"should contain app-specific nodes: {nodes_json}"
+            assert "GlobalFallback" in nodes_json, f"should also contain platform-wide fallback nodes (overlay): {nodes_json}"
+            api("POST", f"/approvals/{aid}/approve", {"comment": "L1 scene(app)"})
+            api("POST", f"/approvals/{aid}/approve", {"comment": "L1 scene(null)"})
             api("POST", f"/approvals/{aid}/approve", {"comment": "L2 global"})
             detail = api("GET", f"/flows/{fid}/versions/{fvid}").json()["data"]
             assert detail.get("status") in (5, "5"), f"unexpected status: {detail.get('status')}"

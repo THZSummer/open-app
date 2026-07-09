@@ -293,76 +293,42 @@ public class ApprovalEngine {
     /**
      * 从审批流程表读取场景审批节点
      *
-     * v2.8.0变更：根据业务类型确定场景审批编码
+     * <p>叠加查询：同时查应用专属和全部应用范围，有节点的都加入，合并为同级审批节点列表。</p>
      *
      * @param businessType 业务类型
+     * @param appId        应用ID
      * @return 场景审批节点列表
      */
     private List<ApprovalNodeDto> getSceneApprovalNodes(String businessType, Long appId) {
-
-        // 根据业务类型确定场景审批编码
         String sceneCode = getSceneCodeByBusinessType(businessType);
-
-        ApprovalFlow sceneFlow = null;
-        if (appId != null) {
-            sceneFlow = flowMapper.selectByCodeAndAppId(sceneCode, appId);
-        }
-        if (sceneFlow == null) {
-            sceneFlow = flowMapper.selectByCodeAndAppId(sceneCode, null);
-        }
-        if (sceneFlow == null) {
-            log.warn("Scene approval flow not found: code={}", sceneCode);
-            return Collections.emptyList();
-        }
-
-        String nodesJson = sceneFlow.getNodes();
-        if (nodesJson == null || nodesJson.trim().isEmpty() || "[]".equals(nodesJson.trim())) {
-            log.debug("Scene approval nodes config is empty: code={}", sceneCode);
-            return Collections.emptyList();
-        }
-
-        List<ApprovalNodeDto> nodes = parseNodes(nodesJson);
-        if (nodes == null || nodes.isEmpty()) {
-            log.debug("Scene approval nodes parse result is empty: code={}", sceneCode);
-            return Collections.emptyList();
-        }
-
+        List<ApprovalNodeDto> nodes = new ArrayList<>();
+        if (appId != null) nodes.addAll(loadFlowNodes(sceneCode, appId));
+        nodes.addAll(loadFlowNodes(sceneCode, null));
         return nodes;
     }
 
     /**
-     * 从审批流程表读取全局审批节点
+     * 从审批流程表读取全场景审批节点
      *
-     * v2.8.0变更：直接查询 code='global' 的审批流程
+     * <p>叠加查询：同时查应用专属和全部应用范围，有节点的都加入。</p>
      *
-     * @return 全局审批节点列表
+     * @param appId 应用ID
+     * @return 全场景审批节点列表
      */
     private List<ApprovalNodeDto> getGlobalApprovalNodes(Long appId) {
-        ApprovalFlow globalFlow = null;
-        if (appId != null) {
-            globalFlow = flowMapper.selectByCodeAndAppId("global", appId);
-        }
-        if (globalFlow == null) {
-            globalFlow = flowMapper.selectByCodeAndAppId("global", null);
-        }
-        if (globalFlow == null) {
-            log.warn("Global approval flow not found: code=global");
-            return Collections.emptyList();
-        }
-
-        String nodesJson = globalFlow.getNodes();
-        if (nodesJson == null || nodesJson.trim().isEmpty() || "[]".equals(nodesJson.trim())) {
-            log.debug("Global approval nodes config is empty: code=global");
-            return Collections.emptyList();
-        }
-
-        List<ApprovalNodeDto> nodes = parseNodes(nodesJson);
-        if (nodes == null || nodes.isEmpty()) {
-            log.debug("Global approval nodes parse result is empty: code=global");
-            return Collections.emptyList();
-        }
-
+        List<ApprovalNodeDto> nodes = new ArrayList<>();
+        if (appId != null) nodes.addAll(loadFlowNodes("global", appId));
+        nodes.addAll(loadFlowNodes("global", null));
         return nodes;
+    }
+
+    /**
+     * 按 code+appId 加载审批流模板的节点列表
+     */
+    private List<ApprovalNodeDto> loadFlowNodes(String code, Long appId) {
+        ApprovalFlow flow = flowMapper.selectByCodeAndAppId(code, appId);
+        if (flow == null) return Collections.emptyList();
+        return parseNodes(flow.getNodes());
     }
 
     /**
