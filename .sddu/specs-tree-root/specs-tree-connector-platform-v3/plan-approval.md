@@ -91,9 +91,7 @@ open-server 审批引擎支持 8 种业务类型，覆盖能力开放平台（V2
 
 ### 2.3 叠加规则
 
-V2 时期 `selectByCode(code)` 仅按 code 查一个模板。V3 引入 `appId` 后，同一场景可配置应用专属和全部应用范围两条模板。
-
-**叠加策略**：两条都查，有节点的都加入，合并为同一级审批节点列表。不为优选（二选一）。
+**查询逻辑**：每级同时查应用专属和全部应用范围两条模板，有节点的都加入，合并为同级审批节点列表。不为优选（二选一）。
 
 ```
 scene 层 = selectByCodeAndAppId(sceneCode, appId)   ← 应用专属（有则加入）
@@ -105,14 +103,50 @@ global 层 = selectByCodeAndAppId("global", appId)   ← 应用专属全局
 
 > 空模板（未配置或 nodes 为空）不贡献节点。最终节点数为 0 且非 OPTIONAL 类型时，`createApproval()` 抛出 400。
 
-假设 global(null) 始终配置了审批人，场景层的 4 种配置效果：
+**按业务类型枚举**：
 
-| 配置情况 | scene(app) | scene(null) | 结果 |
-|---|---|---|---|
-| 仅应用专属 | ✅ | ❌ | scene(app) → global(null) |
-| 仅全部应用范围 | ❌ | ✅ | scene(null) → global(null) |
-| 两者叠加 | ✅ | ✅ | scene(app) + scene(null) → global(null) |
-| 两者皆空 | ❌ | ❌ | global(null)（场景层免审） |
+#### 资源注册类（`_register`：2 级）
+
+`api_register` / `event_register` / `callback_register`。各级别均支持 app 专属 + NULL 叠加。
+
+| scene(app) | scene(null) | global(app) | global(null) | 审批链 |
+|---|---|---|---|---|
+| ✅ | ✅ | ✅ | ✅ | scene(app+null) → global(app+null) |
+| ✅ | ✅ | ❌ | ✅ | scene(app+null) → global(null) |
+| ✅ | ❌ | ❌ | ✅ | scene(app) → global(null) |
+| ❌ | ✅ | ❌ | ✅ | scene(null) → global(null) |
+| ❌ | ❌ | ❌ | ✅ | global(null) |
+| ❌ | ❌ | ❌ | ❌ | 空 → 400 |
+
+#### 权限申请类（`_permission_apply`：3 级）
+
+`api_permission_apply` / `event_permission_apply` / `callback_permission_apply`。资源级来自 `permission_t.resource_nodes`（无叠加），场景级和全局级各自叠加。
+
+| resource | scene(app) | scene(null) | global(null) | 审批链 |
+|---|---|---|---|---|
+| ✅ | ✅ | ✅ | ✅ | resource → scene(app+null) → global(null) |
+| ✅ | ✅ | ❌ | ✅ | resource → scene(app) → global(null) |
+| ✅ | ❌ | ✅ | ✅ | resource → scene(null) → global(null) |
+| ✅ | ❌ | ❌ | ✅ | resource → global(null) |
+| ❌ (need_approval=0) | ✅ | ✅ | ✅ | scene(app+null) → global(null) |
+
+> 资源审批节点为空且 `need_approval=1` 时该级无审批人，但仍不跳过——审批链中 resource 级为空节点，审批引擎将无法推进。应在配置阶段保证 `need_approval=1` 时 `resource_nodes` 非空。
+
+#### 版本发布类（default 2 级）
+
+`connector_flow_version_publish`。与 `_register` 同属 2 级，叠加逻辑一致。
+
+| scene(app) | scene(null) | global(app) | global(null) | 审批链 |
+|---|---|---|---|---|
+| ✅ | ✅ | ❌ | ✅ | scene(app+null) → global(null) |
+| ✅ | ❌ | ❌ | ✅ | scene(app) → global(null) |
+| ❌ | ✅ | ❌ | ✅ | scene(null) → global(null) |
+| ❌ | ❌ | ❌ | ✅ | global(null) |
+| ❌ | ❌ | ❌ | ❌ | 空 → 400 |
+
+#### 可选审批类（OPTIONAL）
+
+`app_version_publish`。直接返回空列表，无论模板如何配置，均不创建审批节点。
 
 ---
 
