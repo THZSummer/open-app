@@ -39,44 +39,66 @@ open-server 审批引擎支持 8 种业务类型，覆盖能力开放平台（V2
 
 > **关键区分**：
 > - 层级数由 `businessType` 决定（`*_register` → 2 级，`*_permission_apply` → 3 级，`app_version_publish` → 可选）。
-> - 每级内部是否叠加多个模板由审批模板的 `appId` 维度决定，见 §2。
+> - 每级内部是否叠加多个模板由两个正交维度决定：`code`（场景维度，`global`=全部场景）和 `appId`（应用范围维度，NULL=全部应用范围），详见 §2。
 
 ---
 
 ## 2 审批模板叠加模型
 
-### 2.1 核心设计：优选 → 叠加
+### 2.1 核心设计：两个正交维度
+
+审批模板由 **code**（场景维度）和 **appId**（应用范围维度）两个字段组合定位：
+
+| 维度 | 字段 | 值 | 语义 |
+|---|---|---|---|
+| 场景维度 | `code` | 具体场景编码（如 `connector_flow_version_publish`） | 仅该场景生效 |
+| | `code` | **`global`** | **全部场景**生效（全局审批，所有场景的最后一关） |
+| 应用范围维度 | `appId` | 具体值（如 328...） | 仅该应用生效 |
+| | `appId` | **NULL** | **全部应用范围**生效 |
+
+> **关键区分**：
+> - `code = 'global'` 指全部场景（不区分 api/event/connector_flow，所有审批的最后一级）。
+> - `appId = NULL` 指全部应用范围（不区分 app A / app B，所有应用共享此模板）。
+
+两个维度是正交的，可组合出 4 种模板：
+
+| code | appId | 生效范围 |
+|---|---|---|
+| `connector_flow_version_publish` | 328...（应用A） | 仅应用 A 的连接流版本发布场景 |
+| `connector_flow_version_publish` | NULL | 全部应用的连接流版本发布场景 |
+| `global` | 328...（应用A） | 应用 A 的全部场景 |
+| `global` | NULL | 全部应用的全部场景（最宽泛） |
+
+### 2.2 叠加策略：优选 → 叠加
 
 V2 时期 `selectByCode(code)` 仅按 code 查一个模板，code 唯一。
 
-V3 引入 `appId` 维度后，同一 code 下可有两条模板：
-
-| code | appId | 语义 |
-|------|-------|------|
-| `connector_flow_version_publish` | 具体值（如 328...） | 应用专属审批人 |
-| `connector_flow_version_publish` | NULL | 全部应用范围审批人 |
-
-**叠加策略**：两条模板的审批人**都生效**，合并为同一级的审批节点列表。不为优选（二选一）。
+V3 引入 `appId` 维度后，同一场景下可配置**应用专属模板**和**全部应用范围模板**两条。
+叠加策略：两条模板的审批人**都生效**，合并为同一级审批节点列表。不为优选（二选一）。
 
 ```
 场景层 (scene) 审批人：
-  [应用专属节点的审批人] + [全部应用范围节点的审批人]
+  ① selectByCodeAndAppId(sceneCode, appId)    ← 应用专属（有则加入）
+  ② selectByCodeAndAppId(sceneCode, null)      ← 全部应用范围（有则加入）
+  → 合并为 scene 级节点列表
 
 全局层 (global) 审批人：
-  [应用专属全局节点的审批人] + [全部应用范围全局节点的审批人]
+  ① selectByCodeAndAppId("global", appId)     ← 应用专属全局
+  ② selectByCodeAndAppId("global", null)       ← 全部应用范围 + 全部场景
+  → 合并为 global 级节点列表
 ```
 
 > 若某条模板未配置审批人（nodes 为空或不含可审批人），该模板视为无效，不贡献节点。
 
-### 2.2 示例：连接流版本发布
+### 2.3 示例：连接流版本发布
 
 用户发布了应用 A 的连接流版本，审批模板配置如下：
 
-| code | appId | nodes |
-|------|-------|-------|
-| `connector_flow_version_publish` | 328...(应用A) | [张三] |
-| `connector_flow_version_publish` | NULL | [李四] |
-| `global` | NULL | [王五] |
+| code | appId | nodes | 来源 |
+|---|---|---|---|
+| `connector_flow_version_publish` | 328...(应用A) | [张三] | 应用 A 专属 |
+| `connector_flow_version_publish` | NULL | [李四] | 全部应用范围 |
+| `global` | NULL | [王五] | 全部场景 + 全部应用范围 |
 
 生效的审批链：
 
@@ -88,15 +110,17 @@ V3 引入 `appId` 维度后，同一 code 下可有两条模板：
 → 版本发布
 ```
 
-### 2.3 场景矩阵
+### 2.4 场景矩阵
 
-| Scene(app) 配置 | Scene(null) 配置 | Global(null) 配置 | 审批链节点数 |
-|---|---|---|---|
-| ✅ 有节点 | ❌ / 无节点 | ✅ | scene(1组) + global(1组) |
-| ❌ | ✅ 有节点 | ✅ | scene(1组) + global(1组) |
-| ✅ 有节点 | ✅ 有节点 | ✅ | scene(2组合并) + global(1组) |
-| ❌ | ❌ | ✅ | global(1组) |
-| ❌ | ❌ | ❌ | 空 → 发布报错 400 |
+| Scene(app) 配置 | Scene(null) 配置 | Global(app) 配置 | Global(null) 配置 | 审批链 |
+|---|---|---|---|---|
+| ✅ 有节点 | ❌ / 无节点 | ❌ | ✅ | scene(1组) + global(1组) |
+| ❌ | ✅ 有节点 | ❌ | ✅ | scene(1组) + global(1组) |
+| ✅ 有节点 | ✅ 有节点 | ❌ | ✅ | scene(2组合并) + global(1组) |
+| ✅ 有节点 | ✅ 有节点 | ✅ 有节点 | ❌ | scene(2组) + global(1组) |
+| ✅ 有节点 | ✅ 有节点 | ❌ | ❌ | scene(2组) |
+| ❌ | ❌ | ❌ | ✅ | global(1组) |
+| ❌ | ❌ | ❌ | ❌ | 空 → 发布报错 400 |
 
 ---
 
