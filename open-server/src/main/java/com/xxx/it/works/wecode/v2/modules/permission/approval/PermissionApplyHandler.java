@@ -3,8 +3,6 @@ package com.xxx.it.works.wecode.v2.modules.permission.approval;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.modules.approval.dto.ApprovalNodeDto;
-import com.xxx.it.works.wecode.v2.modules.approval.engine.ApprovalBusinessHandler;
-import com.xxx.it.works.wecode.v2.modules.approval.engine.ApprovalEngine;
 import com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalRecord;
 import com.xxx.it.works.wecode.v2.modules.event.entity.Permission;
 import com.xxx.it.works.wecode.v2.modules.event.mapper.PermissionMapper;
@@ -18,22 +16,19 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
+/**
+ * 权限申请审批的共享逻辑（不做 Spring Bean，由 Api/Event/Callback 三个 Handler 委托调用）。
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class PermissionApplyHandler implements ApprovalBusinessHandler {
+class PermissionApplyHandler {
 
-    private final PermissionMapper permissionMapper;
-    private final SubscriptionMapper subscriptionMapper;
-    private final ObjectMapper objectMapper;
+    final PermissionMapper permissionMapper;
+    final SubscriptionMapper subscriptionMapper;
+    final ObjectMapper objectMapper;
 
-    @Override
-    public String supportedBusinessType() {
-        return ApprovalEngine.BusinessType.API_PERMISSION_APPLY;
-    }
-
-    @Override
-    public List<ApprovalNodeDto> resolveResourceNodes(Long permissionId) {
+    List<ApprovalNodeDto> resolveResourceNodes(Long permissionId) {
         if (permissionId == null) return Collections.emptyList();
         Permission permission = permissionMapper.selectById(permissionId);
         if (permission == null || permission.getNeedApproval() == null || permission.getNeedApproval() != 1) {
@@ -52,18 +47,15 @@ public class PermissionApplyHandler implements ApprovalBusinessHandler {
         }
     }
 
-    @Override
-    public void onApproved(ApprovalRecord record) {
+    void onApproved(ApprovalRecord record) {
         updateSubscription(record.getBusinessId(), 1, record.getApplicantId(), new Date());
     }
 
-    @Override
-    public void onRejected(ApprovalRecord record) {
+    void onRejected(ApprovalRecord record) {
         updateSubscription(record.getBusinessId(), 2, record.getApplicantId(), null);
     }
 
-    @Override
-    public void onCancelled(ApprovalRecord record) {
+    void onCancelled(ApprovalRecord record) {
         updateSubscription(record.getBusinessId(), 3, record.getApplicantId(), null);
     }
 

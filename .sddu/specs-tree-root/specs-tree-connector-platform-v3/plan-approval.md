@@ -333,7 +333,9 @@ public interface ApprovalBusinessHandler {
 | `ApiRegisterHandler` | `api/approval/` | `api_register` | 更新 API 状态 |
 | `EventRegisterHandler` | `event/approval/` | `event_register` | 更新 Event 状态 |
 | `CallbackRegisterHandler` | `callback/approval/` | `callback_register` | 更新 Callback 状态 |
-| `PermissionApplyHandler` | `permission/approval/` | `api_permission_apply` | ⓪读取 resource_nodes + 更新 Subscription |
+| `ApiPermissionApplyHandler` | `permission/approval/` | `api_permission_apply` | ⓪读取 resource_nodes + 更新 Subscription |
+| `EventPermissionApplyHandler` | `permission/approval/` | `event_permission_apply` | → 全部委托 `PermissionApplyHandler` |
+| `CallbackPermissionApplyHandler` | `permission/approval/` | `callback_permission_apply` | → 全部委托 `PermissionApplyHandler` |
 | `AppVersionPublishHandler` | `version/approval/` | `app_version_publish` | 更新 AppVersion 状态 |
 | `FlowVersionPublishHandler` | `flowversion/approval/` | `connector_flow_version_publish` | 更新 FlowVersion 状态 |
 
