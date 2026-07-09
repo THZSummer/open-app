@@ -76,11 +76,13 @@ public class FlowVersionApprovalService {
             appId              // 传入 appId，引擎内部做三级回退匹配
         );
 
-        // 3. 更新FlowVersion状态为待审批（业务前置动作）
-        version.setStatus(FlowVersionStatus.PENDING_APPROVAL.getCode());
-        version.setLastUpdateTime(new Date());
-        version.setLastUpdateBy(applicantId);
-        flowVersionMapper.update(version);
+        // 3. 无审批人时引擎已自动通过（record.status=APPROVED），不设 PENDING_APPROVAL
+        if (record.getStatus() != ApprovalEngine.Status.APPROVED) {
+            version.setStatus(FlowVersionStatus.PENDING_APPROVAL.getCode());
+            version.setLastUpdateTime(new Date());
+            version.setLastUpdateBy(applicantId);
+            flowVersionMapper.update(version);
+        }
 
         log.info("Flow version approval submitted: recordId={}, flowVersionId={}, flowId={}, flowName={}, appId={}",
                  record.getId(), flowVersionId, flowId, flowNameCn, appId);

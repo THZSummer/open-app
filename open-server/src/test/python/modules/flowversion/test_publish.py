@@ -303,6 +303,37 @@ class TestFlowVersionPublish:
         finally:
             _delete_scene_flows()
 
+    @pytest.mark.L4
+    def test_approval_global_only_fallback(self, draft_flow, published_connector):
+        """仅全场景全应用模板(④)：scene(app+null)皆空→1级审批通过"""
+        fid, fvid = draft_flow
+        cid, cvid = published_connector
+        _ensure_global_flow()
+        _delete_scene_flows()
+        try:
+            _set_orchestration(fid, fvid, cid, cvid)
+            aid = _find_approval(fvid)
+            assert aid, "should create approval record with global-only nodes"
+            api("POST", f"/approvals/{aid}/approve", {"comment": "L1 global"})
+            detail = api("GET", f"/flows/{fid}/versions/{fvid}").json()["data"]
+            assert detail.get("status") in (5, "5"), f"unexpected status: {detail.get('status')}"
+        finally:
+            _delete_scene_flows()
+
+    @pytest.mark.L4
+    def test_approval_empty_auto_approve(self, draft_flow, published_connector):
+        """全空免审：无任何审批模板→直接APPROVED→status=5"""
+        fid, fvid = draft_flow
+        cid, cvid = published_connector
+        _delete_scene_flows()
+        db("UPDATE openplatform_v2_approval_flow_t SET status = 0 WHERE code = 'global'")
+        try:
+            _set_orchestration(fid, fvid, cid, cvid)
+            detail = api("GET", f"/flows/{fid}/versions/{fvid}").json()["data"]
+            assert detail.get("status") in (5, "5"), f"expected auto-approve to published, got status={detail.get('status')}"
+        finally:
+            db("UPDATE openplatform_v2_approval_flow_t SET status = 1 WHERE code = 'global'")
+
 
 # —— 审批流模板 helper（直接操作 DB，因 API 需 @PlatformAdminPermission） ——
 
