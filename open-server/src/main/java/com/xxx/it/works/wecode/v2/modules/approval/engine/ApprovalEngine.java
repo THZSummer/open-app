@@ -303,7 +303,13 @@ public class ApprovalEngine {
         // 根据业务类型确定场景审批编码
         String sceneCode = getSceneCodeByBusinessType(businessType);
 
-        ApprovalFlow sceneFlow = flowMapper.selectByCodeAndAppId(sceneCode, appId);
+        ApprovalFlow sceneFlow = null;
+        if (appId != null) {
+            sceneFlow = flowMapper.selectByCodeAndAppId(sceneCode, appId);
+        }
+        if (sceneFlow == null) {
+            sceneFlow = flowMapper.selectByCodeAndAppId(sceneCode, null);
+        }
         if (sceneFlow == null) {
             log.warn("Scene approval flow not found: code={}", sceneCode);
             return Collections.emptyList();
@@ -332,7 +338,13 @@ public class ApprovalEngine {
      * @return 全局审批节点列表
      */
     private List<ApprovalNodeDto> getGlobalApprovalNodes(Long appId) {
-        ApprovalFlow globalFlow = flowMapper.selectByCodeAndAppId("global", appId);
+        ApprovalFlow globalFlow = null;
+        if (appId != null) {
+            globalFlow = flowMapper.selectByCodeAndAppId("global", appId);
+        }
+        if (globalFlow == null) {
+            globalFlow = flowMapper.selectByCodeAndAppId("global", null);
+        }
         if (globalFlow == null) {
             log.warn("Global approval flow not found: code=global");
             return Collections.emptyList();

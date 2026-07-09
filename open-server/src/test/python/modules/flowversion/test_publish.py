@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """#32 POST /flows/{id}/versions/{vid}/publish — 发布连接流版本"""
 import json
+import time
 import pytest
-from common import api, db, set_lookup_config
-from conftest import assert_operate_log
+from common import api, db, set_lookup_config, INTERNAL_APP_ID
+from conftest import assert_operate_log, _find_approval, _set_orchestration
 
 
 def _mk_config(**kw):
@@ -239,3 +240,99 @@ class TestFlowVersionPublish:
             assert resp.json()["code"] != "200", f"#14 script timeout exceed should be refused"
         finally:
             set_lookup_config("Script.Max.Timeout.Seconds", "30")
+
+    # —— 审批流配置场景 (plan-config §4.1.3, V3 审批模板 app 级隔离) ——
+
+    @pytest.mark.L4
+    def test_approval_app_specific_only(self, draft_flow, published_connector):
+        """仅应用专属审批流模板：发布→两级审批通过→status=5"""
+        fid, fvid = draft_flow
+        cid, cvid = published_connector
+        _ensure_global_flow()
+        _upsert_scene_flow(INTERNAL_APP_ID, [{"userId": "tester", "userName": "AppApprover"}])
+        try:
+            _set_orchestration(fid, fvid, cid, cvid)
+            aid = _find_approval(fvid)
+            assert aid, "should create approval record"
+            api("POST", f"/approvals/{aid}/approve", {"comment": "L1 scene"})
+            api("POST", f"/approvals/{aid}/approve", {"comment": "L2 global"})
+            detail = api("GET", f"/flows/{fid}/versions/{fvid}").json()["data"]
+            assert detail.get("status") in (5, "5"), f"unexpected status: {detail.get('status')}"
+        finally:
+            _delete_scene_flows()
+
+    @pytest.mark.L4
+    def test_approval_global_only(self, draft_flow, published_connector):
+        """仅全局审批流模板(app_id=NULL)：发布→两级审批通过→status=5"""
+        fid, fvid = draft_flow
+        cid, cvid = published_connector
+        _ensure_global_flow()
+        _upsert_scene_flow(None, [{"userId": "tester", "userName": "GlobalApprover"}])
+        try:
+            _set_orchestration(fid, fvid, cid, cvid)
+            aid = _find_approval(fvid)
+            assert aid, "should create approval record"
+            api("POST", f"/approvals/{aid}/approve", {"comment": "L1 scene"})
+            api("POST", f"/approvals/{aid}/approve", {"comment": "L2 global"})
+            detail = api("GET", f"/flows/{fid}/versions/{fvid}").json()["data"]
+            assert detail.get("status") in (5, "5"), f"unexpected status: {detail.get('status')}"
+        finally:
+            _delete_scene_flows()
+
+    @pytest.mark.L4
+    def test_approval_both_app_and_global(self, draft_flow, published_connector):
+        """应用+全局共存：不抛 TooManyResultsException，应用级优先生效→两级审批通过"""
+        fid, fvid = draft_flow
+        cid, cvid = published_connector
+        _ensure_global_flow()
+        _upsert_scene_flow(INTERNAL_APP_ID, [{"userId": "tester", "userName": "AppSpecific"}])
+        _upsert_scene_flow(None, [{"userId": "other", "userName": "GlobalFallback"}])
+        try:
+            _set_orchestration(fid, fvid, cid, cvid)
+            aid = _find_approval(fvid)
+            assert aid, "should create approval record (no TooManyResultsException)"
+            r = api("GET", f"/approvals/{aid}").json()
+            nodes_json = str(r.get("data", {}))
+            assert "AppSpecific" in nodes_json, f"should pick app-specific template: {nodes_json}"
+            assert "GlobalFallback" not in nodes_json, f"should NOT pick global fallback: {nodes_json}"
+            api("POST", f"/approvals/{aid}/approve", {"comment": "L1 scene"})
+            api("POST", f"/approvals/{aid}/approve", {"comment": "L2 global"})
+            detail = api("GET", f"/flows/{fid}/versions/{fvid}").json()["data"]
+            assert detail.get("status") in (5, "5"), f"unexpected status: {detail.get('status')}"
+        finally:
+            _delete_scene_flows()
+
+
+# —— 审批流模板 helper（直接操作 DB，因 API 需 @PlatformAdminPermission） ——
+
+def _snow_id():
+    return int(time.time_ns() / 1000) % 100000000000000000 + hash(str(time.time())) % 1000000
+
+
+def _ensure_global_flow():
+    from common import db_val
+    exists = db_val("SELECT id FROM openplatform_v2_approval_flow_t WHERE code = 'global' AND app_id IS NULL AND status = 1")
+    if exists:
+        return
+    fid = _snow_id()
+    nodes = json.dumps([{"userId": "tester", "userName": "全局审批人"}])
+    from common import db as _db
+    _db(f"INSERT INTO openplatform_v2_approval_flow_t (id, name_cn, name_en, code, app_id, nodes, status, create_time, last_update_time, create_by, last_update_by) VALUES ({fid}, '全局审批', 'global', 'global', NULL, '{nodes}', 1, NOW(), NOW(), 'admin', 'admin')")
+
+
+def _upsert_scene_flow(app_id, nodes):
+    from common import db_val, db as _db
+    app_cond = f"AND app_id = {app_id}" if app_id is not None else "AND app_id IS NULL"
+    existing = db_val(f"SELECT id FROM openplatform_v2_approval_flow_t WHERE code = 'connector_flow_version_publish' {app_cond} AND status = 1")
+    nodes_json = json.dumps(nodes)
+    app_val = str(app_id) if app_id is not None else "NULL"
+    if existing:
+        _db(f"UPDATE openplatform_v2_approval_flow_t SET nodes = '{nodes_json}' WHERE id = {existing}")
+        return
+    fid = _snow_id()
+    _db(f"INSERT INTO openplatform_v2_approval_flow_t (id, name_cn, name_en, code, app_id, nodes, status, create_time, last_update_time, create_by, last_update_by) VALUES ({fid}, '测试审批', 'test', 'connector_flow_version_publish', {app_val}, '{nodes_json}', 1, NOW(), NOW(), 'admin', 'admin')")
+
+
+def _delete_scene_flows():
+    from common import db as _db
+    _db("DELETE FROM openplatform_v2_approval_flow_t WHERE code = 'connector_flow_version_publish'")
