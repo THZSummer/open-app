@@ -108,7 +108,7 @@ global 层 = selectByCodeAndAppId("global", appId)   ← 应用专属全场景
 
 5 级优先级统一适用于所有业务类型，配了哪些就哪些生效（`app_version_publish` 除外，直接免审）。
 
-| ⓪ 资源<br>resource | ① 单场景·单应用<br>scene(app) | ② 全场景·单应用<br>global(app) | ③ 单场景·全应用<br>scene(null) | ④ 全场景·全应用<br>global(null) | 审批链 |
+| ⓪ 资源<br>resource | ① 单应用·单场景<br>scene(app) | ② 单应用·全场景<br>global(app) | ③ 全应用·单场景<br>scene(null) | ④ 全应用·全场景<br>global(null) | 审批链 |
 |---|---|---|---|---|---|
 | ✅ | ✅ | ✅ | ✅ | ✅ | ⓪ → ① → ② → ③ → ④ |
 | — | ✅ | ✅ | ✅ | ✅ | ① → ② → ③ → ④ |
@@ -128,13 +128,13 @@ global 层 = selectByCodeAndAppId("global", appId)   ← 应用专属全场景
 ```
   ⓪ 资源审批节点    resource nodes          （仅 _permission_apply 类型）
   ↓
-  ① 单场景·单应用  scene(app)
+  ① 单应用·单场景  scene(app)
   ↓
-  ② 全场景·单应用  global(app)
+  ② 单应用·全场景  global(app)
   ↓
-  ③ 单场景·全应用  scene(null)
+  ③ 全应用·单场景  scene(null)
   ↓
-  ④ 全场景·全应用  global(null)
+  ④ 全应用·全场景  global(null)
 ```
 
 > 每层无匹配或无审批人时跳过，不影响后续层。资源审批节点来自 `permission_t.resource_nodes`，不参与 template 叠加。
@@ -144,13 +144,13 @@ global 层 = selectByCodeAndAppId("global", appId)   ← 应用专属全场景
 ```java
 // ⓪ 资源审批（仅 _permission_apply）
 if (isPermissionApply) combinedNodes.addAll(getResourceApprovalNodes(permissionId));
-// ① 单场景·单应用
+// ① 单应用·单场景
 if (appId != null) combinedNodes.addAll(loadFlowNodes(sceneCode, appId));
-// ② 全场景·单应用
+// ② 单应用·全场景
 if (appId != null) combinedNodes.addAll(loadFlowNodes("global", appId));
-// ③ 单场景·全应用
+// ③ 全应用·单场景
 combinedNodes.addAll(loadFlowNodes(sceneCode, null));
-// ④ 全场景·全应用
+// ④ 全应用·全场景
 combinedNodes.addAll(loadFlowNodes("global", null));
 ```
 
@@ -210,7 +210,7 @@ List<ApprovalNodeDto> getSceneApprovalNodes(String businessType, Long appId) {
 List<ApprovalNodeDto> getGlobalApprovalNodes(Long appId) {
     List<ApprovalNodeDto> result = new ArrayList<>();
     if (appId != null) result.addAll(loadFlowNodes("global", appId));  // 应用专属全场景
-    result.addAll(loadFlowNodes("global", null));                       // 全场景·全应用
+    result.addAll(loadFlowNodes("global", null));                       // 全应用·全场景
     return result;
 }
 
