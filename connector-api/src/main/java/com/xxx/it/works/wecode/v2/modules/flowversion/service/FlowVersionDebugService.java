@@ -96,7 +96,7 @@ public class FlowVersionDebugService {
                     // 创建执行上下文 (标记为调试模式)
                     ExecutionContext context = new ExecutionContext(executionId, String.valueOf(flowId));
                     context.setTriggerData(mockTriggerData != null ? mockTriggerData : Map.of());
-                    context.setTriggerType(3);
+                    context.setTriggerType(2);
                     context.setDebug(true);
 
                     // 建立触发节点的 NodeContext (结构化: {header, query, body})

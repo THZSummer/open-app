@@ -39,7 +39,7 @@ public class ExecutionContext {
     /** 是否调试模式 */
     private boolean debug;
 
-    /** 触发类型: 1=HTTP触发, 2=测试执行, 3=手动触发 */
+    /** 触发类型: 1=HTTP触发, 2=调试/测试执行 */
     private int triggerType;
 
     public ExecutionContext(String executionId, String flowId) {
