@@ -104,49 +104,22 @@ global 层 = selectByCodeAndAppId("global", appId)   ← 应用专属全场景
 
 > 空模板（未配置或 nodes 为空）不贡献节点。最终节点数为 0 且非 OPTIONAL 类型时，`createApproval()` 抛出 400。
 
-**按业务类型枚举**：
+**按配置生效**：
 
-#### 资源注册类（`_register`：2 级）
+5 级优先级统一适用于所有业务类型，配了哪些就哪些生效（`app_version_publish` 除外，直接免审）。
 
-`api_register` / `event_register` / `callback_register`。按 §2.4 优先级叠加，无资源审批。
-
-| 单场景·单应用<br>scene(app) | 全场景·单应用<br>global(app) | 单场景·全应用<br>scene(null) | 全场景·全应用<br>global(null) | 审批链 |
-|---|---|---|---|---|
-| ✅ | ✅ | ✅ | ✅ | scene(app) → global(app) → scene(null) → global(null) |
-| ✅ | ❌ | ✅ | ✅ | scene(app) → scene(null) → global(null) |
-| ❌ | ❌ | ✅ | ✅ | scene(null) → global(null) |
-| ❌ | ❌ | ❌ | ✅ | global(null) |
-| ❌ | ❌ | ❌ | ❌ | 空 → 400 |
-
-#### 权限申请类（`_permission_apply`：3 级）
-
-`api_permission_apply` / `event_permission_apply` / `callback_permission_apply`。资源级来自 `permission_t.resource_nodes`（无叠加），其余四级按 §2.4 优先级叠加。
-
-| 资源审批<br>resource | 单场景·单应用<br>scene(app) | 全场景·单应用<br>global(app) | 单场景·全应用<br>scene(null) | 全场景·全应用<br>global(null) | 审批链 |
+| ⓪ 资源<br>resource | ① 单场景·单应用<br>scene(app) | ② 全场景·单应用<br>global(app) | ③ 单场景·全应用<br>scene(null) | ④ 全场景·全应用<br>global(null) | 审批链 |
 |---|---|---|---|---|---|---|
-| ✅ | ✅ | ✅ | ✅ | ✅ | resource → scene(app) → global(app) → scene(null) → global(null) |
-| ✅ | ✅ | ❌ | ✅ | ✅ | resource → scene(app) → scene(null) → global(null) |
-| ✅ | ❌ | ❌ | ✅ | ✅ | resource → scene(null) → global(null) |
-| ✅ | ❌ | ❌ | ❌ | ✅ | resource → global(null) |
-| ❌ (need_approval=0) | ✅ | ✅ | ✅ | ✅ | scene(app) → global(app) → scene(null) → global(null) |
+| ✅ | ✅ | ✅ | ✅ | ✅ | ⓪ → ① → ② → ③ → ④ |
+| — | ✅ | ✅ | ✅ | ✅ | ① → ② → ③ → ④ |
+| — | ✅ | ❌ | ✅ | ✅ | ① → ③ → ④ |
+| — | ❌ | ❌ | ✅ | ✅ | ③ → ④ |
+| — | ❌ | ❌ | ❌ | ✅ | ④ |
+| — | ❌ | ❌ | ❌ | ❌ | 空 → 400 |
 
-> 资源审批节点为空且 `need_approval=1` 时该级无审批人，但仍不跳过——审批链中 resource 级为空节点，审批引擎将无法推进。应在配置阶段保证 `need_approval=1` 时 `resource_nodes` 非空。
-
-#### 版本发布类（default 2 级）
-
-`connector_flow_version_publish`。按 §2.4 优先级叠加，无资源审批。
-
-| 单场景·单应用<br>scene(app) | 全场景·单应用<br>global(app) | 单场景·全应用<br>scene(null) | 全场景·全应用<br>global(null) | 审批链 |
-|---|---|---|---|---|
-| ✅ | ✅ | ✅ | ✅ | scene(app) → global(app) → scene(null) → global(null) |
-| ✅ | ❌ | ✅ | ✅ | scene(app) → scene(null) → global(null) |
-| ❌ | ❌ | ✅ | ✅ | scene(null) → global(null) |
-| ❌ | ❌ | ❌ | ✅ | global(null) |
-| ❌ | ❌ | ❌ | ❌ | 空 → 400 |
-
-#### 可选审批类（OPTIONAL）
-
-`app_version_publish`。直接返回空列表，无论模板如何配置，均不创建审批节点。
+> ⓪ 仅 `_permission_apply` 类型存在（来自 `permission_t.resource_nodes`），其余类型始终为 `—`。
+> appId=null 时①②为 `—`（不触发查询），实际效果为 ③ → ④。
+> 空模板（未配置或 nodes 为空）视为 `❌`。
 
 ### 2.4 审批节点顺序
 
