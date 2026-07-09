@@ -740,9 +740,9 @@ market-server 无需改动。`CacheServiceV2.clearLookUpItemCache(path, classify
 
 | 接口 | 方法 | 路径 | 生效配置 | 与 invoke 差异 |
 |------|------|------|---------|---------------|
-| 调试连接流 | POST | `/api/v1/flows/{flowId}/versions/{versionId}/debug` | #5, #6, #8, #9, #10, #14, #15 | 与 invoke 完全一致，共享 connector-api 的 `FlowInvokeService.executeFlow()` |
+| 调试连接流 | POST | `/api/v1/flows/{flowId}/versions/{versionId}/debug` | #6, #8, #9, #10, #14 | 不包含 #5（debug 不写运行记录）、#15（debug 不写执行日志）；走 `FlowVersionDebugService.executeTestRun()` 独立路径 |
 
-> **说明**：debug 与 invoke 在 connector-api 执行面走同一套 `executeFlow()` 逻辑，因此所有运行态配置对两者同时生效。
+> **说明**：debug 与 invoke 的执行管线（DAG 调度/节点执行/缓存）共享同一套 executor，因此 #6, #8, #9, #10, #14 两路径同时生效。但 debug 不产生持久化运行记录，因此 #5（记录条数上限）、#15（日志采集开关）仅对 invoke 生效。
 
 ### 4.3 汇总速查表
 
@@ -752,7 +752,7 @@ market-server 无需改动。`CacheServiceV2.clearLookUpItemCache(path, classify
 | #2 | URL 正则规则 | 发布连接器版本 | 设计态 |
 | #3 | 配置 JSON 长度上限 | 发布连接器版本 | 设计态 |
 | #4 | 连接流版本数量上限 | 创建/复制连接流版本 | 设计态 |
-| #5 | 运行记录条数上限 | invoke + debug | 运行态 |
+| #5 | 运行记录条数上限 | invoke | 运行态 |
 | #6 | 连接器节点超时上限 | 发布 + invoke + debug | 设计态 + 运行态 |
 | #7 | 连接流配置 JSON 长度上限 | 发布连接流版本 | 设计态 |
 | #8 | 连接流最大 QPS | 发布 + invoke + debug | 设计态 + 运行态 |
@@ -762,7 +762,7 @@ market-server 无需改动。`CacheServiceV2.clearLookUpItemCache(path, classify
 | #12 | 串行编排连接器节点上限 | 发布连接流版本 | 设计态 |
 | #13 | 脚本源码长度上限 | 发布连接流版本 | 设计态 |
 | #14 | 脚本超时范围 | 发布 + invoke + debug | 设计态 + 运行态 |
-| #15 | 日志采集开关 | invoke + debug | 运行态 |
+| #15 | 日志采集开关 | invoke | 运行态 |
 | #16 | 开放应用范围清单 | 所有 /service/open/v2/connectors/** 和 /service/open/v2/flows/** | 设计态（HTTP 拦截器） |
 
 ## 附录 A：平台配置能力
