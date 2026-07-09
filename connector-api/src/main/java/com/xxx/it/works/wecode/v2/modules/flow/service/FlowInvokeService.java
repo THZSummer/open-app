@@ -16,7 +16,6 @@ import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.NodeContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.DagScheduler;
 import com.xxx.it.works.wecode.v2.modules.runtime.NodeTypeResolver;
-import com.xxx.it.works.wecode.v2.modules.runtime.executor.ReactiveSequentialExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.expression.ExpressionResolver;
 import com.xxx.it.works.wecode.v2.common.error.ErrorCode;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.ExecutionResult;
@@ -74,7 +73,6 @@ public class FlowInvokeService {
     private static final String TRIGGER_NODE_ID = "node_trigger";
 
     private final ObjectMapper objectMapper;
-    private final ReactiveSequentialExecutor executor;
     private final DagScheduler dagScheduler;
     private final OpFlowVersionReadRepository flowVersionReadRepository;
     private final ReactiveRedisTemplate<String, String> reactiveRedisTemplate;
@@ -87,7 +85,6 @@ public class FlowInvokeService {
 
     public FlowInvokeService(
             ObjectMapper objectMapper,
-            ReactiveSequentialExecutor executor,
             DagScheduler dagScheduler,
             OpFlowVersionReadRepository flowVersionReadRepository,
             ReactiveRedisTemplate<String, String> reactiveRedisTemplate,
@@ -98,7 +95,6 @@ public class FlowInvokeService {
             IdGenerator idGenerator,
             ConnectorApiPropertyService propertyService) {
         this.objectMapper = objectMapper;
-        this.executor = executor;
         this.dagScheduler = dagScheduler;
         this.flowVersionReadRepository = flowVersionReadRepository;
         this.reactiveRedisTemplate = reactiveRedisTemplate;

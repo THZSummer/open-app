@@ -6,7 +6,7 @@ import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowVersionReadRepos
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.NodeTypeResolver;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.NodeContext;
-import com.xxx.it.works.wecode.v2.modules.runtime.executor.ReactiveSequentialExecutor;
+import com.xxx.it.works.wecode.v2.modules.runtime.DagScheduler;
 import com.xxx.it.works.wecode.v2.common.error.ErrorCode;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.ExecutionResult;
 import org.slf4j.Logger;
@@ -44,15 +44,15 @@ public class FlowVersionDebugService {
     private static final Logger log = LoggerFactory.getLogger(FlowVersionDebugService.class);
 
     private final ObjectMapper objectMapper;
-    private final ReactiveSequentialExecutor executor;
+    private final DagScheduler dagScheduler;
     private final OpFlowVersionReadRepository flowVersionReadRepository;
 
     public FlowVersionDebugService(
             ObjectMapper objectMapper,
-            ReactiveSequentialExecutor executor,
+            DagScheduler dagScheduler,
             OpFlowVersionReadRepository flowVersionReadRepository) {
         this.objectMapper = objectMapper;
-        this.executor = executor;
+        this.dagScheduler = dagScheduler;
         this.flowVersionReadRepository = flowVersionReadRepository;
     }
 
@@ -93,9 +93,6 @@ public class FlowVersionDebugService {
                     // debug 前置校验提示 (不阻断, 仅 WARN 告知用户 invoke 时会校验)
                     warnDebugValidationGaps(config, nodes, mockTriggerData);
 
-                    // 检测并行分支: debug 使用顺序执行器, 并行分支会被退化为串行
-                    warnParallelBranchesInDebug(config);
-
                     // 创建执行上下文 (标记为调试模式)
                     ExecutionContext context = new ExecutionContext(executionId, String.valueOf(flowId));
                     context.setTriggerData(mockTriggerData != null ? mockTriggerData : Map.of());
@@ -114,8 +111,9 @@ public class FlowVersionDebugService {
                         context.setNodeContext(triggerNodeCtx);
                     }
 
-                    // 执行连接流 (debug 不写执行记录)
-                    return executor.execute(context, orchConfig);
+                    // 执行连接流 (debug 不写执行记录, 统一使用 DagScheduler)
+                    return dagScheduler.schedule(orchConfig, context)
+                            .map(updatedCtx -> buildDebugResult(updatedCtx, executionId));
                 })
                 .onErrorResume(PreCheckException.class, e -> {
                     log.warn("Pre-check failed for debug: flowId={}, versionId={}, code={}, msg={}",
@@ -222,28 +220,77 @@ public class FlowVersionDebugService {
     }
 
     /**
-     * 检测并行分支: debug 使用顺序执行器, 并行分支会被退化为串行执行
+     * 从 ExecutionContext 构建 ExecutionResult (debug 专用, 不写执行记录)
      */
-    @SuppressWarnings("unchecked")
-    private void warnParallelBranchesInDebug(Map<String, Object> config) {
-        List<Map<String, Object>> edges = (List<Map<String, Object>>) config.get("edges");
-        if (edges == null || edges.isEmpty()) {
-            return;
-        }
-        boolean hasParallel = false;
-        for (Map<String, Object> edge : edges) {
-            Object data = edge.get("data");
-            if (data instanceof Map) {
-                Object mode = ((Map<String, Object>) data).get("connectionMode");
-                if ("parallel".equals(mode)) {
-                    hasParallel = true;
-                    break;
+    private ExecutionResult buildDebugResult(ExecutionContext ctx, String executionId) {
+        ExecutionResult result = new ExecutionResult();
+        result.setExecutionId(executionId);
+        result.setFlowId(ctx.getFlowId());
+        result.setDebug(true);
+
+        boolean anyFailed = false;
+        Map<String, Object> lastOutput = null;
+        long totalDurationMs = 0;
+
+        for (Map.Entry<String, NodeContext> entry : ctx.getNodeContexts().entrySet()) {
+            NodeContext nodeCtx = entry.getValue();
+            if (nodeCtx.getDurationMs() > totalDurationMs) {
+                totalDurationMs = nodeCtx.getDurationMs();
+            }
+
+            ExecutionResult.StepDetail step = new ExecutionResult.StepDetail();
+            step.setNodeId(nodeCtx.getNodeId());
+            step.setNodeType(nodeCtx.getNodeType());
+            step.setInputData(nodeCtx.getInput());
+            step.setOutputData(nodeCtx.getOutput());
+            step.setStatus(nodeCtx.getStatus());
+            step.setDurationMs(nodeCtx.getDurationMs());
+            step.setErrorInfo(nodeCtx.getErrorInfo());
+
+            if ("failed".equals(nodeCtx.getStatus()) || "timeout".equals(nodeCtx.getStatus())) {
+                anyFailed = true;
+                if (result.getErrorInfo() == null && nodeCtx.getErrorInfo() != null
+                        && !nodeCtx.getErrorInfo().isEmpty()) {
+                    result.setErrorInfo(new HashMap<>(nodeCtx.getErrorInfo()));
                 }
             }
+
+            result.addStep(step);
+
+            if (nodeCtx.getOutput() != null && !nodeCtx.getOutput().isEmpty()) {
+                lastOutput = nodeCtx.getOutput();
+            }
         }
-        if (hasParallel) {
-            log.warn("Debug: 编排配置包含并行分支, 但 debug 使用顺序执行器, 并行分支将被退化为串行执行 (invoke 接口使用 DAG 调度器, 行为可能不同)");
+
+        Map<String, Object> exitOutput = findExitNodeOutput(ctx);
+        if (exitOutput != null) {
+            lastOutput = exitOutput;
         }
+
+        result.setStatus(anyFailed ? "failed" : "success");
+        result.setTotalDurationMs(totalDurationMs);
+
+        if (lastOutput != null) {
+            Map<String, Object> cleanOutput = new HashMap<>(lastOutput);
+            cleanOutput.remove("__status");
+            cleanOutput.remove("__input");
+            cleanOutput.remove("__error");
+            result.setResultData(cleanOutput);
+        }
+
+        return result;
+    }
+
+    private Map<String, Object> findExitNodeOutput(ExecutionContext ctx) {
+        for (NodeContext nc : ctx.getNodeContexts().values()) {
+            if ("exit".equals(nc.getNodeType())) {
+                if (nc.getOutput() != null && !nc.getOutput().isEmpty()) {
+                    return nc.getOutput();
+                }
+                return null;
+            }
+        }
+        return null;
     }
 
     /**
