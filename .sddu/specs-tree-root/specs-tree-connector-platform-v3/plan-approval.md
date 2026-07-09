@@ -69,26 +69,30 @@ open-server 审批引擎支持 8 种业务类型，覆盖能力开放平台（V2
 | `global` | 328...（应用A） | 应用 A 的全部场景 |
 | `global` | NULL | 全部应用的全部场景（最宽泛） |
 
-### 2.2 叠加策略：优选 → 叠加
+### 2.2 叠加规则
 
-V2 时期 `selectByCode(code)` 仅按 code 查一个模板，code 唯一。
+V2 时期 `selectByCode(code)` 仅按 code 查一个模板。V3 引入 `appId` 后，同一场景可配置应用专属和全部应用范围两条模板。
 
-V3 引入 `appId` 维度后，同一场景下可配置**应用专属模板**和**全部应用范围模板**两条。
-叠加策略：两条模板的审批人**都生效**，合并为同一级审批节点列表。不为优选（二选一）。
+**叠加策略**：两条都查，有节点的都加入，合并为同一级审批节点列表。不为优选（二选一）。
 
 ```
-场景层 (scene) 审批人：
-  ① selectByCodeAndAppId(sceneCode, appId)    ← 应用专属（有则加入）
-  ② selectByCodeAndAppId(sceneCode, null)      ← 全部应用范围（有则加入）
-  → 合并为 scene 级节点列表
+scene 层 = selectByCodeAndAppId(sceneCode, appId)   ← 应用专属（有则加入）
+         + selectByCodeAndAppId(sceneCode, null)    ← 全部应用范围（有则加入）
 
-全局层 (global) 审批人：
-  ① selectByCodeAndAppId("global", appId)     ← 应用专属全局
-  ② selectByCodeAndAppId("global", null)       ← 全部应用范围 + 全部场景
-  → 合并为 global 级节点列表
+global 层 = selectByCodeAndAppId("global", appId)   ← 应用专属全局
+          + selectByCodeAndAppId("global", null)    ← 全部应用范围 + 全部场景
 ```
 
-> 若某条模板未配置审批人（nodes 为空或不含可审批人），该模板视为无效，不贡献节点。
+> 空模板（未配置或 nodes 为空）不贡献节点。最终节点数为 0 且非 OPTIONAL 类型时，`createApproval()` 抛出 400。
+
+假设 global(null) 始终配置了审批人，场景层的 4 种配置效果：
+
+| 配置情况 | scene(app) | scene(null) | 结果 |
+|---|---|---|---|
+| 仅应用专属 | ✅ | ❌ | scene(app) → global(null) |
+| 仅全部应用范围 | ❌ | ✅ | scene(null) → global(null) |
+| 两者叠加 | ✅ | ✅ | scene(app) + scene(null) → global(null) |
+| 两者皆空 | ❌ | ❌ | global(null)（场景层免审） |
 
 ### 2.3 示例：连接流版本发布
 
@@ -109,29 +113,6 @@ V3 引入 `appId` 维度后，同一场景下可配置**应用专属模板**和*
     ↓ 需审批通过
 → 版本发布
 ```
-
-### 2.4 叠加规则和结果
-
-审批链由**场景层节点** + **全局层节点**串联组成。每层的节点来自两条查询的合并：
-
-```
-scene 层节点 = loadByCodeAndAppId(sceneCode, appId)   ← appId 匹配的（有则加入）
-            + loadByCodeAndAppId(sceneCode, null)     ← NULL 兜底的（有则加入）
-
-global 层节点 = loadByCodeAndAppId("global", appId)   ← appId 匹配的
-              + loadByCodeAndAppId("global", null)    ← NULL 兜底的
-```
-
-> 空模板（未配置或 nodes 为空）不贡献节点。最终节点数为 0 且非 OPTIONAL 类型时，`createApproval()` 抛出 400。
-
-以连接流版本发布为例，假设 global(null) 始终存在且配置了审批人：
-
-| 配置情况 | scene(app) | scene(null) | 结果 |
-|---|---|---|---|
-| 仅应用专属 | ✅ | ❌ | scene(app) → global(null) |
-| 仅全部应用范围 | ❌ | ✅ | scene(null) → global(null) |
-| 两者叠加 | ✅ | ✅ | scene(app) + scene(null) → global(null) |
-| 两者皆空 | ❌ | ❌ | global(null)（仅全局层，场景层免审） |
 
 ---
 
