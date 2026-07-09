@@ -109,7 +109,7 @@ global 层 = selectByCodeAndAppId("global", appId)   ← 应用专属全局
 
 `api_register` / `event_register` / `callback_register`。各级别均支持 app 专属 + NULL 叠加。
 
-| scene(app) | scene(null) | global(app) | global(null) | 审批链 |
+| 场景·单应用<br>scene(app) | 场景·全部应用<br>scene(null) | 全局·单应用<br>global(app) | 全局·全部场景+全部应用<br>global(null) | 审批链 |
 |---|---|---|---|---|
 | ✅ | ✅ | ✅ | ✅ | scene(app+null) → global(app+null) |
 | ✅ | ✅ | ❌ | ✅ | scene(app+null) → global(null) |
@@ -122,7 +122,7 @@ global 层 = selectByCodeAndAppId("global", appId)   ← 应用专属全局
 
 `api_permission_apply` / `event_permission_apply` / `callback_permission_apply`。资源级来自 `permission_t.resource_nodes`（无叠加），场景级和全局级各自叠加。
 
-| resource | scene(app) | scene(null) | global(null) | 审批链 |
+| 资源审批<br>resource | 场景·单应用<br>scene(app) | 场景·全部应用<br>scene(null) | 全局·全部场景+全部应用<br>global(null) | 审批链 |
 |---|---|---|---|---|
 | ✅ | ✅ | ✅ | ✅ | resource → scene(app+null) → global(null) |
 | ✅ | ✅ | ❌ | ✅ | resource → scene(app) → global(null) |
@@ -136,7 +136,7 @@ global 层 = selectByCodeAndAppId("global", appId)   ← 应用专属全局
 
 `connector_flow_version_publish`。与 `_register` 同属 2 级，叠加逻辑一致。
 
-| scene(app) | scene(null) | global(app) | global(null) | 审批链 |
+| 场景·单应用<br>scene(app) | 场景·全部应用<br>scene(null) | 全局·单应用<br>global(app) | 全局·全部场景+全部应用<br>global(null) | 审批链 |
 |---|---|---|---|---|
 | ✅ | ✅ | ❌ | ✅ | scene(app+null) → global(null) |
 | ✅ | ❌ | ❌ | ✅ | scene(app) → global(null) |
