@@ -2,6 +2,7 @@ package com.xxx.it.works.wecode.v2.modules.flow.validator;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.common.config.ConnectorPlatformPropertyService;
+import com.xxx.it.works.wecode.v2.common.enums.ConnectorPlatformConstants;
 import com.xxx.it.works.wecode.v2.common.enums.ConnectorVersionStatus;
 import com.xxx.it.works.wecode.v2.modules.connectorversion.entity.ConnectorVersion;
 import com.xxx.it.works.wecode.v2.modules.connectorversion.entity.ConnectorVersionRef;
@@ -17,7 +18,9 @@ import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -46,13 +49,13 @@ class FlowPublishValidatorTest {
 
     @BeforeEach
     void setUp() {
-        // Set up default property values matching the old hardcoded constants
-        // so existing tests pass without changes to assertion values
-        lenient().when(propertyService.getFlowMaxCacheTtlSeconds(anyString())).thenReturn(1296000);
-        lenient().when(propertyService.getFlowMaxParallelBranches(anyString())).thenReturn(8);
-        lenient().when(propertyService.getScriptMaxLengthChars(anyString())).thenReturn(10000);
-        lenient().when(propertyService.getScriptMaxTimeoutSeconds(anyString())).thenReturn(30);
-        lenient().when(propertyService.getFlowConfigMaxBytes(anyString())).thenReturn(0); // 0 = not enforced
+        Map<String, String> config = new HashMap<>();
+        config.put(ConnectorPlatformConstants.ITEM_FLOW_MAX_CACHE_TTL_SECONDS, "1296000");
+        config.put(ConnectorPlatformConstants.ITEM_FLOW_MAX_PARALLEL_BRANCHES, "8");
+        config.put(ConnectorPlatformConstants.ITEM_SCRIPT_MAX_LENGTH_CHARS, "10000");
+        config.put(ConnectorPlatformConstants.ITEM_SCRIPT_MAX_TIMEOUT_SECONDS, "30");
+        config.put(ConnectorPlatformConstants.ITEM_FLOW_CONFIG_MAX_BYTES, "0"); // 0 = not enforced
+        lenient().when(propertyService.loadConfigBundle(anyString())).thenReturn(config);
     }
 
     // ===== 校验 1: 业务必填字段 =====

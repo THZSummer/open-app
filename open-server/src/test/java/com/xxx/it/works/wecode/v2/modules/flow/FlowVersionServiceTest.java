@@ -5,6 +5,7 @@ import com.xxx.it.works.wecode.v2.modules.app.resolver.AppContext;
 import com.xxx.it.works.wecode.v2.modules.flowversion.service.FlowVersionService;
 import com.xxx.it.works.wecode.v2.common.config.ConnectorPlatformPropertyService;
 import com.xxx.it.works.wecode.v2.common.enums.FlowVersionStatus;
+import com.xxx.it.works.wecode.v2.common.enums.ConnectorPlatformConstants;
 import com.xxx.it.works.wecode.v2.common.id.IdGeneratorStrategy;
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.modules.approval.FlowVersionApprovalService;
@@ -34,7 +35,9 @@ import org.mockito.quality.Strictness;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -91,9 +94,11 @@ class FlowVersionServiceTest {
 
         // Default property service mocks matching hardcoded constants
         when(propertyService.getFlowMaxVersions()).thenReturn(1000);
-        when(propertyService.getFlowMaxQps(anyString())).thenReturn(1000);
-        when(propertyService.getFlowMaxConcurrency(anyString())).thenReturn(1000);
-        when(propertyService.getNodeMaxTimeoutSeconds(anyString())).thenReturn(30);
+        Map<String, String> config = new HashMap<>();
+        config.put(ConnectorPlatformConstants.ITEM_FLOW_MAX_QPS, "1000");
+        config.put(ConnectorPlatformConstants.ITEM_FLOW_MAX_CONCURRENCY, "1000");
+        config.put(ConnectorPlatformConstants.ITEM_NODE_MAX_TIMEOUT_SECONDS, "30");
+        when(propertyService.loadConfigBundle(anyString())).thenReturn(config);
     }
 
     @AfterEach
