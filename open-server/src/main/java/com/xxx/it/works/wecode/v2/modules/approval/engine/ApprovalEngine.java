@@ -16,9 +16,7 @@ import com.xxx.it.works.wecode.v2.modules.approval.mapper.ApprovalRecordMapper;
 import com.xxx.it.works.wecode.v2.modules.callback.entity.Callback;
 import com.xxx.it.works.wecode.v2.modules.callback.mapper.CallbackMapper;
 import com.xxx.it.works.wecode.v2.modules.event.entity.Event;
-import com.xxx.it.works.wecode.v2.modules.event.entity.Permission;  // ✅ Permission 在 event 模块
 import com.xxx.it.works.wecode.v2.modules.event.mapper.EventMapper;
-import com.xxx.it.works.wecode.v2.modules.event.mapper.PermissionMapper;  // ✅ PermissionMapper 在 event 模块
 import com.xxx.it.works.wecode.v2.modules.permission.entity.Subscription;
 import com.xxx.it.works.wecode.v2.modules.permission.mapper.SubscriptionMapper;
 import com.xxx.it.works.wecode.v2.modules.version.entity.AppVersion;
@@ -72,9 +70,9 @@ public class ApprovalEngine {
     private final ApprovalRecordMapper recordMapper;
     private final ApprovalLogMapper logMapper;
     private final SubscriptionMapper subscriptionMapper;
-    private final PermissionMapper permissionMapper;
     private final IdGeneratorStrategy idGenerator;
     private final ObjectMapper objectMapper;
+    private final List<ResourceApprovalProvider> resourceProviders;
 
     // 资源 Mapper
     private final ApiMapper apiMapper;
@@ -166,25 +164,15 @@ public class ApprovalEngine {
 
         String sceneCode = getSceneCodeByBusinessType(businessType);
 
-        // ✅ 根据 businessType 判断是否包含资源审批
-        boolean isPermissionApply = businessType.endsWith("_permission_apply");
-
-        if (isPermissionApply) {
-            // ==================== 权限申请审批：三级审批 ====================
-            log.info("Permission application approval: businessType={}, three-level approval (resource+scene+global)", businessType);
-
-            // 第一级：资源审批节点（从 permission_t.resource_nodes 读取）
-            List<ApprovalNodeDto> resourceNodes = getResourceApprovalNodes(permissionId);
-            for (ApprovalNodeDto node : resourceNodes) {
-                node.setOrder(order++);
-                node.setLevel(Level.RESOURCE);
-                combinedNodes.add(node);
-            }
-            log.debug("Resource approval nodes count: {}", resourceNodes.size());
-        }
-
         // ========== 审批优先级（范围从窄到宽） ==========
-        // ① 单场景·单应用
+        // ⓪ 资源审批（通用槽位，默认不实现；各场景按需扩展）
+        List<ApprovalNodeDto> resourceNodes = getResourceApprovalNodes(businessType, permissionId);
+        for (ApprovalNodeDto node : resourceNodes) {
+            node.setOrder(order++);
+            node.setLevel(Level.RESOURCE);
+            combinedNodes.add(node);
+        }
+        // ① 单应用·单场景
         if (appId != null) {
             for (ApprovalNodeDto node : loadFlowNodes(sceneCode, appId)) {
                 node.setOrder(order++);
@@ -192,7 +180,7 @@ public class ApprovalEngine {
                 combinedNodes.add(node);
             }
         }
-        // ② 全场景·单应用
+        // ② 单应用·全场景
         if (appId != null) {
             for (ApprovalNodeDto node : loadFlowNodes("global", appId)) {
                 node.setOrder(order++);
@@ -200,13 +188,13 @@ public class ApprovalEngine {
                 combinedNodes.add(node);
             }
         }
-        // ③ 单场景·全应用
+        // ③ 全应用·单场景
         for (ApprovalNodeDto node : loadFlowNodes(sceneCode, null)) {
             node.setOrder(order++);
             node.setLevel(Level.SCENE);
             combinedNodes.add(node);
         }
-        // ④ 全场景·全应用
+        // ④ 全应用·全场景
         for (ApprovalNodeDto node : loadFlowNodes("global", null)) {
             node.setOrder(order++);
             node.setLevel(Level.GLOBAL);
@@ -220,44 +208,18 @@ public class ApprovalEngine {
     }
 
     /**
-     * 从权限表读取资源审批节点
+     * 解析资源审批节点（⓪级）
      *
-     * v2.8.0变更：直接从 permission_t.resource_nodes 读取，无需查询审批流程表
-     *
-     * @param permissionId 权限ID
-     * @return 资源审批节点列表
+     * <p>遍历已注册的 {@link ResourceApprovalProvider}，取第一个 supports 返回 true 的调用。
+     * 无匹配则返回空列表，该级自然跳过。</p>
      */
-    private List<ApprovalNodeDto> getResourceApprovalNodes(Long permissionId) {
-        if (permissionId == null) {
-            return Collections.emptyList();
+    private List<ApprovalNodeDto> getResourceApprovalNodes(String businessType, Long businessId) {
+        for (ResourceApprovalProvider provider : resourceProviders) {
+            if (provider.supports(businessType)) {
+                return provider.resolve(businessId);
+            }
         }
-
-        Permission permission = permissionMapper.selectById(permissionId);
-        if (permission == null) {
-            log.warn("Permission not found: permissionId={}", permissionId);
-            return Collections.emptyList();
-        }
-
-        // 检查是否需要审批
-        if (permission.getNeedApproval() == null || permission.getNeedApproval() != 1) {
-            log.debug("Permission does not require approval: permissionId={}", permissionId);
-            return Collections.emptyList();
-        }
-
-        // 从 resource_nodes 字段解析审批节点
-        String resourceNodesJson = permission.getResourceNodes();
-        if (resourceNodesJson == null || resourceNodesJson.trim().isEmpty() || "[]".equals(resourceNodesJson.trim())) {
-            log.debug("Permission approval nodes config is empty: permissionId={}", permissionId);
-            return Collections.emptyList();
-        }
-
-        List<ApprovalNodeDto> nodes = parseNodes(resourceNodesJson);
-        if (nodes == null || nodes.isEmpty()) {
-            log.debug("Permission approval nodes parse result is empty: permissionId={}", permissionId);
-            return Collections.emptyList();
-        }
-
-        return nodes;
+        return Collections.emptyList();
     }
 
     /**

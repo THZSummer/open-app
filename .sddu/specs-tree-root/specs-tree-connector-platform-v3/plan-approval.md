@@ -117,7 +117,7 @@ global 层 = selectByCodeAndAppId("global", appId)   ← 应用专属全场景
 | — | ❌ | ❌ | ❌ | ✅ | ④ |
 | — | ❌ | ❌ | ❌ | ❌ | 空 → 400 |
 
-> ⓪ 仅 `_permission_apply` 类型存在（来自 `permission_t.resource_nodes`），其余类型始终为 `—`。
+> ⓪ 是审批流的固定一环，当前仅 `_permission_apply` 场景实现（从 `permission_t.resource_nodes` 读取）。其余场景未实现，`getResourceApprovalNodes()` 返回空，自然跳过。后续场景如需资源审批，自行扩展即可。
 > appId=null 时①②为 `—`（不触发查询），实际效果为 ③ → ④。
 > 空模板（未配置或 nodes 为空）视为 `❌`。
 
@@ -126,7 +126,7 @@ global 层 = selectByCodeAndAppId("global", appId)   ← 应用专属全场景
 审批链中节点按优先级从高到低排列——范围越窄越靠前：
 
 ```
-  ⓪ 资源审批节点    resource nodes          （仅 _permission_apply 类型）
+  ⓪ 资源审批节点    （通用槽位，默认不实现，各场景按需扩展）
   ↓
   ① 单应用·单场景  scene(app)
   ↓
@@ -137,13 +137,13 @@ global 层 = selectByCodeAndAppId("global", appId)   ← 应用专属全场景
   ④ 全应用·全场景  global(null)
 ```
 
-> 每层无匹配或无审批人时跳过，不影响后续层。资源审批节点来自 `permission_t.resource_nodes`，不参与 template 叠加。
+> ⓪ 是审批流的固定一环，`getResourceApprovalNodes(permissionId)` 默认返回空。`_permission_apply` 场景实现了该逻辑（从 `permission_t.resource_nodes` 读取）。其他场景未实现则自然跳过。后续场景如需资源审批，在自己场景下扩展查询逻辑即可，无需改动引擎。
 
 对应 `composeApprovalNodes` 伪代码：
 
 ```java
-// ⓪ 资源审批（仅 _permission_apply）
-if (isPermissionApply) combinedNodes.addAll(getResourceApprovalNodes(permissionId));
+// ⓪ 资源审批（通用槽位，未实现则返回空）
+combinedNodes.addAll(getResourceApprovalNodes(permissionId));
 // ① 单应用·单场景
 if (appId != null) combinedNodes.addAll(loadFlowNodes(sceneCode, appId));
 // ② 单应用·全场景
@@ -196,30 +196,9 @@ default → 2级：scene(appId叠加) + global(appId叠加)
 | `app_version_publish` | `"app_version_publish"` |
 | `connector_flow_version_publish` | `"connector_flow_version_publish"` |
 
-### 3.3 叠加查询伪代码
+### 3.3 叠加查询
 
-```java
-List<ApprovalNodeDto> getSceneApprovalNodes(String businessType, Long appId) {
-    String code = getSceneCodeByBusinessType(businessType);
-    List<ApprovalNodeDto> result = new ArrayList<>();
-    if (appId != null) result.addAll(loadFlowNodes(code, appId));   // 应用专属
-    result.addAll(loadFlowNodes(code, null));                        // 全部应用范围
-    return result;
-}
-
-List<ApprovalNodeDto> getGlobalApprovalNodes(Long appId) {
-    List<ApprovalNodeDto> result = new ArrayList<>();
-    if (appId != null) result.addAll(loadFlowNodes("global", appId));  // 应用专属全场景
-    result.addAll(loadFlowNodes("global", null));                       // 全应用·全场景
-    return result;
-}
-
-List<ApprovalNodeDto> loadFlowNodes(String code, Long appId) {
-    ApprovalFlow flow = flowMapper.selectByCodeAndAppId(code, appId);
-    if (flow == null) return Collections.emptyList();
-    return parseNodes(flow.getNodes());
-}
-```
+见 §2.4 审批节点顺序中的伪代码。此处不再重复。
 
 > `selectByCodeAndAppId(code, null)` 等价于旧版 `selectByCode(code)`（仅按 code 查，无需 `appId IS NULL` 兜底），存量 6 种类型传 `appId=null` 时行为不变。
 
@@ -257,44 +236,126 @@ List<ApprovalNodeDto> getResourceApprovalNodes(Long permissionId) {
 
 ## 4 引擎核心流程
 
-### 4.1 完整时序
+### 4.1 构建审批链
 
-```
-submitApproval(businessType, businessId, appId)
-  │
-  ├→ 1. 业务前置动作（各 Service 自行处理，非引擎职责）
-  │     例: FlowVersionService 将版本状态 DRAFT → PENDING_APPROVAL
-  │
-  ├→ 2. composeApprovalNodes(businessType, permissionId, appId)   ← 统一入口
-  │      ├→ 路由分支判断（_register / _permission_apply / default / optional）
-  │      ├→ getResourceApprovalNodes(permissionId)                 ← 仅 _permission_apply
-  │      ├→ getSceneApprovalNodes(businessType, appId)             ← appId 叠加
-  │      └→ getGlobalApprovalNodes(appId)                          ← appId 叠加
-  │
-  ├→ 3. createApproval() ← 统一入口
-  │      ├→ combinedNodes.isEmpty()? → 非 OPTIONAL 则抛异常
-  │      ├→ serializeNodes → JSON
-  │      └→ insert ApprovalRecord(combinedNodes)
-  │
-  └→ 4. 返回 ApprovalRecord
+```mermaid
+flowchart TD
+    START["composeApprovalNodes(businessType, permissionId, appId)"] --> OPT{OPTIONAL?}
+    OPT -->|app_version_publish| EMPTY["返回空列表（免审）"]
+    OPT -->|其他类型| R0["⓪ 资源审批"]
+    R0 --> R0Q["遍历 ResourceApprovalProvider<br>取 supports() 匹配的实现"]
+    R0Q --> R0R["provider.resolve(businessId)"]
+    R0R --> R1["① loadFlowNodes(sceneCode, appId)<br>单应用·单场景"]
+    R1 --> R2["② loadFlowNodes('global', appId)<br>单应用·全场景"]
+    R2 --> R3["③ loadFlowNodes(sceneCode, null)<br>全应用·单场景"]
+    R3 --> R4["④ loadFlowNodes('global', null)<br>全应用·全场景"]
+    R4 --> DONE["combinedNodes<br>（approval_flow_t 模板 + 资源审批合并）"]
 ```
 
-### 4.2 审批执行
+> appId=null 时①②不触发查询，自然跳过。各级空模板跳过不报错。
 
+### 4.2 审批全生命周期
+
+```mermaid
+stateDiagram-v2
+    [*] --> DRAFT: 创建草稿
+    DRAFT --> PENDING: 提交审批<br>POST /flows/{id}/versions/{vid}/publish
+
+    state PENDING {
+        [*] --> Node0: currentNode=0
+        Node0 --> Node1: approve ✓
+        Node1 --> Node2: approve ✓
+        Node2 --> LastNode: approve ✓
+    }
+
+    PENDING --> PUBLISHED: 全部节点通过<br>→ updateResourceStatus()
+    PENDING --> REJECTED: 任一节点驳回<br>POST /approvals/{id}/reject
+    PENDING --> WITHDRAWN: 提交人撤回<br>POST /approvals/{id}/cancel
 ```
-approve(recordId, operatorId, ...) / reject(recordId, ...) / cancel(recordId, ...)
-  │
-  ├→ 1. 查询 ApprovalRecord
-  ├→ 2. 从 combinedNodes 解析当前节点
-  ├→ 3. 记录 ApprovalLog (含 level)
-  ├→ 4. 推进 currentNode 或标记 APPROVED/REJECTED/CANCELLED
-  ├→ 5. updateResourceStatus(record, status)    ← 引擎内联回调，同事务
-  └→ 6. updateSubscriptionStatus(record, status) ← 仅 _permission_apply
-```
+
+| 操作 | 发起人 | 接口 | 效果 |
+|---|---|---|---|
+| 提交 | 版本提交人 | `POST /flows/{id}/versions/{vid}/publish` | DRAFT → PENDING_APPROVAL，创建 ApprovalRecord |
+| 通过 | 当前节点审批人 | `POST /approvals/{id}/approve` | 推进 currentNode，末节点则 status=APPROVED → 回调发布 |
+| 驳回 | 当前节点审批人 | `POST /approvals/{id}/reject` | status=REJECTED → 回调标记已驳回 |
+| 撤回 | 审批发起人 | `POST /approvals/{id}/cancel` | status=CANCELLED → 回调标记已撤回 |
+| 催办 | 审批发起人 | `POST /approvals/{id}/urge` | 通知当前节点审批人，可重复 |
 
 ---
 
-## 5 数据模型
+## 5 引擎架构与扩展
+
+### 5.1 固定管道 + 可扩展槽位
+
+审批引擎的核心设计理念：**固定 5 级管道，每级可扩展但不强制**。
+
+```mermaid
+flowchart LR
+    subgraph Pipeline["审批管道（ApprovalEngine 内部）"]
+        direction LR
+        R0["⓪ 资源审批<br><i>扩展点</i>"] --> R1["① 单应用·单场景<br><i>模板表</i>"]
+        R1 --> R2["② 单应用·全场景<br><i>模板表</i>"]
+        R2 --> R3["③ 全应用·单场景<br><i>模板表</i>"]
+        R3 --> R4["④ 全应用·全场景<br><i>模板表</i>"]
+    end
+    subgraph Providers["ResourceApprovalProvider 实现（引擎外部）"]
+        P1["PermissionResourceApprovalProvider<br>支持 *_permission_apply<br>读取 permission_t.resource_nodes"]
+        P2["（未来）FlowVersionResourceProvider<br>支持 connector_flow_version_publish<br>读取自定义来源"]
+        P3["（未来）其他场景..."]
+    end
+    R0 -.->|supports 匹配| Providers
+```
+
+- ①~④：统一走 `selectByCodeAndAppId(code, appId)` 从 `approval_flow_t` 模板表查询，引擎内聚实现。
+- ⓪：通过 `ResourceApprovalProvider` 接口开放，各场景独立实现，引擎不感知具体业务。
+
+### 5.2 资源审批扩展点（`ResourceApprovalProvider`）
+
+```java
+public interface ResourceApprovalProvider {
+    boolean supports(String businessType);          // 我支持这个场景吗？
+    List<ApprovalNodeDto> resolve(Long businessId); // 从哪查审批人？
+}
+```
+
+引擎在 compose 时遍历所有 `ResourceApprovalProvider` Bean，取第一个 `supports` 匹配的调用 `resolve`。
+
+**当前实现**：
+
+| 实现类 | 支持场景 | 数据来源 |
+|---|---|---|
+| `PermissionResourceApprovalProvider` | `*_permission_apply` | `permission_t.resource_nodes` |
+| （默认） | 其余所有场景 | 无 → 返回空 |
+
+**扩展方式**：后续场景如需资源审批，只需实现 `ResourceApprovalProvider` 并注册为 Spring Bean，**零侵入引擎代码**。
+
+```java
+@Component
+public class MyResourceApprovalProvider implements ResourceApprovalProvider {
+    @Override
+    public boolean supports(String businessType) {
+        return "my_business_type".equals(businessType);
+    }
+
+    @Override
+    public List<ApprovalNodeDto> resolve(Long businessId) {
+        // 自定义查询逻辑
+    }
+}
+```
+
+### 5.3 审批回调
+
+所有 8 种类型的审批结果回调统一在 `ApprovalEngine.updateResourceStatus()` 中处理，与审批执行在同一事务内。各业务类型通过 switch 分支区分回调内容，新增类型只需增加一个 case。
+
+### 5.4 各业务类型对应关系
+
+| businessType | ⓪ 资源 | ①~④ 模板 | 回调 |
+|---|---|---|---|
+| `*_register` | —（无 provider） | scene(app+null) → global(app+null) | 更新资源状态 |
+| `*_permission_apply` | `PermissionResourceApprovalProvider` | scene(app+null) → global(app+null) | 更新订阅状态 |
+| `connector_flow_version_publish` | — | scene(app+null) → global(app+null) | 更新 FlowVersion 状态 |
+| `app_version_publish` | — | OPTIONAL（免审） | — |
 
 ### 5.1 审批流模板表 `openplatform_v2_approval_flow_t`
 
