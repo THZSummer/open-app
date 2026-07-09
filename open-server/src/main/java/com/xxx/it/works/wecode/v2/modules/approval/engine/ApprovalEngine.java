@@ -174,7 +174,7 @@ public class ApprovalEngine {
             log.info("Resource registration approval: businessType={}, two-level approval (scene+global)", businessType);
 
             // 第一级：场景审批节点
-            List<ApprovalNodeDto> sceneNodes = getSceneApprovalNodes(businessType);
+            List<ApprovalNodeDto> sceneNodes = getSceneApprovalNodes(businessType, appId);
             for (ApprovalNodeDto node : sceneNodes) {
                 node.setOrder(order++);
                 node.setLevel(Level.SCENE);
@@ -183,7 +183,7 @@ public class ApprovalEngine {
             log.debug("Scene approval nodes count: {}", sceneNodes.size());
 
             // 第二级：全局审批节点
-            List<ApprovalNodeDto> globalNodes = getGlobalApprovalNodes();
+            List<ApprovalNodeDto> globalNodes = getGlobalApprovalNodes(appId);
             for (ApprovalNodeDto node : globalNodes) {
                 node.setOrder(order++);
                 node.setLevel(Level.GLOBAL);
@@ -206,7 +206,7 @@ public class ApprovalEngine {
             log.debug("Resource approval nodes count: {}", resourceNodes.size());
 
             // 第二级：场景审批节点
-            List<ApprovalNodeDto> sceneNodes = getSceneApprovalNodes(businessType);
+            List<ApprovalNodeDto> sceneNodes = getSceneApprovalNodes(businessType, appId);
             for (ApprovalNodeDto node : sceneNodes) {
                 node.setOrder(order++);
                 node.setLevel(Level.SCENE);
@@ -215,7 +215,7 @@ public class ApprovalEngine {
             log.debug("Scene approval nodes count: {}", sceneNodes.size());
 
             // 第三级：全局审批节点
-            List<ApprovalNodeDto> globalNodes = getGlobalApprovalNodes();
+            List<ApprovalNodeDto> globalNodes = getGlobalApprovalNodes(appId);
             for (ApprovalNodeDto node : globalNodes) {
                 node.setOrder(order++);
                 node.setLevel(Level.GLOBAL);
@@ -227,14 +227,14 @@ public class ApprovalEngine {
             log.warn("Unknown business type: {}, using default two-level approval (scene+global)", businessType);
 
             // 默认：场景审批 + 全局审批
-            List<ApprovalNodeDto> sceneNodes = getSceneApprovalNodes(businessType);
+            List<ApprovalNodeDto> sceneNodes = getSceneApprovalNodes(businessType, appId);
             for (ApprovalNodeDto node : sceneNodes) {
                 node.setOrder(order++);
                 node.setLevel(Level.SCENE);
                 combinedNodes.add(node);
             }
 
-            List<ApprovalNodeDto> globalNodes = getGlobalApprovalNodes();
+            List<ApprovalNodeDto> globalNodes = getGlobalApprovalNodes(appId);
             for (ApprovalNodeDto node : globalNodes) {
                 node.setOrder(order++);
                 node.setLevel(Level.GLOBAL);
@@ -298,12 +298,12 @@ public class ApprovalEngine {
      * @param businessType 业务类型
      * @return 场景审批节点列表
      */
-    private List<ApprovalNodeDto> getSceneApprovalNodes(String businessType) {
+    private List<ApprovalNodeDto> getSceneApprovalNodes(String businessType, Long appId) {
 
         // 根据业务类型确定场景审批编码
         String sceneCode = getSceneCodeByBusinessType(businessType);
 
-        ApprovalFlow sceneFlow = flowMapper.selectByCode(sceneCode);
+        ApprovalFlow sceneFlow = flowMapper.selectByCodeAndAppId(sceneCode, appId);
         if (sceneFlow == null) {
             log.warn("Scene approval flow not found: code={}", sceneCode);
             return Collections.emptyList();
@@ -331,8 +331,8 @@ public class ApprovalEngine {
      *
      * @return 全局审批节点列表
      */
-    private List<ApprovalNodeDto> getGlobalApprovalNodes() {
-        ApprovalFlow globalFlow = flowMapper.selectByCode("global");
+    private List<ApprovalNodeDto> getGlobalApprovalNodes(Long appId) {
+        ApprovalFlow globalFlow = flowMapper.selectByCodeAndAppId("global", appId);
         if (globalFlow == null) {
             log.warn("Global approval flow not found: code=global");
             return Collections.emptyList();
