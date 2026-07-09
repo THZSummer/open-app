@@ -309,53 +309,34 @@ flowchart LR
 - ①~④：统一走 `selectByCodeAndAppId(code, appId)` 从 `approval_flow_t` 模板表查询，引擎内聚实现。
 - ⓪：通过 `ResourceApprovalProvider` 接口开放，各场景独立实现，引擎不感知具体业务。
 
-### 5.2 资源审批扩展点（`ResourceApprovalProvider`）
+### 5.2 业务 Handler（`ApprovalBusinessHandler`）
+
+每个业务类型实现一个独立的 Handler，封装该场景的全部特定逻辑：资源审批节点（⓪）+ 审批结果回调。新增场景只需新增一个 Handler Bean，**零侵入引擎**。
 
 ```java
-public interface ResourceApprovalProvider {
-    boolean supports(String businessType);          // 我支持这个场景吗？
-    List<ApprovalNodeDto> resolve(Long businessId); // 从哪查审批人？
+public interface ApprovalBusinessHandler {
+    String supportedBusinessType();                            // 我负责哪个业务类型？
+    default List<ApprovalNodeDto> resolveResourceNodes(Long id);  // ⓪ 资源审批（默认空）
+    void onApproved(ApprovalRecord record);                    // 全部通过
+    void onRejected(ApprovalRecord record);                    // 驳回
+    void onCancelled(ApprovalRecord record);                   // 撤回
 }
 ```
 
-引擎在 compose 时遍历所有 `ResourceApprovalProvider` Bean，取第一个 `supports` 匹配的调用 `resolve`。
+引擎通过 `List<ApprovalBusinessHandler>` 自动装配所有 Bean，按 `supportedBusinessType()` 匹配分发。
 
 **当前实现**：
 
-| 实现类 | 支持场景 | 数据来源 |
-|---|---|---|
-| `PermissionResourceApprovalProvider` | `*_permission_apply` | `permission_t.resource_nodes` |
-| （默认） | 其余所有场景 | 无 → 返回空 |
-
-**扩展方式**：后续场景如需资源审批，只需实现 `ResourceApprovalProvider` 并注册为 Spring Bean，**零侵入引擎代码**。
-
-```java
-@Component
-public class MyResourceApprovalProvider implements ResourceApprovalProvider {
-    @Override
-    public boolean supports(String businessType) {
-        return "my_business_type".equals(businessType);
-    }
-
-    @Override
-    public List<ApprovalNodeDto> resolve(Long businessId) {
-        // 自定义查询逻辑
-    }
-}
-```
-
-### 5.3 审批回调
-
-所有 8 种类型的审批结果回调统一在 `ApprovalEngine.updateResourceStatus()` 中处理，与审批执行在同一事务内。各业务类型通过 switch 分支区分回调内容，新增类型只需增加一个 case。
-
-### 5.4 各业务类型对应关系
-
-| businessType | ⓪ 资源 | ①~④ 模板 | 回调 |
+| Handler | 文件位置 | 支持类型 | 职责 |
 |---|---|---|---|
-| `*_register` | —（无 provider） | scene(app+null) → global(app+null) | 更新资源状态 |
-| `*_permission_apply` | `PermissionResourceApprovalProvider` | scene(app+null) → global(app+null) | 更新订阅状态 |
-| `connector_flow_version_publish` | — | scene(app+null) → global(app+null) | 更新 FlowVersion 状态 |
-| `app_version_publish` | — | OPTIONAL（免审） | — |
+| `ApiRegisterHandler` | `api/approval/` | `api_register` | 更新 API 状态 |
+| `EventRegisterHandler` | `event/approval/` | `event_register` | 更新 Event 状态 |
+| `CallbackRegisterHandler` | `callback/approval/` | `callback_register` | 更新 Callback 状态 |
+| `PermissionApplyHandler` | `permission/approval/` | `api_permission_apply` | ⓪读取 resource_nodes + 更新 Subscription |
+| `AppVersionPublishHandler` | `version/approval/` | `app_version_publish` | 更新 AppVersion 状态 |
+| `FlowVersionPublishHandler` | `flowversion/approval/` | `connector_flow_version_publish` | 更新 FlowVersion 状态 |
+
+**引擎瘦身**：`ApprovalEngine` 不再注入 `ApiMapper`、`EventMapper` 等 8 个业务 Mapper，删除 `updateResourceStatus()` 和 `updateSubscriptionStatus()` 两个大 switch 方法（-150 行）。引擎只保留核心管道和审批执行逻辑。
 
 ### 5.1 审批流模板表 `openplatform_v2_approval_flow_t`
 

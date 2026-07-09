@@ -4,8 +4,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.common.exception.BusinessException;
 import com.xxx.it.works.wecode.v2.common.id.IdGeneratorStrategy;
-import com.xxx.it.works.wecode.v2.modules.api.entity.Api;
-import com.xxx.it.works.wecode.v2.modules.api.mapper.ApiMapper;
 import com.xxx.it.works.wecode.v2.modules.approval.dto.ApprovalNodeDto;
 import com.xxx.it.works.wecode.v2.modules.approvalflow.entity.ApprovalFlow;
 import com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalLog;
@@ -13,18 +11,6 @@ import com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalRecord;
 import com.xxx.it.works.wecode.v2.modules.approvalflow.mapper.ApprovalFlowMapper;
 import com.xxx.it.works.wecode.v2.modules.approval.mapper.ApprovalLogMapper;
 import com.xxx.it.works.wecode.v2.modules.approval.mapper.ApprovalRecordMapper;
-import com.xxx.it.works.wecode.v2.modules.callback.entity.Callback;
-import com.xxx.it.works.wecode.v2.modules.callback.mapper.CallbackMapper;
-import com.xxx.it.works.wecode.v2.modules.event.entity.Event;
-import com.xxx.it.works.wecode.v2.modules.event.mapper.EventMapper;
-import com.xxx.it.works.wecode.v2.modules.permission.entity.Subscription;
-import com.xxx.it.works.wecode.v2.modules.permission.mapper.SubscriptionMapper;
-import com.xxx.it.works.wecode.v2.modules.version.entity.AppVersion;
-import com.xxx.it.works.wecode.v2.modules.version.enums.VersionStatusEnum;
-import com.xxx.it.works.wecode.v2.modules.version.mapper.AppVersionMapper;
-import com.xxx.it.works.wecode.v2.modules.flowversion.entity.FlowVersion;
-import com.xxx.it.works.wecode.v2.modules.flowversion.mapper.OpFlowVersionMapper;
-import com.xxx.it.works.wecode.v2.common.enums.FlowVersionStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -69,17 +55,9 @@ public class ApprovalEngine {
     private final ApprovalFlowMapper flowMapper;
     private final ApprovalRecordMapper recordMapper;
     private final ApprovalLogMapper logMapper;
-    private final SubscriptionMapper subscriptionMapper;
     private final IdGeneratorStrategy idGenerator;
     private final ObjectMapper objectMapper;
-    private final List<ResourceApprovalProvider> resourceProviders;
-
-    // 资源 Mapper
-    private final ApiMapper apiMapper;
-    private final EventMapper eventMapper;
-    private final CallbackMapper callbackMapper;
-    private final AppVersionMapper appVersionMapper;
-    private final OpFlowVersionMapper flowVersionMapper;
+    private final List<ApprovalBusinessHandler> businessHandlers;
 
     /**
      * 审批动作枚举
@@ -208,18 +186,28 @@ public class ApprovalEngine {
     }
 
     /**
-     * 解析资源审批节点（⓪级）
-     *
-     * <p>遍历已注册的 {@link ResourceApprovalProvider}，取第一个 supports 返回 true 的调用。
-     * 无匹配则返回空列表，该级自然跳过。</p>
+     * 解析资源审批节点（⓪级）。
+     * 遍历已注册的 Handler，取 supports 匹配的调用 resolveResourceNodes。
      */
     private List<ApprovalNodeDto> getResourceApprovalNodes(String businessType, Long businessId) {
-        for (ResourceApprovalProvider provider : resourceProviders) {
-            if (provider.supports(businessType)) {
-                return provider.resolve(businessId);
+        for (ApprovalBusinessHandler handler : businessHandlers) {
+            if (handler.supportedBusinessType().equals(businessType)) {
+                return handler.resolveResourceNodes(businessId);
             }
         }
         return Collections.emptyList();
+    }
+
+    /**
+     * 按 businessType 查找对应的 Handler
+     */
+    private ApprovalBusinessHandler findHandler(String businessType) {
+        for (ApprovalBusinessHandler handler : businessHandlers) {
+            if (handler.supportedBusinessType().equals(businessType)) {
+                return handler;
+            }
+        }
+        return null;
     }
 
     /**
@@ -403,11 +391,8 @@ public class ApprovalEngine {
 
             recordMapper.update(record);
 
-            // 更新资源状态（资源注册场景）
-            updateResourceStatus(record, Status.APPROVED);
-
-            // 更新订阅状态（权限申请场景）
-            updateSubscriptionStatus(record, Status.APPROVED);
+            // 回调：各业务场景自行处理审批通过
+            dispatchApproved(record);
 
             log.info("Approval approved: recordId={}, operator={}, level={}",
                     recordId, operatorId, currentNode.getLevel());
@@ -493,11 +478,8 @@ public class ApprovalEngine {
 
         recordMapper.update(record);
 
-        // 更新资源状态（资源注册场景）
-        updateResourceStatus(record, Status.REJECTED);
-
-        // 更新订阅状态（权限申请场景）
-        updateSubscriptionStatus(record, Status.REJECTED);
+        // 回调：各业务场景自行处理驳回
+        dispatchRejected(record);
 
         log.info("Approval rejected: recordId={}, operator={}, comment={}, level={}",
                 recordId, operatorId, comment, currentNode.getLevel());
@@ -556,179 +538,33 @@ public class ApprovalEngine {
         cancelLog.setLastUpdateBy(operator);
         logMapper.insert(cancelLog);
 
-        // 更新资源状态（资源注册场景）
-        updateResourceStatus(record, Status.CANCELLED);
-
-        // 更新订阅状态（权限申请场景）
-        updateSubscriptionStatus(record, Status.CANCELLED);
+        // 回调：各业务场景自行处理撤回
+        dispatchCancelled(record);
 
         log.info("Approval cancelled: recordId={}", recordId);
 
         return record;
     }
 
-    // ==================== 辅助方法 ====================
+    // ==================== 回调分发 ====================
 
-    /**
-     * 更新资源状态（资源注册场景）
-     *
-     * @param record 审批记录
-     * @param status 审批状态
-     */
-    private void updateResourceStatus(ApprovalRecord record, int status) {
-        String businessType = record.getBusinessType();
-        Long businessId = record.getBusinessId();
-
-        // 审批通过，资源状态改为已发布(2)；审批拒绝/撤销，资源状态改为草稿(0)
-        int resourceStatus = (status == Status.APPROVED) ? 2 : 0;
-
-        try {
-            switch (businessType) {
-                case BusinessType.API_REGISTER:
-                    Api api = apiMapper.selectById(businessId);
-                    if (api != null) {
-                        api.setStatus(resourceStatus);
-                        api.setLastUpdateTime(new Date());
-                        api.setLastUpdateBy(record.getApplicantId());
-                        apiMapper.update(api);
-                        log.info("Updated API status: apiId={}, status={}", businessId, resourceStatus);
-                    }
-                    break;
-
-                case BusinessType.EVENT_REGISTER:
-                    Event event = eventMapper.selectById(businessId);
-                    if (event != null) {
-                        event.setStatus(resourceStatus);
-                        event.setLastUpdateTime(new Date());
-                        event.setLastUpdateBy(record.getApplicantId());
-                        eventMapper.update(event);
-                        log.info("Updated event status: eventId={}, status={}", businessId, resourceStatus);
-                    }
-                    break;
-
-                case BusinessType.CALLBACK_REGISTER:
-                    Callback callback = callbackMapper.selectById(businessId);
-                    if (callback != null) {
-                        callback.setStatus(resourceStatus);
-                        callback.setLastUpdateTime(new Date());
-                        callback.setLastUpdateBy(record.getApplicantId());
-                        callbackMapper.update(callback);
-                        log.info("Updated callback status: callbackId={}, status={}", businessId, resourceStatus);
-                    }
-                    break;
-
-                case BusinessType.APP_VERSION_PUBLISH:
-                    AppVersion version = appVersionMapper.selectById(businessId);
-                    if (version != null) {
-                        // 撤回/拒绝 → 待发布(1)，通过 → 已发布(4)
-                        int versionStatus = (status == Status.APPROVED)
-                                ? VersionStatusEnum.PUBLISHED.getCode()
-                                : VersionStatusEnum.PENDING_RELEASE.getCode();
-                        version.setStatus(versionStatus);
-                        version.setLastUpdateTime(java.time.LocalDateTime.now());
-                        version.setLastUpdateBy(record.getApplicantId());
-                        appVersionMapper.update(version);
-                        log.info("Updated version status: versionId={}, status={}", businessId, versionStatus);
-                    }
-                    break;
-
-                case BusinessType.API_PERMISSION_APPLY:
-                case BusinessType.EVENT_PERMISSION_APPLY:
-                case BusinessType.CALLBACK_PERMISSION_APPLY:
-
-                    // 权限申请场景，由 updateSubscriptionStatus 处理
-                    log.debug("Permission application scenario, not updating resource status");
-                    break;
-
-                case BusinessType.CONNECTOR_FLOW_VERSION_PUBLISH:
-                    FlowVersion flowVersion = flowVersionMapper.selectById(businessId);
-                    if (flowVersion != null) {
-                        Date now = new Date();
-                        if (status == Status.APPROVED) {
-                            // 审批通过 → 已发布
-                            flowVersion.setStatus(FlowVersionStatus.PUBLISHED.getCode());
-                            flowVersion.setPublishedTime(now);
-                            flowVersion.setPublishedBy(record.getApplicantId());
-                        } else if (status == Status.REJECTED) {
-                            // 审批驳回 → 已驳回
-                            flowVersion.setStatus(FlowVersionStatus.REJECTED.getCode());
-                        } else {
-                            // 审批撤销 → 已撤回
-                            flowVersion.setStatus(FlowVersionStatus.WITHDRAWN.getCode());
-                        }
-                        flowVersion.setLastUpdateTime(now);
-                        flowVersion.setLastUpdateBy(record.getApplicantId());
-                        flowVersionMapper.update(flowVersion);
-                        log.info("Updated FlowVersion status: versionId={}, status={}",
-                                businessId, flowVersion.getStatus());
-                    }
-                    break;
-
-                default:
-                    log.warn("Unknown business type: {}", businessType);
-            }
-        } catch (Exception e) {
-            log.error("Failed to update resource status: businessType={}, businessId={}", businessType, businessId, e);
-        }
+    private void dispatchApproved(ApprovalRecord record) {
+        ApprovalBusinessHandler handler = findHandler(record.getBusinessType());
+        if (handler != null) handler.onApproved(record);
     }
 
-    /**
-     * 更新订阅状态
-     *
-     * @param record 审批记录
-     * @param status 审批状态
-     */
-    private void updateSubscriptionStatus(ApprovalRecord record, int status) {
-
-        // 仅处理权限申请类型的审批
-        if (!BusinessType.API_PERMISSION_APPLY.equals(record.getBusinessType()) &&
-            !BusinessType.EVENT_PERMISSION_APPLY.equals(record.getBusinessType()) &&
-            !BusinessType.CALLBACK_PERMISSION_APPLY.equals(record.getBusinessType())) {
-            return;
-        }
-
-        // 查询订阅记录
-        Subscription subscription = subscriptionMapper.selectById(record.getBusinessId());
-        if (subscription == null) {
-            log.warn("Subscription record not found, cannot update status: businessId={}", record.getBusinessId());
-            return;
-        }
-
-        // 根据审批状态更新订阅状态
-        int subscriptionStatus;
-        if (status == Status.APPROVED) {
-            subscriptionStatus = 1; // 已授权
-        } else if (status == Status.REJECTED) {
-            subscriptionStatus = 2; // 已拒绝
-        } else if (status == Status.CANCELLED) {
-            subscriptionStatus = 3; // 已取消
-        } else {
-            return;
-        }
-
-        // 更新订阅状态
-        subscription.setStatus(subscriptionStatus);
-        subscription.setLastUpdateTime(new Date());
-        subscription.setLastUpdateBy(record.getApplicantId());
-
-        if (status == Status.APPROVED) {
-            subscription.setApprovedAt(new Date());
-            subscription.setApprovedBy(record.getApplicantId());
-        }
-
-        subscriptionMapper.update(subscription);
-
-        log.info("Updated subscription status: subscriptionId={}, status={}", subscription.getId(), subscriptionStatus);
+    private void dispatchRejected(ApprovalRecord record) {
+        ApprovalBusinessHandler handler = findHandler(record.getBusinessType());
+        if (handler != null) handler.onRejected(record);
     }
 
-    /**
-     * 解析审批节点配置
-     *
-     * v2.8.0变更：适配 ApprovalNodeDto 的 level 字段
-     *
-     * @param nodesJson 节点 JSON 字符串
-     * @return 节点列表
-     */
+    private void dispatchCancelled(ApprovalRecord record) {
+        ApprovalBusinessHandler handler = findHandler(record.getBusinessType());
+        if (handler != null) handler.onCancelled(record);
+    }
+
+    // ==================== JSON 辅助 ====================
+
     public List<ApprovalNodeDto> parseNodes(String nodesJson) {
         if (nodesJson == null || nodesJson.trim().isEmpty()) {
             return new ArrayList<>();
@@ -744,14 +580,6 @@ public class ApprovalEngine {
         }
     }
 
-    /**
-     * 序列化审批节点配置
-     *
-     * v2.8.0变更：适配 ApprovalNodeDto 的 level 字段
-     *
-     * @param nodes 节点列表
-     * @return JSON 字符串
-     */
     public String serializeNodes(List<ApprovalNodeDto> nodes) {
         try {
             return objectMapper.writeValueAsString(nodes);
