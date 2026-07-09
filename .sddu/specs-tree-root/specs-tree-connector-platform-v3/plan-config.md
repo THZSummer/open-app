@@ -765,6 +765,8 @@ market-server 无需改动。`CacheServiceV2.clearLookUpItemCache(path, classify
 | #15 | 日志采集开关 | invoke | 运行态 |
 | #16 | 开放应用范围清单 | `/service/open/v2/connectors/**`<br>`/service/open/v2/flows/**`<br>`/service/open/v2/executions/**` | 设计态（HTTP 拦截器） |
 
+> 💡 **#8 / #9 运行态触发条件**：连接器平台的 `/api/v1/flows/{flowId}/invoke` 接口本身已受外层全局限流保护（WeCodeSite 页面用户共用，阈值很低）。平台级 Lookup 配置 `Flow.Max.Qps` / `Flow.Max.Concurrency` 仅设定**上限天花板**，运行态实际生效的是用户自配的 `flowConfig.rateLimitConfig.{maxQps, maxConcurrency}`。因此 #8 / #9 的平台上限只有在该用户自配限流值**低于**接口外层全局限流时才会实际触发——即用户的限制比平台全局限制更严格。
+
 ## 附录 A：平台配置能力
 
 ### A.1 Spring 配置文件
