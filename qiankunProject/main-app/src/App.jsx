@@ -15,10 +15,10 @@ function App() {
           <h1 className="logo">微前端基座</h1>
           <nav>
             <Link to="/" className="nav-link">首页</Link>
-            <Link to="/sub-b" className="nav-link">子应用 B</Link>
-            <Link to="/sub-c" className="nav-link">子应用 C</Link>
-            <Link to="/sub-d" className="nav-link">子应用 D</Link>
-            <Link to="/sub-e" className="nav-link">子应用 E</Link>
+            <Link to="/sub-b?source=main-app&userId=1001" className="nav-link">子应用 B</Link>
+            <Link to="/sub-c?source=main-app&userId=1001" className="nav-link">子应用 C</Link>
+            <Link to="/sub-d?source=main-app&userId=1001" className="nav-link">子应用 D</Link>
+            <Link to="/sub-e?source=main-app&userId=1001" className="nav-link">子应用 E</Link>
           </nav>
         </aside>
         {/* 内容区域：主应用自身页面 + 子应用挂载容器 */}

@@ -1,5 +1,6 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
+import { BrowserRouter } from 'react-router-dom';
 import { renderWithQiankun, qiankunWindow } from 'vite-plugin-qiankun/dist/helper';
 import App from './App';
 
@@ -15,8 +16,14 @@ function render(props) {
   const { container } = props || {};
   // 被主应用加载时用 container 内的 #root，独立运行时用 document 的 #root
   const mountNode = container ? container.querySelector('#root') : document.getElementById('root');
+  // 根据运行环境设置路由 basename，qiankun 环境下用 activeRule 作为 basename
+  const basename = qiankunWindow.__POWERED_BY_QIANKUN__ ? '/sub-b' : '/';
   root = createRoot(mountNode);
-  root.render(<App />);
+  root.render(
+    <BrowserRouter basename={basename}>
+      <App />
+    </BrowserRouter>
+  );
 }
 
 // 通过 vite-plugin-qiankun 导出生命周期，并兼容独立运行

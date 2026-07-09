@@ -1,6 +1,7 @@
 import { createApp } from 'vue';
 import { renderWithQiankun, qiankunWindow } from 'vite-plugin-qiankun/dist/helper';
 import App from './App.vue';
+import createAppRouter from './router/index';
 
 // 子应用根实例引用
 let app = null;
@@ -14,7 +15,12 @@ function render(props) {
   const { container } = props || {};
   // 被主应用加载时用 container 内的 #app，独立运行时用 document 的 #app
   const mountNode = container ? container.querySelector('#app') : document.getElementById('app');
+  // 根据运行环境设置路由 basename，qiankun 环境下用 activeRule 作为 basename
+  const basename = qiankunWindow.__POWERED_BY_QIANKUN__ ? '/sub-e' : '/';
+  // 创建路由实例
+  const router = createAppRouter(basename);
   app = createApp(App);
+  app.use(router);
   app.mount(mountNode);
 }
 
