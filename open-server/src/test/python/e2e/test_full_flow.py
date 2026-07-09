@@ -901,7 +901,7 @@ def test_full_flow():
 
         def s12():
             r = os_api("POST", f"/approvals/{aid}/approve",
-                       {"comment": "全局级审批通过"}, user="tester")
+                       {"comment": "全局级审批通过"}, user="admin")
             if not check_ok(r, "第二级审批 (global, tester)", f"POST /approvals/{aid}/approve (L2)"):
                 r2 = os_api("GET", f"/approvals/{aid}")
                 d = get_data(r2)

@@ -97,20 +97,30 @@ def _approve_capability_resource(resource_id, business_type):
     """审批准能力开放平台资源（api_register / event_register / callback_register）"""
     aid = _find_capability_approval(resource_id, business_type)
     if aid:
-        api("POST", f"/approvals/{aid}/approve", {"comment": "auto"})
-    aid2 = _find_capability_approval(resource_id, business_type)
-    if aid2:
-        api("POST", f"/approvals/{aid2}/approve", {"comment": "auto"})
+        detail = api("GET", f"/approvals/{aid}").json().get("data", {})
+        nodes = detail.get("combinedNodes") or detail.get("nodes") or []
+        seen = set()
+        for node in nodes:
+            uid = node.get("userId")
+            if uid and uid not in seen:
+                seen.add(uid)
+                cookies = {"Cookie": f"user_id={uid}", "X-XSRF-TOKEN": f"user_id={uid}"}
+                api("POST", f"/approvals/{aid}/approve", {"comment": f"approve by {uid}"}, headers=cookies)
 
 
 def _approve_subscription(sub_id, business_type):
     """审批订阅申请（api_permission_apply / event_permission_apply / callback_permission_apply）"""
     aid = _find_capability_approval(sub_id, business_type)
     if aid:
-        api("POST", f"/approvals/{aid}/approve", {"comment": "auto"})
-    aid2 = _find_capability_approval(sub_id, business_type)
-    if aid2:
-        api("POST", f"/approvals/{aid2}/approve", {"comment": "auto"})
+        detail = api("GET", f"/approvals/{aid}").json().get("data", {})
+        nodes = detail.get("combinedNodes") or detail.get("nodes") or []
+        seen = set()
+        for node in nodes:
+            uid = node.get("userId")
+            if uid and uid not in seen:
+                seen.add(uid)
+                cookies = {"Cookie": f"user_id={uid}", "X-XSRF-TOKEN": f"user_id={uid}"}
+                api("POST", f"/approvals/{aid}/approve", {"comment": f"approve by {uid}"}, headers=cookies)
 
 
 # ═══════════════════════════════════════════════════════════
@@ -217,8 +227,17 @@ def _approve_and_deploy(flow_id, version_id):
     """两级审批通过 + 部署"""
     aid = _find_approval(version_id)
     if aid:
-        api("POST", f"/approvals/{aid}/approve", {"comment": "L1 approve"})
-        api("POST", f"/approvals/{aid}/approve", {"comment": "L2 approve"})
+        # 获取审批详情, 找到审批人 userId
+        detail = api("GET", f"/approvals/{aid}").json().get("data", {})
+        nodes = detail.get("combinedNodes") or detail.get("nodes") or []
+        _approval_cookies = {}
+        for node in nodes:
+            uid = node.get("userId")
+            if uid and uid not in _approval_cookies:
+                _approval_cookies[uid] = {"Cookie": f"user_id={uid}", "X-XSRF-TOKEN": f"user_id={uid}"}
+        # 按审批人依次审批
+        for uid, cookies in _approval_cookies.items():
+            api("POST", f"/approvals/{aid}/approve", {"comment": f"approve by {uid}"}, headers=cookies)
     api("POST", f"/flows/{flow_id}/deploy", {"versionId": version_id})
 
 

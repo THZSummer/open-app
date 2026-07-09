@@ -353,7 +353,7 @@ def test_resource_query_branch():
             return check_ok(os_api("POST", f"/approvals/{aid}/approve", {"comment": "L1"}, user="tester"), "L1 approve")
 
         def s8():
-            return check_ok(os_api("POST", f"/approvals/{aid}/approve", {"comment": "L2"}, user="tester"), "L2 approve")
+            return check_ok(os_api("POST", f"/approvals/{aid}/approve", {"comment": "L2"}, user="admin"), "L2 approve")
 
         def s9():
             time.sleep(0.5)
