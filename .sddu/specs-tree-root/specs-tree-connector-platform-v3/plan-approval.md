@@ -110,17 +110,28 @@ V3 引入 `appId` 维度后，同一场景下可配置**应用专属模板**和*
 → 版本发布
 ```
 
-### 2.4 场景矩阵
+### 2.4 叠加规则和结果
 
-| Scene(app) 配置 | Scene(null) 配置 | Global(app) 配置 | Global(null) 配置 | 审批链 |
-|---|---|---|---|---|
-| ✅ 有节点 | ❌ / 无节点 | ❌ | ✅ | scene(1组) + global(1组) |
-| ❌ | ✅ 有节点 | ❌ | ✅ | scene(1组) + global(1组) |
-| ✅ 有节点 | ✅ 有节点 | ❌ | ✅ | scene(2组合并) + global(1组) |
-| ✅ 有节点 | ✅ 有节点 | ✅ 有节点 | ❌ | scene(2组) + global(1组) |
-| ✅ 有节点 | ✅ 有节点 | ❌ | ❌ | scene(2组) |
-| ❌ | ❌ | ❌ | ✅ | global(1组) |
-| ❌ | ❌ | ❌ | ❌ | 空 → 发布报错 400 |
+审批链由**场景层节点** + **全局层节点**串联组成。每层的节点来自两条查询的合并：
+
+```
+scene 层节点 = loadByCodeAndAppId(sceneCode, appId)   ← appId 匹配的（有则加入）
+            + loadByCodeAndAppId(sceneCode, null)     ← NULL 兜底的（有则加入）
+
+global 层节点 = loadByCodeAndAppId("global", appId)   ← appId 匹配的
+              + loadByCodeAndAppId("global", null)    ← NULL 兜底的
+```
+
+> 空模板（未配置或 nodes 为空）不贡献节点。最终节点数为 0 且非 OPTIONAL 类型时，`createApproval()` 抛出 400。
+
+以连接流版本发布为例，假设 global(null) 始终存在且配置了审批人：
+
+| 配置情况 | scene(app) | scene(null) | 结果 |
+|---|---|---|---|
+| 仅应用专属 | ✅ | ❌ | scene(app) → global(null) |
+| 仅全部应用范围 | ❌ | ✅ | scene(null) → global(null) |
+| 两者叠加 | ✅ | ✅ | scene(app) + scene(null) → global(null) |
+| 两者皆空 | ❌ | ❌ | global(null)（仅全局层，场景层免审） |
 
 ---
 
