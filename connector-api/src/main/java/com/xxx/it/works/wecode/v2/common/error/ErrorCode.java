@@ -28,6 +28,12 @@ public final class ErrorCode {
     public static final String ORCH_NO_EXIT = "61003";
     public static final String ORCH_EDGE_MISSING = "61004";
 
+    // ===== 编排运行时通用 (60xxx) =====
+    public static final String ORCH_EXECUTION_FAILED = "6001";
+    public static final String ORCH_NODE_EXECUTION_FAILED = "60001";
+    public static final String ORCH_NODE_TIMEOUT_OR_ERROR = "6002";
+    public static final String ORCH_NODE_TIMEOUT = "64000";
+
     // ===== 触发器节点 (610xx) =====
     public static final String TRIGGER_TYPE_MISSING = "61010";
     public static final String TRIGGER_CREDENTIAL_MISSING = "61011";
@@ -96,10 +102,12 @@ public final class ErrorCode {
     public static final String PRECHECK_AUTH_FAILED = "401";
     public static final String PRECHECK_BAD_REQUEST = "400";
     public static final String PRECHECK_URL_WHITELIST_DENIED = "403";
+    public static final String PRECHECK_INTERNAL_ERROR = "500";
 
     /** 完整错误码集合（用于唯一性校验） */
     public static final java.util.Set<String> ALL_CODES = java.util.Set.of(
         ORCH_PARSE_FAILED, ORCH_NO_TRIGGER, ORCH_NO_EXIT, ORCH_EDGE_MISSING,
+        ORCH_EXECUTION_FAILED, ORCH_NODE_EXECUTION_FAILED, ORCH_NODE_TIMEOUT_OR_ERROR, ORCH_NODE_TIMEOUT,
         TRIGGER_TYPE_MISSING, TRIGGER_CREDENTIAL_MISSING, TRIGGER_CREDENTIAL_NOT_WHITELIST,
         CONNECTOR_NOT_SELECTED, CONNECTOR_VERSION_NOT_SELECTED, CONNECTOR_TIMEOUT_EXCEEDS,
         CONNECTOR_INPUT_FIELD_MISSING, CONNECTOR_AUTH_MISSING, CONNECTOR_AUTH_TYPE_NOT_SELECTED,
@@ -110,7 +118,8 @@ public final class ErrorCode {
         SCRIPT_RETURN_NOT_OBJECT, SCRIPT_FIELD_NOT_FOUND,
         PARALLEL_TOO_FEW_BRANCHES, PARALLEL_TOO_MANY_BRANCHES, PARALLEL_BRANCH_EMPTY,
         PARALLEL_BRANCH_FAILED, PARALLEL_BRANCH_TIMEOUT, PARALLEL_ALL_FAILED,
-        EXIT_FIELD_MISSING, EXIT_MAPPING_FORMAT_ERROR, EXIT_SERIALIZE_FAILED, EXIT_HEADER_FAILED
+        EXIT_FIELD_MISSING, EXIT_MAPPING_FORMAT_ERROR, EXIT_SERIALIZE_FAILED, EXIT_HEADER_FAILED,
+        PRECHECK_INTERNAL_ERROR
     );
 
     /**

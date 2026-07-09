@@ -128,7 +128,7 @@ public class ConnectorNodeExecutor implements NodeExecutor {
         }
 
         // 从 data.input 结构化配置构建请求参数
-        Map<String, Object> params = buildRequestParams(data, context);
+        Map<String, Object> params = buildRequestParams(data, context, nodeId);
         Map<String, String> headers = (Map<String, String>) params.get("headers");
         Map<String, Object> queryParams = (Map<String, Object>) params.get("queryParams");
         Map<String, Object> requestBody = (Map<String, Object>) params.get("requestBody");
@@ -175,7 +175,7 @@ public class ConnectorNodeExecutor implements NodeExecutor {
             timeoutMs = timeout;
         }
 
-        Map<String, Object> params = buildRequestParams(data, context);
+        Map<String, Object> params = buildRequestParams(data, context, nodeId);
         Map<String, String> headers = (Map<String, String>) params.get("headers");
         Map<String, Object> queryParams = (Map<String, Object>) params.get("queryParams");
         Map<String, Object> requestBody = (Map<String, Object>) params.get("requestBody");
@@ -235,7 +235,8 @@ public class ConnectorNodeExecutor implements NodeExecutor {
      * 构建 HTTP 请求参数 (从 input 提取)
      */
     @SuppressWarnings("unchecked")
-    private Map<String, Object> buildRequestParams(Map<String, Object> data, ExecutionContext context) {
+    private Map<String, Object> buildRequestParams(Map<String, Object> data, ExecutionContext context,
+                                                     String nodeId) {
         Map<String, String> headers = new HashMap<>();
         Map<String, Object> queryParams = new HashMap<>();
         Map<String, Object> requestBody = new HashMap<>();
@@ -243,7 +244,7 @@ public class ConnectorNodeExecutor implements NodeExecutor {
         // v6.0: 优先从 data.input 读取映射 (新格式)
         Object inputObj = data.get("input");
         if (inputObj instanceof Map) {
-            return buildFromInput((Map<String, Object>) inputObj, context);
+            return buildFromInput((Map<String, Object>) inputObj, context, nodeId);
         }
 
         // 向后兼容: 从 data.inputMapping 读取 (旧格式)
@@ -259,6 +260,8 @@ public class ConnectorNodeExecutor implements NodeExecutor {
             Object resolved = resolveValue(context, entry.getValue());
             if (resolved != null) {
                 headers.put(entry.getKey(), String.valueOf(resolved));
+            } else {
+                log.warn("Connector node {}: header field '{}' resolved to null, expression: '{}'", nodeId, entry.getKey(), entry.getValue());
             }
         }
 
@@ -268,6 +271,8 @@ public class ConnectorNodeExecutor implements NodeExecutor {
             Object resolved = resolveValue(context, entry.getValue());
             if (resolved != null) {
                 queryParams.put(entry.getKey(), resolved);
+            } else {
+                log.warn("Connector node {}: query field '{}' resolved to null, expression: '{}'", nodeId, entry.getKey(), entry.getValue());
             }
         }
 
@@ -277,6 +282,8 @@ public class ConnectorNodeExecutor implements NodeExecutor {
             Object resolved = resolveValue(context, entry.getValue());
             if (resolved != null) {
                 requestBody.put(entry.getKey(), resolved);
+            } else {
+                log.warn("Connector node {}: body field '{}' resolved to null, expression: '{}'", nodeId, entry.getKey(), entry.getValue());
             }
         }
 
@@ -284,7 +291,8 @@ public class ConnectorNodeExecutor implements NodeExecutor {
     }
 
     @SuppressWarnings("unchecked")
-    private Map<String, Object> buildFromInput(Map<String, Object> input, ExecutionContext context) {
+    private Map<String, Object> buildFromInput(Map<String, Object> input, ExecutionContext context,
+                                                 String nodeId) {
         Map<String, String> headers = new HashMap<>();
         Map<String, Object> queryParams = new HashMap<>();
         Map<String, Object> requestBody = new HashMap<>();
@@ -294,6 +302,8 @@ public class ConnectorNodeExecutor implements NodeExecutor {
             Object resolved = resolveValue(context, entry.getValue());
             if (resolved != null) {
                 headers.put(entry.getKey(), String.valueOf(resolved));
+            } else {
+                log.warn("Connector node {}: header field '{}' resolved to null, expression: '{}'", nodeId, entry.getKey(), entry.getValue());
             }
         }
 
@@ -302,6 +312,8 @@ public class ConnectorNodeExecutor implements NodeExecutor {
             Object resolved = resolveValue(context, entry.getValue());
             if (resolved != null) {
                 queryParams.put(entry.getKey(), resolved);
+            } else {
+                log.warn("Connector node {}: query field '{}' resolved to null, expression: '{}'", nodeId, entry.getKey(), entry.getValue());
             }
         }
 
@@ -310,6 +322,8 @@ public class ConnectorNodeExecutor implements NodeExecutor {
             Object resolved = resolveValue(context, entry.getValue());
             if (resolved != null) {
                 requestBody.put(entry.getKey(), resolved);
+            } else {
+                log.warn("Connector node {}: body field '{}' resolved to null, expression: '{}'", nodeId, entry.getKey(), entry.getValue());
             }
         }
 

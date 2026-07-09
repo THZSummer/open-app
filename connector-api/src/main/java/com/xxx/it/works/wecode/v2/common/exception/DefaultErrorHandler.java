@@ -1,5 +1,6 @@
 package com.xxx.it.works.wecode.v2.common.exception;
 
+import com.xxx.it.works.wecode.v2.common.error.ErrorCode;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.ExecutionResult;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.NodeOutput;
 import org.slf4j.Logger;
@@ -108,7 +109,7 @@ public class DefaultErrorHandler {
 
         Map<String, Object> result = new HashMap<>();
         result.put("status", "failed");
-        result.put("errorInfo", buildInternalErrorInfo("500", "系统内部错误", "Internal server error", e.getMessage()));
+        result.put("errorInfo", buildInternalErrorInfo(ErrorCode.ORCH_EXECUTION_FAILED, "系统内部错误", "Internal server error", e.getMessage()));
         return Mono.just(result);
     }
 
@@ -158,7 +159,7 @@ public class DefaultErrorHandler {
      * 创建通用错误导致的失败节点输出 (简洁重载, 兼容旧调用)
      */
     public static NodeOutput createFailedNodeOutput(String nodeId, String nodeType, String errorMessage) {
-        Map<String, Object> errorInfo = buildErrorInfo("6001", "节点执行失败", errorMessage);
+        Map<String, Object> errorInfo = buildErrorInfo(ErrorCode.ORCH_EXECUTION_FAILED, "节点执行失败", errorMessage);
 
         Map<String, Object> output = new HashMap<>();
         output.put("__status", "failed");
@@ -213,7 +214,7 @@ public class DefaultErrorHandler {
         result.setExecutionId(executionId);
         result.setFlowId(flowId);
         result.setStatus("failed");
-        result.setErrorInfo(buildErrorInfo("6001", "执行失败", errorMessage));
+        result.setErrorInfo(buildErrorInfo(ErrorCode.ORCH_EXECUTION_FAILED, "执行失败", errorMessage));
         result.setTotalDurationMs(durationMs);
         return result;
     }

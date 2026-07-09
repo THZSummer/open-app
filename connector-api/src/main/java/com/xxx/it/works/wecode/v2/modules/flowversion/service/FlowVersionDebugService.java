@@ -90,6 +90,12 @@ public class FlowVersionDebugService {
                     List<Map<String, Object>> nodes = (List<Map<String, Object>>) config.get("nodes");
                     String triggerNodeId = resolveTriggerNodeId(nodes);
 
+                    // debug 前置校验提示 (不阻断, 仅 WARN 告知用户 invoke 时会校验)
+                    warnDebugValidationGaps(config, nodes, mockTriggerData);
+
+                    // 检测并行分支: debug 使用顺序执行器, 并行分支会被退化为串行
+                    warnParallelBranchesInDebug(config);
+
                     // 创建执行上下文 (标记为调试模式)
                     ExecutionContext context = new ExecutionContext(executionId, String.valueOf(flowId));
                     context.setTriggerData(mockTriggerData != null ? mockTriggerData : Map.of());
@@ -133,12 +139,111 @@ public class FlowVersionDebugService {
                     // 兜底 errorInfo
                     Map<String, Object> errInfo = new HashMap<>();
                     String msg = e.getMessage() != null ? e.getMessage() : "Unknown error";
-                    errInfo.put("code", "60001");
+                    errInfo.put("code", ErrorCode.ORCH_NODE_EXECUTION_FAILED);
                     errInfo.put("messageZh", "测试执行失败: " + msg);
                     errInfo.put("messageEn", "Test execution failed: " + msg);
                     errorResult.setErrorInfo(errInfo);
                     return Mono.just(errorResult);
                 });
+    }
+
+    /**
+     * debug 前置校验差异提示: invoke 接口会校验但这些在 debug 中被跳过的项
+     * (不阻断执行, 仅 WARN 日志告知用户)
+     */
+    @SuppressWarnings("unchecked")
+    private void warnDebugValidationGaps(Map<String, Object> config,
+                                          List<Map<String, Object>> nodes,
+                                          Map<String, Object> mockTriggerData) {
+        if (nodes == null || nodes.isEmpty()) {
+            return;
+        }
+        // 查找 trigger 节点
+        Map<String, Object> triggerNode = null;
+        for (Map<String, Object> node : nodes) {
+            String type = NodeTypeResolver.businessType(node);
+            if ("trigger".equals(type)) {
+                triggerNode = (Map<String, Object>) node.get("data");
+                break;
+            }
+        }
+        if (triggerNode == null) {
+            return;
+        }
+
+        // triggerType 校验
+        String triggerType = (String) triggerNode.get("triggerType");
+        if (triggerType == null || triggerType.isBlank()) {
+            log.warn("Debug: 触发节点 data.triggerType 未配置 (invoke 接口会拒绝执行)");
+        } else if (!"http".equals(triggerType) && !"manual".equals(triggerType)) {
+            log.warn("Debug: 未知的触发类型 '{}' (invoke 接口会拒绝执行)", triggerType);
+        }
+
+        // authConfigs 校验
+        List<Map<String, Object>> authConfigs = (List<Map<String, Object>>) triggerNode.get("authConfigs");
+        if ("http".equals(triggerType) && (authConfigs == null || authConfigs.isEmpty())) {
+            log.warn("Debug: HTTP 触发器未配置 authConfigs (invoke 接口会拒绝执行)");
+        }
+
+        // inputContract 校验: 检查 mockTriggerData 是否满足 required 字段
+        Map<String, Object> inputContract = (Map<String, Object>) triggerNode.get("input");
+        if (inputContract != null && mockTriggerData != null) {
+            warnInputContractGap(inputContract, mockTriggerData);
+        }
+    }
+
+    /**
+     * 检查 mockTriggerData 是否满足 inputContract 的 required 字段
+     */
+    @SuppressWarnings("unchecked")
+    private void warnInputContractGap(Map<String, Object> inputContract, Map<String, Object> mockTriggerData) {
+        for (String section : new String[]{"header", "query", "body"}) {
+            Map<String, Object> schema = (Map<String, Object>) inputContract.get(section);
+            if (schema == null) {
+                continue;
+            }
+            List<String> required = (List<String>) schema.get("required");
+            if (required == null || required.isEmpty()) {
+                continue;
+            }
+            Map<String, Object> sectionData;
+            if ("body".equals(section)) {
+                sectionData = mockTriggerData;
+            } else {
+                Object sectionObj = mockTriggerData.get(section);
+                sectionData = sectionObj instanceof Map ? (Map<String, Object>) sectionObj : new HashMap<>();
+            }
+            for (String field : required) {
+                if (!sectionData.containsKey(field) || sectionData.get(field) == null) {
+                    log.warn("Debug: mockTriggerData {} 缺少必填字段 '{}' (invoke 接口会拒绝执行)", section, field);
+                }
+            }
+        }
+    }
+
+    /**
+     * 检测并行分支: debug 使用顺序执行器, 并行分支会被退化为串行执行
+     */
+    @SuppressWarnings("unchecked")
+    private void warnParallelBranchesInDebug(Map<String, Object> config) {
+        List<Map<String, Object>> edges = (List<Map<String, Object>>) config.get("edges");
+        if (edges == null || edges.isEmpty()) {
+            return;
+        }
+        boolean hasParallel = false;
+        for (Map<String, Object> edge : edges) {
+            Object data = edge.get("data");
+            if (data instanceof Map) {
+                Object mode = ((Map<String, Object>) data).get("connectionMode");
+                if ("parallel".equals(mode)) {
+                    hasParallel = true;
+                    break;
+                }
+            }
+        }
+        if (hasParallel) {
+            log.warn("Debug: 编排配置包含并行分支, 但 debug 使用顺序执行器, 并行分支将被退化为串行执行 (invoke 接口使用 DAG 调度器, 行为可能不同)");
+        }
     }
 
     /**

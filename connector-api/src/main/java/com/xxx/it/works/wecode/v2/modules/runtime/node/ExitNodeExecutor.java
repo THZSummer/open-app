@@ -84,6 +84,8 @@ public class ExitNodeExecutor implements NodeExecutor {
                     Object resolved = resolveValue(context, entry.getValue());
                     if (resolved != null) {
                         responseHeaders.put(entry.getKey(), resolved);
+                    } else {
+                        log.warn("Exit node {}: header field '{}' resolved to null, expression: '{}'", nodeId, entry.getKey(), entry.getValue());
                     }
                 }
                 outputData.put("header", responseHeaders);
@@ -94,6 +96,8 @@ public class ExitNodeExecutor implements NodeExecutor {
                     Object resolved = resolveValue(context, bodyMapping);
                     if (resolved != null) {
                         outputData.put("body", resolved);
+                    } else {
+                        log.warn("Exit node {}: body expression resolved to null: '{}'", nodeId, bodyMapping);
                     }
                 } else {
                     Map<String, Object> responseBody = new HashMap<>();
@@ -102,6 +106,8 @@ public class ExitNodeExecutor implements NodeExecutor {
                         Object resolved = resolveValue(context, entry.getValue());
                         if (resolved != null) {
                             responseBody.put(entry.getKey(), resolved);
+                        } else {
+                            log.warn("Exit node {}: body field '{}' resolved to null, expression: '{}'", nodeId, entry.getKey(), entry.getValue());
                         }
                     }
                     outputData.put("body", responseBody);
