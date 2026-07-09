@@ -135,7 +135,7 @@ default → 2级：scene(appId叠加) + global(appId叠加)
 | businessType | 路由分支 | 第一级来源 | 第二级 | 第三级 |
 |---|---|---|---|---|
 | `api_register` / `event_register` / `callback_register` | `_register` | scene(code+appId叠加) | global(appId叠加) | — |
-| `api_permission_apply` / `event_permission_apply` / `callback_permission_apply` | `_permission_apply` | resource(permission.resourceNodes) | scene(code+appId叠加) | global(appId叠加) |
+| `api_permission_apply` / `event_permission_apply` / `callback_permission_apply` | `_permission_apply` | resource(permission.resourceNodes, 详见 §3.4) | scene(code+appId叠加) | global(appId叠加) |
 | `app_version_publish` | OPTIONAL | — | — | — |
 | `connector_flow_version_publish` | default (2级) | scene(code+appId叠加) | global(appId叠加) | — |
 
@@ -180,6 +180,36 @@ List<ApprovalNodeDto> loadFlowNodes(String code, Long appId) {
 ```
 
 > `selectByCodeAndAppId(code, null)` 等价于旧版 `selectByCode(code)`（仅按 code 查，无需 `appId IS NULL` 兜底），存量 6 种类型传 `appId=null` 时行为不变。
+
+### 3.4 资源审批（仅 `_permission_apply` 类型）
+
+`_permission_apply` 类型在场景层之前额外增加**资源审批级**，形成 3 级审批链：
+
+```
+资源审批 (resource) → 场景审批 (scene) → 全局审批 (global)
+```
+
+资源审批等级特殊——其审批人**不来自 `approval_flow_t` 模板表**，而是直接从权限记录 `permission_t.resource_nodes` 内联读取：
+
+```java
+List<ApprovalNodeDto> getResourceApprovalNodes(Long permissionId) {
+    Permission permission = permissionMapper.selectById(permissionId);
+    if (permission == null || permission.getNeedApproval() != 1) {
+        return Collections.emptyList();   // 无需审批则跳过该级
+    }
+    return parseNodes(permission.getResourceNodes());  // JSON → List<ApprovalNodeDto>
+}
+```
+
+| 维度 | 资源审批 | 场景审批 / 全局审批 |
+|---|---|---|
+| 数据来源 | `permission_t.resource_nodes` | `approval_flow_t.nodes` |
+| 配置者 | 资源提供方 | 平台管理员 |
+| 配置粒度 | 每个权限独立配置 | 按 code+appId 统一模板 |
+| 是否叠加 | 否（单条记录） | 是（app + NULL 合并） |
+| level 值 | `"resource"` | `"scene"` / `"global"` |
+
+> 资源审批不参与 template 叠加——每个权限只有一条记录，`getResourceApprovalNodes` 直接取 `resource_nodes` 解析即可。
 
 ---
 
@@ -277,6 +307,25 @@ ALTER TABLE ADD UNIQUE KEY uk_code_app (code, app_id);
 | `status` | 0=待审, 1=通过, 2=驳回, 3=撤销 |
 | `current_node` | 当前审批节点索引 |
 | `completed_at` | 完成时间 |
+
+### 5.4 权限资源表 `openplatform_v2_permission_t`（仅 `_permission_apply` 相关）
+
+资源审批等级不依赖 `approval_flow_t`，审批人直接从 `permission_t` 的内联字段读取：
+
+| 列 | 类型 | 说明 |
+|---|---|---|
+| `need_approval` | TINYINT | 0=无需审批, 1=需审批 |
+| `resource_nodes` | VARCHAR(2000) | JSON 审批人列表，由资源提供方配置 |
+
+> `resource_nodes` 是**单条记录内联**，不参与 template 叠加。`getResourceApprovalNodes(permissionId)` 直接解析该字段。
+
+```json
+// resource_nodes 示例
+[
+  {"type":"approver","userId":"payment_leader","userName":"支付团队负责人","order":1},
+  {"type":"approver","userId":"finance_admin","userName":"财务管理员","order":2}
+]
+```
 
 ---
 
