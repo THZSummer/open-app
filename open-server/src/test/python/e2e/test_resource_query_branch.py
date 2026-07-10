@@ -31,6 +31,7 @@ os_api = _osm.api
 os_ok = _osm.ok
 os_fail = _osm.fail
 os_done = _osm.done
+TEST_APP_ID = _osm.TEST_APP_ID
 from client import CONNECTOR_API_BASE, CONNECTOR_API_HEALTH, OPEN_SERVER_BASE, AUTH_HEADERS, SYSTOKEN_HEADER, SYSTOKEN_VALUE
 
 import pytest, requests, random, string
