@@ -477,7 +477,7 @@ def test_full_flow_single_node():
         def s11():
             return check_ok(
                 os_api("POST", f"/approvals/{aid}/approve",
-                       {"comment": "通过"}, user="tester"),
+                       {"comment": "通过"}, user="admin"),
                 "第二级审批", f"POST /approvals/{aid}/approve"
             )
 

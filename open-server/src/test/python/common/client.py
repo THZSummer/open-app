@@ -65,8 +65,8 @@ def api(method, path, body=None, *, app_id=None, user=None, headers=None, timeou
     if aid is not None:
         h["X-App-Id"] = aid
     if usr is not None:
-        h["Cookie"] = TEST_COOKIE
-        h["X-XSRF-TOKEN"] = TEST_XSRF_TOKEN
+        h["Cookie"] = f"user_id={usr}"
+        h["X-XSRF-TOKEN"] = f"user_id={usr}"
     if headers:
         h.update(headers)
 

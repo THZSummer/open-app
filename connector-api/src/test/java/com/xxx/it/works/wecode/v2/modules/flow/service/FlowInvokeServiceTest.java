@@ -8,10 +8,10 @@ import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowVersionReadRepos
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.NodeContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.DagScheduler;
-import com.xxx.it.works.wecode.v2.modules.runtime.executor.ReactiveSequentialExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.ExecutionResult;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.TransparentFlowResponse;
 import com.xxx.it.works.wecode.v2.common.IdGenerator;
+import com.xxx.it.works.wecode.v2.modules.auth.SysTokenResolver;
 import com.xxx.it.works.wecode.v2.modules.execution.ExecutionRecordService;
 import com.xxx.it.works.wecode.v2.modules.execution.ExecutionStepService;
 import com.xxx.it.works.wecode.v2.modules.flow.service.FlowInvokeService;
@@ -41,9 +41,6 @@ class FlowInvokeServiceTest {
 
     @Mock
     private OpFlowVersionReadRepository flowVersionReadRepository;
-
-    @Mock
-    private ReactiveSequentialExecutor executor;
 
     @Mock
     private DagScheduler dagScheduler;
@@ -93,10 +90,10 @@ class FlowInvokeServiceTest {
         lenient().when(valueOperations.set(anyString(), anyString(), any())).thenReturn(Mono.just(true));
         when(idGenerator.nextId()).thenReturn(1L);
         triggerService = new FlowInvokeService(objectMapper,
-                executor, dagScheduler, flowVersionReadRepository,
+                dagScheduler, flowVersionReadRepository,
                 reactiveRedisTemplate, cacheManager, entityCacheManager,
                 executionRecordService, executionStepService, idGenerator,
-                propertyService);
+                propertyService, new SysTokenResolver());
     }
 
     @Test

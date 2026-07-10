@@ -6,7 +6,7 @@ import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowVersionReadRepos
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.NodeTypeResolver;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.NodeContext;
-import com.xxx.it.works.wecode.v2.modules.runtime.executor.ReactiveSequentialExecutor;
+import com.xxx.it.works.wecode.v2.modules.runtime.DagScheduler;
 import com.xxx.it.works.wecode.v2.common.error.ErrorCode;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.ExecutionResult;
 import org.slf4j.Logger;
@@ -44,15 +44,15 @@ public class FlowVersionDebugService {
     private static final Logger log = LoggerFactory.getLogger(FlowVersionDebugService.class);
 
     private final ObjectMapper objectMapper;
-    private final ReactiveSequentialExecutor executor;
+    private final DagScheduler dagScheduler;
     private final OpFlowVersionReadRepository flowVersionReadRepository;
 
     public FlowVersionDebugService(
             ObjectMapper objectMapper,
-            ReactiveSequentialExecutor executor,
+            DagScheduler dagScheduler,
             OpFlowVersionReadRepository flowVersionReadRepository) {
         this.objectMapper = objectMapper;
-        this.executor = executor;
+        this.dagScheduler = dagScheduler;
         this.flowVersionReadRepository = flowVersionReadRepository;
     }
 
@@ -90,10 +90,13 @@ public class FlowVersionDebugService {
                     List<Map<String, Object>> nodes = (List<Map<String, Object>>) config.get("nodes");
                     String triggerNodeId = resolveTriggerNodeId(nodes);
 
+                    // debug 前置校验提示 (不阻断, 仅 WARN 告知用户 invoke 时会校验)
+                    warnDebugValidationGaps(config, nodes, mockTriggerData);
+
                     // 创建执行上下文 (标记为调试模式)
                     ExecutionContext context = new ExecutionContext(executionId, String.valueOf(flowId));
                     context.setTriggerData(mockTriggerData != null ? mockTriggerData : Map.of());
-                    context.setTriggerType(3);
+                    context.setTriggerType(2);
                     context.setDebug(true);
 
                     // 建立触发节点的 NodeContext (结构化: {header, query, body})
@@ -108,8 +111,9 @@ public class FlowVersionDebugService {
                         context.setNodeContext(triggerNodeCtx);
                     }
 
-                    // 执行连接流 (debug 不写执行记录)
-                    return executor.execute(context, orchConfig);
+                    // 执行连接流 (debug 不写执行记录, 统一使用 DagScheduler)
+                    return dagScheduler.schedule(orchConfig, context)
+                            .map(updatedCtx -> buildDebugResult(updatedCtx, executionId, nodes));
                 })
                 .onErrorResume(PreCheckException.class, e -> {
                     log.warn("Pre-check failed for debug: flowId={}, versionId={}, code={}, msg={}",
@@ -133,12 +137,180 @@ public class FlowVersionDebugService {
                     // 兜底 errorInfo
                     Map<String, Object> errInfo = new HashMap<>();
                     String msg = e.getMessage() != null ? e.getMessage() : "Unknown error";
-                    errInfo.put("code", "60001");
+                    errInfo.put("code", ErrorCode.ORCH_NODE_EXECUTION_FAILED);
                     errInfo.put("messageZh", "测试执行失败: " + msg);
                     errInfo.put("messageEn", "Test execution failed: " + msg);
                     errorResult.setErrorInfo(errInfo);
                     return Mono.just(errorResult);
                 });
+    }
+
+    /**
+     * debug 前置校验差异提示: invoke 接口会校验但这些在 debug 中被跳过的项
+     * (不阻断执行, 仅 WARN 日志告知用户)
+     */
+    @SuppressWarnings("unchecked")
+    private void warnDebugValidationGaps(Map<String, Object> config,
+                                          List<Map<String, Object>> nodes,
+                                          Map<String, Object> mockTriggerData) {
+        if (nodes == null || nodes.isEmpty()) {
+            return;
+        }
+        // 查找 trigger 节点
+        Map<String, Object> triggerNode = null;
+        for (Map<String, Object> node : nodes) {
+            String type = NodeTypeResolver.businessType(node);
+            if ("trigger".equals(type)) {
+                triggerNode = (Map<String, Object>) node.get("data");
+                break;
+            }
+        }
+        if (triggerNode == null) {
+            return;
+        }
+
+        // triggerType 校验
+        String triggerType = (String) triggerNode.get("triggerType");
+        if (triggerType == null || triggerType.isBlank()) {
+            log.warn("Debug: 触发节点 data.triggerType 未配置 (invoke 接口会拒绝执行)");
+        } else if (!"http".equals(triggerType) && !"manual".equals(triggerType)) {
+            log.warn("Debug: 未知的触发类型 '{}' (invoke 接口会拒绝执行)", triggerType);
+        }
+
+        // authConfigs 校验
+        List<Map<String, Object>> authConfigs = (List<Map<String, Object>>) triggerNode.get("authConfigs");
+        if ("http".equals(triggerType) && (authConfigs == null || authConfigs.isEmpty())) {
+            log.warn("Debug: HTTP 触发器未配置 authConfigs (invoke 接口会拒绝执行)");
+        }
+
+        // inputContract 校验: 检查 mockTriggerData 是否满足 required 字段
+        Map<String, Object> inputContract = (Map<String, Object>) triggerNode.get("input");
+        if (inputContract != null && mockTriggerData != null) {
+            warnInputContractGap(inputContract, mockTriggerData);
+        }
+    }
+
+    /**
+     * 检查 mockTriggerData 是否满足 inputContract 的 required 字段
+     */
+    @SuppressWarnings("unchecked")
+    private void warnInputContractGap(Map<String, Object> inputContract, Map<String, Object> mockTriggerData) {
+        for (String section : new String[]{"header", "query", "body"}) {
+            Map<String, Object> schema = (Map<String, Object>) inputContract.get(section);
+            if (schema == null) {
+                continue;
+            }
+            List<String> required = (List<String>) schema.get("required");
+            if (required == null || required.isEmpty()) {
+                continue;
+            }
+            Map<String, Object> sectionData;
+            if ("body".equals(section)) {
+                sectionData = mockTriggerData;
+            } else {
+                Object sectionObj = mockTriggerData.get(section);
+                sectionData = sectionObj instanceof Map ? (Map<String, Object>) sectionObj : new HashMap<>();
+            }
+            for (String field : required) {
+                if (!sectionData.containsKey(field) || sectionData.get(field) == null) {
+                    log.warn("Debug: mockTriggerData {} 缺少必填字段 '{}' (invoke 接口会拒绝执行)", section, field);
+                }
+            }
+        }
+    }
+
+    /**
+     * 从 ExecutionContext 构建 ExecutionResult (debug 专用, 不写执行记录)
+     */
+    private ExecutionResult buildDebugResult(ExecutionContext ctx, String executionId,
+                                               List<Map<String, Object>> nodes) {
+        Map<String, Map<String, Object>> nodeMap = new HashMap<>();
+        if (nodes != null) {
+            for (Map<String, Object> node : nodes) {
+                Object id = node.get("id");
+                if (id != null) {
+                    nodeMap.put(id.toString(), node);
+                }
+            }
+        }
+
+        ExecutionResult result = new ExecutionResult();
+        result.setExecutionId(executionId);
+        result.setFlowId(ctx.getFlowId());
+        result.setDebug(true);
+
+        boolean anyFailed = false;
+        Map<String, Object> lastOutput = null;
+        long totalDurationMs = 0;
+
+        for (Map.Entry<String, NodeContext> entry : ctx.getNodeContexts().entrySet()) {
+            NodeContext nodeCtx = entry.getValue();
+            if (nodeCtx.getDurationMs() > totalDurationMs) {
+                totalDurationMs = nodeCtx.getDurationMs();
+            }
+
+            ExecutionResult.StepDetail step = new ExecutionResult.StepDetail();
+            step.setNodeId(nodeCtx.getNodeId());
+            step.setNodeType(nodeCtx.getNodeType());
+            step.setInputData(nodeCtx.getInput());
+            step.setOutputData(nodeCtx.getOutput());
+            step.setStatus(nodeCtx.getStatus());
+            step.setDurationMs(nodeCtx.getDurationMs());
+            step.setErrorInfo(nodeCtx.getErrorInfo());
+
+            Map<String, Object> nodeConfig = nodeMap.get(nodeCtx.getNodeId());
+            if (nodeConfig != null) {
+                Map<String, Object> data = (Map<String, Object>) nodeConfig.get("data");
+                if (data != null) {
+                    step.setLabelCn((String) data.get("labelCn"));
+                    step.setLabelEn((String) data.get("labelEn"));
+                }
+            }
+
+            if ("failed".equals(nodeCtx.getStatus()) || "timeout".equals(nodeCtx.getStatus())) {
+                anyFailed = true;
+                if (result.getErrorInfo() == null && nodeCtx.getErrorInfo() != null
+                        && !nodeCtx.getErrorInfo().isEmpty()) {
+                    result.setErrorInfo(new HashMap<>(nodeCtx.getErrorInfo()));
+                }
+            }
+
+            result.addStep(step);
+
+            if (nodeCtx.getOutput() != null && !nodeCtx.getOutput().isEmpty()) {
+                lastOutput = nodeCtx.getOutput();
+            }
+        }
+
+        Map<String, Object> exitOutput = findExitNodeOutput(ctx);
+        if (exitOutput != null) {
+            lastOutput = exitOutput;
+        }
+
+        result.setStatus(anyFailed ? "failed" : "success");
+        result.setTotalDurationMs(totalDurationMs);
+
+        if (lastOutput != null) {
+            Map<String, Object> cleanOutput = new HashMap<>(lastOutput);
+            cleanOutput.remove("__status");
+            cleanOutput.remove("__input");
+            cleanOutput.remove("__error");
+            result.setResultData(cleanOutput);
+        }
+
+        return result;
+    }
+
+    private Map<String, Object> findExitNodeOutput(ExecutionContext ctx) {
+        for (NodeContext nc : ctx.getNodeContexts().values()) {
+            if ("exit".equals(nc.getNodeType())) {
+                if (nc.getOutput() != null && !nc.getOutput().isEmpty()) {
+                    return nc.getOutput();
+                }
+                return null;
+            }
+        }
+        return null;
     }
 
     /**
@@ -193,6 +365,10 @@ public class FlowVersionDebugService {
         input.put("header", headerPart);
         input.put("query", queryPart);
         input.put("body", bodyPart);
+
+        log.info("Debug trigger input built: headerKeys={}, queryKeys={}, bodyKeys={}",
+                headerPart.keySet(), queryPart.keySet(), bodyPart.keySet());
+
         return input;
     }
 

@@ -1,9 +1,12 @@
 package com.xxx.it.works.wecode.v2.modules.flowversion.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.xxx.it.works.wecode.v2.common.error.ErrorCode;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersionEntity;
 import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowVersionReadRepository;
-import com.xxx.it.works.wecode.v2.modules.runtime.executor.ReactiveSequentialExecutor;
+import com.xxx.it.works.wecode.v2.modules.runtime.DagScheduler;
+import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
+import com.xxx.it.works.wecode.v2.modules.runtime.context.NodeContext;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.ExecutionResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -25,7 +28,7 @@ import static org.mockito.Mockito.*;
 class FlowVersionDebugServiceTest {
 
     @Mock
-    private ReactiveSequentialExecutor executor;
+    private DagScheduler dagScheduler;
 
     @Mock
     private OpFlowVersionReadRepository flowVersionReadRepository;
@@ -37,7 +40,7 @@ class FlowVersionDebugServiceTest {
     @BeforeEach
     void setUp() {
         objectMapper = new ObjectMapper();
-        service = new FlowVersionDebugService(objectMapper, executor, flowVersionReadRepository);
+        service = new FlowVersionDebugService(objectMapper, dagScheduler, flowVersionReadRepository);
     }
 
     @Test
@@ -64,12 +67,21 @@ class FlowVersionDebugServiceTest {
 
         when(flowVersionReadRepository.findById(200L)).thenReturn(Mono.just(entity));
 
-        ExecutionResult mockResult = new ExecutionResult();
-        mockResult.setExecutionId("exec-001");
-        mockResult.setFlowId("100");
-        mockResult.setStatus("success");
-        mockResult.setDebug(true);
-        when(executor.execute(any(), anyString())).thenReturn(Mono.just(mockResult));
+        ExecutionContext mockCtx = new ExecutionContext("exec-001", "100");
+        mockCtx.setDebug(true);
+        NodeContext exitCtx = new NodeContext();
+        exitCtx.setNodeId("n1");
+        exitCtx.setNodeType("connector");
+        exitCtx.setInput(new HashMap<>());
+        Map<String, Object> exitOutput = new HashMap<>();
+        exitOutput.put("result", "ok");
+        exitOutput.put("__status", "success");
+        exitCtx.setOutput(exitOutput);
+        exitCtx.setStatus("success");
+        exitCtx.setDurationMs(100);
+        mockCtx.setNodeContext(exitCtx);
+
+        when(dagScheduler.schedule(anyString(), any(ExecutionContext.class))).thenReturn(Mono.just(mockCtx));
 
         Map<String, Object> mockTriggerData = new HashMap<>();
         mockTriggerData.put("body", Map.of("key", "value"));
@@ -92,13 +104,13 @@ class FlowVersionDebugServiceTest {
                     assertEquals("failed", result.getStatus());
                     assertTrue(result.isDebug());
                     assertNotNull(result.getErrorInfo());
-                    assertEquals("404", result.getErrorInfo().get("code"));
+                    assertEquals(ErrorCode.PRECHECK_VERSION_NOT_FOUND, result.getErrorInfo().get("code"));
                 })
                 .verifyComplete();
     }
 
     @Test
-    @DisplayName("调试触发 → triggerType=3, isDebug=true")
+    @DisplayName("调试触发 → isDebug=true")
     void testExecuteTestRun_TriggerTypeCorrect() {
         FlowVersionEntity entity = spy(new FlowVersionEntity());
         entity.setFlowId(100L);
@@ -117,12 +129,18 @@ class FlowVersionDebugServiceTest {
 
         when(flowVersionReadRepository.findById(200L)).thenReturn(Mono.just(entity));
 
-        ExecutionResult mockResult = new ExecutionResult();
-        mockResult.setExecutionId("exec-002");
-        mockResult.setFlowId("100");
-        mockResult.setStatus("success");
-        mockResult.setDebug(true);
-        when(executor.execute(any(), anyString())).thenReturn(Mono.just(mockResult));
+        ExecutionContext mockCtx = new ExecutionContext("exec-002", "100");
+        mockCtx.setDebug(true);
+        NodeContext exitCtx = new NodeContext();
+        exitCtx.setNodeId("t1");
+        exitCtx.setNodeType("trigger");
+        exitCtx.setInput(new HashMap<>());
+        exitCtx.setOutput(new HashMap<>());
+        exitCtx.setStatus("success");
+        exitCtx.setDurationMs(0);
+        mockCtx.setNodeContext(exitCtx);
+
+        when(dagScheduler.schedule(anyString(), any(ExecutionContext.class))).thenReturn(Mono.just(mockCtx));
 
         StepVerifier.create(service.executeTestRun(100L, 200L, Map.of()))
                 .assertNext(result -> {
