@@ -98,6 +98,9 @@ public class DataProcessorExecutor implements NodeExecutor {
 
                     if (resolvedValue != null) {
                         outputData.put(targetField, resolvedValue);
+                    } else {
+                        log.warn("DataProcessor node {}: field '{}' resolved to null, sourceType='{}', sourceValue='{}'",
+                                nodeId, targetField, sourceType, sourceValue);
                     }
 
                     inputRecords.put(targetField, sourceValue);

@@ -233,6 +233,7 @@ public class DagScheduler {
                 })
                 .onErrorResume(e -> {
                     log.error("DAG execution error at node {}: {}", nodeId, e.getMessage(), e);
+                    recordNodeFailure(ctx, nodeId, NodeTypeResolver.businessType(nodeConfig), e);
                     return Mono.empty(); // 不中断其他分支
                 });
     }
@@ -254,6 +255,10 @@ public class DagScheduler {
                     .subscribeOn(Schedulers.parallel())
                     .onErrorResume(e -> {
                         log.warn("Parallel branch {} failed: {}", targetId, e.getMessage());
+                        JsonNode branchNodeConfig = nodeMap.get(targetId);
+                        recordNodeFailure(ctx, targetId,
+                                branchNodeConfig != null ? NodeTypeResolver.businessType(branchNodeConfig) : "unknown",
+                                e);
                         return Mono.empty();
                     });
             branches.add(branch);
@@ -278,8 +283,9 @@ public class DagScheduler {
                 .concatMap(node -> executeNode(ctx, node, startTime)
                         .doOnNext(output -> storeNodeOutputToContext(ctx, output))
                         .onErrorResume(e -> {
-                            log.warn("Node execution error: nodeId={}, error={}",
-                                    node.get("id").asText(), e.getMessage());
+                            String failedNodeId = node.get("id").asText();
+                            log.warn("Node execution error: nodeId={}, error={}", failedNodeId, e.getMessage());
+                            recordNodeFailure(ctx, failedNodeId, NodeTypeResolver.businessType(node), e);
                             return Mono.empty();
                         }))
                 .then(Mono.just(ctx));
@@ -327,7 +333,7 @@ public class DagScheduler {
                             // 保留 NodeExecutor 已设置的 errorInfo, 仅兜底
                             if (errorOutput.getErrorInfo() == null || errorOutput.getErrorInfo().isEmpty()) {
                                 Map<String, Object> errorInfo = new HashMap<>();
-                                errorInfo.put("code", isTimeout ? "64000" : "60001");
+                                errorInfo.put("code", isTimeout ? ErrorCode.ORCH_NODE_TIMEOUT : ErrorCode.ORCH_NODE_EXECUTION_FAILED);
                                 String msg = sanitize(e.getMessage());
                                 errorInfo.put("messageZh", "节点[" + nodeId + "]执行" + (isTimeout ? "超时" : "失败") + ": " + msg);
                                 errorInfo.put("messageEn", "Node [" + nodeId + "] execution " + (isTimeout ? "timeout" : "failed") + ": " + msg);
@@ -423,6 +429,26 @@ public class DagScheduler {
             }
         }
         return list;
+    }
+
+    /**
+     * 将节点异常记录到 ExecutionContext (不抛出, 不阻断其他分支)
+     */
+    private void recordNodeFailure(ExecutionContext ctx, String nodeId, String nodeType, Throwable e) {
+        NodeContext failCtx = new NodeContext();
+        failCtx.setNodeId(nodeId);
+        failCtx.setNodeType(nodeType);
+        failCtx.setInput(new HashMap<>());
+        failCtx.setOutput(new HashMap<>());
+        failCtx.setStatus("failed");
+        failCtx.setDurationMs(0);
+        Map<String, Object> errorInfo = new HashMap<>();
+        errorInfo.put("code", ErrorCode.ORCH_NODE_EXECUTION_FAILED);
+        String msg = e.getMessage() != null ? sanitize(e.getMessage()) : e.getClass().getSimpleName();
+        errorInfo.put("messageZh", "节点[" + nodeId + "]执行异常: " + msg);
+        errorInfo.put("messageEn", "Node [" + nodeId + "] execution error: " + msg);
+        failCtx.setErrorInfo(errorInfo);
+        ctx.setNodeContext(failCtx);
     }
 
     private String sanitize(String msg) {

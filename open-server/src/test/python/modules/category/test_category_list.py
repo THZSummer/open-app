@@ -7,7 +7,7 @@ from conftest import api
 class TestCategoryList:
     @pytest.mark.L0
     def test_list_ok(self):
-        resp = api("GET", "/categories")
+        resp = api("GET", "/categories", timeout=30)
         assert resp.status_code == 200
         data = resp.json()
         assert data["code"] == "200"
@@ -15,7 +15,7 @@ class TestCategoryList:
 
     @pytest.mark.L3
     def test_list_with_newly_created(self, category):
-        resp = api("GET", "/categories")
+        resp = api("GET", "/categories", timeout=30)
         items = resp.json().get("data", [])
         ids = [it.get("id") for it in items if isinstance(it, dict)]
         assert str(category) in str(ids) or category in ids

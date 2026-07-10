@@ -35,8 +35,6 @@ import java.util.Map;
 @Component
 public class CtxAssembler {
 
-    private static final String TRIGGER_NODE_ID = "node_trigger";
-
     /**
      * 组装脚本执行上下文 Map
      *
@@ -62,18 +60,24 @@ public class CtxAssembler {
                 nodeData.put("output", nodeCtx.getOutput() != null ? nodeCtx.getOutput() : new LinkedHashMap<>());
                 ctx.put(nodeId, nodeData);
             } else {
-                log.debug("Node context not found for upstream node: {}", nodeId);
+                log.warn("Node context not found for upstream node: {}, available nodes: {}",
+                        nodeId, execCtx.getNodeContexts().keySet());
             }
         }
 
         // 2. 组装 trigger 触发数据 (v5.7 结构化格式: {header, query, body})
-        // 优先从 trigger NodeContext 获取已构建的结构化 input
-        NodeContext triggerNodeCtx = execCtx.getNodeContext(TRIGGER_NODE_ID);
+        // 动态查找 trigger 类型节点 (不再硬编码 ID), 同时以 "trigger" 别名暴露给脚本
+        String triggerNodeId = findTriggerNodeId(execCtx);
+        NodeContext triggerNodeCtx = triggerNodeId != null ? execCtx.getNodeContext(triggerNodeId) : null;
         Map<String, Object> triggerInput;
         if (triggerNodeCtx != null && triggerNodeCtx.getInput() != null) {
             triggerInput = new LinkedHashMap<>(triggerNodeCtx.getInput());
+            log.info("Script ctx: trigger node found, id='{}', accessible via ctx.trigger and ctx.{}",
+                    triggerNodeId, triggerNodeId);
         } else {
             // 降级: 从 ExecutionContext 原始字段构建结构化 input
+            log.warn("Script ctx: trigger NodeContext not found (triggerNodeId={}), falling back to raw ExecutionContext fields",
+                    triggerNodeId != null ? triggerNodeId : "(none)");
             triggerInput = new LinkedHashMap<>();
             triggerInput.put("header", execCtx.getTriggerHeaders() != null
                     ? new LinkedHashMap<>(execCtx.getTriggerHeaders()) : new LinkedHashMap<>());
@@ -87,10 +91,22 @@ public class CtxAssembler {
         triggerData.put("input", triggerInput);
         ctx.put("trigger", triggerData);
 
-        log.debug("Assembled script ctx: upstreamNodeCount={}, hasTrigger={}",
+        log.info("Assembled script ctx: upstreamNodeCount={}, hasTrigger={}",
                 effectiveUpstream.size(),
-                execCtx.getTriggerData() != null);
+                triggerNodeCtx != null);
 
         return ctx;
+    }
+
+    /**
+     * 从执行上下文中按节点类型查找 trigger 节点 ID
+     */
+    private String findTriggerNodeId(ExecutionContext execCtx) {
+        for (Map.Entry<String, NodeContext> entry : execCtx.getNodeContexts().entrySet()) {
+            if ("trigger".equals(entry.getValue().getNodeType())) {
+                return entry.getKey();
+            }
+        }
+        return null;
     }
 }

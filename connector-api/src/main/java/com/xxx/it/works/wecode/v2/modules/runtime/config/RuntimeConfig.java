@@ -11,12 +11,10 @@ import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowVersionReadRepos
 import com.xxx.it.works.wecode.v2.modules.runtime.executor.NodeExecutor;
 import io.netty.channel.ChannelOption;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;
-import com.xxx.it.works.wecode.v2.modules.runtime.executor.ReactiveSequentialExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.node.ConnectorNodeExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.node.DataProcessorExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.node.TriggerNodeExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.node.ExitNodeExecutor;
-import com.xxx.it.works.wecode.v2.modules.script.ScriptNodeExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.DagScheduler;
 import com.xxx.it.works.wecode.v2.modules.runtime.FlowConfigParser;
 import com.xxx.it.works.wecode.v2.modules.runtime.FlowRuntimeEngine;
@@ -28,7 +26,6 @@ import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.netty.http.client.HttpClient;
 
-import java.time.Duration;
 import java.util.List;
 
 /**
@@ -59,25 +56,6 @@ public class RuntimeConfig {
     @Bean
     public ExitNodeExecutor exitNodeExecutor(ObjectMapper objectMapper) {
         return new ExitNodeExecutor(objectMapper);
-    }
-
-    @Bean
-    public ReactiveSequentialExecutor reactiveSequentialExecutor(
-            ObjectMapper objectMapper,
-            TriggerNodeExecutor triggerNodeExecutor,
-            ConnectorNodeExecutor connectorNodeExecutor,
-            DataProcessorExecutor dataProcessorExecutor,
-            ExitNodeExecutor exitNodeExecutor,
-            ScriptNodeExecutor scriptNodeExecutor,
-            ConnectorApiPropertyService propertyService) {
-        return new ReactiveSequentialExecutor(
-                objectMapper,
-                triggerNodeExecutor,
-                connectorNodeExecutor,
-                dataProcessorExecutor,
-                exitNodeExecutor,
-                scriptNodeExecutor,
-                propertyService);
     }
 
     @Bean

@@ -12,6 +12,7 @@ import com.xxx.it.works.wecode.v2.modules.runtime.node.DataProcessorExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.node.TriggerNodeExecutor;
 import com.xxx.it.works.wecode.v2.modules.runtime.node.ExitNodeExecutor;
 import com.xxx.it.works.wecode.v2.common.config.ConnectorApiPropertyService;
+import com.xxx.it.works.wecode.v2.common.error.ErrorCode;
 import com.xxx.it.works.wecode.v2.modules.script.ScriptNodeExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -140,7 +141,7 @@ public class ReactiveSequentialExecutor {
                             errorOutput.setStatus("timeout");
                             errorOutput.setDurationMs(System.currentTimeMillis() - nodeStart);
                             Map<String, Object> errInfo = new HashMap<>();
-                            errInfo.put("code", "6002");
+                            errInfo.put("code", ErrorCode.ORCH_NODE_TIMEOUT_OR_ERROR);
                             errInfo.put("messageZh", "节点执行超时或错误: " + e.getMessage());
                             errInfo.put("messageEn", "Node execution timeout or error: " + e.getMessage());
                             errInfo.put("message", e.getMessage());
@@ -269,7 +270,7 @@ public class ReactiveSequentialExecutor {
             if ("failed".equals(step.getStatus()) || "timeout".equals(step.getStatus())) {
                 anyFailed = true;
                 if (firstErrorCode == null && step.getErrorInfo() != null) {
-                    firstErrorCode = extractErrorField(step.getErrorInfo(), "code", "6001");
+                    firstErrorCode = extractErrorField(step.getErrorInfo(), "code", ErrorCode.ORCH_EXECUTION_FAILED);
                     firstErrorMessageZh = extractErrorField(step.getErrorInfo(), "messageZh",
                             extractErrorField(step.getErrorInfo(), "message", step.getStatus()));
                     firstErrorMessageEn = extractErrorField(step.getErrorInfo(), "messageEn",
@@ -402,7 +403,7 @@ public class ReactiveSequentialExecutor {
 
         String msg = (errorMessage != null) ? errorMessage : "Orchestration config has no nodes";
         Map<String, Object> errorInfo = new HashMap<>();
-        errorInfo.put("code", "6001");
+        errorInfo.put("code", ErrorCode.ORCH_EXECUTION_FAILED);
         errorInfo.put("message", msg);
         errorInfo.put("messageEn", msg);
         errorInfo.put("messageZh", msg);
