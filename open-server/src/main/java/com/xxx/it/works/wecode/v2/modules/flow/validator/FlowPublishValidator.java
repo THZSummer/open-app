@@ -122,7 +122,7 @@ public class FlowPublishValidator {
     private void validateNodes(JsonNode config, List<String> errors) {
         JsonNode nodes = config.get("nodes");
         if (nodes == null || !nodes.isArray() || nodes.isEmpty()) {
-            errors.add("编排配置必须包含至少一个节点");
+            errors.add("编排配置必须包含触发节点（trigger）和数据输出节点（exit）");
         }
     }
 
