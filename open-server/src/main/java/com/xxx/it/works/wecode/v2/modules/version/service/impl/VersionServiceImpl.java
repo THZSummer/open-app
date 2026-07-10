@@ -275,7 +275,7 @@ public class VersionServiceImpl implements VersionService {
                 currentUser,
                 currentUser,
                 currentUser,
-                appId
+                version.getAppId()
         );
         log.info("Version publish approval created: versionId={}", versionId);
     }
