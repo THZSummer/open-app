@@ -79,6 +79,7 @@ public class FlowPublishValidator {
 
         validateConfigSize(orchestrationConfig, propertyConfig, errors);
         validateNodes(config, errors);
+        validateEdges(config, errors);
         validateFlowMode(config, propertyConfig, errors);
         validateParallelBranches(config, propertyConfig, errors);
 
@@ -123,6 +124,72 @@ public class FlowPublishValidator {
         JsonNode nodes = config.get("nodes");
         if (nodes == null || !nodes.isArray() || nodes.isEmpty()) {
             errors.add("编排配置节点列表为空");
+        }
+    }
+
+    /**
+     * 校验 DAG 边拓扑约束 (§6.4)
+     * <ul>
+     *   <li>自环边: source == target</li>
+     *   <li>边引用存在: source/target 必须对应已声明的 node id</li>
+     *   <li>exit 出度为 0: exit 节点不准有出边</li>
+     *   <li>trigger 入度为 0: trigger 节点不准有入边</li>
+     * </ul>
+     */
+    private void validateEdges(JsonNode config, List<String> errors) {
+        JsonNode nodes = config.get("nodes");
+        JsonNode edges = config.get("edges");
+        if (nodes == null || !nodes.isArray() || nodes.isEmpty()) {
+            return;
+        }
+        if (edges == null || !edges.isArray() || edges.isEmpty()) {
+            return;
+        }
+
+        Set<String> nodeIds = new HashSet<>();
+        Set<String> triggerIds = new HashSet<>();
+        Set<String> exitIds = new HashSet<>();
+        for (JsonNode node : nodes) {
+            String id = node.has("id") ? node.get("id").asText() : null;
+            if (id == null) {
+                continue;
+            }
+            nodeIds.add(id);
+            String type = NodeTypeResolver.businessType(node);
+            if ("trigger".equals(type)) {
+                triggerIds.add(id);
+            } else if ("exit".equals(type)) {
+                exitIds.add(id);
+            }
+        }
+
+        for (JsonNode edge : edges) {
+            String source = edge.has("source") ? edge.get("source").asText() : null;
+            String target = edge.has("target") ? edge.get("target").asText() : null;
+            String edgeId = edge.has("id") ? edge.get("id").asText() : (source + "->" + target);
+
+            if (source == null || target == null) {
+                errors.add("边 [" + edgeId + "] 缺少 source 或 target");
+                continue;
+            }
+
+            if (source.equals(target)) {
+                errors.add("边 [" + edgeId + "] 为自环边（source == target），不允许");
+            }
+
+            if (!nodeIds.contains(source)) {
+                errors.add("边 [" + edgeId + "] 的 source \"" + source + "\" 不存在于节点列表中");
+            }
+            if (!nodeIds.contains(target)) {
+                errors.add("边 [" + edgeId + "] 的 target \"" + target + "\" 不存在于节点列表中");
+            }
+
+            if (exitIds.contains(source)) {
+                errors.add("边 [" + edgeId + "] exit 节点 \"" + source + "\" 不允许有出边");
+            }
+            if (triggerIds.contains(target)) {
+                errors.add("边 [" + edgeId + "] trigger 节点 \"" + target + "\" 不允许有入边");
+            }
         }
     }
 
