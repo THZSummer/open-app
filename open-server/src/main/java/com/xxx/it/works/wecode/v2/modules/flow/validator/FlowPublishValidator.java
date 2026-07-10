@@ -123,24 +123,6 @@ public class FlowPublishValidator {
         JsonNode nodes = config.get("nodes");
         if (nodes == null || !nodes.isArray() || nodes.isEmpty()) {
             errors.add("编排配置必须包含至少一个节点");
-            return;
-        }
-
-        JsonNode edges = config.get("edges");
-        boolean hasEdges = edges != null && edges.isArray() && edges.size() > 0;
-
-        boolean hasBusinessNode = false;
-        for (JsonNode node : nodes) {
-            String typeStr = NodeTypeResolver.businessType(node);
-            if (typeStr != null) {
-                if (!"trigger".equals(typeStr) && !"exit".equals(typeStr)) {
-                    hasBusinessNode = true;
-                    break;
-                }
-            }
-        }
-        if (!hasBusinessNode && hasEdges) {
-            errors.add("编排配置至少需要一个业务节点（connector 或 script）");
         }
     }
 
