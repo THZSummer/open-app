@@ -19,6 +19,10 @@ import com.xxx.it.works.wecode.v2.modules.event.entity.Permission;
 import com.xxx.it.works.wecode.v2.modules.event.mapper.PermissionMapper;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.Flow;
 import com.xxx.it.works.wecode.v2.modules.flowversion.entity.FlowVersion;
+import com.xxx.it.works.wecode.v2.modules.app.entity.App;
+import com.xxx.it.works.wecode.v2.modules.app.mapper.AppMapper;
+import com.xxx.it.works.wecode.v2.modules.version.entity.AppVersion;
+import com.xxx.it.works.wecode.v2.modules.version.mapper.AppVersionMapper;
 import com.xxx.it.works.wecode.v2.modules.flow.mapper.OpFlowMapper;
 import com.xxx.it.works.wecode.v2.modules.flowversion.mapper.OpFlowVersionMapper;
 import com.xxx.it.works.wecode.v2.modules.permission.entity.Subscription;
@@ -78,6 +82,8 @@ public class ApprovalService {
     // V3 新增：连接器流模块 Mapper（用于获取连接流版本发布审批业务数据）
     private final OpFlowMapper cpFlowMapper;
     private final OpFlowVersionMapper cpFlowVersionMapper;
+    private final AppVersionMapper appVersionMapper;
+    private final AppMapper appMapper;
 
     // ==================== 审批执行管理 ====================
 
@@ -584,6 +590,8 @@ public class ApprovalService {
                     return getPermissionApplyData(businessId);
                 case "connector_flow_version_publish":
                     return getFlowVersionPublishData(businessId);
+                case "app_version_publish":
+                    return getAppVersionPublishData(businessId);
                 default:
                     log.warn("Unknown business type: {}", businessType);
                     return new HashMap<>();
@@ -675,6 +683,40 @@ public class ApprovalService {
                 data.put("flowNameCn", flow.getNameCn());
                 data.put("flowNameEn", flow.getNameEn());
                 data.put("appId", flow.getAppId());
+            }
+        }
+
+        return data;
+    }
+
+    /**
+     * 获取应用版本发布审批数据
+     *
+     * @param businessId 业务ID（即appVersionId）
+     * @return 业务数据
+     */
+    private Map<String, Object> getAppVersionPublishData(Long businessId) {
+        Map<String, Object> data = new HashMap<>();
+        AppVersion version = appVersionMapper.selectById(businessId);
+        if (version == null) {
+            return data;
+        }
+
+        data.put("appVersionId", version.getId());
+        data.put("versionCode", version.getVersionCode());
+        data.put("status", version.getStatus());
+        data.put("versionDescCn", version.getVersionDescCn());
+        data.put("versionDescEn", version.getVersionDescEn());
+
+        if (version.getAppId() != null) {
+            App app = appMapper.selectById(version.getAppId());
+            if (app != null) {
+                String versionSuffix = " (版本" + version.getVersionCode() + ")";
+                data.put("nameCn", app.getAppNameCn() + versionSuffix);
+                data.put("nameEn", app.getAppNameEn() + versionSuffix);
+                data.put("appNameCn", app.getAppNameCn());
+                data.put("appNameEn", app.getAppNameEn());
+                data.put("appId", app.getAppId());
             }
         }
 
