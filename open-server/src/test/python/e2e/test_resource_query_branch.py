@@ -31,14 +31,12 @@ os_api = _osm.api
 os_ok = _osm.ok
 os_fail = _osm.fail
 os_done = _osm.done
-from client import CONNECTOR_API_BASE, CONNECTOR_API_HEALTH, OPEN_SERVER_BASE, TEST_APP_ID, TEST_COOKIE, TEST_XSRF_TOKEN
+from client import CONNECTOR_API_BASE, CONNECTOR_API_HEALTH, OPEN_SERVER_BASE, AUTH_HEADERS, SYSTOKEN_HEADER, SYSTOKEN_VALUE
 
 import pytest, requests, random, string
 from urllib.parse import unquote
 
 _RUN_ID = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
-
-AUTH_HEADERS = {"X-App-Id": TEST_APP_ID, "Cookie": TEST_COOKIE, "X-XSRF-TOKEN": TEST_XSRF_TOKEN}
 
 
 def snow_id():
@@ -217,9 +215,9 @@ def test_resource_query_branch():
                             "authConfigs": [{
                                 "type": "SYSTOKEN",
                                 "header": {"type": "object", "properties": {
-                                    "X-Sys-Token": {"type": "string", "required": True, "sensitive": True},
+                                    SYSTOKEN_HEADER: {"type": "string", "required": True, "sensitive": True},
                                 }},
-                                "sysAccountWhitelist": ["tester"],
+                                "sysAccountWhitelist": [SYSTOKEN_VALUE],
                             }],
                             "input": {
                                 "protocol": "HTTP",
@@ -391,7 +389,7 @@ def test_resource_query_branch():
 
         def _invoke_and_verify(label, payload, expected_headers, extra_headers, params):
             r = api_connector("POST", f"/flows/{fid}/invoke", payload,
-                              headers={**{"X-Sys-Token": "tester"}, **extra_headers},
+                               headers={**{SYSTOKEN_HEADER: SYSTOKEN_VALUE}, **extra_headers},
                               params=params)
             if r is None:
                 os_fail(f"{label}: connector-api unreachable")
