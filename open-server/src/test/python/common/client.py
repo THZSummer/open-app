@@ -21,7 +21,7 @@ import requests
 try:
     from common.config import (
         OPEN_SERVER_BASE,
-        TEST_APP_ID, INTERNAL_APP_ID, TEST_COOKIE, TEST_XSRF_TOKEN, DEFAULT_USER,
+        TEST_APP_ID, INTERNAL_APP_ID, TEST_COOKIE, TEST_XSRF_TOKEN,
         SYSTOKEN_HEADER, SYSTOKEN_VALUE,
         DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME,
         REDIS_PASSWORD, REDIS_CLUSTER_NODES as _REDIS_CLUSTER_NODES,
@@ -31,7 +31,7 @@ try:
 except ImportError:
     from config import (
         OPEN_SERVER_BASE,
-        TEST_APP_ID, INTERNAL_APP_ID, TEST_COOKIE, TEST_XSRF_TOKEN, DEFAULT_USER,
+        TEST_APP_ID, INTERNAL_APP_ID, TEST_COOKIE, TEST_XSRF_TOKEN,
         SYSTOKEN_HEADER, SYSTOKEN_VALUE,
         DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME,
         REDIS_PASSWORD, REDIS_CLUSTER_NODES as _REDIS_CLUSTER_NODES,
@@ -43,7 +43,6 @@ except ImportError:
 # 派生配置
 # ═══════════════════════════════════════════════════════════
 _API_BASE = OPEN_SERVER_BASE
-_DEFAULT_USER = DEFAULT_USER
 _DB = {"host": DB_HOST, "port": DB_PORT, "user": DB_USER, "passwd": DB_PASS, "db": DB_NAME}
 _TIMEOUT = REQUEST_TIMEOUT
 
@@ -72,12 +71,14 @@ def api(method, path, body=None, *, app_id=None, user=None, headers=None, timeou
     h = {"Content-Type": "application/json"}
 
     aid = TEST_APP_ID if app_id is None else app_id
-    usr = _DEFAULT_USER if user is None else user
     if aid is not None:
         h["X-App-Id"] = aid
-    if usr is not None:
-        h["Cookie"] = f"user_id={usr}"
-        h["X-XSRF-TOKEN"] = f"user_id={usr}"
+    if user is not None:
+        h["Cookie"] = f"user_id={user}"
+        h["X-XSRF-TOKEN"] = f"user_id={user}"
+    else:
+        h["Cookie"] = TEST_COOKIE
+        h["X-XSRF-TOKEN"] = TEST_XSRF_TOKEN
     if headers:
         h.update(headers)
 

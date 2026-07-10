@@ -16,7 +16,6 @@ TEST_APP_ID        = "20250730213114178360970"
 INTERNAL_APP_ID    = 328225464973787136   # App.id 数值 (DB 关联用)
 TEST_COOKIE        = "user_id=admin"
 TEST_XSRF_TOKEN    = "user_id=admin"
-DEFAULT_USER       = "admin"
 
 # ── SYSTOKEN 鉴权 ─────────────────────────────────────
 SYSTOKEN_HEADER = "X-Sys-Token"            # 触发器校验的 HTTP 头字段名
