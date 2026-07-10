@@ -100,6 +100,7 @@ public final class ErrorCode {
     public static final String PRECHECK_CONNECTOR_VERSION_INVALIDATED = "422";
     public static final String PRECHECK_CONNECTOR_INVALIDATED = "422";
     public static final String PRECHECK_AUTH_FAILED = "401";
+    public static final String PRECHECK_AUTH_EXPIRED = "401";
     public static final String PRECHECK_BAD_REQUEST = "400";
     public static final String PRECHECK_URL_WHITELIST_DENIED = "403";
     public static final String PRECHECK_INTERNAL_ERROR = "500";

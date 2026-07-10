@@ -365,6 +365,10 @@ public class FlowVersionDebugService {
         input.put("header", headerPart);
         input.put("query", queryPart);
         input.put("body", bodyPart);
+
+        log.info("Debug trigger input built: headerKeys={}, queryKeys={}, bodyKeys={}",
+                headerPart.keySet(), queryPart.keySet(), bodyPart.keySet());
+
         return input;
     }
 

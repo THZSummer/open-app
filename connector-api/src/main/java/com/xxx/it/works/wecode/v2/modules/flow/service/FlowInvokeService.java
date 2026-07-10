@@ -5,6 +5,7 @@ import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowEntity;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersionEntity;
 
 import com.xxx.it.works.wecode.v2.common.config.ConnectorApiPropertyService;
+import com.xxx.it.works.wecode.v2.modules.auth.SysTokenResolver;
 import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowVersionReadRepository;
 import com.xxx.it.works.wecode.v2.common.IdGenerator;
 import com.xxx.it.works.wecode.v2.modules.cache.EntityCacheManager;
@@ -23,7 +24,6 @@ import com.xxx.it.works.wecode.v2.modules.runtime.model.FlowConfig;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.TransparentFlowResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.xxx.it.works.wecode.v2.common.annotation.StandardTodo;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import java.time.Duration;
@@ -82,6 +82,7 @@ public class FlowInvokeService {
     private final ExecutionStepService executionStepService;
     private final IdGenerator idGenerator;
     private final ConnectorApiPropertyService propertyService;
+    private final SysTokenResolver sysTokenResolver;
 
     public FlowInvokeService(
             ObjectMapper objectMapper,
@@ -93,7 +94,8 @@ public class FlowInvokeService {
             ExecutionRecordService executionRecordService,
             ExecutionStepService executionStepService,
             IdGenerator idGenerator,
-            ConnectorApiPropertyService propertyService) {
+            ConnectorApiPropertyService propertyService,
+            SysTokenResolver sysTokenResolver) {
         this.objectMapper = objectMapper;
         this.dagScheduler = dagScheduler;
         this.flowVersionReadRepository = flowVersionReadRepository;
@@ -104,6 +106,7 @@ public class FlowInvokeService {
         this.executionStepService = executionStepService;
         this.idGenerator = idGenerator;
         this.propertyService = propertyService;
+        this.sysTokenResolver = sysTokenResolver;
     }
 
     /**
@@ -208,7 +211,9 @@ public class FlowInvokeService {
                     FlowEntity flow = tuple.getT2().orElse(null);
 
                     // ★ 初始化执行记录 (开关关闭时跳过)
-                    String triggerAccount = resolveSysAccount(headers.getOrDefault("X-Sys-Token", ""));
+                    String triggerAccount = sysTokenResolver
+                            .resolveSysAccount(headers.getOrDefault("X-Sys-Token", ""))
+                            .orElse("");
                     initExecutionRecord(recordId, flowId, executionId, flowVersion, flow, triggerAccount, logEnabled);
 
                     // 1. 解析编排配置
@@ -903,26 +908,30 @@ public class FlowInvokeService {
         for (Map.Entry<String, Object> entry : properties.entrySet()) {
             String fieldName = entry.getKey();
             String token = headers != null ? headers.get(fieldName) : null;
-            if (token == null || token.isEmpty()) {
-                throw new PreCheckException(ErrorCode.PRECHECK_AUTH_FAILED,
-                        "认证失败: 缺少 " + fieldName);
+
+            // 1. 凭证异常: 无法从 token 解析出系统账号
+            String account = sysTokenResolver.resolveSysAccount(token)
+                    .orElseThrow(() -> new PreCheckException(ErrorCode.PRECHECK_AUTH_FAILED,
+                            "凭证异常: 无法从 " + fieldName + " 解析系统账号"));
+
+            // 2. 凭证过期: token 已失效
+            if (!sysTokenResolver.isTokenValid(token)) {
+                throw new PreCheckException(ErrorCode.PRECHECK_AUTH_EXPIRED,
+                        "凭证过期: " + fieldName + " 已失效");
             }
+
+            // 3. 无权限: 账号不在白名单
             if (whitelistTokens != null) {
                 if (whitelistTokens.isEmpty()) {
                     throw new PreCheckException(ErrorCode.PRECHECK_URL_WHITELIST_DENIED,
                             "SysAccount 白名单为空，所有请求被拒绝");
                 }
-                if (!whitelistTokens.contains(resolveSysAccount(token))) {
+                if (!whitelistTokens.contains(account)) {
                     throw new PreCheckException(ErrorCode.PRECHECK_URL_WHITELIST_DENIED,
-                            "SysAccount 不在白名单中: " + resolveSysAccount(token));
+                            "无权限: SysAccount 不在白名单中: " + account);
                 }
             }
         }
-    }
-
-    @StandardTodo("对接 token 解析服务，根据 SysToken 解析出 SysAccount")
-    private String resolveSysAccount(String token) {
-        return token;
     }
 
     /**
