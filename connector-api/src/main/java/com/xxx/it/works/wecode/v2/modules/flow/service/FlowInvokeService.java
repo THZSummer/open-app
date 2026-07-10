@@ -137,8 +137,8 @@ public class FlowInvokeService {
                     return versionMono.map(fv -> Tuples.of(fv, Optional.of(flow)));
                 })
                 .switchIfEmpty(
-                    loadFlowVersionByFlowId(flowId)
-                            .map(fv -> Tuples.of(fv, Optional.empty()))
+                    Mono.error(new PreCheckException(
+                            ErrorCode.PRECHECK_URL_WHITELIST_DENIED, "连接流不存在或已被删除"))
                 );
     }
 

@@ -2,6 +2,7 @@ package com.xxx.it.works.wecode.v2.modules.flow.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
@@ -26,39 +27,34 @@ public class FlowCacheEvictor {
 
     private static final Logger log = LoggerFactory.getLogger(FlowCacheEvictor.class);
 
-    /**
-     * 清理 Flow 实体缓存 (lifecycleStatus / deployedVersionId 变更时)
-     */
-    public void evictFlowEntity(Long flowId, StringRedisTemplate redis) {
+    @Autowired(required = false)
+    private StringRedisTemplate redis;
+
+    /** 清理 Flow 实体缓存 (lifecycleStatus / deployedVersionId 变更时) */
+    public void evictFlowEntity(Long flowId) {
         if (redis == null) return;
         String key = "cp:entity:flow:" + flowId;
         redis.delete(key);
         log.info("Evicted flow entity cache: {}", key);
     }
 
-    /**
-     * 清理 FlowVersion 实体缓存 (status / orchestrationConfig 变更时)
-     */
-    public void evictFlowVersion(Long versionId, StringRedisTemplate redis) {
+    /** 清理 FlowVersion 实体缓存 (status / orchestrationConfig 变更时) */
+    public void evictFlowVersion(Long versionId) {
         if (redis == null) return;
         String key = "cp:entity:flowversion:" + versionId;
         redis.delete(key);
         log.info("Evicted flow version cache: {}", key);
     }
 
-    /**
-     * 清理流配置缓存 (部署切换版本时)
-     */
-    public void evictFlowConfig(Long flowId, StringRedisTemplate redis) {
+    /** 清理流配置缓存 (部署切换版本时) */
+    public void evictFlowConfig(Long flowId) {
         if (redis == null) return;
         redis.delete("cp:flow:config:" + flowId);
         log.info("Evicted flow config cache: cp:flow:config:{}", flowId);
     }
 
-    /**
-     * 清理执行结果缓存 (流状态变更导致缓存结果失效时)
-     */
-    public void evictExecutionResults(Long flowId, StringRedisTemplate redis) {
+    /** 清理执行结果缓存 (流状态变更导致缓存结果失效时) */
+    public void evictExecutionResults(Long flowId) {
         if (redis == null) return;
         String pattern = "cp:cache:flow:" + flowId + ":*";
         try {

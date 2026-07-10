@@ -36,7 +36,6 @@ import com.xxx.it.works.wecode.v2.modules.security.AppContextHolder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -61,8 +60,6 @@ import java.util.Map;
 @Slf4j
 @Service
 public class FlowVersionService {
-
-
 
     @Autowired
     public FlowVersionService(OpFlowMapper flowMapper, OpFlowVersionMapper flowVersionMapper, ConnectorVersionRefMapper connectorVersionRefMapper, IdGeneratorStrategy idGenerator, ObjectMapper objectMapper, FlowPublishValidator publishValidator, FlowVersionApprovalService approvalService, ApprovalService genericApprovalService, AuditLogService auditLogService, ConnectorPlatformPropertyService propertyService, ApprovalRecordMapper approvalRecordMapper, ApprovalLogMapper approvalLogMapper) {
@@ -93,7 +90,6 @@ public class FlowVersionService {
     private final ApprovalLogMapper approvalLogMapper;
 
     @Autowired(required = false)
-    private StringRedisTemplate stringRedisTemplate;
 
     @Autowired
     private FlowCacheEvictor flowCacheEvictor;
@@ -650,7 +646,7 @@ public class FlowVersionService {
         version.setLastUpdateBy(currentUser);
         flowVersionMapper.update(version);
 
-        flowCacheEvictor.evictFlowVersion(versionId, stringRedisTemplate);
+        flowCacheEvictor.evictFlowVersion(versionId);
 
         log.info("Flow version invalidated: flowId={}, versionId={}, versionNumber={}",
                 flowId, versionId, version.getVersionNumber());
@@ -698,7 +694,7 @@ public class FlowVersionService {
         version.setLastUpdateBy(currentUser);
         flowVersionMapper.update(version);
 
-        flowCacheEvictor.evictFlowVersion(versionId, stringRedisTemplate);
+        flowCacheEvictor.evictFlowVersion(versionId);
 
         log.info("Flow version recovered: flowId={}, versionId={}, versionNumber={}",
                 flowId, versionId, version.getVersionNumber());
@@ -737,7 +733,7 @@ public class FlowVersionService {
 
         flowVersionMapper.deleteById(versionId);
 
-        flowCacheEvictor.evictFlowVersion(versionId, stringRedisTemplate);
+        flowCacheEvictor.evictFlowVersion(versionId);
 
         log.info("Flow version deleted: flowId={}, versionId={}, versionNumber={}",
                 flowId, versionId, version.getVersionNumber());

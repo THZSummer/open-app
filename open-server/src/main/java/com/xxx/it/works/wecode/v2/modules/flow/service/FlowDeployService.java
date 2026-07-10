@@ -12,7 +12,6 @@ import com.xxx.it.works.wecode.v2.modules.security.AppContextHolder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,10 +26,6 @@ import java.util.Date;
 @Slf4j
 @Service
 public class FlowDeployService {
-
-
-
-
     @Autowired
     public FlowDeployService(OpFlowMapper flowMapper, OpFlowVersionMapper flowVersionMapper) {
         this.flowMapper = flowMapper;
@@ -40,7 +35,6 @@ public class FlowDeployService {
     private final OpFlowVersionMapper flowVersionMapper;
 
     @Autowired(required = false)
-    private StringRedisTemplate stringRedisTemplate;
 
     @Autowired
     private FlowCacheEvictor flowCacheEvictor;
@@ -83,9 +77,9 @@ public class FlowDeployService {
         // 部署：仅绑定版本
         flowMapper.deploy(flowId, versionId, version.getVersionNumber(), now, currentUser);
 
-        flowCacheEvictor.evictFlowConfig(flowId, stringRedisTemplate);
-        flowCacheEvictor.evictFlowEntity(flowId, stringRedisTemplate);
-        flowCacheEvictor.evictExecutionResults(flowId, stringRedisTemplate);
+        flowCacheEvictor.evictFlowConfig(flowId);
+        flowCacheEvictor.evictFlowEntity(flowId);
+        flowCacheEvictor.evictExecutionResults(flowId);
 
         log.info("Flow deployed: flowId={}, versionId={}, versionNumber={}, appId={}",
                 flowId, versionId, version.getVersionNumber(), appId);
