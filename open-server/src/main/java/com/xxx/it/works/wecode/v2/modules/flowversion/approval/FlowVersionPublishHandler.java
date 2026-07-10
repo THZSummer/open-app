@@ -6,6 +6,8 @@ import com.xxx.it.works.wecode.v2.modules.approval.engine.ApprovalEngine;
 import com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalRecord;
 import com.xxx.it.works.wecode.v2.modules.flowversion.entity.FlowVersion;
 import com.xxx.it.works.wecode.v2.modules.flowversion.mapper.OpFlowVersionMapper;
+import com.xxx.it.works.wecode.v2.modules.flow.entity.Flow;
+import com.xxx.it.works.wecode.v2.modules.flow.mapper.OpFlowMapper;
 import com.xxx.it.works.wecode.v2.modules.flow.service.FlowCacheEvictor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,6 +16,8 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 @Slf4j
 @Component
@@ -27,6 +31,9 @@ public class FlowVersionPublishHandler implements ApprovalBusinessHandler {
 
     @Autowired
     private FlowCacheEvictor flowCacheEvictor;
+
+    @Autowired
+    private OpFlowMapper flowMapper;
 
     @Override
     public String supportedBusinessType() {
@@ -72,5 +79,33 @@ public class FlowVersionPublishHandler implements ApprovalBusinessHandler {
         version.setLastUpdateBy(record.getApplicantId());
         flowVersionMapper.update(version);
         log.info("Cancelled flow version: versionId={}", record.getBusinessId());
+    }
+
+    @Override
+    public Map<String, Object> getBusinessData(Long businessId) {
+        Map<String, Object> data = new HashMap<>();
+        FlowVersion version = flowVersionMapper.selectById(businessId);
+        if (version == null) {
+            return data;
+        }
+
+        data.put("flowVersionId", version.getId());
+        data.put("flowId", version.getFlowId());
+        data.put("versionNumber", version.getVersionNumber());
+        data.put("status", version.getStatus());
+
+        if (version.getFlowId() != null) {
+            Flow flow = flowMapper.selectById(version.getFlowId());
+            if (flow != null) {
+                String versionSuffix = " (版本" + version.getVersionNumber() + ")";
+                data.put("nameCn", flow.getNameCn() + versionSuffix);
+                data.put("nameEn", flow.getNameEn() + versionSuffix);
+                data.put("flowNameCn", flow.getNameCn());
+                data.put("flowNameEn", flow.getNameEn());
+                data.put("appId", flow.getAppId());
+            }
+        }
+
+        return data;
     }
 }

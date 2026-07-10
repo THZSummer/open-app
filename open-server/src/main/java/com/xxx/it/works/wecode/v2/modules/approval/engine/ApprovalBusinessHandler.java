@@ -4,7 +4,9 @@ import com.xxx.it.works.wecode.v2.modules.approval.dto.ApprovalNodeDto;
 import com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalRecord;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 审批业务处理器（扩展点）
@@ -47,4 +49,9 @@ public interface ApprovalBusinessHandler {
      * 申请入撤回后的回调
      */
     void onCancelled(ApprovalRecord record);
+
+    /** 获取审批业务数据（用于审批列表/详情展示），默认返回空 Map */
+    default Map<String, Object> getBusinessData(Long businessId) {
+        return new HashMap<>();
+    }
 }

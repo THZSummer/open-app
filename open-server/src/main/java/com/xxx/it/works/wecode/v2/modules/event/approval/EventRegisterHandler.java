@@ -10,6 +10,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 @Slf4j
 @Component
@@ -36,6 +38,17 @@ public class EventRegisterHandler implements ApprovalBusinessHandler {
     @Override
     public void onCancelled(ApprovalRecord record) {
         updateEventStatus(record.getBusinessId(), 0, record.getApplicantId());
+    }
+
+    @Override
+    public Map<String, Object> getBusinessData(Long businessId) {
+        Map<String, Object> data = new HashMap<>();
+        Event event = eventMapper.selectById(businessId);
+        if (event != null) {
+            data.put("nameCn", event.getNameCn());
+            data.put("topic", event.getTopic());
+        }
+        return data;
     }
 
     private void updateEventStatus(Long eventId, int status, String operator) {

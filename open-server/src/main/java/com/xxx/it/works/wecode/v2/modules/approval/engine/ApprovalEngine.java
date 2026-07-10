@@ -199,7 +199,7 @@ public class ApprovalEngine {
     /**
      * 按 businessType 查找对应的 Handler
      */
-    private ApprovalBusinessHandler findHandler(String businessType) {
+    public ApprovalBusinessHandler findHandler(String businessType) {
         for (ApprovalBusinessHandler handler : businessHandlers) {
             if (handler.supportedBusinessType().equals(businessType)) {
                 return handler;
