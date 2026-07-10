@@ -89,8 +89,6 @@ public class FlowVersionService {
     private final ApprovalRecordMapper approvalRecordMapper;
     private final ApprovalLogMapper approvalLogMapper;
 
-    @Autowired(required = false)
-
     @Autowired
     private FlowCacheEvictor flowCacheEvictor;
 

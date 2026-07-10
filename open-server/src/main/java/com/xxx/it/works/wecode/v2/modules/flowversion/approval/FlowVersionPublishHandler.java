@@ -25,8 +25,6 @@ public class FlowVersionPublishHandler implements ApprovalBusinessHandler {
 
     private final OpFlowVersionMapper flowVersionMapper;
 
-    @Autowired(required = false)
-
     @Autowired
     private FlowCacheEvictor flowCacheEvictor;
 

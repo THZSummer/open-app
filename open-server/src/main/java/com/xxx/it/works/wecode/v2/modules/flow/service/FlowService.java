@@ -66,8 +66,6 @@ public class FlowService {
     private final OpConnectorMapper connectorMapper;
     private final IdGeneratorStrategy idGenerator;
 
-    @Autowired(required = false)
-
     @Autowired
     private FlowCacheEvictor flowCacheEvictor;
 

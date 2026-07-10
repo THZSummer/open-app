@@ -34,8 +34,6 @@ public class FlowDeployService {
     private final OpFlowMapper flowMapper;
     private final OpFlowVersionMapper flowVersionMapper;
 
-    @Autowired(required = false)
-
     @Autowired
     private FlowCacheEvictor flowCacheEvictor;
 
