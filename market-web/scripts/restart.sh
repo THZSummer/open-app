@@ -44,11 +44,11 @@ echo "PID: $(cat $PID_FILE)"
 echo "⏳ 等待就绪..."
 for i in $(seq 1 30); do
     sleep 2
-    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:$PORT/" 2>&1)
-    if [ "$HTTP_CODE" = "200" ]; then
-        echo "  [$i] ✅ HTTP $HTTP_CODE"
-        echo "✅ 就绪! http://localhost:$PORT"
-        exit 0
+        HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:$PORT/market-web/" 2>&1)
+        if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "302" ] || [ "$HTTP_CODE" = "304" ]; then
+            echo "  [$i] ✅ HTTP $HTTP_CODE"
+            echo "✅ 就绪! http://localhost:$PORT/market-web/"
+            exit 0
     fi
     echo "  [$i] ⏳ HTTP $HTTP_CODE"
 done

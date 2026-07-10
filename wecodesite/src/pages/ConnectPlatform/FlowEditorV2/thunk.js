@@ -1303,10 +1303,13 @@ const buildParallelFlowGraph = (flowData) => {
     }));
   }
   // 后置链路串行边：汇聚点 -> 后置脚本 -> output
-  edges.push(...buildSerialEdges({
-    nodes: [parallelExitNode, ...afterScriptNodes.slice(1), outputNode],
-    connectionMode: 'serial',
-  }));
+  // 无后置脚本时 parallelExitNode === outputNode, 无需生成尾部边
+  if (afterScriptNodes.length > 0) {
+    edges.push(...buildSerialEdges({
+      nodes: [parallelExitNode, ...afterScriptNodes.slice(1), outputNode],
+      connectionMode: 'serial',
+    }));
+  }
 
   return { nodes, edges };
 };

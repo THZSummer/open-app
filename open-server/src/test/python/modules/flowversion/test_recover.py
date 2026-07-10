@@ -3,16 +3,22 @@
 import pytest
 import json
 from common import api
-from conftest import assert_operate_log
+from conftest import assert_operate_log, _find_approval
 
 
 class TestFlowVersionRecover:
     @pytest.mark.L2
     def test_recover(self, pending_approval_flow):
-        """FR-030: 已失效→已发布，验证 status 变为 5"""
+        """FR-030: 已失效->已发布，验证 status 变为 5"""
         fid, fvid, aid = pending_approval_flow
-        api("POST", f"/approvals/{aid}/approve", {"comment": "L1"})
-        api("POST", f"/approvals/{aid}/approve", {"comment": "L2"})
+        # 从审批详情提取审批人，用对应 cookie 依次审批
+        detail = api("GET", f"/approvals/{aid}").json().get("data", {})
+        nodes = detail.get("combinedNodes") or detail.get("nodes") or []
+        for node in nodes:
+            uid = node.get("userId")
+            if uid:
+                cookies = {"Cookie": f"user_id={uid}", "X-XSRF-TOKEN": f"user_id={uid}"}
+                api("POST", f"/approvals/{aid}/approve", {"comment": f"approve by {uid}"}, headers=cookies)
         api("PUT", f"/flows/{fid}/versions/{fvid}/invalidate")
         resp0 = api("GET", f"/flows/{fid}/versions/{fvid}")
         assert resp0.status_code == 200
@@ -27,7 +33,7 @@ class TestFlowVersionRecover:
 
     @pytest.mark.L2
     def test_recover_log(self, draft_flow):
-        """恢复版本 → 操作日志"""
+        """恢复版本 -> 操作日志"""
         fid, fvid = draft_flow
         api("PUT", f"/flows/{fid}/versions/{fvid}", {
             "orchestrationConfig": json.dumps({
@@ -40,6 +46,16 @@ class TestFlowVersionRecover:
             })
         })
         api("POST", f"/flows/{fid}/versions/{fvid}/publish")
+        # 审批通过后才能 invalidate
+        aid = _find_approval(fvid)
+        if aid:
+            detail = api("GET", f"/approvals/{aid}").json().get("data", {})
+            nodes = detail.get("combinedNodes") or detail.get("nodes") or []
+            for node in nodes:
+                uid = node.get("userId")
+                if uid:
+                    cookies = {"Cookie": f"user_id={uid}", "X-XSRF-TOKEN": f"user_id={uid}"}
+                    api("POST", f"/approvals/{aid}/approve", {"comment": f"approve by {uid}"}, headers=cookies)
         api("PUT", f"/flows/{fid}/versions/{fvid}/invalidate")
         resp = api("PUT", f"/flows/{fid}/versions/{fvid}/recover")
         assert resp.status_code == 200

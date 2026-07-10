@@ -354,10 +354,15 @@ public class FlowVersionDebugService {
             if (q instanceof Map) {
                 queryPart.putAll((Map<String, Object>) q);
             }
-            for (Map.Entry<String, Object> entry : mockTriggerData.entrySet()) {
-                String key = entry.getKey();
-                if (!"header".equals(key) && !"query".equals(key)) {
-                    bodyPart.put(key, entry.getValue());
+            Object b = mockTriggerData.get("body");
+            if (b instanceof Map) {
+                bodyPart.putAll((Map<String, Object>) b);
+            } else {
+                for (Map.Entry<String, Object> entry : mockTriggerData.entrySet()) {
+                    String key = entry.getKey();
+                    if (!"header".equals(key) && !"query".equals(key) && !"body".equals(key)) {
+                        bodyPart.put(key, entry.getValue());
+                    }
                 }
             }
         }

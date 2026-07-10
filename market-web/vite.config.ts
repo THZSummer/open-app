@@ -64,7 +64,7 @@ export default defineConfig({
     open: false,
     proxy: {
       '/market-web/service': {
-        target: 'http://localhost:18080/market-server',
+        target: 'http://localhost:18083/market-server',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/market-web/, ''),
       },

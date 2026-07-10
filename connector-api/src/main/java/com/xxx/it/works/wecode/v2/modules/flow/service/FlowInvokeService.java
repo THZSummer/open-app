@@ -137,8 +137,8 @@ public class FlowInvokeService {
                     return versionMono.map(fv -> Tuples.of(fv, Optional.of(flow)));
                 })
                 .switchIfEmpty(
-                    loadFlowVersionByFlowId(flowId)
-                            .map(fv -> Tuples.of(fv, Optional.empty()))
+                    Mono.error(new PreCheckException(
+                            ErrorCode.PRECHECK_URL_WHITELIST_DENIED, "连接流不存在或已被删除"))
                 );
     }
 
@@ -601,8 +601,7 @@ public class FlowInvokeService {
             Object headerObj = resultData.get("header");
             if (headerObj instanceof Map) {
                 ((Map<String, ?>) headerObj).forEach((k, v) -> {
-                    String val = String.valueOf(v);
-                    userHeaders.put(String.valueOf(k), java.net.URLEncoder.encode(val, java.nio.charset.StandardCharsets.UTF_8));
+                    userHeaders.put(String.valueOf(k), String.valueOf(v));
                 });
             }
             // 提取 body

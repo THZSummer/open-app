@@ -2,7 +2,6 @@ package com.xxx.it.works.wecode.v2;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration;
 import org.springframework.scheduling.annotation.EnableAsync;
 
 /**
@@ -13,9 +12,7 @@ import org.springframework.scheduling.annotation.EnableAsync;
  * @author SDDU Build Agent
  * @version 1.0.0
  */
-@SpringBootApplication(exclude = {
-    RedisAutoConfiguration.class
-})
+@SpringBootApplication
 @EnableAsync
 public class OpenServerApplication {
 

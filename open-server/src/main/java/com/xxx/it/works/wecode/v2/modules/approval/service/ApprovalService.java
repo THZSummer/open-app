@@ -3,26 +3,13 @@ package com.xxx.it.works.wecode.v2.modules.approval.service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.common.exception.BusinessException;
-import com.xxx.it.works.wecode.v2.modules.api.entity.Api;
-import com.xxx.it.works.wecode.v2.modules.api.mapper.ApiMapper;
 import com.xxx.it.works.wecode.v2.modules.approval.dto.*;
 import com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalLog;
 import com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalRecord;
+import com.xxx.it.works.wecode.v2.modules.approval.engine.ApprovalBusinessHandler;
 import com.xxx.it.works.wecode.v2.modules.approval.engine.ApprovalEngine;
 import com.xxx.it.works.wecode.v2.modules.approval.mapper.ApprovalLogMapper;
 import com.xxx.it.works.wecode.v2.modules.approval.mapper.ApprovalRecordMapper;
-import com.xxx.it.works.wecode.v2.modules.callback.entity.Callback;
-import com.xxx.it.works.wecode.v2.modules.callback.mapper.CallbackMapper;
-import com.xxx.it.works.wecode.v2.modules.event.entity.Event;
-import com.xxx.it.works.wecode.v2.modules.event.mapper.EventMapper;
-import com.xxx.it.works.wecode.v2.modules.event.entity.Permission;
-import com.xxx.it.works.wecode.v2.modules.event.mapper.PermissionMapper;
-import com.xxx.it.works.wecode.v2.modules.flow.entity.Flow;
-import com.xxx.it.works.wecode.v2.modules.flowversion.entity.FlowVersion;
-import com.xxx.it.works.wecode.v2.modules.flow.mapper.OpFlowMapper;
-import com.xxx.it.works.wecode.v2.modules.flowversion.mapper.OpFlowVersionMapper;
-import com.xxx.it.works.wecode.v2.modules.permission.entity.Subscription;
-import com.xxx.it.works.wecode.v2.modules.permission.mapper.SubscriptionMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -68,16 +55,7 @@ public class ApprovalService {
     private final ObjectMapper objectMapper;
 
     // 注入资源 Mapper（用于获取业务数据）
-    private final ApiMapper apiMapper;
-    private final EventMapper eventMapper;
-    private final CallbackMapper callbackMapper;
-    private final SubscriptionMapper subscriptionMapper;
-    private final PermissionMapper permissionMapper;
     private final ApprovalNotifyService approvalNotifyService;
-
-    // V3 新增：连接器流模块 Mapper（用于获取连接流版本发布审批业务数据）
-    private final OpFlowMapper cpFlowMapper;
-    private final OpFlowVersionMapper cpFlowVersionMapper;
 
     // ==================== 审批执行管理 ====================
 
@@ -571,176 +549,19 @@ public class ApprovalService {
      */
     private Map<String, Object> getBusinessData(String businessType, Long businessId) {
         try {
-            switch (businessType) {
-                case "api_register":
-                    return getApiRegisterData(businessId);
-                case "event_register":
-                    return getEventRegisterData(businessId);
-                case "callback_register":
-                    return getCallbackRegisterData(businessId);
-                case "api_permission_apply":
-                case "event_permission_apply":
-                case "callback_permission_apply":
-                    return getPermissionApplyData(businessId);
-                case "connector_flow_version_publish":
-                    return getFlowVersionPublishData(businessId);
-                default:
-                    log.warn("Unknown business type: {}", businessType);
-                    return new HashMap<>();
+            ApprovalBusinessHandler handler = approvalEngine.findHandler(businessType);
+            if (handler == null) {
+                log.warn("No handler found for business type: {}", businessType);
+                return new HashMap<>();
             }
+            return handler.getBusinessData(businessId);
         } catch (Exception e) {
             log.error("Failed to get business data: businessType={}, businessId={}", businessType, businessId, e);
             return new HashMap<>();
         }
     }
 
-    /**
-     * 获取 API 注册数据
-     *
-     * @param businessId 业务ID
-     * @return 业务数据
-     */
-    private Map<String, Object> getApiRegisterData(Long businessId) {
-        Map<String, Object> data = new HashMap<>();
-        Api api = apiMapper.selectById(businessId);
-        if (api != null) {
-            data.put("nameCn", api.getNameCn());
-            data.put("path", api.getPath());
-            data.put("method", api.getMethod());
-        }
-        return data;
-    }
 
-    /**
-     * 获取事件注册数据
-     *
-     * @param businessId 业务ID
-     * @return 业务数据
-     */
-    private Map<String, Object> getEventRegisterData(Long businessId) {
-        Map<String, Object> data = new HashMap<>();
-        Event event = eventMapper.selectById(businessId);
-        if (event != null) {
-            data.put("nameCn", event.getNameCn());
-            data.put("topic", event.getTopic());
-        }
-        return data;
-    }
-
-    /**
-     * 获取回调注册数据
-     *
-     * @param businessId 业务ID
-     * @return 业务数据
-     */
-    private Map<String, Object> getCallbackRegisterData(Long businessId) {
-        Map<String, Object> data = new HashMap<>();
-        Callback callback = callbackMapper.selectById(businessId);
-        if (callback != null) {
-            data.put("nameCn", callback.getNameCn());
-        }
-        return data;
-    }
-
-    /**
-     * 获取连接流版本发布审批数据（V3 新增）
-     *
-     * <p>从FlowVersion表和Flow表查询业务数据，
-     * 返回flowId、flowVersionId、flowNameCn、flowNameEn等信息。</p>
-     *
-     * @param businessId 业务ID（即flowVersionId）
-     * @return 业务数据
-     */
-    private Map<String, Object> getFlowVersionPublishData(Long businessId) {
-        Map<String, Object> data = new HashMap<>();
-        FlowVersion version = cpFlowVersionMapper.selectById(businessId);
-        if (version == null) {
-            return data;
-        }
-
-        data.put("flowVersionId", version.getId());
-        data.put("flowId", version.getFlowId());
-        data.put("versionNumber", version.getVersionNumber());
-        data.put("status", version.getStatus());
-
-        // 查询关联的Flow信息
-        if (version.getFlowId() != null) {
-            Flow flow = cpFlowMapper.selectById(version.getFlowId());
-            if (flow != null) {
-                // nameCn/nameEn 拼接版本号，与其他业务类型的 key 对齐
-                // businessName 解析逻辑统一查 "nameCn"，拼上版本号让用户知道批的是哪个版本
-                String versionSuffix = " (版本" + version.getVersionNumber() + ")";
-                data.put("nameCn", flow.getNameCn() + versionSuffix);
-                data.put("nameEn", flow.getNameEn() + versionSuffix);
-                data.put("flowNameCn", flow.getNameCn());
-                data.put("flowNameEn", flow.getNameEn());
-                data.put("appId", flow.getAppId());
-            }
-        }
-
-        return data;
-    }
-
-    /**
-     * 获取权限申请数据
-     *
-     * @param businessId 业务ID
-     * @return 业务数据
-     */
-    private Map<String, Object> getPermissionApplyData(Long businessId) {
-        Map<String, Object> data = new HashMap<>();
-        Subscription subscription = subscriptionMapper.selectById(businessId);
-        if (subscription == null) {
-            return data;
-        }
-
-        data.put("appId", subscription.getAppId());
-        data.put("permissionId", subscription.getPermissionId());
-
-        Permission permission = permissionMapper.selectById(subscription.getPermissionId());
-        if (permission == null) {
-            return data;
-        }
-
-        data.put("nameCn", permission.getNameCn());
-        data.put("nameEn", permission.getNameEn());
-        data.put("scope", permission.getScope());
-        data.put("resourceType", permission.getResourceType());
-
-        // 根据资源类型填充额外信息
-        fillResourceData(data, permission);
-
-        return data;
-    }
-
-    /**
-     * 填充资源数据
-     *
-     * @param data 数据Map
-     * @param permission 权限实体
-     */
-    private void fillResourceData(Map<String, Object> data, Permission permission) {
-        String resourceType = permission.getResourceType();
-        Long resourceId = permission.getResourceId();
-
-        if ("api".equals(resourceType)) {
-            Api apiResource = apiMapper.selectById(resourceId);
-            if (apiResource != null) {
-                data.put("path", apiResource.getPath());
-                data.put("method", apiResource.getMethod());
-            }
-        } else if ("event".equals(resourceType)) {
-            Event evt = eventMapper.selectById(resourceId);
-            if (evt != null) {
-                data.put("topic", evt.getTopic());
-            }
-        } else if ("callback".equals(resourceType)) {
-            Callback cb = callbackMapper.selectById(resourceId);
-            if (cb != null) {
-                data.put("nameCn", cb.getNameCn());
-            }
-        }
-    }
 
     /**
      * 构建日志 DTO 列表

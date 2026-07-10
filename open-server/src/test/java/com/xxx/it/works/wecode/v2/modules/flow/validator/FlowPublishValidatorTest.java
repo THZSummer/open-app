@@ -131,12 +131,12 @@ class FlowPublishValidatorTest {
             String config = "{\"nodes\":[],\"edges\":[],\"flowConfig\":{\"flowMode\":\"serial\"}}";
             List<String> errors = validator.validateOrchestrationConfig(config, TEST_APP_ID);
             assertEquals(1, errors.size());
-            assertTrue(errors.get(0).contains("至少一个节点"));
+            assertTrue(errors.get(0).contains("节点列表为空"));
         }
 
         @Test
-        @DisplayName("仅有 trigger/exit 无业务节点 → 失败")
-        void testOnlyTriggerExit_Fail() {
+        @DisplayName("仅有 trigger/exit → 通过")
+        void testOnlyTriggerExit_Pass() {
             String config = "{\"nodes\":[" +
                     "{\"id\":\"t\",\"type\":\"trigger\",\"data\":{\"type\":\"trigger\"}}," +
                     "{\"id\":\"e\",\"type\":\"exit\",\"data\":{\"type\":\"exit\"}}" +
@@ -144,12 +144,55 @@ class FlowPublishValidatorTest {
                     "{\"id\":\"e1\",\"source\":\"t\",\"target\":\"e\"}" +
                     "],\"flowConfig\":{\"flowMode\":\"serial\"}}";
             List<String> errors = validator.validateOrchestrationConfig(config, TEST_APP_ID);
-            assertEquals(1, errors.size());
-            assertTrue(errors.get(0).contains("业务节点"));
+            assertTrue(errors.isEmpty(), "Expected no errors but got: " + errors);
+        }
+
+        @Test
+        @DisplayName("自环边 → 失败")
+        void testSelfLoopEdge_Fail() {
+            String config = "{\"nodes\":[" +
+                    "{\"id\":\"t\",\"type\":\"trigger\",\"data\":{\"type\":\"trigger\"}}," +
+                    "{\"id\":\"c\",\"type\":\"connector\",\"data\":{\"type\":\"connector\"}}," +
+                    "{\"id\":\"e\",\"type\":\"exit\",\"data\":{\"type\":\"exit\"}}" +
+                    "],\"edges\":[" +
+                    "{\"id\":\"e1\",\"source\":\"t\",\"target\":\"c\"}," +
+                    "{\"id\":\"e2\",\"source\":\"c\",\"target\":\"e\"}," +
+                    "{\"id\":\"e3\",\"source\":\"e\",\"target\":\"e\"}" +
+                    "],\"flowConfig\":{\"flowMode\":\"serial\"}}";
+            List<String> errors = validator.validateOrchestrationConfig(config, TEST_APP_ID);
+            assertTrue(errors.stream().anyMatch(e -> e.contains("自环边")), "Expected self-loop error but got: " + errors);
+            assertTrue(errors.stream().anyMatch(e -> e.contains("exit") && e.contains("出边")), "Expected exit outgoing edge error but got: " + errors);
+        }
+
+        @Test
+        @DisplayName("悬空边(source/target 不存在) → 失败")
+        void testDanglingEdge_Fail() {
+            String config = "{\"nodes\":[" +
+                    "{\"id\":\"t\",\"type\":\"trigger\",\"data\":{\"type\":\"trigger\"}}," +
+                    "{\"id\":\"e\",\"type\":\"exit\",\"data\":{\"type\":\"exit\"}}" +
+                    "],\"edges\":[" +
+                    "{\"id\":\"e1\",\"source\":\"t\",\"target\":\"ghost\"}" +
+                    "],\"flowConfig\":{\"flowMode\":\"serial\"}}";
+            List<String> errors = validator.validateOrchestrationConfig(config, TEST_APP_ID);
+            assertTrue(errors.stream().anyMatch(e -> e.contains("不存在")), "Expected dangling edge error but got: " + errors);
+        }
+
+        @Test
+        @DisplayName("trigger 有入边 → 失败")
+        void testTriggerIncomingEdge_Fail() {
+            String config = "{\"nodes\":[" +
+                    "{\"id\":\"t\",\"type\":\"trigger\",\"data\":{\"type\":\"trigger\"}}," +
+                    "{\"id\":\"c\",\"type\":\"connector\",\"data\":{\"type\":\"connector\"}}," +
+                    "{\"id\":\"e\",\"type\":\"exit\",\"data\":{\"type\":\"exit\"}}" +
+                    "],\"edges\":[" +
+                    "{\"id\":\"e1\",\"source\":\"t\",\"target\":\"c\"}," +
+                    "{\"id\":\"e2\",\"source\":\"c\",\"target\":\"e\"}," +
+                    "{\"id\":\"e3\",\"source\":\"e\",\"target\":\"t\"}" +
+                    "],\"flowConfig\":{\"flowMode\":\"serial\"}}";
+            List<String> errors = validator.validateOrchestrationConfig(config, TEST_APP_ID);
+            assertTrue(errors.stream().anyMatch(e -> e.contains("trigger") && e.contains("入边")), "Expected trigger incoming edge error but got: " + errors);
         }
     }
-
-    // ===== 校验 5: 缓存 TTL 上限 =====
 
     @Nested
     @DisplayName("校验5: 缓存 TTL 上限")

@@ -29,13 +29,13 @@ import com.xxx.it.works.wecode.v2.modules.flowversion.dto.FlowVersionListRespons
 import com.xxx.it.works.wecode.v2.modules.flow.entity.Flow;
 import com.xxx.it.works.wecode.v2.modules.flowversion.entity.FlowVersion;
 import com.xxx.it.works.wecode.v2.modules.flow.mapper.OpFlowMapper;
+import com.xxx.it.works.wecode.v2.modules.flow.service.FlowCacheEvictor;
 import com.xxx.it.works.wecode.v2.modules.flowversion.mapper.OpFlowVersionMapper;
 import com.xxx.it.works.wecode.v2.modules.flow.validator.FlowPublishValidator;
 import com.xxx.it.works.wecode.v2.modules.security.AppContextHolder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -60,8 +60,6 @@ import java.util.Map;
 @Slf4j
 @Service
 public class FlowVersionService {
-
-
 
     @Autowired
     public FlowVersionService(OpFlowMapper flowMapper, OpFlowVersionMapper flowVersionMapper, ConnectorVersionRefMapper connectorVersionRefMapper, IdGeneratorStrategy idGenerator, ObjectMapper objectMapper, FlowPublishValidator publishValidator, FlowVersionApprovalService approvalService, ApprovalService genericApprovalService, AuditLogService auditLogService, ConnectorPlatformPropertyService propertyService, ApprovalRecordMapper approvalRecordMapper, ApprovalLogMapper approvalLogMapper) {
@@ -91,8 +89,8 @@ public class FlowVersionService {
     private final ApprovalRecordMapper approvalRecordMapper;
     private final ApprovalLogMapper approvalLogMapper;
 
-    @Autowired(required = false)
-    private StringRedisTemplate stringRedisTemplate;
+    @Autowired
+    private FlowCacheEvictor flowCacheEvictor;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -646,6 +644,8 @@ public class FlowVersionService {
         version.setLastUpdateBy(currentUser);
         flowVersionMapper.update(version);
 
+        flowCacheEvictor.evictFlowVersion(versionId);
+
         log.info("Flow version invalidated: flowId={}, versionId={}, versionNumber={}",
                 flowId, versionId, version.getVersionNumber());
         return ApiResponse.success();
@@ -692,6 +692,8 @@ public class FlowVersionService {
         version.setLastUpdateBy(currentUser);
         flowVersionMapper.update(version);
 
+        flowCacheEvictor.evictFlowVersion(versionId);
+
         log.info("Flow version recovered: flowId={}, versionId={}, versionNumber={}",
                 flowId, versionId, version.getVersionNumber());
         return ApiResponse.success();
@@ -729,7 +731,7 @@ public class FlowVersionService {
 
         flowVersionMapper.deleteById(versionId);
 
-        evictFlowConfigCache(flowId);
+        flowCacheEvictor.evictFlowVersion(versionId);
 
         log.info("Flow version deleted: flowId={}, versionId={}, versionNumber={}",
                 flowId, versionId, version.getVersionNumber());
@@ -812,23 +814,6 @@ public class FlowVersionService {
     }
 
     // ==================== 缓存失效 ====================
-
-    /**
-     * 使 cp:flow:config:{flowId} 缓存失效, 避免缓存返回已删除版本的旧数据.
-     */
-    private void evictFlowConfigCache(Long flowId) {
-        if (stringRedisTemplate == null) {
-            return;
-        }
-        try {
-            stringRedisTemplate.delete("cp:flow:config:" + flowId);
-            // 删除 FlowEntity 缓存 (含 deployed_version_id，版本变更后需失效)
-            stringRedisTemplate.delete("cp:entity:flow:" + flowId);
-            log.debug("Evicted flow config cache: flowId={}", flowId);
-        } catch (Exception e) {
-            log.warn("Failed to evict flow config cache: flowId={}, error={}", flowId, e.getMessage());
-        }
-    }
 
     // ==================== 辅助方法 ====================
 

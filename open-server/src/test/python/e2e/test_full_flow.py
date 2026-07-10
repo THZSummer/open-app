@@ -42,14 +42,13 @@ os_db_val = _osm.db_val
 os_ok = _osm.ok
 os_fail = _osm.fail
 os_done = _osm.done
-from client import _REDIS_CLUSTER_NODES, CONNECTOR_API_BASE, CONNECTOR_API_HEALTH, MOCK_SERVER_URL, OPEN_SERVER_BASE
+from client import _REDIS_CLUSTER_NODES, CONNECTOR_API_BASE, CONNECTOR_API_HEALTH, MOCK_SERVER_URL, OPEN_SERVER_BASE, REDIS_PASSWORD, SYSTOKEN_HEADER, SYSTOKEN_VALUE
 from redis.cluster import RedisCluster
 
-_redis_pass = "openapp"
 _first_node = _REDIS_CLUSTER_NODES[0]
 _redis_client = RedisCluster(
     host=_first_node[0], port=int(_first_node[1]),
-    password=_redis_pass, decode_responses=True
+    password=REDIS_PASSWORD, decode_responses=True
 )
 
 def os_redis(*args):
@@ -591,14 +590,14 @@ def test_full_flow():
                                     "header": {
                                         "type": "object",
                                         "properties": {
-                                            "X-Sys-Token": {
+                                            SYSTOKEN_HEADER: {
                                                 "type": "string",
                                                 "required": True,
                                                 "sensitive": True
                                             }
                                         }
                                     },
-                                    "sysAccountWhitelist": ["tester"]
+                                    "sysAccountWhitelist": [SYSTOKEN_VALUE]
                                 }
                             ],
                             "input": {
@@ -999,7 +998,7 @@ def test_full_flow():
                                  "traceId": _RUN_ID
                              },
                              headers={
-                                 "X-Sys-Token": "tester",
+                                  SYSTOKEN_HEADER: SYSTOKEN_VALUE,
                                  "X-Trace-Id": f"trace-{_RUN_ID}",
                                  "Cookie": f"session={_RUN_ID}; user=tester"
                              })
@@ -1029,7 +1028,7 @@ def test_full_flow():
                                  "traceId": _RUN_ID
                              },
                              headers={
-                                 "X-Sys-Token": "tester",
+                                  SYSTOKEN_HEADER: SYSTOKEN_VALUE,
                                  "X-Trace-Id": f"trace-{_RUN_ID}",
                                  "Cookie": f"session={_RUN_ID}; user=tester"
                              })

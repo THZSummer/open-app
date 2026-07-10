@@ -89,6 +89,8 @@ class FlowInvokeServiceTest {
         when(valueOperations.get(anyString())).thenReturn(Mono.empty());
         lenient().when(valueOperations.set(anyString(), anyString(), any())).thenReturn(Mono.just(true));
         when(idGenerator.nextId()).thenReturn(1L);
+        lenient().when(propertyService.isLogCollectionEnabled()).thenReturn(Mono.just(true));
+        lenient().when(propertyService.loadPlatformDefaults()).thenReturn(Mono.just(java.util.Map.of()));
         triggerService = new FlowInvokeService(objectMapper,
                 dagScheduler, flowVersionReadRepository,
                 reactiveRedisTemplate, cacheManager, entityCacheManager,
@@ -133,6 +135,55 @@ class FlowInvokeServiceTest {
                     Map<?, ?> body = (Map<?, ?>) response.getBody();
                     assertEquals("msg_001", body.get("msgId"));
                     assertEquals(200, response.getHttpStatus().value());
+                })
+                .verifyComplete();
+    }
+
+    @Test
+    @DisplayName("已停止的连接流调用返回 409")
+    void testInvokeFlow_Stopped() {
+        FlowEntity stoppedFlow = mock(FlowEntity.class);
+        when(stoppedFlow.getLifecycleStatus()).thenReturn(1); // STOPPED
+
+        when(entityCacheManager.getFlow(100L)).thenReturn(Mono.just(stoppedFlow));
+        // switchIfEmpty fallback 兜底 mock (虽然不应执行到, 但 NPE 会掩盖真实错误)
+        when(flowVersionReadRepository.findByFlowId(100L)).thenReturn(Mono.empty());
+
+        Mono<TransparentFlowResponse> resultMono = triggerService.invokeFlow(
+                100L, Map.of(), Map.of(), Map.of());
+
+        StepVerifier.create(resultMono)
+                .assertNext(response -> {
+                    assertEquals(409, response.getHttpStatus().value());
+                    assertNull(response.getBody(), "错误响应应为空Body");
+                    assertEquals("409", response.getPlatformHeaders().get("X-Code"));
+                    assertNotNull(response.getPlatformHeaders().get("X-Message-Zh"),
+                            "should have X-Message-Zh");
+                    assertTrue(
+                            response.getPlatformHeaders().get("X-Message-Zh").contains("未启动"),
+                            "should mention 未启动");
+                })
+                .verifyComplete();
+    }
+
+    @Test
+    @DisplayName("已失效的连接流调用返回 409")
+    void testInvokeFlow_Invalidated() {
+        FlowEntity invalidatedFlow = mock(FlowEntity.class);
+        when(invalidatedFlow.getLifecycleStatus()).thenReturn(3); // INVALIDATED
+
+        when(entityCacheManager.getFlow(100L)).thenReturn(Mono.just(invalidatedFlow));
+        when(flowVersionReadRepository.findByFlowId(100L)).thenReturn(Mono.empty());
+
+        Mono<TransparentFlowResponse> resultMono = triggerService.invokeFlow(
+                100L, Map.of(), Map.of(), Map.of());
+
+        StepVerifier.create(resultMono)
+                .assertNext(response -> {
+                    assertEquals(409, response.getHttpStatus().value());
+                    assertNull(response.getBody());
+                    assertEquals("409", response.getPlatformHeaders().get("X-Code"));
+                    assertNotNull(response.getPlatformHeaders().get("X-Message-Zh"));
                 })
                 .verifyComplete();
     }
