@@ -601,8 +601,7 @@ public class FlowInvokeService {
             Object headerObj = resultData.get("header");
             if (headerObj instanceof Map) {
                 ((Map<String, ?>) headerObj).forEach((k, v) -> {
-                    String val = String.valueOf(v);
-                    userHeaders.put(String.valueOf(k), java.net.URLEncoder.encode(val, java.nio.charset.StandardCharsets.UTF_8));
+                    userHeaders.put(String.valueOf(k), String.valueOf(v));
                 });
             }
             // 提取 body
