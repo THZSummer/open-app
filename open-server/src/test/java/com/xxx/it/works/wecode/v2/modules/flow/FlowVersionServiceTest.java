@@ -3,6 +3,7 @@ package com.xxx.it.works.wecode.v2.modules.flow;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.modules.app.resolver.AppContext;
 import com.xxx.it.works.wecode.v2.modules.flowversion.service.FlowVersionService;
+import com.xxx.it.works.wecode.v2.modules.flow.service.FlowCacheEvictor;
 import com.xxx.it.works.wecode.v2.common.config.ConnectorPlatformPropertyService;
 import com.xxx.it.works.wecode.v2.common.enums.FlowVersionStatus;
 import com.xxx.it.works.wecode.v2.common.enums.ConnectorPlatformConstants;
@@ -31,6 +32,7 @@ import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -66,6 +68,8 @@ class FlowVersionServiceTest {
     private AuditLogService auditLogService;
     @Mock
     private ConnectorPlatformPropertyService propertyService;
+    @Mock
+    private FlowCacheEvictor flowCacheEvictor;
 
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
@@ -99,6 +103,8 @@ class FlowVersionServiceTest {
         config.put(ConnectorPlatformConstants.ITEM_FLOW_MAX_CONCURRENCY, "1000");
         config.put(ConnectorPlatformConstants.ITEM_NODE_MAX_TIMEOUT_SECONDS, "30");
         when(propertyService.loadConfigBundle(anyString())).thenReturn(config);
+
+        ReflectionTestUtils.setField(flowVersionService, "flowCacheEvictor", flowCacheEvictor);
     }
 
     @AfterEach

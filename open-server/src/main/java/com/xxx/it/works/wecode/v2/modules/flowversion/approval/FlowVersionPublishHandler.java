@@ -6,8 +6,11 @@ import com.xxx.it.works.wecode.v2.modules.approval.engine.ApprovalEngine;
 import com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalRecord;
 import com.xxx.it.works.wecode.v2.modules.flowversion.entity.FlowVersion;
 import com.xxx.it.works.wecode.v2.modules.flowversion.mapper.OpFlowVersionMapper;
+import com.xxx.it.works.wecode.v2.modules.flow.service.FlowCacheEvictor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.util.Date;
@@ -18,6 +21,12 @@ import java.util.Date;
 public class FlowVersionPublishHandler implements ApprovalBusinessHandler {
 
     private final OpFlowVersionMapper flowVersionMapper;
+
+    @Autowired(required = false)
+    private StringRedisTemplate stringRedisTemplate;
+
+    @Autowired
+    private FlowCacheEvictor flowCacheEvictor;
 
     @Override
     public String supportedBusinessType() {
@@ -35,6 +44,9 @@ public class FlowVersionPublishHandler implements ApprovalBusinessHandler {
         version.setLastUpdateTime(now);
         version.setLastUpdateBy(record.getApplicantId());
         flowVersionMapper.update(version);
+
+        flowCacheEvictor.evictFlowVersion(record.getBusinessId(), stringRedisTemplate);
+
         log.info("Published flow version: versionId={}", record.getBusinessId());
     }
 
