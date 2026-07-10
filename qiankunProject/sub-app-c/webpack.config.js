@@ -17,7 +17,9 @@ module.exports = {
     extensions: ['.js', '.jsx']
   },
   devServer: {
-    port: 8081,
+    // 使用自定义域名，便于跨子应用 cookie / 域名隔离
+    host: 'localhost.uat.com',
+    port: 8082,
     // 允许主应用跨域拉取子应用资源
     headers: {
       'Access-Control-Allow-Origin': '*'

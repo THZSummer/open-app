@@ -1,0 +1,7 @@
+node_modules
+.trae
+.worktrees
+docs
+dist
+.pid
+logs/

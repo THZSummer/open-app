@@ -11,10 +11,12 @@ export default defineConfig({
     qiankun('sub-app-e', { useDevMode: true })
   ],
   server: {
-    port: 5174,
+    // 使用自定义域名，便于跨子应用 cookie / 域名隔离
+    host: 'localhost.uat.com',
+    port: 5175,
     // 允许主应用跨域拉取子应用资源
     cors: true,
     // 固定资源 origin，避免被主应用加载时资源路径 404
-    origin: 'http://localhost:5174'
+    origin: 'http://localhost.uat.com:5175'
   }
 });

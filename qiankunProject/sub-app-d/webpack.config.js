@@ -18,7 +18,9 @@ module.exports = {
     extensions: ['.js', '.vue']
   },
   devServer: {
-    port: 8082,
+    // 使用自定义域名，便于跨子应用 cookie / 域名隔离
+    host: 'localhost.uat.com',
+    port: 8083,
     // 允许主应用跨域拉取子应用资源
     headers: {
       'Access-Control-Allow-Origin': '*'

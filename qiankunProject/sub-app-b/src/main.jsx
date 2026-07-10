@@ -1,6 +1,6 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter, HashRouter } from 'react-router-dom';
 import { renderWithQiankun, qiankunWindow } from 'vite-plugin-qiankun/dist/helper';
 import App from './App';
 
@@ -17,12 +17,15 @@ function render(props) {
   // 被主应用加载时用 container 内的 #root，独立运行时用 document 的 #root
   const mountNode = container ? container.querySelector('#root') : document.getElementById('root');
   // 根据运行环境设置路由 basename，qiankun 环境下用 activeRule 作为 basename
-  const basename = qiankunWindow.__POWERED_BY_QIANKUN__ ? '/sub-b' : '/';
+  const isQiankun = qiankunWindow.__POWERED_BY_QIANKUN__;
+  const basename = isQiankun ? '/qiankun/sub-b' : '/';
+  // qiankun 环境下使用 HashRouter，从 hash 解析路由
+  const Router = isQiankun ? HashRouter : BrowserRouter;
   root = createRoot(mountNode);
   root.render(
-    <BrowserRouter basename={basename}>
+    <Router basename={basename}>
       <App />
-    </BrowserRouter>
+    </Router>
   );
 }
 

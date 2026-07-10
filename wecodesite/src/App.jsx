@@ -72,6 +72,8 @@ function App() {
           <Route path="flowEditor" element={<FlowEditorV2 />} />
           {/* 旧版连接流编辑器（画布拖拽形态，保留供管理使用） */}
           {/* <Route path="connect/history/flows/editor" element={<FlowEditor />} /> */}
+          {/* ===== 微前端子应用统一路由（qiankun 挂载到 #sub-app-viewport，element 为 null） ===== */}
+          <Route path="qiankun/*" element={null} />
           <Route path="*" element={<Navigate to="/appList" replace />} />
         </Route>
       </Routes>

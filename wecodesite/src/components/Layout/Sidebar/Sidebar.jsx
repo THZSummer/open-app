@@ -14,6 +14,7 @@ import {
 } from '@ant-design/icons';
 import * as Icons from '@ant-design/icons';
 import { fetchSubscribedAbilities } from '../../../pages/Capabilities/thunk';
+import microApps from '../../../microApps';
 import './Sidebar.m.less';
 
 /**
@@ -38,7 +39,8 @@ function Sidebar({ sidebarMainHeight }) {
   const [searchParams] = useSearchParams();
   const location = useLocation();
   const appId = searchParams.get('appId') || '1';
-  const currentPath = window.location.pathname.replace('/', '') || 'basic-info';
+  // 使用 React Router 的 location（HashRouter 下也能正确解析虚拟 pathname）
+  const currentPath = location.pathname.replace('/', '') || 'basic-info';
   const currentSub = searchParams.get('sub') || '';
 
   // 动态已订阅能力列表
@@ -156,6 +158,15 @@ function Sidebar({ sidebarMainHeight }) {
         ],
       },
     ] : []),
+    // 微前端子应用入口（从 microApps.js 动态读取，新增子应用无需改此文件）
+    {
+      category: '微前端应用',
+      children: microApps.map((app) => ({
+        key: app.menuKey,
+        icon: <ApiOutlined />,
+        label: app.name,
+      })),
+    },
   ];
 
   return (

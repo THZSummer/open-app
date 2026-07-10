@@ -13,6 +13,8 @@ module.exports = {
     extensions: ['.js', '.jsx']
   },
   devServer: {
+    // 使用自定义域名，便于跨子应用 cookie / 域名隔离
+    host: 'localhost.uat.com',
     port: 8080,
     historyApiFallback: true,
     hot: true
