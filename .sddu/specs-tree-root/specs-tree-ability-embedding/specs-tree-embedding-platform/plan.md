@@ -106,144 +106,278 @@ graph TB
 
 ## 3. API设计
 
-### 3.1 能力列表（FR-001）
+### 3.1 设计规范
 
-**请求**：分页查询能力列表
+**基础路径**：`/service/open/v2/ability/admin`
 
-| 参数 | 说明 |
-|------|------|
-| 关键字 | 按中文名/英文名模糊搜索（可选） |
-| 分页 | 第几页、每页条数 |
-| 排序 | 默认按排序号升序 |
+**认证方式**：管理面接口复用 open-server 现有 Cookie/SSO 登录态，接口内校验当前用户角色是否为平台管理员（NFR-001）。
 
-**响应**：分页结果，每条记录包含 abilityType 编码、中文名、英文名、描述、图标URL、示意图URL、排序号、前端入口URL、创建时间、更新人、更新时间
+**响应格式**：统一使用 open-server 现有 `ApiResponse` 信封：
 
-**数据流**：
+```json
+// 成功
+{ "code": "200", "messageZh": "操作成功", "messageEn": "Success", "data": { ... }, "page": null }
 
-```mermaid
-sequenceDiagram
-    participant Admin as 平台管理员
-    participant Web as market-web<br/>能力目录页
-    participant AdminCtrl as AdminAbilityController
-    participant DB as openplatform_ability_t
+// 分页
+{ "code": "200", "messageZh": "查询成功", "messageEn": "Success", "data": [ ... ], "page": { "curPage": 1, "pageSize": 20, "total": 123 } }
 
-    Admin->>Web: 打开能力目录页面
-    Web->>AdminCtrl: 请求能力列表（分页+搜索）
-    AdminCtrl->>DB: 分页查询（按排序号升序）
-    DB-->>AdminCtrl: [{abilityType, nameCn, iconUrl, frontendEntryUrl, ...}]
-    AdminCtrl-->>Web: 返回列表 VO
-    Web-->>Admin: 展示列表（分页、搜索）
+// 错误
+{ "code": "400", "messageZh": "参数错误", "messageEn": "Bad Request", "data": null, "page": null }
 ```
 
-### 3.2 创建能力（FR-002）
+**错误码**：
 
-**请求**：
+| 错误码 | 说明 |
+|--------|------|
+| 200 | 成功 |
+| 400 | 参数错误/校验失败 |
+| 403 | 无权限（非管理员） |
+| 404 | 资源不存在 |
+| 409 | 状态冲突（编码重复、有订阅等） |
 
-| 字段 | 说明 |
-|------|------|
-| abilityType 编码 | 手动输入，需唯一 |
-| 中文名 / 英文名 | - |
-| 中文描述 / 英文描述 | - |
-| 图标 | 文件上传，JPG/PNG/SVG，≤5MB |
-| 示意图 | 文件上传（可选） |
-| 排序号 | 整数 |
-| 前端入口URL | 微前端子应用入口 |
-| 是否在开放面展示 | 默认展示 |
+**字段命名**：驼峰命名（camelCase），与现有 ability 模块保持一致。
 
-**响应**：创建成功/失败
+| 数据库列名 | API 字段名 |
+|-----------|----------|
+| `ability_type` | `abilityType` |
+| `name_cn` | `nameCn` |
+| `name_en` | `nameEn` |
+| `ability_desc_cn` | `descCn` |
+| `desc_en` | `descEn` |
+| `order_num` | `orderNum` |
+| `frontend_entry_url` | `frontendEntryUrl` |
+
+### 3.2 接口清单
+
+| # | 方法 | 路径 | 接口名称 | 对应 FR | 说明 |
+|---|--------|------|---------|:------:|------|
+| 1 | GET | `/ability/admin/list` | 查询能力列表 | FR-001 | 分页查询，支持关键字搜索 |
+| 2 | POST | `/ability/admin` | 创建能力 | FR-002 | 创建新的能力类型 |
+| 3 | PUT | `/ability/admin/{id}` | 更新能力 | FR-003 | 更新能力信息，abilityType 不可修改 |
+| 4 | DELETE | `/ability/admin/{id}` | 删除能力 | FR-004 | 删除（含订阅检查） |
+
+### 3.3 接口详细定义
+
+---
+
+#### #1 查询能力列表
+
+`GET /service/open/v2/ability/admin/list`
+
+**查询参数**
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|:--:|------|
+| curPage | int | ❌ | 页码，默认 1 |
+| pageSize | int | ❌ | 每页数量，默认 20，最大 100 |
+| keyword | string | ❌ | 按中文名/英文名模糊搜索 |
+| sortField | string | ❌ | 排序字段，默认 `orderNum` |
+| sortOrder | string | ❌ | 排序方向，`asc` / `desc`，默认 `asc` |
+
+**响应体 `data[]`**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| abilityType | int | 能力编码 |
+| nameCn | string | 中文名 |
+| nameEn | string | 英文名 |
+| descCn | string | 中文描述 |
+| descEn | string | 英文描述 |
+| iconUrl | string | 图标 URL |
+| diagramUrl | string | 示意图 URL（缩略图） |
+| orderNum | int | 排序号 |
+| frontendEntryUrl | string | 前端入口 URL |
+| hidden | int | 是否在开放面展示（0=展示，1=隐藏） |
+| createTime | string | 创建时间 |
+| updateBy | string | 更新人 |
+| updateTime | string | 更新时间 |
 
 **数据流**：
 
 ```mermaid
 sequenceDiagram
     participant Admin as 平台管理员
-    participant Web as market-web<br/>创建表单
+    participant Web as market-web
+    participant AdminCtrl as AdminAbilityController
+    participant DB as openplatform_ability_t / _p_t
+
+    Admin->>Web: 打开能力目录页面
+    Web->>AdminCtrl: GET /ability/admin/list?curPage=1&keyword=群置顶
+    AdminCtrl->>DB: 分页查询（按排序号升序）
+    AdminCtrl->>DB: 关联 ability_p_t 获取图标/示意图 URL
+    DB-->>AdminCtrl: 结果
+    AdminCtrl-->>Web: 分页 VO
+    Web-->>Admin: 能力列表（分页、搜索）
+```
+
+---
+
+#### #2 创建能力
+
+`POST /service/open/v2/ability/admin`
+
+**请求体**
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|:--:|------|
+| abilityType | int | ✅ | 能力编码（≥100），需唯一 |
+| nameCn | string | ✅ | 中文名，最长 64 字符 |
+| nameEn | string | ✅ | 英文名，最长 128 字符 |
+| descCn | string | ❌ | 中文描述，最长 512 字符 |
+| descEn | string | ❌ | 英文描述，最长 512 字符 |
+| iconUrl | string | ❌ | 图标文件上传返回的 URL |
+| diagramUrl | string | ❌ | 示意图文件上传返回的 URL |
+| orderNum | int | ❌ | 排序号，默认 0 |
+| frontendEntryUrl | string | ❌ | 前端入口 URL（http/https 协议） |
+| hidden | int | ❌ | 是否隐藏（0=展示，1=隐藏），默认 0 |
+
+**响应体 `data`**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| abilityType | int | 创建的能力编码 |
+| nameCn | string | 中文名 |
+| createTime | string | 创建时间 |
+
+**错误响应**
+
+| code | 说明 |
+|------|------|
+| 400 | 参数校验失败（URL 格式、编码范围等） |
+| 409 | abilityType 编码已被占用 |
+
+**数据流**：
+
+```mermaid
+sequenceDiagram
+    participant Admin as 平台管理员
+    participant Web as market-web
     participant AdminCtrl as AdminAbilityController
     participant FileSvc as 文件服务
     participant DB as openplatform_ability_t / _p_t
 
-    Admin->>Web: 填写创建表单（编码、名称、描述、上传图标/示意图、排序号、frontendEntryUrl、是否展示）
-    Web->>AdminCtrl: 提交创建请求
-    AdminCtrl->>AdminCtrl: 校验 abilityType 编码唯一性
-    AdminCtrl->>FileSvc: 上传图标/示意图文件
+    Admin->>Web: 填写创建表单
+    Web->>AdminCtrl: POST /ability/admin { abilityType, nameCn, iconUrl, ... }
+    AdminCtrl->>AdminCtrl: 校验 abilityType 唯一性
+    AdminCtrl->>FileSvc: 上传图标/示意图文件（如有时）
     FileSvc-->>AdminCtrl: 返回文件 URL
-    AdminCtrl->>DB: 写入 ability_t 主表（含 frontendEntryUrl、hidden）
-    AdminCtrl->>DB: 写入 ability_p_t 属性表（图标、示意图 URL）
+    AdminCtrl->>DB: 写入 ability_t（主表）
+    AdminCtrl->>DB: 写入 ability_p_t（图标/示意图）
     DB-->>AdminCtrl: 成功
-    AdminCtrl-->>Web: 创建成功
-    Web-->>Admin: 提示"创建成功"，能力在目录中立即可见
+    AdminCtrl-->>Web: 返回 { abilityType, nameCn, createTime }
+    Web-->>Admin: 提示"创建成功"
 ```
 
-### 3.3 编辑能力（FR-003）
+---
 
-**请求**：与创建相同，但 abilityType 编码不可修改
+#### #3 更新能力
 
-| 字段 | 说明 |
+`PUT /service/open/v2/ability/admin/{id}`
+
+**路径参数**
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|:--:|------|
+| id | string | ✅ | 能力 ID（数据库主键） |
+
+**请求体**
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|:--:|------|
+| nameCn | string | ❌ | 中文名 |
+| nameEn | string | ❌ | 英文名 |
+| descCn | string | ❌ | 中文描述 |
+| descEn | string | ❌ | 英文描述 |
+| iconUrl | string | ❌ | 图标 URL（新文件上传后替换） |
+| diagramUrl | string | ❌ | 示意图 URL |
+| orderNum | int | ❌ | 排序号 |
+| frontendEntryUrl | string | ❌ | 前端入口 URL |
+| hidden | int | ❌ | 是否隐藏 |
+
+> 所有字段可选，仅更新传入的字段。abilityType 不可修改。
+
+**响应体 `data`**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | string | 能力 ID |
+| updateTime | string | 更新时间 |
+
+**错误响应**
+
+| code | 说明 |
 |------|------|
-| 中文名 / 英文名 | 可修改 |
-| 中文描述 / 英文描述 | 可修改 |
-| 图标 | 可替换上传，新文件覆盖旧文件 |
-| 示意图 | 可替换上传 |
-| 排序号 | 可修改 |
-| 前端入口URL | 可修改 |
-| 是否在开放面展示 | 可切换 |
-
-**响应**：修改成功/失败
+| 404 | 能力不存在 |
 
 **数据流**：
 
 ```mermaid
 sequenceDiagram
     participant Admin as 平台管理员
-    participant Web as market-web<br/>编辑表单
+    participant Web as market-web
     participant AdminCtrl as AdminAbilityController
     participant FileSvc as 文件服务
     participant DB as openplatform_ability_t / _p_t
 
     Admin->>Web: 打开编辑表单（回填已有信息）
-    Admin->>Web: 修改字段（名称、描述、排序号、frontendEntryUrl、是否展示等）
-    Web->>AdminCtrl: 提交编辑请求
-    AdminCtrl->>AdminCtrl: abilityType 编码不可修改
+    Admin->>Web: 修改字段
+    Web->>AdminCtrl: PUT /ability/admin/{id} { nameCn, orderNum, hidden, ... }
     AdminCtrl->>FileSvc: 如有新文件则上传（替换旧文件引用）
     AdminCtrl->>DB: 更新 ability_t
     AdminCtrl->>DB: 更新 ability_p_t（如有新文件）
     DB-->>AdminCtrl: 成功
-    AdminCtrl-->>Web: 编辑成功
+    AdminCtrl-->>Web: 返回 { id, updateTime }
     Web-->>Admin: 提示"修改成功"
 ```
 
-### 3.4 删除能力（FR-004）
+---
 
-**请求**：指定要删除的 ability 类型
+#### #4 删除能力
 
-**响应**：删除成功/失败（有订阅时禁止删除）
+`DELETE /service/open/v2/ability/admin/{id}`
+
+**路径参数**
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|:--:|------|
+| id | string | ✅ | 能力 ID |
+
+**响应体 `data`**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | string | 被删除的能力 ID |
+
+**错误响应**
+
+| code | 说明 |
+|------|------|
+| 404 | 能力不存在 |
+| 409 | 有应用订阅该能力，无法删除 |
 
 **数据流**：
 
 ```mermaid
 sequenceDiagram
     participant Admin as 平台管理员
-    participant Web as market-web<br/>删除确认
+    participant Web as market-web
     participant AdminCtrl as AdminAbilityController
     participant DB as openplatform_ability_t / app_ability_relation_t
 
-    Admin->>Web: 点击删除操作
-    Web->>AdminCtrl: 请求删除能力
-    AdminCtrl->>DB: 检查 app_ability_relation_t 是否有订阅记录
+    Admin->>Web: 点击删除
+    Web->>AdminCtrl: DELETE /ability/admin/{id}
+    AdminCtrl->>DB: 检查 app_ability_relation_t 是否有订阅
     alt 有关联订阅
         DB-->>AdminCtrl: 存在 XX 条订阅
-        AdminCtrl-->>Web: 禁止删除，提示"已被 XX 个应用订阅"
+        AdminCtrl-->>Web: 409 { code: 409, messageZh: "已被 XX 个应用订阅" }
         Web-->>Admin: 展示提示，删除失败
     else 无关联订阅
-        DB-->>AdminCtrl: 无订阅记录
-        AdminCtrl->>DB: 级联删除 ability_t + ability_p_t
+        AdminCtrl->>DB: 删除 ability_t + ability_p_t
         DB-->>AdminCtrl: 成功
-        AdminCtrl-->>Web: 删除成功
+        AdminCtrl-->>Web: 200 { id }
         Web-->>Admin: 提示"删除成功"
     end
 ```
-
-> 💡 数据一致性：平台面写入 openplatform_ability_t 后，开放面直接读取同一张表，无需缓存刷新（NFR-003 即时同步）。
 
 ## 4. 方案对比
 
