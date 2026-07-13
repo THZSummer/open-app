@@ -122,10 +122,22 @@ API 面无独立 DDL，查询以下现有表：
 **响应格式**：复用 api-server 现有 `ApiResponse` 信封：
 
 ```json
-{ "code": "200", "messageZh": "操作成功", "messageEn": "Success", "data": { ... }, "page": null }
+// 成功
+{
+  "code": "200",
+  "messageZh": "查询成功",
+  "messageEn": "Success",
+  "data": {
+    "appId": "1234567890123456789",
+    "roles": ["admin", "member"]
+  },
+  "page": null
+}
 
+// 凭证无效
 { "code": "401", "messageZh": "内部凭证无效", "messageEn": "Unauthorized", "data": null, "page": null }
 
+// 应用不存在
 { "code": "404", "messageZh": "应用不存在", "messageEn": "Not Found", "data": null, "page": null }
 ```
 
