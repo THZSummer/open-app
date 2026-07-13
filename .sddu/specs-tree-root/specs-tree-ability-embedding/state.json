@@ -2,15 +2,15 @@
   "feature": "ability-embedding",
   "feature_id": "EMBED-001",
   "feature_name": "狭义嵌入能力",
-  "phase": "specified",
-  "status": "specified",
+  "phase": "planned",
+  "status": "tracked",
   "created_at": "2026-07-13T10:00:00+08:00",
-  "updated_at": "2026-07-13T11:00:00+08:00",
+  "updated_at": "2026-07-13T12:00:00+08:00",
   "childrens": [
     {
       "name": "嵌入能力平台面",
       "dir": "specs-tree-embedding-platform",
-      "description": "market-server/market-web — ability 类型 CRUD 管理后台"
+      "description": "open-server(扩展) / market-web — ability 类型 CRUD 管理后台"
     },
     {
       "name": "嵌入能力开放面",
@@ -20,7 +20,7 @@
     {
       "name": "嵌入能力API面",
       "dir": "specs-tree-embedding-api",
-      "description": "api-server — 应用认证/成员查询/权限校验接口"
+      "description": "api-server — 用户角色查询接口"
     }
   ],
   "artifacts": {
@@ -32,6 +32,11 @@
       "platform": "./specs-tree-embedding-platform/spec.md",
       "open": "./specs-tree-embedding-open/spec.md",
       "api": "./specs-tree-embedding-api/spec.md"
+    },
+    "plan": {
+      "platform": "./specs-tree-embedding-platform/plan.md",
+      "open": "./specs-tree-embedding-open/plan.md",
+      "api": "./specs-tree-embedding-api/plan.md"
     }
   },
   "dependencies": {
@@ -39,9 +44,9 @@
     "relation": "独立但关联"
   },
   "next_steps": [
-    "运行 @sddu-plan 开始技术规划（按子Feature逐个进行）",
-    "平台面: @sddu-plan 嵌入能力平台面",
-    "开放面: @sddu-plan 嵌入能力开放面",
-    "API面: @sddu-plan 嵌入能力API面"
+    "运行 @sddu-tasks 开始任务分解（按子Feature逐个进行）",
+    "平台面: @sddu-tasks 嵌入能力平台面",
+    "开放面: @sddu-tasks 嵌入能力开放面",
+    "API面: @sddu-tasks 嵌入能力API面"
   ]
 }
