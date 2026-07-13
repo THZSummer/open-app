@@ -105,7 +105,7 @@ API 面无独立 DDL，查询以下现有表：
 | Mock（开发） | api-server 内置模拟数据 | 不依赖外部服务，独立开发测试 |
 | 联调（真实） | 直接查询 `openplatform_app_member_t` 表 或 调用 open-server MemberService | 按 appId + accountId 匹配 `accountId` 字段，取 `memberType` 映射为角色列表 |
 
-> 💡 角色映射：`memberType=1` → `owner`、`memberType=2` → `admin`、`memberType=0` → `developer`（spec 中角色枚举为 拥有者/管理员/普通成员，字段名按实际映射）
+> 💡 角色映射：`memberType=1` → 角色编码 `1`(拥有者)、`memberType=2` → `2`(管理员)、`memberType=0` → `0`(开发者)，与 `MemberTypeEnum` 一致
 
 > ⚠️ 前提：需确认 api-server 可直连此表（与 open-server 共享 DB），否则通过 HTTP 调用 open-server 的成员查询接口。
 
@@ -129,7 +129,7 @@ API 面无独立 DDL，查询以下现有表：
   "messageEn": "Success",
   "data": {
     "appId": "1234567890123456789",
-    "roles": ["admin", "member"]
+    "roles": [1, 2]
   },
   "page": null
 }
@@ -154,7 +154,8 @@ API 面无独立 DDL，查询以下现有表：
 
 | 字段 | 说明 |
 |------|------|
-| `appId` | 应用标识（平台ID / hisAppId 均支持） |
+| `appId` | 平台应用ID |
+| `hisAppId` | 外部应用编码 |
 | `userAccount` | 用户账号 |
 | `roles` | 角色列表 |
 
@@ -189,15 +190,18 @@ API 面无独立 DDL，查询以下现有表：
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|:--:|------|
-| appId | string | ✅ | 应用标识，支持两种类型：平台应用ID 或 外部应用编码（hisAppId），系统自动识别 |
-| userAccount | string | ✅ | 用户账号 |
+| `appId` | string | ⓪ | 平台应用ID（与 hisAppId 至少二选一） |
+| `hisAppId` | string | ⓪ | 外部应用编码（与 appId 至少二选一） |
+| `userAccount` | string | ✅ | 用户账号 |
+
+> ⓪ = 条件必填：`appId` 和 `hisAppId` 至少传入一个，也可以同时传入（此时优先按 appId 匹配）。
 
 **响应体 `data`**
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | appId | string | 解析后的内部应用ID |
-| roles | string[] | 用户在应用中的角色列表，可选值：`owner` / `admin` / `member` |
+| roles | integer[] | 用户在应用中的角色编码列表，可选值：`0`(开发者) / `1`(拥有者) / `2`(管理员)，对应 `MemberTypeEnum` |
 
 **示例**
 
@@ -208,6 +212,7 @@ API 面无独立 DDL，查询以下现有表：
 // 请求体（按平台 appId 查询）
 {
   "appId": "1234567890123456789",
+  "hisAppId": null,
   "userAccount": "zhangsan@xxx.com"
 }
 
@@ -218,14 +223,15 @@ API 面无独立 DDL，查询以下现有表：
   "messageEn": "Success",
   "data": {
     "appId": "1234567890123456789",
-    "roles": ["admin", "member"]
+    "roles": [1, 2]
   },
   "page": null
 }
 
 // 请求体（按 hisAppId 查询）
 {
-  "appId": "EAMAP_APP_001",
+  "appId": null,
+  "hisAppId": "EAMAP_APP_001",
   "userAccount": "lisi@xxx.com"
 }
 
@@ -236,7 +242,7 @@ API 面无独立 DDL，查询以下现有表：
   "messageEn": "Success",
   "data": {
     "appId": "9876543210987654321",
-    "roles": ["member"]
+    "roles": [0]
   },
   "page": null
 }
@@ -265,19 +271,21 @@ API 面无独立 DDL，查询以下现有表：
 | code | 说明 |
 |------|------|
 | 401 | 内部凭证无效或缺失 |
-| 404 | 应用标识无法解析为有效应用（平台 appId 或 hisAppId 均未匹配） |
+| 404 | appId 和 hisAppId 均未匹配到有效应用 |
 
 **应用标识解析逻辑**：
 
 ```mermaid
 flowchart LR
-    Input["输入 appId"] --> Judge{先查 app_t}
-    Judge -->|匹配| Platform["类型=平台appId<br/>得到内部 appId"]
-    Judge -->|不匹配| Judge2{再查 app_p_t<br/>eamap_app_code}
-    Judge2 -->|匹配| His["类型=hisAppId<br/>得到内部 appId"]
-    Judge2 -->|不匹配| Error["返回 404"]
-    Platform --> Query["查询用户角色"]
-    His --> Query
+    Input1["appId 有值?"] -->|是| JudgeApp{"查 app_t"}
+    Input1 -->|否| Input2["hisAppId 有值?"]
+    Input2 -->|否| Error["返回 404"]
+    Input2 -->|是| JudgeHis{"查 app_p_t<br/>eamap_app_code"}
+    JudgeApp -->|匹配| Found["得到内部 appId"]
+    JudgeApp -->|不匹配| Input2
+    JudgeHis -->|匹配| Found
+    JudgeHis -->|不匹配| Error
+    Found --> Query["查询用户角色"]
 ```
 
 **数据流**：
@@ -288,11 +296,11 @@ sequenceDiagram
     participant APIServer as api-server
     participant AppDB as app_t / app_p_t
 
-    EmbedBackend->>APIServer: POST /internal/user/roles { appId, userAccount }
+    EmbedBackend->>APIServer: POST /internal/user/roles { appId, hisAppId, userAccount }
     APIServer->>APIServer: 校验 X-Internal-Token
     APIServer->>AppDB: 解析应用标识（appId / eamap_app_code → 内部 appId）
     APIServer->>APIServer: Mock 查询成员角色
-    APIServer-->>EmbedBackend: { roles: ["admin", "member"] }
+    APIServer-->>EmbedBackend: { roles: [1, 2] }
 ```
 
 ## 4. 方案对比
