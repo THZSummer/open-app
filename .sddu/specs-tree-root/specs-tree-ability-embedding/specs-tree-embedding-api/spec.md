@@ -29,7 +29,7 @@
 
 ### 2.1 问题背景
 
-当三方应用订阅了某个嵌入能力（如"群置顶服务"）后，该应用的请求会到达嵌入能力方（如 IM 业务模块）的后端服务。嵌入能力方需要：
+嵌入能力方的配置页面通过微前端嵌入 wecodesite（开放面）后，用户在配置页的操作请求会到达嵌入能力方（如 IM 业务模块）的后端服务。嵌入能力方需要：
 
 1. **验证调用方身份**：这个请求是否来自一个真实、合法的应用？
 2. **查询应用信息**：这个应用的名称、类型是什么？
@@ -52,17 +52,17 @@
 
 ```mermaid
 sequenceDiagram
-    participant App as 三方应用
-    participant EmbedProvider as 嵌入能力方后端<br/>(如 IM 服务)
+    participant OpenFace as 开放面<br/>(wecodesite 嵌入能力配置页)
+    participant EmbedBackend as 嵌入能力方后端<br/>(如 IM 服务)
     participant APIServer as api-server
 
-    App->>EmbedProvider: 调用能力 API<br/>(携带 appId + 凭证)
-    EmbedProvider->>APIServer: 内部调用应用身份验证<br/>(携带内部凭证)
-    APIServer-->>EmbedProvider: { valid, appInfo }
-    EmbedProvider->>APIServer: 内部调用成员信息查询<br/>(携带内部凭证)
-    APIServer-->>EmbedProvider: [{ userId, userName, role }]
-    EmbedProvider->>EmbedProvider: 业务校验通过
-    EmbedProvider-->>App: 返回能力服务结果
+    OpenFace->>EmbedBackend: 调用能力后端服务<br/>(携带应用ID + 认证凭证)
+    EmbedBackend->>APIServer: 内部调用应用身份验证<br/>(携带内部凭证)
+    APIServer-->>EmbedBackend: 返回验证结果 + 应用信息
+    EmbedBackend->>APIServer: 内部调用成员信息查询<br/>(携带内部凭证)
+    APIServer-->>EmbedBackend: 返回成员列表
+    EmbedBackend->>EmbedBackend: 业务校验通过
+    EmbedBackend-->>OpenFace: 返回能力服务结果
 ```
 
 ## 3. 目标与非目标
