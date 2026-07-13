@@ -23,7 +23,7 @@
 | `AbilityProperty` 实体 | 映射 `openplatform_ability_p_t`（图标/示意图） | 不动，继续复用 |
 | `AbilitySnapshotLoader` | 启动时加载 ability 到缓存 | 新增字段不影响 |
 
-**关键决策**：admin 能力的 CRUD controller 放在 **market-server** 还是 **open-server**？
+**关键决策**：admin CRUD controller 放在 **market-server** 还是 **open-server**？
 
 | 选项 | 说明 |
 |------|------|
@@ -45,97 +45,7 @@
 | Flyway migration 文件 | `openplatform_ability_t` 新增 `frontend_entry_url` / `hidden` 字段 | open-server DB |
 | 前端页面（market-web） | 能力目录管理页面：列表页 + 创建/编辑表单 | market-web |
 
-### 1.3 数据流（与 FR 场景对应）
-
-**场景 1：能力目录列表（FR-001）**
-
-```mermaid
-sequenceDiagram
-    participant Admin as 平台管理员
-    participant Web as market-web<br/>能力目录页
-    participant AdminCtrl as AdminAbilityController
-    participant DB as openplatform_ability_t
-
-    Admin->>Web: 打开能力目录页面
-    Web->>AdminCtrl: 请求能力列表
-    AdminCtrl->>DB: 分页查询所有类型（按排序号升序）
-    DB-->>AdminCtrl: [{abilityType, nameCn, nameEn, descCn, icon, 示意图, orderNum, frontendEntryUrl, 创建时间, 更新人, 更新时间}]
-    AdminCtrl-->>Web: 返回列表 VO
-    Web-->>Admin: 展示列表（支持分页、按中文名/英文名模糊搜索）
-```
-
-**场景 2：创建能力（FR-002）**
-
-```mermaid
-sequenceDiagram
-    participant Admin as 平台管理员
-    participant Web as market-web<br/>创建表单
-    participant AdminCtrl as AdminAbilityController
-    participant FileSvc as 文件服务
-    participant DB as openplatform_ability_t / _p_t
-
-    Admin->>Web: 填写创建表单（abilityType编码、名称、描述、上传图标/示意图、排序号、frontendEntryUrl、是否在开放面展示）
-    Web->>AdminCtrl: 提交创建请求
-    AdminCtrl->>AdminCtrl: 校验 abilityType 编码唯一性
-    AdminCtrl->>FileSvc: 上传图标/示意图文件
-    FileSvc-->>AdminCtrl: 返回文件 URL
-    AdminCtrl->>DB: 写入 ability_t 主表（含 frontendEntryUrl、hidden）
-    AdminCtrl->>DB: 写入 ability_p_t 属性表（图标、示意图 URL）
-    DB-->>AdminCtrl: 成功
-    AdminCtrl-->>Web: 创建成功
-    Web-->>Admin: 提示"创建成功"，能力在目录中立即可见
-```
-
-**场景 3：编辑能力（FR-003）**
-
-```mermaid
-sequenceDiagram
-    participant Admin as 平台管理员
-    participant Web as market-web<br/>编辑表单
-    participant AdminCtrl as AdminAbilityController
-    participant FileSvc as 文件服务
-    participant DB as openplatform_ability_t / _p_t
-
-    Admin->>Web: 打开编辑表单（回填已有信息）
-    Admin->>Web: 修改字段（名称、描述、排序号、frontendEntryUrl、是否在开放面展示等）
-    Web->>AdminCtrl: 提交编辑请求
-    AdminCtrl->>AdminCtrl: abilityType 编码不可修改
-    AdminCtrl->>FileSvc: 如有新文件则上传（替换旧文件）
-    AdminCtrl->>DB: 更新 ability_t
-    AdminCtrl->>DB: 更新 ability_p_t（如有新文件）
-    DB-->>AdminCtrl: 成功
-    AdminCtrl-->>Web: 编辑成功
-    Web-->>Admin: 提示"修改成功"
-```
-
-**场景 4：删除能力（FR-004）**
-
-```mermaid
-sequenceDiagram
-    participant Admin as 平台管理员
-    participant Web as market-web<br/>删除确认
-    participant AdminCtrl as AdminAbilityController
-    participant DB as openplatform_ability_t / app_ability_relation_t
-
-    Admin->>Web: 点击删除操作
-    Web->>AdminCtrl: 请求删除 ability 类型
-    AdminCtrl->>DB: 检查 app_ability_relation_t 是否有订阅记录
-    alt 有关联订阅
-        DB-->>AdminCtrl: 存在 XX 条订阅
-        AdminCtrl-->>Web: 禁止删除，提示"已被 XX 个应用订阅"
-        Web-->>Admin: 展示提示，删除失败
-    else 无关联订阅
-        DB-->>AdminCtrl: 无订阅记录
-        AdminCtrl->>DB: 级联删除 ability_t + ability_p_t
-        DB-->>AdminCtrl: 成功
-        AdminCtrl-->>Web: 删除成功
-        Web-->>Admin: 提示"删除成功"
-    end
-```
-
-> 💡 数据一致性依据：平台面写入 openplatform_ability_t 后，开放面直接读取同一张表，无需缓存刷新（NFR-003 即时同步）。
-
-### 1.4 依赖关系图
+### 1.3 依赖关系图
 
 ```mermaid
 graph TB
@@ -172,7 +82,170 @@ graph TB
     style T1 fill:#fff3cd,stroke:#f9a825
 ```
 
-## 2. 方案对比
+## 2. 数据库设计
+
+### 2.1 openplatform_ability_t（主表）
+
+复用现有表，新增字段：
+
+| 字段名 | 类型 | 说明 | 约束 |
+|--------|------|------|------|
+| `frontend_entry_url` | VARCHAR(512) | 微前端子应用入口 URL | nullable |
+| `hidden` | TINYINT(1) | 是否在开放面展示（0=展示，1=隐藏） | 默认 0 |
+
+> 其余字段（`ability_name_cn`, `ability_name_en`, `ability_desc_cn`, `ability_desc_en`, `ability_type`, `order_num`, `status` 等）保持现有结构不变。
+
+### 2.2 openplatform_ability_p_t（属性表）
+
+**不变**。继续存储图标（`property_name = 'icon'`）和示意图（`property_name = 'illustration'`）。
+
+### 2.3 迁移版本
+
+- 新增 Flyway migration: `V4__add_ability_admin_fields.sql`
+- 迁移内容：`ALTER TABLE openplatform_ability_t ADD COLUMN frontend_entry_url VARCHAR(512) DEFAULT NULL COMMENT '前端入口URL'`, `ADD COLUMN hidden TINYINT(1) DEFAULT 0 COMMENT '是否在开放面展示'`
+
+## 3. API设计
+
+### 3.1 能力列表（FR-001）
+
+**请求**：分页查询能力列表
+
+| 参数 | 说明 |
+|------|------|
+| 关键字 | 按中文名/英文名模糊搜索（可选） |
+| 分页 | 第几页、每页条数 |
+| 排序 | 默认按排序号升序 |
+
+**响应**：分页结果，每条记录包含 abilityType 编码、中文名、英文名、描述、图标URL、示意图URL、排序号、前端入口URL、创建时间、更新人、更新时间
+
+**数据流**：
+
+```mermaid
+sequenceDiagram
+    participant Admin as 平台管理员
+    participant Web as market-web<br/>能力目录页
+    participant AdminCtrl as AdminAbilityController
+    participant DB as openplatform_ability_t
+
+    Admin->>Web: 打开能力目录页面
+    Web->>AdminCtrl: 请求能力列表（分页+搜索）
+    AdminCtrl->>DB: 分页查询（按排序号升序）
+    DB-->>AdminCtrl: [{abilityType, nameCn, iconUrl, frontendEntryUrl, ...}]
+    AdminCtrl-->>Web: 返回列表 VO
+    Web-->>Admin: 展示列表（分页、搜索）
+```
+
+### 3.2 创建能力（FR-002）
+
+**请求**：
+
+| 字段 | 说明 |
+|------|------|
+| abilityType 编码 | 手动输入，需唯一 |
+| 中文名 / 英文名 | - |
+| 中文描述 / 英文描述 | - |
+| 图标 | 文件上传，JPG/PNG/SVG，≤5MB |
+| 示意图 | 文件上传（可选） |
+| 排序号 | 整数 |
+| 前端入口URL | 微前端子应用入口 |
+| 是否在开放面展示 | 默认展示 |
+
+**响应**：创建成功/失败
+
+**数据流**：
+
+```mermaid
+sequenceDiagram
+    participant Admin as 平台管理员
+    participant Web as market-web<br/>创建表单
+    participant AdminCtrl as AdminAbilityController
+    participant FileSvc as 文件服务
+    participant DB as openplatform_ability_t / _p_t
+
+    Admin->>Web: 填写创建表单（编码、名称、描述、上传图标/示意图、排序号、frontendEntryUrl、是否展示）
+    Web->>AdminCtrl: 提交创建请求
+    AdminCtrl->>AdminCtrl: 校验 abilityType 编码唯一性
+    AdminCtrl->>FileSvc: 上传图标/示意图文件
+    FileSvc-->>AdminCtrl: 返回文件 URL
+    AdminCtrl->>DB: 写入 ability_t 主表（含 frontendEntryUrl、hidden）
+    AdminCtrl->>DB: 写入 ability_p_t 属性表（图标、示意图 URL）
+    DB-->>AdminCtrl: 成功
+    AdminCtrl-->>Web: 创建成功
+    Web-->>Admin: 提示"创建成功"，能力在目录中立即可见
+```
+
+### 3.3 编辑能力（FR-003）
+
+**请求**：与创建相同，但 abilityType 编码不可修改
+
+| 字段 | 说明 |
+|------|------|
+| 中文名 / 英文名 | 可修改 |
+| 中文描述 / 英文描述 | 可修改 |
+| 图标 | 可替换上传，新文件覆盖旧文件 |
+| 示意图 | 可替换上传 |
+| 排序号 | 可修改 |
+| 前端入口URL | 可修改 |
+| 是否在开放面展示 | 可切换 |
+
+**响应**：修改成功/失败
+
+**数据流**：
+
+```mermaid
+sequenceDiagram
+    participant Admin as 平台管理员
+    participant Web as market-web<br/>编辑表单
+    participant AdminCtrl as AdminAbilityController
+    participant FileSvc as 文件服务
+    participant DB as openplatform_ability_t / _p_t
+
+    Admin->>Web: 打开编辑表单（回填已有信息）
+    Admin->>Web: 修改字段（名称、描述、排序号、frontendEntryUrl、是否展示等）
+    Web->>AdminCtrl: 提交编辑请求
+    AdminCtrl->>AdminCtrl: abilityType 编码不可修改
+    AdminCtrl->>FileSvc: 如有新文件则上传（替换旧文件引用）
+    AdminCtrl->>DB: 更新 ability_t
+    AdminCtrl->>DB: 更新 ability_p_t（如有新文件）
+    DB-->>AdminCtrl: 成功
+    AdminCtrl-->>Web: 编辑成功
+    Web-->>Admin: 提示"修改成功"
+```
+
+### 3.4 删除能力（FR-004）
+
+**请求**：指定要删除的 ability 类型
+
+**响应**：删除成功/失败（有订阅时禁止删除）
+
+**数据流**：
+
+```mermaid
+sequenceDiagram
+    participant Admin as 平台管理员
+    participant Web as market-web<br/>删除确认
+    participant AdminCtrl as AdminAbilityController
+    participant DB as openplatform_ability_t / app_ability_relation_t
+
+    Admin->>Web: 点击删除操作
+    Web->>AdminCtrl: 请求删除能力
+    AdminCtrl->>DB: 检查 app_ability_relation_t 是否有订阅记录
+    alt 有关联订阅
+        DB-->>AdminCtrl: 存在 XX 条订阅
+        AdminCtrl-->>Web: 禁止删除，提示"已被 XX 个应用订阅"
+        Web-->>Admin: 展示提示，删除失败
+    else 无关联订阅
+        DB-->>AdminCtrl: 无订阅记录
+        AdminCtrl->>DB: 级联删除 ability_t + ability_p_t
+        DB-->>AdminCtrl: 成功
+        AdminCtrl-->>Web: 删除成功
+        Web-->>Admin: 提示"删除成功"
+    end
+```
+
+> 💡 数据一致性：平台面写入 openplatform_ability_t 后，开放面直接读取同一张表，无需缓存刷新（NFR-003 即时同步）。
+
+## 4. 方案对比
 
 ### 方案 A：扩展 open-server ability 模块（推荐）
 
@@ -194,7 +267,7 @@ graph TB
 | 缺点 | 需要跨服务访问或重复创建 Mapper/Entity；增加部署耦合；写入操作与现有 open-server 异步问题 |
 | 风险 | 中——跨服务调用的可靠性和数据一致性问题 |
 
-## 3. 推荐方案
+## 5. 推荐方案
 
 **选择方案 A**：在 open-server 的 ability 模块扩展 admin 能力。
 
@@ -206,7 +279,7 @@ graph TB
 
 > 注：spec 中"服务端：market-server"的表述在实际实现中调整为 open-server。market-web 作为前端调用 open-server 的 admin 接口。
 
-## 4. 文件影响分析
+## 6. 文件影响分析
 
 ### 新增文件
 
@@ -232,7 +305,7 @@ graph TB
 | `open-server/.../ability/mapper/AbilityPropertyMapper.java` | 可能新增按 abilityType 查询/删除方法 |
 | `market-web/.../router/config.ts` | 新增能力目录管理路由 |
 
-## 5. 风险评估
+## 7. 风险评估
 
 | 风险 | 影响 | 缓解措施 |
 |------|------|---------|
@@ -240,7 +313,7 @@ graph TB
 | 文件上传（图标/示意图）依赖 fileV2Service | 联调阻塞 | Mock 阶段使用固定 URL 占位 |
 | DB migration 与现有表结构冲突 | 部署失败 | 新增 migration V4，命名规范避免冲突 |
 
-## 6. ADR
+## 8. ADR
 
 ### ADR-001: Admin 能力 CRUD 放在 open-server 扩展
 
@@ -278,7 +351,7 @@ graph TB
 
 ---
 
-## 7. 产物审查策略
+## 9. 产物审查策略
 
 | 审查产物 | 审查基准 |
 |---------|---------|
@@ -287,7 +360,7 @@ graph TB
 | AdminAbilityService.java | 业务逻辑完整性（创建/编辑/删除/列表） |
 | V4 迁移文件 | 字段类型、默认值、约束 |
 
-## 8. 产物验证策略
+## 10. 产物验证策略
 
 | 验证产物 | 验证基准 |
 |---------|---------|
