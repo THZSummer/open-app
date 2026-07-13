@@ -67,11 +67,10 @@
 
 | # | 作为… | 我想要… | 以便… |
 |---|-------|---------|-------|
-| US-001 | 平台管理员 | 在能力目录页面查看所有 ability 类型的列表，支持按名称/状态搜索筛选 | 快速了解当前有哪些能力类型及它们的状态 |
+| US-001 | 平台管理员 | 在能力目录页面查看所有 ability 类型的列表 | 快速了解当前有哪些能力类型及它们的状态 |
 | US-002 | 平台管理员 | 创建新的 ability 类型，录入中英文名称、描述、上传图标/示意图、指定排序、输入前端入口URL、手动输入 abilityType 编码 | 将业务模块的能力注册到平台 |
 | US-003 | 平台管理员 | 编辑已有 ability 类型的各项信息 | 更新能力信息或修正录入错误 |
 | US-004 | 平台管理员 | 删除一个未关联任何应用订阅的 ability 类型 | 清理不再需要的能力类型 |
-| US-005 | 平台管理员 | 调整 ability 类型的排序顺序 | 控制能力目录在前端的展示顺序 |
 
 ## 5. 功能需求 (FR)
 > 每个需求必须有唯一标识符且可测试
@@ -84,7 +83,6 @@
 | FR-002 | **创建能力类型**：平台管理员创建新的 ability 类型 | • 表单字段：abilityType 编码（int，手动输入）、中文名、英文名、中文描述、英文描述、图标（文件上传）、示意图（文件上传）、排序号（int）、前端入口URL、是否在开放面展示（hidden，默认展示）<br/>• abilityType 编码需校验唯一性（不与已有编码冲突）<br/>• 图标/示意图上传调用 `fileV2Service`（复用已有文件服务）<br/>• 创建后状态默认为「启用」<br/>• 创建后同步写入 `openplatform_ability_t` 主表和 `openplatform_ability_p_t` 属性表 | P0 |
 | FR-003 | **编辑能力类型**：平台管理员修改已有 ability 类型的信息 | • 支持修改 FR-002 中所有字段<br/>• abilityType 编码不可修改（作为业务标识）<br/>• 图标/示意图可替换上传，新文件覆盖旧文件引用<br/>• `hidden` 字段可切换（展示/隐藏状态） | P0 |
 | FR-004 | **删除能力类型**：平台管理员删除 ability 类型 | • 删除前检查 `openplatform_app_ability_relation_t` 中是否有该类型关联的订阅记录<br/>• 有关联订阅 > 禁止删除，提示"该能力类型已被 XX 个应用订阅，请先通知应用取消订阅"<br/>• 无关联订阅 > 允许删除，级联删除属性表中的图标/示意图引用 | P1 |
-| FR-005 | **排序调整**：平台管理员调整 ability 类型的展示顺序 | • 支持拖拽或手动输入排序号调整顺序<br/>• 保存后 order_num 更新，列表按新顺序展示 | P1 |
 
 ### 5.2 数据模型
 
@@ -106,11 +104,10 @@
 
 | 接口 | 方法 | 路径 | 说明 |
 |------|------|------|------|
-| 能力类型列表 | GET | `/service/open/v2/ability/admin/list` | 分页+搜索+筛选 |
+| 能力类型列表 | GET | `/service/open/v2/ability/admin/list` | 分页 |
 | 创建能力类型 | POST | `/service/open/v2/ability/admin` | 创建新的 ability 类型 |
 | 编辑能力类型 | PUT | `/service/open/v2/ability/admin/{id}` | 更新 ability 类型信息 |
 | 删除能力类型 | DELETE | `/service/open/v2/ability/admin/{id}` | 删除（含订阅检查） |
-| 排序调整 | PUT | `/service/open/v2/ability/admin/sort` | 批量更新排序号 |
 
 > ⚠️ 接口路径前缀暂定，需与现有 `ability` 模块的路径 `/service/open/v2/ability` 统一规划，避免冲突。或使用独立前缀如 `/service/open/v2/ability/admin/` 与管理面区分。
 
