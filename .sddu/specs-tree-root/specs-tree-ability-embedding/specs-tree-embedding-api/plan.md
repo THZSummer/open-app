@@ -20,7 +20,7 @@
 | `ApplicationServiceMockImpl` | Mock 实现 | 角色查询 Mock 实现可参考此模式 |
 | `ApiGatewayController` | 应用认证网关（已有内部凭证概念） | 内部凭证校验可参考其模式 |
 | `ScopeController` | 用户授权管理 | 角色查询与之不同，新建独立 Controller |
-| 成员管理 | 不存在 | 需新建：成员角色查询接口 + Mock 数据 |
+| 成员角色查询 | 不存在，但 open-server 已有 `AppMember` 实体（`openplatform_app_member_t`）和成员管理服务 | 需新建角色查询接口，复用现有成员数据结构 |
 
 **关键影响**：
 
@@ -89,10 +89,25 @@ API 面无独立 DDL，查询以下现有表：
 
 ### 2.2 成员角色数据
 
-| 阶段 | 数据来源 |
-|------|---------|
-| Mock（开发） | api-server 内置模拟数据（预设角色列表） |
-| 联调（真实） | 对接现有成员管理系统接口 |
+**已有基础设施**：open-server 已有完整的成员管理模块，相关组件：
+
+| 组件 | 说明 |
+|------|------|
+| `AppMember` 实体 | 映射表 `openplatform_app_member_t`，字段：appId、accountId（用户账号）、memberType（角色编码）等 |
+| `MemberTypeEnum` | 角色枚举：`0=Developer`(开发者)、`1=Owner`(拥有者)、`2=Admin`(管理员)，带优先级排序 |
+| `MemberService.getMemberList(appId, curPage, pageSize)` | 按应用查询成员列表及角色 |
+| `AppMemberMapper` | MyBatis 映射，支持按 `appId` 查询成员 |
+
+**数据来源策略**：
+
+| 阶段 | 策略 | 说明 |
+|------|------|------|
+| Mock（开发） | api-server 内置模拟数据 | 不依赖外部服务，独立开发测试 |
+| 联调（真实） | 直接查询 `openplatform_app_member_t` 表 或 调用 open-server MemberService | 按 appId + accountId 匹配 `accountId` 字段，取 `memberType` 映射为角色列表 |
+
+> 💡 角色映射：`memberType=1` → `owner`、`memberType=2` → `admin`、`memberType=0` → `developer`（spec 中角色枚举为 拥有者/管理员/普通成员，字段名按实际映射）
+
+> ⚠️ 前提：需确认 api-server 可直连此表（与 open-server 共享 DB），否则通过 HTTP 调用 open-server 的成员查询接口。
 
 ## 3. API设计
 
@@ -328,7 +343,7 @@ sequenceDiagram
 | 风险 | 影响 | 缓解措施 |
 |------|------|---------|
 | app_t / app_p_t 表不在 api-server schema 中 | 无法直接解析应用标识 | 通过现有 ApplicationService 接口代理查询 |
-| 成员管理系统无标准化角色查询接口 | 联调阶段对接困难 | 先以 Mock 数据交付开发，联调阶段适配 |
+| 成员管理系统标准化角色查询接口 | open-server 已有 `AppMember` + `MemberTypeEnum` | 联调阶段直接查询 `openplatform_app_member_t` 表或调用 open-server 的成员查询接口 |
 | 内部凭证管理无管理界面 | 凭证维护不灵活 | MVP 阶段配置在 yml 中，后续增量补充管理 API |
 
 ## 8. ADR
