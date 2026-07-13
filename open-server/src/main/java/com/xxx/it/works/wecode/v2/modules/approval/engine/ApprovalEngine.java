@@ -94,9 +94,7 @@ public class ApprovalEngine {
         public static final String CONNECTOR_FLOW_VERSION_PUBLISH = "connector_flow_version_publish";
 
         /** 审批人可选的业务类型：未配置审批人时仍允许发起审批 */
-        private static final Set<String> OPTIONAL_APPROVER_TYPES = Set.of(
-                APP_VERSION_PUBLISH
-        );
+        private static final Set<String> OPTIONAL_APPROVER_TYPES = Set.of();
     }
 
     /**
@@ -201,7 +199,7 @@ public class ApprovalEngine {
     /**
      * 按 businessType 查找对应的 Handler
      */
-    private ApprovalBusinessHandler findHandler(String businessType) {
+    public ApprovalBusinessHandler findHandler(String businessType) {
         for (ApprovalBusinessHandler handler : businessHandlers) {
             if (handler.supportedBusinessType().equals(businessType)) {
                 return handler;

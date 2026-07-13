@@ -377,7 +377,7 @@ public class EntityCacheManager {
     }
 
     private String lookupKey(String classifyCode) {
-        return "cp:entity:lookup:" + classifyCode;
+        return "OPENPLATFORM:LOOK:UP:ITEM:" + LOOKUP_PATH + ":" + classifyCode;
     }
 
 

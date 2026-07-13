@@ -10,6 +10,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 @Slf4j
 @Component
@@ -36,6 +38,16 @@ public class CallbackRegisterHandler implements ApprovalBusinessHandler {
     @Override
     public void onCancelled(ApprovalRecord record) {
         updateCallbackStatus(record.getBusinessId(), 0, record.getApplicantId());
+    }
+
+    @Override
+    public Map<String, Object> getBusinessData(Long businessId) {
+        Map<String, Object> data = new HashMap<>();
+        Callback callback = callbackMapper.selectById(businessId);
+        if (callback != null) {
+            data.put("nameCn", callback.getNameCn());
+        }
+        return data;
     }
 
     private void updateCallbackStatus(Long callbackId, int status, String operator) {

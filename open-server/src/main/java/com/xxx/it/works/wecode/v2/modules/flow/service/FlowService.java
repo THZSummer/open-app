@@ -22,7 +22,6 @@ import com.xxx.it.works.wecode.v2.modules.security.AppContextHolder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,10 +46,6 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 public class FlowService {
-
-
-
-
     @Autowired
     public FlowService(OpFlowMapper flowMapper, OpFlowVersionMapper flowVersionMapper,
                        ConnectorVersionRefMapper connectorVersionRefMapper,
@@ -71,8 +66,8 @@ public class FlowService {
     private final OpConnectorMapper connectorMapper;
     private final IdGeneratorStrategy idGenerator;
 
-    @Autowired(required = false)
-    private StringRedisTemplate stringRedisTemplate;
+    @Autowired
+    private FlowCacheEvictor flowCacheEvictor;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -327,6 +322,8 @@ public class FlowService {
         String currentUser = UserContextHolder.getUserName();
         flowMapper.updateLifecycleStatus(flowId, FlowLifecycleStatus.RUNNING.getCode(), now, currentUser);
 
+        flowCacheEvictor.evictFlowEntity(flowId);
+
         log.info("Flow started: id={}, appId={}", flowId, appId);
 
         FlowLifecycleResponse response = FlowLifecycleResponse.builder()
@@ -362,6 +359,9 @@ public class FlowService {
         Date now = new Date();
         String currentUser = UserContextHolder.getUserName();
         flowMapper.updateLifecycleStatus(flowId, FlowLifecycleStatus.STOPPED.getCode(), now, currentUser);
+
+        flowCacheEvictor.evictFlowEntity(flowId);
+        flowCacheEvictor.evictExecutionResults(flowId);
 
         log.info("Flow stopped: id={}, appId={}", flowId, appId);
 
@@ -399,6 +399,9 @@ public class FlowService {
         String currentUser = UserContextHolder.getUserName();
         flowMapper.updateLifecycleStatus(flowId, FlowLifecycleStatus.INVALIDATED.getCode(), now, currentUser);
 
+        flowCacheEvictor.evictFlowEntity(flowId);
+        flowCacheEvictor.evictExecutionResults(flowId);
+
         log.info("Flow invalidated: id={}, appId={}", flowId, appId);
         return ApiResponse.success();
     }
@@ -427,6 +430,8 @@ public class FlowService {
         Date now = new Date();
         String currentUser = UserContextHolder.getUserName();
         flowMapper.updateLifecycleStatus(flowId, FlowLifecycleStatus.STOPPED.getCode(), now, currentUser);
+
+        flowCacheEvictor.evictFlowEntity(flowId);
 
         log.info("Flow recovered: id={}, status=STOPPED, appId={}", flowId, appId);
         return ApiResponse.success();
@@ -460,29 +465,12 @@ public class FlowService {
         // 删除连接流基本信息
         flowMapper.deleteById(flowId);
 
-        evictFlowConfigCache(flowId);
+        flowCacheEvictor.evictFlowConfig(flowId);
+        flowCacheEvictor.evictFlowEntity(flowId);
+        flowCacheEvictor.evictExecutionResults(flowId);
 
         log.info("Flow deleted: id={}, appId={}", flowId, appId);
         return ApiResponse.success();
-    }
-
-    // ==================== 缓存失效 ====================
-
-    /**
-     * 使 cp:flow:config:{flowId} 缓存失效, 避免缓存返回已删除版本的旧数据.
-     */
-    private void evictFlowConfigCache(Long flowId) {
-        if (stringRedisTemplate == null) {
-            return;
-        }
-        try {
-            stringRedisTemplate.delete("cp:flow:config:" + flowId);
-            // 删除 FlowEntity 缓存 (含 lifecycle_status/deployed_version_id，状态变更后需失效)
-            stringRedisTemplate.delete("cp:entity:flow:" + flowId);
-            log.debug("Evicted flow config cache: flowId={}", flowId);
-        } catch (Exception e) {
-            log.warn("Failed to evict flow config cache: flowId={}, error={}", flowId, e.getMessage());
-        }
     }
 
     // ==================== 内部转换方法 ====================

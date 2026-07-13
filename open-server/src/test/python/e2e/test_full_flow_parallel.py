@@ -24,7 +24,7 @@ os_api = _osm.api
 os_ok = _osm.ok
 os_fail = _osm.fail
 os_done = _osm.done
-from client import CONNECTOR_API_BASE, CONNECTOR_API_HEALTH, MOCK_SERVER_PARALLEL_URL
+from client import CONNECTOR_API_BASE, CONNECTOR_API_HEALTH, MOCK_SERVER_PARALLEL_URL, SYSTOKEN_HEADER, SYSTOKEN_VALUE
 import requests
 
 TEST_APP_ID = _osm.TEST_APP_ID
@@ -345,14 +345,14 @@ def test_full_flow_parallel():
                                     "header": {
                                         "type": "object",
                                         "properties": {
-                                            "X-Sys-Token": {
+                                            SYSTOKEN_HEADER: {
                                                 "type": "string",
                                                 "required": True,
                                                 "sensitive": True
                                             }
                                         }
                                     },
-                                    "sysAccountWhitelist": ["tester"]
+                                    "sysAccountWhitelist": [SYSTOKEN_VALUE]
                                 }],
                                 "input": {
                                     "protocol": "HTTP",
@@ -671,7 +671,7 @@ def test_full_flow_parallel():
             start = time.time()
             r = api_connector("POST", f"/flows/{fid}/invoke",
                              {"task_a": invoke_task_a, "task_b": invoke_task_b, "priority": invoke_priority},
-                             headers={"X-Sys-Token": "tester"})
+                             headers={SYSTOKEN_HEADER: SYSTOKEN_VALUE})
             elapsed = time.time() - start
             individual_sum = BRANCH_DELAYS["a"] + BRANCH_DELAYS["b"]
             max_delay = max(BRANCH_DELAYS["a"], BRANCH_DELAYS["b"])

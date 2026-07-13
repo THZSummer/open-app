@@ -14,30 +14,40 @@
 import sys, json, time
 import requests
 
-# ═══════════════════════════════════════════════════════════
-# 配置 — 只改这里
-# ═══════════════════════════════════════════════════════════
-_API_BASE = "http://localhost:18080/open-server"
-TEST_APP_ID = "20250730213114178360970"
-INTERNAL_APP_ID = 328225464973787136  # App.id for TEST_APP_ID
-TEST_COOKIE = "user_id=admin"
-TEST_XSRF_TOKEN = "user_id=admin"
-_DEFAULT_USER  = "admin"
-_DB = {"host": "192.168.3.155", "user": "openapp", "passwd": "openapp", "db": "openapp"}
-# Redis 集群节点（full_flow 测试用）
-_REDIS_CLUSTER_NODES = [
-    ("192.168.3.201", "6379"), ("192.168.3.202", "6379"),
-    ("192.168.3.203", "6379"), ("192.168.3.204", "6379"),
-    ("192.168.3.205", "6379"), ("192.168.3.206", "6379"),
-]
+# 所有配置集中在 config.py — 部署到新环境只改那一个文件
+# 兼容两种导入路径:
+#   - pytest (from common.client import ...):     common/ 的父目录在 sys.path
+#   - e2e standalone (importlib 加载):            common/ 自身在 sys.path
+try:
+    from common.config import (
+        OPEN_SERVER_BASE,
+        TEST_APP_ID, INTERNAL_APP_ID, TEST_COOKIE, TEST_XSRF_TOKEN,
+        SYSTOKEN_HEADER, SYSTOKEN_VALUE,
+        DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME,
+        REDIS_PASSWORD, REDIS_CLUSTER_NODES as _REDIS_CLUSTER_NODES,
+        CONNECTOR_API_BASE, CONNECTOR_API_HEALTH, MOCK_SERVER_URL, MOCK_SERVER_PARALLEL_URL,
+        REQUEST_TIMEOUT,
+    )
+except ImportError:
+    from config import (
+        OPEN_SERVER_BASE,
+        TEST_APP_ID, INTERNAL_APP_ID, TEST_COOKIE, TEST_XSRF_TOKEN,
+        SYSTOKEN_HEADER, SYSTOKEN_VALUE,
+        DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME,
+        REDIS_PASSWORD, REDIS_CLUSTER_NODES as _REDIS_CLUSTER_NODES,
+        CONNECTOR_API_BASE, CONNECTOR_API_HEALTH, MOCK_SERVER_URL, MOCK_SERVER_PARALLEL_URL,
+        REQUEST_TIMEOUT,
+    )
 
-# 关联服务地址
-CONNECTOR_API_BASE = "http://localhost:18180/api/v1"
-CONNECTOR_API_HEALTH = "http://localhost:18180/actuator/health"
-OPEN_SERVER_BASE = "http://localhost:18080/open-server"
-MOCK_SERVER_URL = "http://localhost:18980"
-MOCK_SERVER_PARALLEL_URL = "http://localhost:18982"
-_TIMEOUT = 10
+# ═══════════════════════════════════════════════════════════
+# 派生配置
+# ═══════════════════════════════════════════════════════════
+_API_BASE = OPEN_SERVER_BASE
+_DB = {"host": DB_HOST, "port": DB_PORT, "user": DB_USER, "passwd": DB_PASS, "db": DB_NAME}
+_TIMEOUT = REQUEST_TIMEOUT
+
+# 预组装的鉴权头（供 e2e 测试直接使用）
+AUTH_HEADERS = {"X-App-Id": TEST_APP_ID, "Cookie": TEST_COOKIE, "X-XSRF-TOKEN": TEST_XSRF_TOKEN}
 
 # ═══════════════════════════════════════════════════════════
 # 内部状态
@@ -61,12 +71,14 @@ def api(method, path, body=None, *, app_id=None, user=None, headers=None, timeou
     h = {"Content-Type": "application/json"}
 
     aid = TEST_APP_ID if app_id is None else app_id
-    usr = _DEFAULT_USER if user is None else user
     if aid is not None:
         h["X-App-Id"] = aid
-    if usr is not None:
-        h["Cookie"] = f"user_id={usr}"
-        h["X-XSRF-TOKEN"] = f"user_id={usr}"
+    if user is not None:
+        h["Cookie"] = f"user_id={user}"
+        h["X-XSRF-TOKEN"] = f"user_id={user}"
+    else:
+        h["Cookie"] = TEST_COOKIE
+        h["X-XSRF-TOKEN"] = TEST_XSRF_TOKEN
     if headers:
         h.update(headers)
 
@@ -88,6 +100,7 @@ def _get_db_conn():
         import pymysql
         _db_conn = pymysql.connect(
             host=_DB["host"],
+            port=_DB.get("port", 3306),
             user=_DB["user"],
             password=_DB["passwd"],
             database=_DB["db"],

@@ -6,6 +6,7 @@ import com.xxx.it.works.wecode.v2.modules.app.resolver.AppContext;
 import com.xxx.it.works.wecode.v2.modules.flow.dto.FlowDeployResponse;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.Flow;
 import com.xxx.it.works.wecode.v2.modules.flow.service.FlowDeployService;
+import com.xxx.it.works.wecode.v2.modules.flow.service.FlowCacheEvictor;
 import com.xxx.it.works.wecode.v2.modules.flowversion.entity.FlowVersion;
 import com.xxx.it.works.wecode.v2.modules.flow.mapper.OpFlowMapper;
 import com.xxx.it.works.wecode.v2.modules.flowversion.mapper.OpFlowVersionMapper;
@@ -18,6 +19,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -32,6 +34,9 @@ class FlowDeployServiceTest {
 
     @Mock
     private OpFlowVersionMapper flowVersionMapper;
+
+    @Mock
+    private FlowCacheEvictor flowCacheEvictor;
 
     @InjectMocks
     private FlowDeployService deployService;
@@ -60,6 +65,8 @@ class FlowDeployServiceTest {
         version.setVersionNumber(1);
         version.setStatus(FlowVersionStatus.PUBLISHED.getCode());
         version.setOrchestrationConfig("{\"nodes\":[],\"edges\":[]}");
+
+        ReflectionTestUtils.setField(deployService, "flowCacheEvictor", flowCacheEvictor);
     }
 
     @AfterEach

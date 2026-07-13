@@ -31,7 +31,7 @@ os_api = _osm.api
 os_ok = _osm.ok
 os_fail = _osm.fail
 os_done = _osm.done
-from client import CONNECTOR_API_BASE, CONNECTOR_API_HEALTH
+from client import CONNECTOR_API_BASE, CONNECTOR_API_HEALTH, SYSTOKEN_HEADER, SYSTOKEN_VALUE
 
 import pytest, requests, random, string
 
@@ -356,9 +356,9 @@ def test_notification_channel_branch():
                             "authConfigs": [{
                                 "type": "SYSTOKEN",
                                 "header": {"type": "object", "properties": {
-                                    "X-Sys-Token": {"type": "string", "required": True, "sensitive": True},
+                                    SYSTOKEN_HEADER: {"type": "string", "required": True, "sensitive": True},
                                 }},
-                                "sysAccountWhitelist": ["tester"],
+                                "sysAccountWhitelist": [SYSTOKEN_VALUE],
                             }],
                             "input": {
                                 "protocol": "HTTP",
@@ -496,7 +496,7 @@ def test_notification_channel_branch():
             return True
 
         def _invoke_and_verify(label, payload, expected):
-            r = api_connector("POST", f"/flows/{fid}/invoke", payload, headers={"X-Sys-Token": "tester"})
+            r = api_connector("POST", f"/flows/{fid}/invoke", payload, headers={SYSTOKEN_HEADER: SYSTOKEN_VALUE})
             if r is None:
                 os_fail(f"{label}: connector-api unreachable")
                 return False

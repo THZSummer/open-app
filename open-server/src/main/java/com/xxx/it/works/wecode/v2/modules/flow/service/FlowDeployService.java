@@ -12,7 +12,6 @@ import com.xxx.it.works.wecode.v2.modules.security.AppContextHolder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,10 +26,6 @@ import java.util.Date;
 @Slf4j
 @Service
 public class FlowDeployService {
-
-
-
-
     @Autowired
     public FlowDeployService(OpFlowMapper flowMapper, OpFlowVersionMapper flowVersionMapper) {
         this.flowMapper = flowMapper;
@@ -39,8 +34,8 @@ public class FlowDeployService {
     private final OpFlowMapper flowMapper;
     private final OpFlowVersionMapper flowVersionMapper;
 
-    @Autowired(required = false)
-    private StringRedisTemplate stringRedisTemplate;
+    @Autowired
+    private FlowCacheEvictor flowCacheEvictor;
 
     /**
      * 部署版本到连接流
@@ -80,8 +75,9 @@ public class FlowDeployService {
         // 部署：仅绑定版本
         flowMapper.deploy(flowId, versionId, version.getVersionNumber(), now, currentUser);
 
-        // SYS-004: 使版本配置缓存失效，确保新部署的版本配置能被正确加载
-        evictFlowConfigCache(flowId, versionId);
+        flowCacheEvictor.evictFlowConfig(flowId);
+        flowCacheEvictor.evictFlowEntity(flowId);
+        flowCacheEvictor.evictExecutionResults(flowId);
 
         log.info("Flow deployed: flowId={}, versionId={}, versionNumber={}, appId={}",
                 flowId, versionId, version.getVersionNumber(), appId);
@@ -96,32 +92,4 @@ public class FlowDeployService {
         return ApiResponse.success(response);
     }
 
-    /**
-     * SYS-004: 使版本配置缓存失效
-     * <p>
-     * 部署新版本时删除两种格式的缓存 Key:
-     * <ul>
-     *   <li>旧版 (version-agnostic): {@code cp:flow:config:{flowId}}</li>
-     *   <li>新版 (version-aware): {@code cp:flow:config:{flowId}:{versionId}}</li>
-     * </ul>
-     * 确保下一次 loadFlowVersion 从 DB 加载最新版本配置.
-     * </p>
-     */
-    private void evictFlowConfigCache(Long flowId, Long versionId) {
-        if (stringRedisTemplate == null) {
-            return;
-        }
-        try {
-            // 删除旧版 version-agnostic 缓存
-            stringRedisTemplate.delete("cp:flow:config:" + flowId);
-            // 删除新版 version-aware 缓存 (force fresh DB load of new version)
-            stringRedisTemplate.delete("cp:flow:config:" + flowId + ":" + versionId);
-            // 删除 FlowEntity 缓存 (含 deployed_version_id，部署后需失效)
-            stringRedisTemplate.delete("cp:entity:flow:" + flowId);
-            log.debug("Evicted flow config cache: flowId={}, versionId={}", flowId, versionId);
-        } catch (Exception e) {
-            log.warn("Failed to evict flow config cache: flowId={}, versionId={}, error={}",
-                    flowId, versionId, e.getMessage());
-        }
-    }
 }

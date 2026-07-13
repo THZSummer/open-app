@@ -24,7 +24,7 @@ os_api = _osm.api
 os_ok = _osm.ok
 os_fail = _osm.fail
 os_done = _osm.done
-from client import CONNECTOR_API_BASE, CONNECTOR_API_HEALTH, MOCK_SERVER_URL
+from client import CONNECTOR_API_BASE, CONNECTOR_API_HEALTH, MOCK_SERVER_URL, SYSTOKEN_HEADER, SYSTOKEN_VALUE
 import requests
 
 TEST_APP_ID = _osm.TEST_APP_ID
@@ -325,14 +325,14 @@ def test_full_flow_serial():
                                     "header": {
                                         "type": "object",
                                         "properties": {
-                                            "X-Sys-Token": {
+                                            SYSTOKEN_HEADER: {
                                                 "type": "string",
                                                 "required": True,
                                                 "sensitive": True
                                             }
                                         }
                                     },
-                                    "sysAccountWhitelist": ["tester"]
+                                    "sysAccountWhitelist": [SYSTOKEN_VALUE]
                                 }],
                                 "input": {
                                     "protocol": "HTTP",
@@ -602,7 +602,7 @@ def test_full_flow_serial():
         def s14():
             r = api_connector("POST", f"/flows/{fid}/invoke",
                              {"name": "OpenApp", "value": 7},
-                             headers={"X-Sys-Token": "tester"})
+                             headers={SYSTOKEN_HEADER: SYSTOKEN_VALUE})
             if r is None:
                 os_fail("connector-api 调用失败")
                 return False

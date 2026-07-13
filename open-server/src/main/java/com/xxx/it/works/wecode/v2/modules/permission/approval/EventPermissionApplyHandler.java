@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 事件权限申请审批处理器，委托 {@link PermissionApplyHandler}。
@@ -41,5 +42,10 @@ public class EventPermissionApplyHandler implements ApprovalBusinessHandler {
     @Override
     public void onCancelled(ApprovalRecord record) {
         permissionApplyHandler.onCancelled(record);
+    }
+
+    @Override
+    public Map<String, Object> getBusinessData(Long businessId) {
+        return permissionApplyHandler.getBusinessData(businessId);
     }
 }

@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
@@ -38,5 +39,10 @@ public class ApiPermissionApplyHandler implements ApprovalBusinessHandler {
     @Override
     public void onCancelled(ApprovalRecord record) {
         handler.onCancelled(record);
+    }
+
+    @Override
+    public Map<String, Object> getBusinessData(Long businessId) {
+        return handler.getBusinessData(businessId);
     }
 }
