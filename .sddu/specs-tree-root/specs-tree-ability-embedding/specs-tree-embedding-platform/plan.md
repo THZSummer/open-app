@@ -23,7 +23,7 @@
 | `AbilityProperty` 实体 | 映射 `openplatform_ability_p_t`（图标/示意图） | 不动，继续复用 |
 | `AbilitySnapshotLoader` | 启动时加载 ability 到缓存 | 新增字段不影响 |
 
-**关键决策**：admin 能力类型的 CRUD controller 放在 **market-server** 还是 **open-server**？
+**关键决策**：admin 能力的 CRUD controller 放在 **market-server** 还是 **open-server**？
 
 | 选项 | 说明 |
 |------|------|
@@ -57,14 +57,14 @@ sequenceDiagram
     participant DB as openplatform_ability_t
 
     Admin->>Web: 打开能力目录页面
-    Web->>AdminCtrl: 请求能力类型列表
+    Web->>AdminCtrl: 请求能力列表
     AdminCtrl->>DB: 分页查询所有类型（按排序号升序）
     DB-->>AdminCtrl: [{abilityType, nameCn, nameEn, descCn, icon, 示意图, orderNum, frontendEntryUrl, 创建时间, 更新人, 更新时间}]
     AdminCtrl-->>Web: 返回列表 VO
     Web-->>Admin: 展示列表（支持分页、按中文名/英文名模糊搜索）
 ```
 
-**场景 2：创建能力类型（FR-002）**
+**场景 2：创建能力（FR-002）**
 
 ```mermaid
 sequenceDiagram
@@ -83,10 +83,10 @@ sequenceDiagram
     AdminCtrl->>DB: 写入 ability_p_t 属性表（图标、示意图 URL）
     DB-->>AdminCtrl: 成功
     AdminCtrl-->>Web: 创建成功
-    Web-->>Admin: 提示"创建成功"，能力类型在目录中立即可见
+    Web-->>Admin: 提示"创建成功"，能力在目录中立即可见
 ```
 
-**场景 3：编辑能力类型（FR-003）**
+**场景 3：编辑能力（FR-003）**
 
 ```mermaid
 sequenceDiagram
@@ -108,7 +108,7 @@ sequenceDiagram
     Web-->>Admin: 提示"修改成功"
 ```
 
-**场景 4：删除能力类型（FR-004）**
+**场景 4：删除能力（FR-004）**
 
 ```mermaid
 sequenceDiagram
@@ -242,7 +242,7 @@ graph TB
 
 ## 6. ADR
 
-### ADR-001: Admin 能力类型 CRUD 放在 open-server 扩展
+### ADR-001: Admin 能力 CRUD 放在 open-server 扩展
 
 **状态**: ACCEPTED
 
