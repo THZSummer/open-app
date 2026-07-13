@@ -16,7 +16,7 @@
 
 | 组件 | 现状 | 变更 |
 |------|------|------|
-| `AbilityController` | `GET /list`、`POST /`、`GET /subscribed` | 接口参数和返回不变，内部逻辑调整 |
+| `AbilityController` | 3 个接口（list / subscribe / subscribed） | 接口参数和返回不变，内部逻辑调整 |
 | `AbilityServiceImpl` | 列表查询硬编码排除 type=6；订阅通过 `AbilityTypeEnum.isValidCode()` 校验 | 列表：改为 `hidden` 字段过滤 + 返回 `frontendEntryUrl`；订阅：改为 DB 校验 |
 | `AbilityVO` | 无 `frontendEntryUrl` 字段 | 新增字段 |
 | `AppAbilityDetailVO` | 无 `frontendEntryUrl` 字段 | 新增字段 |
@@ -29,8 +29,8 @@
 |------|------|------|
 | `Capabilities.jsx` | 列表: 硬编码过滤 type=6；配置页: 占位文本 | 列表: 使用后端 `hidden` 字段；配置页: 加载嵌入子应用 |
 | `constants.js` | `ABILITY_TYPE_MAP` (7种) + `ABILITY_SCENE_MAP` (1个场景) | 保留，只作为预设类型兜底 |
-| `microApps.js` | 静态注册 4 个子应用，无能力相关 | 能力配置页使用运行时动态加载，不需注册到 microApps.js |
-| `thunk.js` | 3 个 API 调用函数 | 不变（后端 API 保持了向后兼容） |
+| `microApps.js` | 静态注册 4 个子应用，无能力相关 | 不变（配置页使用运行时动态加载） |
+| `thunk.js` | 3 个 API 调用函数 | 不变（后端 API 保持向后兼容） |
 
 ### 1.2 新增/修改组件
 
@@ -46,40 +46,7 @@
 | 动态子应用加载模块 | 新增 | 在配置页组件内运行时 `loadMicroApp` |
 | `ABILITY_SCENE_MAP` | 修改（可选） | 扩展场景分组或新增"其他"场景 |
 
-### 1.3 数据流
-
-```mermaid
-sequenceDiagram
-    participant User as 应用方用户
-    participant WECODE as wecodesite
-    participant OPeN as open-server ability
-    participant DB as DB
-
-    %% 能力列表
-    User->>WECODE: 打开能力页面
-    WECODE->>OPeN: GET /ability/list
-    OPeN->>DB: 查询 ability_t（hidden=0）
-    DB-->>OPeN: 结果
-    OPeN-->>WECODE: 列表（含 frontendEntryUrl）
-    WECODE->>WECODE: 渲染卡片（预设类型回退常量，自定义类型用后端数据）
-
-    %% 订阅
-    User->>WECODE: 点击"添加"
-    WECODE->>OPeN: POST /ability { abilityType }
-    OPeN->>DB: 校验类型存在且启用
-    OPeN->>DB: 插入订阅关联
-    OPeN->>DB: 触发 autoSubscribeAfterAbility（日志）
-    OPeN-->>WECODE: 成功
-    WECODE->>WECODE: 跳转到配置页
-
-    %% 配置页嵌入
-    User->>WECODE: 进入配置页 ?sub=<abilityType>
-    WECODE->>WECODE: 读取 frontendEntryUrl
-    WECODE->>WECODE: 动态加载子应用
-    WECODE->>WECODE: 传递上下文（appId, abilityType, nameCn）
-```
-
-### 1.4 依赖关系
+### 1.3 依赖关系
 
 ```mermaid
 graph TB
@@ -115,7 +82,210 @@ graph TB
     style AbilityTable fill:#fff3cd,stroke:#f9a825
 ```
 
-## 2. 方案对比
+## 2. 数据库设计
+
+开放面**不新增数据库变更**。平台面已负责 `openplatform_ability_t` 新增 `frontend_entry_url` 和 `hidden` 字段。开放面直接读取平台面写入的数据，无需独立迁移。
+
+## 3. API设计
+
+### 3.1 设计规范
+
+**基础路径**：`/service/open/v2/ability`
+
+**认证方式**：复用 open-server 现有 API 认证体系。
+
+**响应格式**：复用 open-server 现有 `ApiResponse` 信封：
+
+```json
+{ "code": "200", "messageZh": "操作成功", "messageEn": "Success", "data": { ... }, "page": null }
+```
+
+**变更类型说明**：
+
+| 类型 | 含义 |
+|------|------|
+| **修改** | 接口路径和方法不变，内部逻辑或返回字段有变化 |
+| **不变** | 接口完全无变化 |
+
+### 3.2 接口清单
+
+| # | 方法 | 路径 | 接口名称 | 对应 FR | 变更类型 |
+|---|--------|------|---------|:------:|:-------:|
+| 1 | GET | `/ability/list` | 查询能力列表 | FR-001 | **修改** |
+| 2 | POST | `/ability` | 订阅能力 | FR-002 | **修改** |
+| 3 | GET | `/ability/subscribed` | 查询已订阅列表 | FR-004 | **修改** |
+
+> 接口 #1~#3 均已有前端调用方，必须保持向后兼容（新增字段为 optional，不删除/修改现有字段）。
+
+### 3.3 接口详细定义
+
+---
+
+#### #1 查询能力列表（修改）
+
+`GET /service/open/v2/ability/list`
+
+**请求参数**
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|:--:|------|
+| appId | string | ✅ | 应用 ID |
+
+> 其余参数不变。
+
+**响应变更**
+
+| 变更 | 说明 |
+|------|------|
+| ✅ 新增 `frontendEntryUrl` (string) | 前端入口URL，有则返回，无则返回 null |
+| ✅ 过滤逻辑变更 | 不再硬编码排除 type=6，改为按 `hidden=1` 过滤 |
+| ✅ 自定义类型 | 自定义类型（≥100）正常返回，不受 `AbilityTypeEnum` 限制 |
+
+**响应体 `data[]`**（现有字段 + 新增字段）
+
+| 字段 | 类型 | 说明 | 变更 |
+|------|------|------|:----:|
+| abilityType | int | 能力编码 | — |
+| nameCn | string | 中文名 | — |
+| nameEn | string | 英文名 | — |
+| descCn | string | 中文描述 | — |
+| descEn | string | 英文描述 | — |
+| iconUrl | string | 图标 URL | — |
+| diagramUrl | string | 示意图 URL | — |
+| subscribed | boolean | 已订阅标记 | — |
+| orderNum | int | 排序号 | — |
+| frontendEntryUrl | string | 前端入口URL | **新增** |
+
+**数据流**：
+
+```mermaid
+sequenceDiagram
+    participant WECODE as wecodesite
+    participant OPeN as open-server
+    participant DB as openplatform_ability_t
+
+    WECODE->>OPeN: GET /ability/list?appId=X
+    OPeN->>DB: 查询所有 ability（hidden=0）
+    OPeN->>DB: 查询应用的已订阅列表（标记订阅状态）
+    DB-->>OPeN: 结果
+    OPeN-->>WECODE: 列表（含 frontendEntryUrl）
+    WECODE->>WECODE: 渲染（预设回退常量，自定义用后端数据）
+```
+
+---
+
+#### #2 订阅能力（修改）
+
+`POST /service/open/v2/ability`
+
+**请求参数**
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|:--:|------|
+| appId | string | ✅ | 应用 ID（Query参数） |
+
+**请求体**
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|:--:|------|
+| abilityType | int | ✅ | 能力编码 |
+
+**逻辑变更**
+
+| 变更 | 说明 |
+|------|------|
+| ✅ 校验逻辑 | 从 `AbilityTypeEnum.isValidCode()` 枚举校验 → 查询 DB 校验能力类型存在且 status=1 |
+| — 重复检查 | 不变（检查 `app_ability_relation_t` 是否已订阅） |
+| — 关联插入 | 不变（写入 `app_ability_relation_t`） |
+| — 自动桥接 | 从空实现 → 打日志（FR-003） |
+
+**数据流**：
+
+```mermaid
+sequenceDiagram
+    participant WECODE as wecodesite
+    participant OPeN as open-server
+    participant DB as openplatform_ability_t / app_ability_relation_t
+
+    WECODE->>OPeN: POST /ability?appId=X { abilityType }
+    OPeN->>DB: 校验 ability_t 存在且 status=1（取代枚举校验）
+    OPeN->>DB: 检查 app_ability_relation_t 是否已订阅（不变）
+    OPeN->>DB: 插入订阅关联记录（不变）
+    OPeN->>OPeN: 触发 autoSubscribeAfterAbility（打日志）
+    OPeN-->>WECODE: 订阅成功
+```
+
+---
+
+#### #3 查询已订阅列表（修改）
+
+`GET /service/open/v2/ability/subscribed`
+
+**请求参数**
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|:--:|------|
+| appId | string | ✅ | 应用 ID |
+
+**响应变更**
+
+| 变更 | 说明 |
+|------|------|
+| ✅ 新增 `frontendEntryUrl` (string) | 前端入口URL |
+| ✅ 过滤逻辑变更 | 不再硬编码排除 type=6 |
+
+**响应体 `data[]`**
+
+| 字段 | 类型 | 说明 | 变更 |
+|------|------|------|:----:|
+| id | string | 订阅记录 ID | — |
+| abilityType | int | 能力编码 | — |
+| nameCn | string | 中文名 | — |
+| nameEn | string | 英文名 | — |
+| iconUrl | string | 图标 URL | — |
+| orderNum | int | 排序号 | — |
+| frontendEntryUrl | string | 前端入口URL | **新增** |
+
+### 3.4 前端变更说明
+
+#### FR-101 动态能力目录
+
+**Capabilities.jsx** 修改：
+
+| 旧逻辑 | 新逻辑 |
+|--------|--------|
+| 列表渲染依赖 `ABILITY_TYPE_MAP` 常量获取中文名/图标 | 自定义类型直接使用后端返回的 `nameCn`/`iconUrl` |
+| 硬编码过滤 `abilityType !== 6` | 使用后端 `hidden` 字段（后端已过滤） |
+| 预设类型中文名从常量取 | 预设类型可回退到常量作为兜底 |
+
+#### FR-102 配置页嵌入子应用
+
+**Capabilities.jsx** 配置视图修改：
+
+| 旧逻辑 | 新逻辑 |
+|--------|--------|
+| 配置页展示占位文本"该能力已添加，配置页面由能力方提供" | 从 `frontendEntryUrl` 获取子应用入口，运行时动态加载 |
+| 无微前端加载 | 使用 QianKun `loadMicroApp` API 动态加载子应用 |
+| - | 向子应用传递上下文：appId、abilityType、nameCn |
+
+**交互流程**：
+
+```mermaid
+sequenceDiagram
+    participant User as 应用方用户
+    participant WECODE as wecodesite
+    participant SubApp as 微前端子应用
+
+    User->>WECODE: 点击已订阅能力的"配置"按钮
+    WECODE->>WECODE: 读取 frontendEntryUrl
+    WECODE->>SubApp: 运行时加载子应用<br/>传递 { appId, abilityType, nameCn }
+    SubApp-->>WECODE: 渲染配置UI
+    User->>SubApp: 配置操作
+    User->>WECODE: 切换/退出配置
+    WECODE->>SubApp: 卸载子应用
+```
+
+## 4. 方案对比
 
 ### 方案 A：增量修改现有 ability 模块（推荐）
 
@@ -137,7 +307,7 @@ graph TB
 | 缺点 | 大量重复代码；数据源同一套，增加维护成本；前端需迁移 |
 | 工作量评估 | 后端 5 天 + 前端 5 天 |
 
-## 3. 推荐方案
+## 5. 推荐方案
 
 **选择方案 A**：增量修改现有 ability 模块。
 
@@ -147,7 +317,7 @@ graph TB
 3. 前端配置页嵌入为新增功能（运行时动态加载），不修改现有导航和路由
 4. 前置依赖（平台面 DB migration）后，开放面直接读取即可
 
-## 4. 文件影响分析
+## 6. 文件影响分析
 
 ### 修改文件
 
@@ -166,15 +336,15 @@ graph TB
 |------|------|
 | `wecodesite/.../pages/Capabilities/EmbeddedSubApp.jsx` | 配置页嵌入子应用组件（运行时动态加载） |
 
-## 5. 风险评估
+## 7. 风险评估
 
 | 风险 | 影响 | 缓解措施 |
 |------|------|---------|
-| 现有前端已硬编码过滤 type=6 | 升级后老版本前端可能仍显示隐藏类型 | 后端控制 `hidden` 字段 + 前端升级，同时去掉前端硬编码 |
+| 现有前端已硬编码过滤 type=6 | 升级后老版本前端可能仍显示隐藏类型 | 后端控制 `hidden` 字段 + 前端升级同步去掉前端硬编码 |
 | 微前端动态加载方案不成熟 | 配置页无法正常加载子应用 | 兜底：无 `frontendEntryUrl` 的能力仍展示占位文本 |
 | `autoSubscribeAfterAbility` 在现有流程中已有调用 | 日志不影响功能 | 仅加日志，不改逻辑 |
 
-## 6. ADR
+## 8. ADR
 
 ### ADR-001: 增量修改现有 ability 模块而非新建模块
 
@@ -189,15 +359,15 @@ graph TB
 
 **后果**：
 - 正面：改动小、代码复用、兼容现有调用方
-- 负面：旧代码中的 type=6 过滤需要替换为 `hidden` 字段，需确保逻辑等价
+- 负面：旧代码中的 type=6 过滤需替换为 `hidden` 字段，需确保逻辑等价
 
-### ADR-002: 配置页动态子应用使用运行时 `loadMicroApp` API
+### ADR-002: 配置页动态子应用使用运行时 `loadMicroApp`
 
 **状态**: ACCEPTED
 
 **背景**：
-- 现有 `microApps.js` 使用静态注册方式，在应用启动时注册所有子应用
-- 能力配置页的子应用由平台面录入 `frontendEntryUrl`，运行时才能确定
+- 现有 `microApps.js` 使用静态注册方式
+- 能力配置页的子应用 `frontendEntryUrl` 由平台面录入，运行时才能确定
 
 **决策**：
 在 Capabilities 页配置视图组件内，使用 QianKun 的 `loadMicroApp` API 在运行时动态加载子应用。不修改 `microApps.js`。
@@ -208,7 +378,7 @@ graph TB
 
 ---
 
-## 7. 产物审查策略
+## 9. 产物审查策略
 
 | 审查产物 | 审查基准 |
 |---------|---------|
@@ -217,11 +387,18 @@ graph TB
 | AbilityVO / AppAbilityDetailVO | 新增字段的序列化正确性 |
 | Capabilities.jsx | 配置页嵌入子应用、数据驱动渲染 |
 
-## 8. 产物验证策略
+## 10. 产物验证策略
 
 | 验证产物 | 验证基准 |
 |---------|---------|
-| 能力列表查询 | hidden=1 的能力不出现在列表；自定义类型正常展示；frontendEntryUrl 正常返回 |
-| 能力订阅 | 自定义类型可通过枚举校验正常订阅 |
+| 能力列表查询 | hidden=1 不出现在列表；自定义类型正常展示；frontendEntryUrl 正常返回 |
+| 能力订阅 | 自定义类型可通过校验正常订阅 |
 | 已订阅列表 | 新增 frontendEntryUrl 字段 |
 | 配置页 | 无 frontendEntryUrl 展示占位；有则加载子应用 |
+
+## 修订记录
+
+| 版本 | 变更说明 | 日期 | 修订人 |
+|------|---------|------|--------|
+| v1.0 | 初始创建 — 开放面技术规划 | 2026-07-13 | SDDU Plan Agent |
+| v1.1 | 对齐平台面格式：独立数据库设计+API设计章节；接口详细定义含设计规范/接口清单/请求响应/数据流 | 2026-07-13 | SDDU Plan Agent |

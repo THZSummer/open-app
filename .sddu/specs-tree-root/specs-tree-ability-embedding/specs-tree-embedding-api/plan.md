@@ -16,87 +16,53 @@
 
 | 组件 | 现状 | 影响 |
 |------|------|------|
-| `ApplicationService` | 接口：`getAppIdByAk(ak)`、`verifyApplication(appId, authType, authCredential)` | 当前与角色查询无关，考虑扩展或新建独立 Service |
-| `ApplicationServiceMockImpl` | Mock 实现（AK→appId 模拟映射） | 角色查询 Mock 实现可参考此模式 |
-| `ApiGatewayController` | 应用认证网关（已有内部凭证概念） | 接口鉴权可参考其内部凭证模式 |
-| `ScopeController` | 用户授权管理（scope 授权） | 角色查询与之不同，新建独立 Controller |
+| `ApplicationService` | 接口：`getAppIdByAk(ak)`、`verifyApplication(appId, authType, authCredential)` | 当前与角色查询无关，需新建独立 Service |
+| `ApplicationServiceMockImpl` | Mock 实现 | 角色查询 Mock 实现可参考此模式 |
+| `ApiGatewayController` | 应用认证网关（已有内部凭证概念） | 内部凭证校验可参考其模式 |
+| `ScopeController` | 用户授权管理 | 角色查询与之不同，新建独立 Controller |
 | 成员管理 | 不存在 | 需新建：成员角色查询接口 + Mock 数据 |
 
-**关键影响分析**：
+**关键影响**：
 
-应用标识需要支持两种类型（平台 `appId` 和 `hisAppId` 外部编码），意味着需要：
-1. 一种识别策略：传入的应用标识是哪种类型？
-2. 一种解析机制：将两种标识统一解析为内部应用标识
-3. 角色查询：基于内部应用标识查询用户角色
+应用标识需要支持两种类型（平台 `appId` 和外部 `hisAppId`），需要：
+1. 标识解析器：判断传入的应用标识是哪种类型
+2. 角色查询：基于解析后的内部 `appId` 查询用户角色
 
-当前 `app_t` 和 `app_p_t` 表在哪个服务？需要确认 api-server 是否可访问这些表。如果不可直接访问，则需通过 open-server 或其他服务代理。
-
-> **假设**：api-server 可直连 `app_t` 和 `app_p_t` 表（或通过通用服务接口获取应用信息）。如果不可直连，则 API 面需新增一个代理层。
-
-实际情况 api-server 已有 `ApplicationService` 接口，说明它已有对接应用系统的能力（目前为 Mock）。
+> **假设**：api-server 可直连 `app_t` 和 `app_p_t` 表查询应用标识映射。如不可直连，则通过现有 `ApplicationService` 接口代理。
 
 ### 1.2 新增组件
 
 | 组件 | 说明 | 所属模块 |
 |------|------|---------|
-| `UserRoleController` | 用户角色查询接口 | api-server 新模块 |
-| `UserRoleService` / `UserRoleServiceImpl` | 角色查询业务逻辑 | api-server 新模块 |
-| `UserRoleRequest` | 请求 DTO（appId + userAccount） | api-server 新模块 |
-| `UserRoleResponse` | 响应 DTO（角色列表） | api-server 新模块 |
-| `AppIdentifierResolver` | 应用标识解析器（判断是平台 appId 还是 hisAppId | api-server 新模块 |
-| `InternalTokenFilter` 或拦截器 | 内部凭证校验过滤器 | api-server（可能复用现有） |
+| `UserRoleController` | 用户角色查询控制器 | api-server 新模块 |
+| `UserRoleService` / `UserRoleServiceImpl` | 角色查询业务（Mock 实现） | api-server 新模块 |
+| `UserRoleQueryRequest` | 请求 DTO（appId/hisAppId + userAccount） | api-server 新模块 |
+| `UserRoleQueryResponse` | 响应 DTO（角色列表） | api-server 新模块 |
+| `AppIdentifierResolver` | 应用标识解析器 | api-server 新模块 |
+| `InternalTokenAuthFilter` | 内部凭证校验过滤器 | api-server 新模块 |
 
-### 1.3 数据流
-
-```mermaid
-sequenceDiagram
-    participant EmbedBackend as 嵌入能力方后端
-    participant APIServer as api-server
-    participant AppDB as app_t / app_p_t
-    participant MemberDB as 成员管理系统
-
-    Note over EmbedBackend,MemberDB: Mock 阶段
-    EmbedBackend->>APIServer: 用户角色查询<br/>(应用标识: 可能是 appId 或 hisAppId + 用户账号)
-    APIServer->>APIServer: 校验内部凭证
-    APIServer->>APIServer: 解析应用标识类型
-    alt 是平台 appId
-        APIServer->>AppDB: 查询 app_t
-    else 是 hisAppId
-        APIServer->>AppDB: 查询 app_p_t.eamap_app_code → 获取 appId
-    end
-    APIServer->>APIServer: Mock 成员角色数据
-    APIServer-->>EmbedBackend: 返回角色列表
-
-    Note over EmbedBackend,MemberDB: 联调阶段
-    EmbedBackend->>APIServer: 用户角色查询
-    APIServer->>APIServer: 校验内部凭证
-    APIServer->>AppDB: 解析应用标识
-    APIServer->>MemberDB: 查询真实成员角色
-    MemberDB-->>APIServer: 角色列表
-    APIServer-->>EmbedBackend: 返回角色列表
-```
-
-### 1.4 依赖关系
+### 1.3 依赖关系
 
 ```mermaid
 graph TB
     subgraph APIServer["api-server（新增）"]
         UserRoleController["UserRoleController<br/>(POST /internal/user/roles)"]
-        UserRoleService["UserRoleService / Impl"]
-        AppIdentifierResolver["AppIdentifierResolver<br/>(标识类型识别)"]
-        InternalTokenFilter["InternalTokenAuth<br/>(内部凭证校验)"]
+        UserRoleService["UserRoleService / Impl (Mock)"]
+        AppIdentifierResolver["AppIdentifierResolver<br/>(标识解析)"]
+        InternalTokenAuth["InternalTokenAuthFilter<br/>(凭证校验)"]
     end
 
-    subgraph APP["应用数据"]
+    subgraph APP["应用数据（查询标识映射）"]
         AppTable["app_t<br/>(app_id)"]
         AppPTable["app_p_t<br/>(eamap_app_code)"]
     end
 
-    subgraph Member["成员数据"]
+    subgraph Member["成员角色数据"]
         MemberMock["Mock 数据<br/>(开发阶段)"]
         MemberReal["成员管理系统<br/>(联调阶段)"]
     end
 
+    UserRoleController --> InternalTokenAuth
     UserRoleController --> UserRoleService
     UserRoleService --> AppIdentifierResolver
     UserRoleService -->|Mock| MemberMock
@@ -107,13 +73,206 @@ graph TB
     style UserRoleController fill:#e1f5e1,stroke:#2e7d32
     style UserRoleService fill:#e1f5e1,stroke:#2e7d32
     style AppIdentifierResolver fill:#e1f5e1,stroke:#2e7d32
+    style InternalTokenAuth fill:#e1f5e1,stroke:#2e7d32
 ```
 
-## 2. 方案对比
+## 2. 数据库设计
+
+### 2.1 应用标识解析（查询）
+
+API 面无独立 DDL，查询以下现有表：
+
+| 表名 | 查询用途 | 关联字段 |
+|------|---------|---------|
+| `app_t` | 按平台 `app_id` 查找应用 | `app_id` |
+| `app_p_t` | 按外部编码 `eamap_app_code`（hisAppId）查找应用 | `eamap_app_code` → `app_id` |
+
+### 2.2 成员角色数据
+
+| 阶段 | 数据来源 |
+|------|---------|
+| Mock（开发） | api-server 内置模拟数据（预设角色列表） |
+| 联调（真实） | 对接现有成员管理系统接口 |
+
+## 3. API设计
+
+### 3.1 设计规范
+
+**基础路径**：`/service/open/v2/internal`
+
+> ⚠️ 该接口仅限内部服务调用，非公开接口。
+
+**认证方式**：内部凭证鉴权（`X-Internal-Token` 请求头），由平台管理员预配置。
+
+**响应格式**：复用 api-server 现有 `ApiResponse` 信封：
+
+```json
+{ "code": "200", "messageZh": "操作成功", "messageEn": "Success", "data": { ... }, "page": null }
+
+{ "code": "401", "messageZh": "内部凭证无效", "messageEn": "Unauthorized", "data": null, "page": null }
+
+{ "code": "404", "messageZh": "应用不存在", "messageEn": "Not Found", "data": null, "page": null }
+```
+
+**错误码**：
+
+| 错误码 | 说明 |
+|--------|------|
+| 200 | 成功 |
+| 400 | 参数错误 |
+| 401 | 内部凭证无效或缺失 |
+| 404 | 应用不存在 |
+
+**字段命名**：驼峰命名（camelCase）：
+
+| 字段 | 说明 |
+|------|------|
+| `appId` | 应用标识（平台ID / hisAppId 均支持） |
+| `userAccount` | 用户账号 |
+| `roles` | 角色列表 |
+
+**策略切换**：
+
+| 阶段 | 策略 | 说明 |
+|------|------|------|
+| 开发 | Mock | 内置模拟角色数据 |
+| 联调 | 真实接口 | 对接成员管理系统 |
+
+### 3.2 接口清单
+
+| # | 方法 | 路径 | 接口名称 | 对应 FR | 说明 |
+|---|--------|------|---------|:------:|------|
+| 1 | POST | `/internal/user/roles` | 查询用户角色 | FR-001 | 输入应用标识+用户账号，返回角色列表 |
+
+### 3.3 接口详细定义
+
+---
+
+#### #1 查询用户角色
+
+`POST /service/open/v2/internal/user/roles`
+
+**请求头**
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|:--:|------|
+| X-Internal-Token | string | ✅ | 内部服务凭证，由平台管理员预配置 |
+
+**请求体**
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|:--:|------|
+| appId | string | ✅ | 应用标识，支持两种类型：平台应用ID 或 外部应用编码（hisAppId），系统自动识别 |
+| userAccount | string | ✅ | 用户账号 |
+
+**响应体 `data`**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| appId | string | 解析后的内部应用ID |
+| roles | string[] | 用户在应用中的角色列表，可选值：`owner` / `admin` / `member` |
+
+**示例**
+
+```json
+// 请求头
+// X-Internal-Token: xxxxxx
+
+// 请求体（按平台 appId 查询）
+{
+  "appId": "1234567890123456789",
+  "userAccount": "zhangsan@xxx.com"
+}
+
+// 响应体 200
+{
+  "code": "200",
+  "messageZh": "查询成功",
+  "messageEn": "Success",
+  "data": {
+    "appId": "1234567890123456789",
+    "roles": ["admin", "member"]
+  },
+  "page": null
+}
+
+// 请求体（按 hisAppId 查询）
+{
+  "appId": "EAMAP_APP_001",
+  "userAccount": "lisi@xxx.com"
+}
+
+// 响应体 200
+{
+  "code": "200",
+  "messageZh": "查询成功",
+  "messageEn": "Success",
+  "data": {
+    "appId": "9876543210987654321",
+    "roles": ["member"]
+  },
+  "page": null
+}
+
+// 响应体 401 — 凭证无效
+{
+  "code": "401",
+  "messageZh": "内部凭证无效",
+  "messageEn": "Unauthorized",
+  "data": null,
+  "page": null
+}
+
+// 响应体 404 — 应用不存在
+{
+  "code": "404",
+  "messageZh": "应用不存在",
+  "messageEn": "Not Found",
+  "data": null,
+  "page": null
+}
+```
+
+**错误响应**
+
+| code | 说明 |
+|------|------|
+| 401 | 内部凭证无效或缺失 |
+| 404 | 应用标识无法解析为有效应用（平台 appId 或 hisAppId 均未匹配） |
+
+**应用标识解析逻辑**：
+
+```mermaid
+flowchart LR
+    Input["输入 appId"] --> Judge{先查 app_t}
+    Judge -->|匹配| Platform["类型=平台appId<br/>得到内部 appId"]
+    Judge -->|不匹配| Judge2{再查 app_p_t<br/>eamap_app_code}
+    Judge2 -->|匹配| His["类型=hisAppId<br/>得到内部 appId"]
+    Judge2 -->|不匹配| Error["返回 404"]
+    Platform --> Query["查询用户角色"]
+    His --> Query
+```
+
+**数据流**：
+
+```mermaid
+sequenceDiagram
+    participant EmbedBackend as 嵌入能力方后端
+    participant APIServer as api-server
+    participant AppDB as app_t / app_p_t
+
+    EmbedBackend->>APIServer: POST /internal/user/roles { appId, userAccount }
+    APIServer->>APIServer: 校验 X-Internal-Token
+    APIServer->>AppDB: 解析应用标识（appId / eamap_app_code → 内部 appId）
+    APIServer->>APIServer: Mock 查询成员角色
+    APIServer-->>EmbedBackend: { roles: ["admin", "member"] }
+```
+
+## 4. 方案对比
 
 ### 方案 A：独立 UserRoleController + 策略切换（推荐）
 
-**描述**：新建一个专用于嵌入能力方的 UserRoleController，接口路径 `/internal/` 前缀，内部凭证鉴权，Service 层支持 Mock/Real 策略切换。
+**描述**：新建专用于嵌入能力方的 UserRoleController，内部凭证鉴权，Service 层支持 Mock/Real 策略切换。
 
 | 维度 | 评价 |
 |------|------|
@@ -127,11 +286,11 @@ graph TB
 
 | 维度 | 评价 |
 |------|------|
-| 优点 | 代码复用；Scope 与用户角色有一定关联 |
-| 缺点 | Scope 授权 与 角色查询 职责不同（Scope=权限范围，Role=角色）；接口混杂不利于后期维护 |
+| 优点 | 代码复用 |
+| 缺点 | Scope 授权与角色查询职责不同，接口混杂不利维护 |
 | 风险评估 | 中——职责混淆 |
 
-## 3. 推荐方案
+## 5. 推荐方案
 
 **选择方案 A**：新建独立 UserRoleController。
 
@@ -141,7 +300,7 @@ graph TB
 3. 未来可扩展批量/其他场景而不影响现有接口
 4. 应用标识解析器（AppIdentifierResolver）可复用，支持后续更多接口
 
-## 4. 文件影响分析
+## 6. 文件影响分析
 
 ### 新增文件
 
@@ -149,46 +308,45 @@ graph TB
 |------|------|
 | `api-server/.../internal/controller/UserRoleController.java` | 用户角色查询控制器 |
 | `api-server/.../internal/service/UserRoleService.java` | 角色查询业务接口 |
-| `api-server/.../internal/service/impl/UserRoleServiceMockImpl.java` | Mock 实现 |
-| `api-server/.../internal/service/impl/UserRoleServiceRealImpl.java` | 真实实现（联调阶段） |
+| `api-server/.../internal/service/impl/UserRoleServiceMockImpl.java` | Mock 实现（开发阶段） |
+| `api-server/.../internal/service/impl/UserRoleServiceRealImpl.java` | 真实实现（联调阶段预留） |
 | `api-server/.../internal/dto/UserRoleQueryRequest.java` | 请求 DTO |
 | `api-server/.../internal/dto/UserRoleQueryResponse.java` | 响应 DTO |
 | `api-server/.../internal/resolver/AppIdentifierResolver.java` | 应用标识解析器 |
-| `api-server/.../internal/resolver/AppIdentifier.java` | 标识类型枚举（PLATFORM_ID / HIS_APP_ID） |
-| `api-server/.../internal/auth/InternalTokenFilter.java` | 内部凭证校验过滤器/拦截器 |
-| `api-server/.../internal/config/InternalAuthConfig.java` | 内部凭证配置（yml 映射） |
+| `api-server/.../internal/resolver/AppIdentifier.java` | 标识类型枚举 |
+| `api-server/.../internal/auth/InternalTokenAuthFilter.java` | 内部凭证校验过滤器 |
+| `api-server/.../internal/config/InternalAuthConfig.java` | 内部凭证配置映射 |
 
 ### 修改文件
 
 | 文件 | 修改内容 |
 |------|---------|
-| `api-server/.../common/service/ApplicationService.java` | 可能不需要修改（独立 Service） |
 | `api-server/src/main/resources/application.yml` | 新增 internal-token、mock/real 开关配置 |
 
-## 5. 风险评估
+## 7. 风险评估
 
 | 风险 | 影响 | 缓解措施 |
 |------|------|---------|
-| app_t / app_p_t 表不在 api-server schema 中 | 无法直接解析应用标识 | 通过现有 ApplicationService 接口代理查询，或通过 open-server 服务间调用 |
-| 成员管理系统无标准化角色查询接口 | 联调阶段对接困难 | 先以 Mock 数据交付开发，联调阶段根据实际接口适配 |
-| 内部凭证管理无管理界面 | 凭证维护不灵活 | MVP 阶段配置在 yml 中，后续增量 |
+| app_t / app_p_t 表不在 api-server schema 中 | 无法直接解析应用标识 | 通过现有 ApplicationService 接口代理查询 |
+| 成员管理系统无标准化角色查询接口 | 联调阶段对接困难 | 先以 Mock 数据交付开发，联调阶段适配 |
+| 内部凭证管理无管理界面 | 凭证维护不灵活 | MVP 阶段配置在 yml 中，后续增量补充管理 API |
 
-## 6. ADR
+## 8. ADR
 
-### ADR-001: 新建独立 UserRoleController 而非扩展现有 ScopeController
+### ADR-001: 新建独立 UserRoleController
 
 **状态**: ACCEPTED
 
 **背景**：
-- 用户角色查询是 API 面新增的能力，与现有的 Scope 授权管理职责不同
+- 用户角色查询是 API 面新增的能力，与现有 Scope 授权管理职责不同
 - 接口使用 `/internal/` 前缀，与对外接口分离
 
 **决策**：
-新建 `UserRoleController`（包路径：`.../internal/controller/`），专用于嵌入能力方的服务端校验接口。
+新建 `UserRoleController`（包路径 `.../internal/controller/`），专用于嵌入能力方服务端校验。
 
 **后果**：
 - 正面：职责单一、路径清晰、可独立演化和测试
-- 负面：少量重复代码（如内部凭证校验逻辑需与其他内部接口保持一致）
+- 负面：少量重复代码
 
 ### ADR-002: 应用标识解析采用识别器模式
 
@@ -196,22 +354,35 @@ graph TB
 
 **背景**：
 - 输入的应用标识可能是平台 `appId`（`app_t.app_id`）或 hisAppId（`app_p_t.eamap_app_code`）
-- 系统需要自动判断类型并解析为内部应用标识
+- 系统需要自动判断类型并完成解析，对调用方透明
 
 **决策**：
-创建 `AppIdentifierResolver` 组件：
-1. 先尝试按 `appId` 查 `app_t`，匹配到则类型为平台ID
-2. 匹配不到则按 `eamap_app_code` 查 `app_p_t`，匹配到则类型为外部编码
-3. 都匹配不到则返回"应用不存在"
-最终统一为内部 `appId` 后查询角色。
+创建 `AppIdentifierResolver`：先按 `appId` 查 `app_t` → 匹配不上则按 `eamap_app_code` 查 `app_p_t` → 都未匹配返回 404。
 
 **后果**：
-- 正面：调用方无需关心应用标识类型，接口统一
-- 负面：查询需要两次 DB 尝试（可优化为先加标识前缀判断逻辑）
+- 正面：调用方不感知标识类型差异，接口统一
+- 负面：最坏情况需两次 DB 查询
+
+### ADR-003: 内部凭证鉴权方案
+
+**状态**: ACCEPTED
+
+**背景**：
+- 内部接口仅限持有有效内部凭证的服务调用
+- 凭证由平台管理员预配置
+
+**决策**：
+- MVP 阶段：内部凭证配置在 `application.yml` 中，支持多服务方独立配置
+- 实现为 `HandlerInterceptor` 或 `Filter`，拦截 `/internal/` 路径
+- 开发阶段可配置 bypass
+
+**后果**：
+- 正面：实现简单，MVP 阶段快速可用
+- 负面：静态配置，凭证变更需重启服务
 
 ---
 
-## 7. 产物审查策略
+## 9. 产物审查策略
 
 | 审查产物 | 审查基准 |
 |---------|---------|
@@ -219,9 +390,9 @@ graph TB
 | UserRoleController.java | 接口参数校验、内部凭证校验、错误处理 |
 | UserRoleServiceImpl | Mock/Real 切换逻辑 |
 | AppIdentifierResolver | 两种标识类型的识别和解析逻辑 |
-| InternalTokenFilter | 凭证校验机制 |
+| InternalTokenAuthFilter | 凭证校验机制 |
 
-## 8. 产物验证策略
+## 10. 产物验证策略
 
 | 验证产物 | 验证基准 |
 |---------|---------|
@@ -229,4 +400,11 @@ graph TB
 | 应用标识解析 | 平台 appId 和 hisAppId 均可正常解析 |
 | 内部凭证鉴权 | 无凭证/无效凭证拒绝访问 |
 | Mock 数据 | 返回预设固定结构，确保开发不阻塞 |
-| 边界条件 | 不存在的应用返回"应用不存在"；用户无角色返回空列表 |
+| 边界条件 | 不存在的应用返回 404；用户无角色返回空列表 |
+
+## 修订记录
+
+| 版本 | 变更说明 | 日期 | 修订人 |
+|------|---------|------|--------|
+| v1.0 | 初始创建 — API面技术规划 | 2026-07-13 | SDDU Plan Agent |
+| v1.1 | 对齐平台面格式：独立数据库设计+API设计章节；接口含设计规范/请求响应/JSON示例/标识解析流程图 | 2026-07-13 | SDDU Plan Agent |
