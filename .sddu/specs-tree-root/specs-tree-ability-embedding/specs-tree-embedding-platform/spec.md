@@ -93,6 +93,7 @@
 | 字段名 | 类型 | 说明 | 变更 |
 |--------|------|------|------|
 | `frontend_entry_url` | VARCHAR(512) | QianKun 子应用入口 URL | **新增** |
+| `hidden` | TINYINT(1) | 是否在开放面展示（0=展示，1=隐藏，默认 0） | **新增** |
 
 > 💡 其余字段（`ability_name_cn`, `ability_name_en`, `ability_desc_cn`, `ability_desc_en`, `ability_type`, `order_num`, `status` 等）保持现有结构不变。图标/示意图继续使用 `openplatform_ability_p_t` 属性表存储，属性名常量为 `icon` 和 `example_diagram`（见 `AbilityPropertyConstants`）。
 
