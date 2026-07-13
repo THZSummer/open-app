@@ -445,19 +445,40 @@ open-app/
 │       └── utils/
 │           └── microAppHelper.js  # 配置转换工具（API数据 -> qiankun注册格式 + 菜单数据）
 │
-├── market-web/                    # 管理端
+├── market-web/                    # 管理端（React + Vite + Ant Design）
+│   ├── index.html                 # HTML 入口模板
+│   ├── vite.config.ts             # Vite 构建配置
+│   ├── tsconfig.json              # TypeScript 配置
 │   └── src/
-│       ├── pages/
-│       │   └── CapabilityManage/  # 能力管理页面
-│       │       ├── index.jsx      # 列表页主组件
-│       │       ├── CapabilityForm.jsx  # 新增/编辑弹窗表单
-│       │       └── components/
-│       │           ├── IconUpload.jsx     # 图标上传组件
-│       │           └── SchematicUpload.jsx # 示意图上传组件
-│       ├── services/
-│       │   └── capabilityApi.js   # 能力 CRUD API 请求
-│       └── utils/
-│           └── validators.js      # 表单校验规则
+│       ├── main.tsx               # 应用入口：挂载 React 根组件
+│       ├── App.tsx                # 根组件：BrowserRouter + 路由配置
+│       ├── index.css              # 全局样式
+│       ├── components/
+│       │   └── Layout/
+│       │       ├── index.js       # 布局组件：Sider 侧边栏 + Header 顶栏 + Content 内容区
+│       │       └── index.module.less  # 布局样式
+│       ├── router/
+│       │   ├── index.tsx          # 路由总入口：声明所有路由（含能力管理路由）
+│       │   └── routeRedBlue/
+│       │       └── capability-config-manage/  # 能力配置管理模块（新增）
+│       │           ├── index.js         # 能力配置列表页主组件
+│       │           ├── index.module.less # 列表页样式
+│       │           ├── route.js         # 能力配置路由配置
+│       │           ├── thunk.js         # 能力配置 CRUD API 请求函数
+│       │           ├── constant.js      # 表格列配置、校验规则、常量定义
+│       │           └── components/
+│       │               ├── CapabilityFormModal.js        # 新增/编辑能力弹窗表单
+│       │               ├── CapabilityFormModal.module.less # 弹窗表单样式
+│       │               ├── IconUpload.js                 # 图标上传组件（40x40，200K）
+│       │               ├── SchematicUpload.js            # 示意图上传组件（520x288，500K）
+│       ├── configs/
+│       │   └── web.config.js      # API 路径配置（新增能力管理相关接口路径）
+│       ├── utils/
+│       │   ├── webFetch.js        # 统一 API 请求封装（fetchApi + buildApiUrl）
+│       │   ├── common.js          # 通用工具函数（renderAlwaysWithTooltip 等）
+│       │   └── validators.js      # 表单校验规则工具（URL 校验、文件校验等）（新增）
+│       └── stores/
+│           └── global.store.ts    # 全局状态管理（用户信息、侧边栏折叠等）
 │
 └── marketadmin/                   # 后端服务
     ├── controller/
@@ -613,11 +634,256 @@ open-app/
 
 1. **列表页**：表格形式展示所有能力配置，表格列包括序号、能力名称（图标+标题+描述）、访问地址（超长省略+tooltip）、示意图（缩略图）、操作账号、更新时间、操作（编辑/删除）。
 
-2. **新增/编辑弹窗**：复用同一表单组件，编辑时回填已有数据。表单字段：标题、描述、图标上传、示意图上传、排序、访问地址。
+2. **新增/编辑弹窗**：复用同一表单组件，编辑时回填已有数据。表单字段：标题、描述、图标上传、示意图上传、排序、访问地址、路由路径。
 
 3. **文件上传**：图标和示意图通过独立的上传接口上传，上传成功后返回文件 URL，表单中存储 URL 而非文件本身。上传前进行尺寸和大小校验。
 
 4. **字段校验**：前端实时校验 + 后端二次校验，确保数据合法性。
+
+##### market-web 前端详细设计
+
+###### 前端路由设计
+
+能力管理页面接入 market-web 现有路由体系，遵循 `routeRedBlue/[模块名]/` 目录约定：
+
+| 路由路径 | 页面组件 | 说明 |
+|---------|---------|------|
+| `/capability-config-manage` | `routeRedBlue/capability-config-manage/index.js` | 能力配置列表页，展示所有能力配置 |
+
+**路由注册方式：**
+
+在 `src/router/index.tsx` 中新增路由声明：
+
+```jsx
+// 能力配置管理
+import CapabilityConfigManage from './routeRedBlue/capability-config-manage';
+
+const Router = () => {
+  return (
+    <Routes>
+      <Route path="/" element={<Layout />}>
+        <Route index element={<Welcome />} />
+        {/* ...已有路由... */}
+        <Route path="capability-config-manage" element={<CapabilityConfigManage />} />
+        <Route path="404" element={<NotFound />} />
+        <Route path="*" element={<Navigate to="/404" replace />} />
+      </Route>
+    </Routes>
+  );
+};
+```
+
+在 `src/components/Layout/index.js` 的 `menuItems` 中新增侧边栏菜单项：
+
+```jsx
+const menuItems = [
+  // ...已有菜单...
+  {
+    key: '/capability-config-manage',
+    icon: <ThunderboltOutlined />,
+    label: '能力配置管理',
+  },
+];
+```
+
+###### 前端文件功能说明
+
+**1. `router/routeRedBlue/capability-config-manage/index.js`（能力配置列表页主组件）**
+
+| 功能项 | 说明 |
+|--------|------|
+| 列表数据加载 | 页面挂载时调用 `getCapabilityList` 获取能力列表，按 sortOrder 排序展示 |
+| 搜索筛选 | 支持按能力标题关键词搜索，输入后实时过滤或点击搜索按钮触发 |
+| 分页 | 支持分页展示，每页 20 条，可切换页码 |
+| 新增能力入口 | 点击「添加能力」按钮，打开 CapabilityFormModal 弹窗（新增模式） |
+| 编辑能力 | 点击表格行操作列「编辑」按钮，打开 CapabilityFormModal 弹窗（编辑模式），回填当前行数据 |
+| 删除能力 | 点击「删除」按钮，弹出二次确认弹窗（复用 ConfirmModal），确认后调用删除接口 |
+| 示意图预览 | 点击表格中示意图缩略图，弹出 SchematicPreview 大图预览弹窗 |
+| 状态展示 | 表格中状态列用 Tag 标签展示（启用-绿色 / 禁用-红色） |
+| loading 状态 | 数据加载时表格显示 loading 动画；提交时按钮显示 loading |
+| 错误提示 | API 请求失败时通过 `message.error` 展示错误信息 |
+
+**2. `router/routeRedBlue/capability-config-manage/thunk.js`（API 请求模块）**
+
+| 函数名 | 请求方法 | API 路径 | 说明 |
+|--------|---------|---------|------|
+| `getCapabilityList` | GET | CAPABILITY_LIST | 获取能力列表（分页+关键词搜索） |
+| `getCapabilityDetail` | GET | CAPABILITY_DETAIL | 获取单条能力详情（编辑回填用） |
+| `createCapability` | POST | CAPABILITY_CREATE | 新增能力配置 |
+| `updateCapability` | PUT | CAPABILITY_UPDATE | 编辑能力配置 |
+| `deleteCapability` | DELETE | CAPABILITY_DELETE | 删除能力配置 |
+| `uploadIcon` | POST | CAPABILITY_UPLOAD_ICON | 上传图标文件，返回 URL |
+| `uploadSchematic` | POST | CAPABILITY_UPLOAD_SCHEMATIC | 上传示意图文件，返回 URL |
+
+所有函数均使用 `fetchApi` 封装，与现有 `lookup-classify/thunk.js` 保持一致的代码风格。
+
+**3. `router/routeRedBlue/capability-config-manage/constant.js`（常量与配置）**
+
+| 内容 | 说明 |
+|------|------|
+| `DEFAULT_SEARCH_VALUES` | 搜索表单默认值 |
+| `MODAL_TITLE_ADD` / `MODAL_TITLE_EDIT` | 弹窗标题常量 |
+| `FORM_VALIDATION_RULES` | 表单校验规则（title、description、sortOrder、accessUrl、routePath） |
+| `getTableColumns()` | 表格列配置函数，返回 Ant Design Table 的 columns 数组，包含序号列、能力名称列（图标+标题+描述自定义渲染）、访问地址列（ellipsis+tooltip）、示意图列（缩略图自定义渲染）、排序列、状态列（Tag 渲染）、操作账号列、更新时间列、操作列（编辑/删除按钮） |
+
+**4. `components/CapabilityFormModal.js`（新增/编辑弹窗表单）**
+
+| 功能项 | 说明 |
+|--------|------|
+| 表单字段 | 能力标题（Input）、能力描述（TextArea）、能力图标（IconUpload）、能力示意图（SchematicUpload，非必填）、排序值（InputNumber）、访问地址（Input）、路由路径（Input） |
+| 新增/编辑复用 | 通过 `editingId` 区分模式；编辑模式时 `useEffect` 回填 `initialValues` |
+| 表单校验 | 使用 Ant Design Form `rules` 配置，提交时 `form.validateFields()` 触发校验 |
+| 实时预览 | 表单右侧展示预览卡片，实时反映标题、描述、图标、示意图的填写效果 |
+| 提交逻辑 | 校验通过后调用 `onSubmit(values)` 回调，父组件根据模式调用 create/update API |
+| 关闭逻辑 | 取消或提交成功后 `form.resetFields()` 清空表单，关闭弹窗 |
+
+**5. `components/IconUpload.js`（图标上传组件）**
+
+| 功能项 | 说明 |
+|--------|------|
+| 上传区域 | 80x80 的虚线框上传区域，点击触发文件选择 |
+| 文件类型校验 | 仅允许 PNG / JPEG / SVG（`accept="image/png,image/jpeg,image/svg+xml"`） |
+| 文件大小校验 | 不超过 200KB，超出时 `message.error` 提示 |
+| 图片尺寸校验 | 上传前通过 `Image` 对象读取图片尺寸，校验是否为 40x40 |
+| 预览 | 上传成功后在区域内显示图片预览 |
+| 替换 | 已有图标时点击可重新上传替换 |
+| URL 存储 | 上传成功后将返回的 URL 通过 `onChange` 回调传给父表单 |
+
+**6. `components/SchematicUpload.js`（示意图上传组件）**
+
+| 功能项 | 说明 |
+|--------|------|
+| 上传区域 | 130x72 的虚线框上传区域（与示意图比例 520:288 一致） |
+| 文件类型校验 | 仅允许 PNG / JPEG（`accept="image/png,image/jpeg"`） |
+| 文件大小校验 | 不超过 500KB |
+| 图片尺寸校验 | 校验是否为 520x288 像素 |
+| 预览 | 上传成功后显示缩略图预览 |
+| 清除 | 支持清除已上传的示意图（非必填字段） |
+| URL 存储 | 上传成功后通过 `onChange` 回调传给父表单 |
+
+**7. `components/SchematicPreview.js`（示意图预览弹窗）**
+
+| 功能项 | 说明 |
+|--------|------|
+| 大图预览 | 点击表格中示意图缩略图时弹出，展示完整尺寸示意图 |
+| 关闭 | 点击遮罩或关闭按钮关闭弹窗 |
+
+**8. `configs/web.config.js`（API 路径配置）**
+
+新增能力管理相关接口路径常量：
+
+```js
+// 能力配置管理 API 配置
+CAPABILITY_LIST: '/market-web/service/open/v2/capability/list',
+CAPABILITY_DETAIL: '/market-web/service/open/v2/capability/{id}',
+CAPABILITY_CREATE: '/market-web/service/open/v2/capability',
+CAPABILITY_UPDATE: '/market-web/service/open/v2/capability/{id}',
+CAPABILITY_DELETE: '/market-web/service/open/v2/capability/{id}',
+CAPABILITY_UPLOAD_ICON: '/market-web/service/open/v2/capability/upload/icon',
+CAPABILITY_UPLOAD_SCHEMATIC: '/market-web/service/open/v2/capability/upload/schematic',
+```
+
+**9. `utils/validators.js`（校验工具，新增）**
+
+| 函数名 | 说明 |
+|--------|------|
+| `validateUrl` | 校验 URL 格式，只允许 http/https 协议或 `//` 开头的协议相对地址 |
+| `validateImageSize` | 校验图片尺寸是否符合要求（传入 File 和期望宽高，返回 Promise<boolean>） |
+| `validateFileSize` | 校验文件大小是否超过限制（传入 File 和最大字节数） |
+| `validateFileType` | 校验文件 MIME 类型是否在允许列表中 |
+
+###### 前端交互逻辑
+
+**能力列表页交互流程：**
+
+```
+用户进入 /capability-config-manage
+    │
+    ├── 1. index.js 挂载，useEffect 触发 fetchData()
+    ├── 2. fetchData() 调用 getCapabilityList({ pageNum: 1, pageSize: 20 })
+    ├── 3. 返回数据后 setDataSource() + setPagination()
+    ├── 4. Table 渲染列表，展示能力名称（图标+标题+描述）、访问地址、示意图缩略图等
+    │
+    ├── 用户输入搜索关键词 + 点击搜索
+    │   ├── setQueryParams({ ...searchValues, pageNum: 1 })
+    │   └── useEffect 监听 queryParams 变化，重新 fetchData()
+    │
+    ├── 用户点击「添加能力」
+    │   ├── setModalVisible(true) + setModalTitle('添加能力') + setEditingId(null)
+    │   └── CapabilityFormModal 打开，空表单
+    │
+    ├── 用户点击「编辑」
+    │   ├── setModalVisible(true) + setModalTitle('编辑能力') + setEditingId(record.id)
+    │   ├── 调用 getCapabilityDetail(id) 获取完整数据
+    │   └── CapabilityFormModal 打开，useEffect 回填表单数据
+    │
+    ├── 用户点击「删除」
+    │   ├── setConfirmModalVisible(true) 显示二次确认弹窗
+    │   ├── 用户确认 -> 调用 deleteCapability(id)
+    │   ├── 删除成功 -> message.success + 刷新列表
+    │   └── 删除失败 -> message.error，列表不变
+    │
+    └── 用户点击示意图缩略图
+        └── SchematicPreview 弹窗打开，展示大图
+```
+
+**新增/编辑弹窗交互流程：**
+
+```
+CapabilityFormModal 打开
+    │
+    ├── 编辑模式：useEffect -> form.setFieldsValue(initialValues) 回填数据
+    ├── 新增模式：空表单
+    │
+    ├── 用户填写标题（Input，实时校验 2~30 字符）
+    ├── 用户填写描述（TextArea，实时校验 5~200 字符，显示字符计数）
+    │
+    ├── 用户上传图标（IconUpload 组件）
+    │   ├── 点击上传区域 -> 触发 <input type="file">
+    │   ├── 选择文件 -> 校验类型（PNG/JPEG/SVG）
+    │   ├── 校验大小（<= 200KB）
+    │   ├── 校验尺寸（40x40，通过 Image 对象读取）
+    │   ├── 校验通过 -> 调用 uploadIcon(file) 上传到服务端
+    │   ├── 上传成功 -> 返回 URL -> 显示预览图 + onChange(url) 传给表单
+    │   └── 上传失败 -> message.error，保留上传区域
+    │
+    ├── 用户上传示意图（SchematicUpload 组件，非必填）
+    │   ├── 同图标流程，校验尺寸 520x288，大小 500K
+    │   └── 支持清除已上传的示意图
+    │
+    ├── 用户填写排序值（InputNumber，>= 1 的正整数）
+    ├── 用户填写访问地址（Input，校验 http/https 或 // 开头）
+    ├── 用户填写路由路径（Input，校验以 / 开头）
+    │
+    ├── 右侧预览卡片实时更新（标题、描述、图标、示意图）
+    │
+    └── 用户点击「保存」
+        ├── form.validateFields() 触发全部字段校验
+        ├── 校验失败 -> 表单字段下方显示红色错误提示，阻止提交
+        ├── 校验通过 -> onSubmit(values) 回调父组件
+        ├── 父组件判断 editingId：
+        │   ├── null -> 调用 createCapability(values) 新增
+        │   └── 非空 -> 调用 updateCapability(editingId, values) 编辑
+        ├── API 成功 -> message.success + closeModal + 刷新列表
+        └── API 失败 -> message.error，弹窗保持打开，保留表单数据
+```
+
+###### 前端功能清单拆解
+
+| 编号 | 功能模块 | 文件 | 功能描述 | 依赖 |
+|------|---------|------|---------|------|
+| FE-01 | 路由与菜单注册 | `router/index.tsx` + `components/Layout/index.js` | 新增 `/capability-config-manage` 路由声明和侧边栏菜单项 | 无 |
+| FE-02 | API 路径配置 | `configs/web.config.js` | 新增 7 个能力配置 API 路径常量 | 无 |
+| FE-03 | API 请求函数 | `routeRedBlue/capability-config-manage/thunk.js` | 实现 getCapabilityList、getCapabilityDetail、createCapability、updateCapability、deleteCapability、uploadIcon、uploadSchematic 共 7 个 API 调用函数 | FE-02 |
+| FE-04 | 常量与表格配置 | `routeRedBlue/capability-config-manage/constant.js` | 定义搜索默认值、弹窗标题、表单校验规则、表格列配置（含自定义渲染：能力名称、示意图缩略图、状态标签、操作按钮） | 无 |
+| FE-05 | 校验工具函数 | `utils/validators.js` | 实现 URL 格式校验、图片尺寸校验、文件大小校验、文件类型校验 4 个工具函数 | 无 |
+| FE-06 | 能力配置列表页 | `routeRedBlue/capability-config-manage/index.js` | 实现列表数据加载、分页、搜索、新增/编辑/删除入口、示意图预览入口、loading 状态、错误提示 | FE-03, FE-04 |
+| FE-07 | 列表页样式 | `routeRedBlue/capability-config-manage/index.module.less` | 列表页样式，复用现有页面布局风格 | 无 |
+| FE-08 | 新增/编辑弹窗 | `components/CapabilityFormModal.js` | 实现表单字段（标题、描述、图标、示意图、排序、访问地址、路由路径）、新增/编辑复用、数据回填、表单校验、实时预览、提交逻辑 | FE-03, FE-04, FE-05, FE-09, FE-10 |
+| FE-09 | 图标上传组件 | `components/IconUpload.js` | 实现上传区域、文件类型/大小/尺寸校验、上传请求、预览展示、替换功能 | FE-03, FE-05 |
+| FE-10 | 示意图上传组件 | `components/SchematicUpload.js` | 实现上传区域、文件类型/大小/尺寸校验、上传请求、预览展示、清除功能 | FE-03, FE-05 |
+| FE-11 | 示意图预览弹窗 | `components/SchematicPreview.js` | 实现点击缩略图弹出大图预览、遮罩关闭 | 无 |
+| FE-12 | 弹窗表单样式 | `components/CapabilityFormModal.module.less` | 弹窗表单布局样式，含预览卡片样式 | 无 |
 
 #### 6.3.2 实现设计
 

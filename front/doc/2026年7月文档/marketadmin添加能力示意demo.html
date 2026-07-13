@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>marketadmin 能力管理 - 添加能力示意 Demo</title>
+  <style>
+    /* ===== 全局重置 ===== */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+      background: #f0f2f5;
+      color: #333;
+      font-size: 14px;
+    }
+
+    /* ===== 顶部导航栏 ===== */
+    .header {
+      height: 48px;
+      background: #001529;
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      color: #fff;
+    }
+    .header-logo { font-size: 16px; font-weight: 600; }
+    .header-menu { margin-left: 40px; display: flex; gap: 24px; }
+    .header-menu-item {
+      color: rgba(255,255,255,0.65);
+      cursor: pointer;
+      padding: 0 4px;
+      line-height: 48px;
+      transition: color 0.2s;
+    }
+    .header-menu-item:hover { color: #fff; }
+    .header-menu-item.active { color: #fff; border-bottom: 2px solid #1890ff; }
+
+    /* ===== 左侧菜单 ===== */
+    .layout { display: flex; min-height: calc(100vh - 48px); }
+    .sidebar {
+      width: 200px;
+      background: #fff;
+      border-right: 1px solid #e8e8e8;
+      padding: 16px 0;
+    }
+    .sidebar-category { margin-bottom: 8px; }
+    .sidebar-category-header {
+      padding: 8px 24px;
+      font-size: 12px;
+      color: #999;
+      font-weight: 500;
+    }
+    .sidebar-item {
+      padding: 8px 24px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .sidebar-item:hover { background: #e6f7ff; color: #1890ff; }
+    .sidebar-item.active { background: #e6f7ff; color: #1890ff; border-right: 3px solid #1890ff; }
+    .sidebar-item-icon { width: 16px; text-align: center; }
+
+    /* ===== 主内容区域 ===== */
+    .content { flex: 1; padding: 24px; overflow: auto; }
+    .page-header { margin-bottom: 16px; }
+    .page-title { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+    .page-desc { color: #999; font-size: 13px; }
+
+    /* ===== 卡片容器 ===== */
+    .card {
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      padding: 24px;
+    }
+    .card-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    /* ===== 按钮 ===== */
+    .btn {
+      padding: 6px 16px;
+      border: 1px solid #d9d9d9;
+      background: #fff;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn:hover { border-color: #1890ff; color: #1890ff; }
+    .btn-primary { background: #1890ff; border-color: #1890ff; color: #fff; }
+    .btn-primary:hover { background: #40a9ff; border-color: #40a9ff; color: #fff; }
+    .btn-danger { color: #ff4d4f; border-color: #ff4d4f; }
+    .btn-danger:hover { background: #ff4d4f; color: #fff; }
+    .btn-link { border: none; background: none; color: #1890ff; padding: 0; }
+    .btn-link:hover { color: #40a9ff; }
+    .btn-sm { padding: 2px 8px; font-size: 12px; }
+
+    /* ===== 表格 ===== */
+    .table { width: 100%; border-collapse: collapse; }
+    .table th {
+      background: #fafafa;
+      padding: 12px 16px;
+      text-align: left;
+      font-weight: 500;
+      border-bottom: 1px solid #e8e8e8;
+      font-size: 13px;
+      color: #666;
+    }
+    .table td {
+      padding: 12px 16px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .table-row:hover { background: #fafafa; }
+
+    /* ===== 能力名称单元格 ===== */
+    .capability-name-cell { display: flex; align-items: center; gap: 12px; }
+    .capability-icon {
+      width: 32px; height: 32px;
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+    .capability-info { display: flex; flex-direction: column; gap: 2px; }
+    .capability-title { font-weight: 500; }
+    .capability-desc { font-size: 12px; color: #999; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* ===== URL 单元格 ===== */
+    .url-cell { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #1890ff; }
+
+    /* ===== 示意图缩略图 ===== */
+    .schematic-thumb {
+      width: 65px; height: 36px;
+      border-radius: 4px;
+      object-fit: cover;
+      cursor: pointer;
+      border: 1px solid #e8e8e8;
+    }
+    .schematic-placeholder {
+      width: 65px; height: 36px;
+      border-radius: 4px;
+      background: #f5f5f5;
+      display: flex; align-items: center; justify-content: center;
+      color: #ccc;
+      font-size: 12px;
+      border: 1px dashed #d9d9d9;
+    }
+
+    /* ===== 标签 ===== */
+    .tag {
+      display: inline-block;
+      padding: 1px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      line-height: 20px;
+    }
+    .tag-green { background: #f6ffed; border: 1px solid #b7eb8f; color: #52c41a; }
+    .tag-red { background: #fff2f0; border: 1px solid #ffccc7; color: #ff4d4f; }
+
+    /* ===== 操作列 ===== */
+    .action-cell { display: flex; gap: 8px; }
+
+    /* ===== 弹窗 ===== */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 1000;
+      justify-content: center;
+      align-items: flex-start;
+      padding-top: 60px;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal {
+      background: #fff;
+      border-radius: 8px;
+      width: 600px;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+    }
+    .modal-header {
+      padding: 16px 24px;
+      border-bottom: 1px solid #e8e8e8;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-title { font-size: 16px; font-weight: 600; }
+    .modal-close { cursor: pointer; font-size: 18px; color: #999; }
+    .modal-close:hover { color: #333; }
+    .modal-body { padding: 24px; }
+    .modal-footer {
+      padding: 12px 24px;
+      border-top: 1px solid #e8e8e8;
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    /* ===== 表单 ===== */
+    .form-item { margin-bottom: 20px; }
+    .form-label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+    .form-label-required::before { content: '*'; color: #ff4d4f; margin-right: 4px; }
+    .form-input {
+      width: 100%;
+      padding: 6px 12px;
+      border: 1px solid #d9d9d9;
+      border-radius: 4px;
+      font-size: 14px;
+      transition: border-color 0.2s;
+    }
+    .form-input:focus { outline: none; border-color: #1890ff; box-shadow: 0 0 0 2px rgba(24,144,255,0.1); }
+    .form-textarea { min-height: 80px; resize: vertical; }
+    .form-error { color: #ff4d4f; font-size: 12px; margin-top: 4px; }
+    .form-hint { color: #999; font-size: 12px; margin-top: 4px; }
+    .form-input.error { border-color: #ff4d4f; }
+
+    /* ===== 上传区域 ===== */
+    .upload-area {
+      width: 80px; height: 80px;
+      border: 1px dashed #d9d9d9;
+      border-radius: 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: border-color 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+    .upload-area:hover { border-color: #1890ff; }
+    .upload-icon { font-size: 24px; color: #999; }
+    .upload-text { font-size: 12px; color: #999; margin-top: 4px; }
+    .upload-preview {
+      width: 100%; height: 100%;
+      object-fit: contain;
+    }
+    .upload-area-schematic {
+      width: 130px; height: 72px;
+    }
+
+    /* ===== 预览区 ===== */
+    .preview-section {
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px solid #f0f0f0;
+    }
+    .preview-title { font-size: 14px; font-weight: 500; margin-bottom: 12px; color: #666; }
+    .preview-card {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      width: 200px;
+      padding: 16px;
+      border: 1px solid #e8e8e8;
+      border-radius: 8px;
+      gap: 8px;
+    }
+    .preview-card-icon {
+      width: 40px; height: 40px;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+    }
+    .preview-card-title { font-weight: 500; font-size: 14px; }
+    .preview-card-desc { font-size: 12px; color: #999; text-align: center; }
+    .preview-card-schematic {
+      width: 130px; height: 72px;
+      border-radius: 4px;
+      background: #f5f5f5;
+      display: flex; align-items: center; justify-content: center;
+      color: #ccc;
+      font-size: 12px;
+    }
+
+    /* ===== 消息提示 ===== */
+    .message {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 8px 16px;
+      border-radius: 4px;
+      z-index: 2000;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      animation: slideDown 0.3s ease;
+    }
+    .message-success { background: #f6ffed; border: 1px solid #b7eb8f; color: #389e0d; }
+    .message-error { background: #fff2f0; border: 1px solid #ffccc7; color: #cf1322; }
+    .message-info { background: #e6f7ff; border: 1px solid #91d5ff; color: #096dd9; }
+    @keyframes slideDown { from { opacity: 0; transform: translateX(-50%) translateY(-20px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+
+    /* ===== 操作账号 ===== */
+    .operator-cell { font-size: 13px; color: #666; }
+
+    /* ===== 空状态 ===== */
+    .empty-state { text-align: center; padding: 40px; color: #999; }
+  </style>
+</head>
+<body>
+
+<!-- ===== 顶部导航栏 ===== -->
+<div class="header">
+  <div class="header-logo">Open 平台管理端</div>
+  <div class="header-menu">
+    <div class="header-menu-item">首页</div>
+    <div class="header-menu-item">应用管理</div>
+    <div class="header-menu-item active">能力配置管理</div>
+    <div class="header-menu-item">审批管理</div>
+    <div class="header-menu-item">数据字典</div>
+  </div>
+</div>
+
+<!-- ===== 布局：左侧菜单 + 右侧内容 ===== -->
+<div class="layout">
+  <!-- 左侧菜单 -->
+  <div class="sidebar">
+    <div class="sidebar-category">
+      <div class="sidebar-category-header">能力管理</div>
+      <div class="sidebar-item active">
+        <span class="sidebar-item-icon">⚙</span>
+        <span>应用能力设置</span>
+      </div>
+      <div class="sidebar-item">
+        <span class="sidebar-item-icon">📋</span>
+        <span>能力分类管理</span>
+      </div>
+    </div>
+    <div class="sidebar-category">
+      <div class="sidebar-category-header">系统管理</div>
+      <div class="sidebar-item">
+        <span class="sidebar-item-icon">👥</span>
+        <span>用户管理</span>
+      </div>
+      <div class="sidebar-item">
+        <span class="sidebar-item-icon">📊</span>
+        <span>操作日志</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 右侧内容区域 -->
+  <div class="content">
+    <div class="page-header">
+      <div class="page-title">应用能力设置</div>
+      <div class="page-desc">管理 wecodesite 中动态展示的应用能力配置，新增/编辑后即时生效</div>
+    </div>
+
+    <div class="card">
+      <!-- 工具栏 -->
+      <div class="card-toolbar">
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <input class="form-input" placeholder="搜索能力名称..." style="width: 240px;" id="searchInput" oninput="handleSearch(this.value)">
+        </div>
+        <button class="btn btn-primary" onclick="openAddModal()">+ 添加能力</button>
+      </div>
+
+      <!-- 能力列表表格 -->
+      <table class="table" id="capabilityTable">
+        <thead>
+          <tr>
+            <th style="width: 60px;">序号</th>
+            <th style="width: 280px;">能力名称</th>
+            <th>访问地址</th>
+            <th style="width: 100px;">示意图</th>
+            <th style="width: 60px;">排序</th>
+            <th style="width: 80px;">状态</th>
+            <th style="width: 100px;">操作账号</th>
+            <th style="width: 150px;">更新时间</th>
+            <th style="width: 120px;">操作</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody">
+          <!-- 动态渲染 -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 新增/编辑能力弹窗 ===== -->
+<div class="modal-overlay" id="capabilityModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle">添加能力</div>
+      <span class="modal-close" onclick="closeModal()">✕</span>
+    </div>
+    <div class="modal-body">
+      <!-- 表单字段 -->
+      <div class="form-item">
+        <label class="form-label form-label-required">能力标题</label>
+        <input class="form-input" id="fieldTitle" placeholder="请输入能力标题（2~30字符）" maxlength="30" oninput="validateField('title')">
+        <div class="form-error" id="errorTitle" style="display:none;"></div>
+      </div>
+
+      <div class="form-item">
+        <label class="form-label form-label-required">能力描述</label>
+        <textarea class="form-input form-textarea" id="fieldDescription" placeholder="请输入能力描述（5~200字符）" maxlength="200" oninput="validateField('description')"></textarea>
+        <div class="form-error" id="errorDescription" style="display:none;"></div>
+        <div class="form-hint" id="descCounter">0 / 200 字符</div>
+      </div>
+
+      <div class="form-item">
+        <label class="form-label form-label-required">能力图标</label>
+        <div style="display: flex; gap: 12px; align-items: flex-start;">
+          <div class="upload-area" id="iconUploadArea" onclick="document.getElementById('iconFile').click()">
+            <span class="upload-icon" id="iconPlaceholder">+</span>
+            <span class="upload-text" id="iconUploadText">点击上传</span>
+          </div>
+          <div style="font-size: 12px; color: #999; line-height: 1.8;">
+            <div>尺寸：40 x 40 像素</div>
+            <div>大小：不超过 200KB</div>
+            <div>格式：PNG / JPEG / SVG</div>
+          </div>
+        </div>
+        <input type="file" id="iconFile" accept="image/png,image/jpeg,image/svg+xml" style="display:none;" onchange="handleIconUpload(event)">
+        <div class="form-error" id="errorIcon" style="display:none;"></div>
+      </div>
+
+      <div class="form-item">
+        <label class="form-label">能力示意图（非必填）</label>
+        <div style="display: flex; gap: 12px; align-items: flex-start;">
+          <div class="upload-area upload-area-schematic" id="schematicUploadArea" onclick="document.getElementById('schematicFile').click()">
+            <span class="upload-icon" id="schematicPlaceholder">+</span>
+            <span class="upload-text" id="schematicUploadText">点击上传</span>
+          </div>
+          <div style="font-size: 12px; color: #999; line-height: 1.8;">
+            <div>尺寸：520 x 288 像素</div>
+            <div>大小：不超过 500KB</div>
+            <div>格式：PNG / JPEG</div>
+          </div>
+        </div>
+        <input type="file" id="schematicFile" accept="image/png,image/jpeg" style="display:none;" onchange="handleSchematicUpload(event)">
+        <div class="form-error" id="errorSchematic" style="display:none;"></div>
+      </div>
+
+      <div class="form-item">
+        <label class="form-label form-label-required">排序值</label>
+        <input class="form-input" id="fieldSortOrder" type="number" min="1" placeholder="请输入排序值（正整数，越小越靠前）" oninput="validateField('sortOrder')">
+        <div class="form-error" id="errorSortOrder" style="display:none;"></div>
+      </div>
+
+      <div class="form-item">
+        <label class="form-label form-label-required">访问地址（子应用 entry）</label>
+        <input class="form-input" id="fieldAccessUrl" placeholder="请输入子应用访问地址，如 //localhost.uat.com:5174" oninput="validateField('accessUrl')">
+        <div class="form-error" id="errorAccessUrl" style="display:none;"></div>
+      </div>
+
+      <div class="form-item">
+        <label class="form-label form-label-required">路由路径（子应用 activeRule）</label>
+        <input class="form-input" id="fieldRoutePath" placeholder="请输入路由激活路径，如 /assistant-square" oninput="validateField('routePath')">
+        <div class="form-error" id="errorRoutePath" style="display:none;"></div>
+        <div class="form-hint">wecodesite 使用 HashRouter，此路径用于 qiankun 匹配 activeRule</div>
+      </div>
+
+      <!-- 实时预览区 -->
+      <div class="preview-section">
+        <div class="preview-title">实时预览（wecodesite 左侧菜单展示效果）</div>
+        <div class="preview-card">
+          <div class="preview-card-icon" id="previewIcon" style="background: #e6f7ff; color: #1890ff;">⚡</div>
+          <div class="preview-card-title" id="previewTitle">能力标题</div>
+          <div class="preview-card-desc" id="previewDesc">能力描述</div>
+          <div class="preview-card-schematic" id="previewSchematic">示意图预览区</div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="handleSubmit()">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/**
+ * 模拟数据：能力列表
+ * 实际场景中由 marketadmin API /api/capabilities 返回
+ */
+let capabilityList = [
+  {
+    id: 1,
+    title: '助手广场',
+    description: '企业应用助手的展示和管理中心，支持浏览、搜索和添加各类业务助手',
+    iconUrl: '',
+    iconBg: '#e6f7ff',
+    iconEmoji: '🤖',
+    schematicUrl: '',
+    sortOrder: 1,
+    accessUrl: '//localhost.uat.com:5174',
+    routePath: '/assistant-square',
+    status: 1,
+    createdBy: 'admin',
+    updatedAt: '2026-07-12 14:30:00'
+  },
+  {
+    id: 2,
+    title: '技能管理',
+    description: '管理助手拥有的技能配置，包括技能的新增、编辑、删除和排序',
+    iconUrl: '',
+    iconBg: '#f6ffed',
+    iconEmoji: '🔧',
+    schematicUrl: '',
+    sortOrder: 2,
+    accessUrl: '//localhost.uat.com:5175',
+    routePath: '/skill-management',
+    status: 1,
+    createdBy: 'admin',
+    updatedAt: '2026-07-11 10:15:00'
+  },
+  {
+    id: 3,
+    title: '首页配置',
+    description: '配置助手首页的展示内容和布局，支持自定义模块和排列顺序',
+    iconUrl: '',
+    iconBg: '#fff7e6',
+    iconEmoji: '🏠',
+    schematicUrl: '',
+    sortOrder: 3,
+    accessUrl: '//localhost.uat.com:5176',
+    routePath: '/home-config',
+    status: 0,
+    createdBy: 'operator01',
+    updatedAt: '2026-07-10 16:45:00'
+  }
+];
+
+/* ===== 表单状态 ===== */
+let editingId = null;
+let iconUrl = '';
+let iconBg = '#e6f7ff';
+let iconEmoji = '⚡';
+let schematicUrl = '';
+let searchKeyword = '';
+
+/**
+ * 渲染能力列表表格
+ */
+function renderTable() {
+  const tbody = document.getElementById('tableBody');
+  const filtered = searchKeyword
+    ? capabilityList.filter(item => item.title.toLowerCase().includes(searchKeyword.toLowerCase()))
+    : capabilityList;
+  // 按 sortOrder 升序排列
+  const sorted = [...filtered].sort((a, b) => a.sortOrder - b.sortOrder);
+
+  if (sorted.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state">暂无数据</div></td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = sorted.map((item, index) => `
+    <tr class="table-row">
+      <td>${index + 1}</td>
+      <td>
+        <div class="capability-name-cell">
+          <div class="capability-icon" style="background:${item.iconBg};">${item.iconEmoji}</div>
+          <div class="capability-info">
+            <span class="capability-title">${item.title}</span>
+            <span class="capability-desc" title="${item.description}">${item.description}</span>
+          </div>
+        </div>
+      </td>
+      <td><span class="url-cell" title="${item.accessUrl}">${item.accessUrl}</span></td>
+      <td>${item.schematicUrl
+        ? `<img class="schematic-thumb" src="${item.schematicUrl}" alt="示意图">`
+        : '<div class="schematic-placeholder">无</div>'}</td>
+      <td>${item.sortOrder}</td>
+      <td><span class="tag ${item.status === 1 ? 'tag-green' : 'tag-red'}">${item.status === 1 ? '启用' : '禁用'}</span></td>
+      <td class="operator-cell">${item.createdBy}</td>
+      <td class="operator-cell">${item.updatedAt}</td>
+      <td>
+        <div class="action-cell">
+          <button class="btn-link btn btn-sm" onclick="openEditModal(${item.id})">编辑</button>
+          <button class="btn-link btn btn-sm" style="color:#ff4d4f;" onclick="handleDelete(${item.id})">删除</button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+/**
+ * 搜索处理
+ */
+function handleSearch(value) {
+  searchKeyword = value.trim();
+  renderTable();
+}
+
+/**
+ * 打开新增弹窗
+ */
+function openAddModal() {
+  editingId = null;
+  document.getElementById('modalTitle').textContent = '添加能力';
+  // 重置表单
+  document.getElementById('fieldTitle').value = '';
+  document.getElementById('fieldDescription').value = '';
+  document.getElementById('fieldSortOrder').value = '';
+  document.getElementById('fieldAccessUrl').value = '';
+  document.getElementById('fieldRoutePath').value = '';
+  iconUrl = '';
+  iconBg = '#e6f7ff';
+  iconEmoji = '⚡';
+  schematicUrl = '';
+  // 重置图标上传区
+  resetUploadArea('icon');
+  resetUploadArea('schematic');
+  // 重置错误提示
+  hideAllErrors();
+  // 重置预览
+  updatePreview();
+  // 显示弹窗
+  document.getElementById('capabilityModal').classList.add('show');
+}
+
+/**
+ * 打开编辑弹窗
+ */
+function openEditModal(id) {
+  const item = capabilityList.find(c => c.id === id);
+  if (!item) return;
+  editingId = id;
+  document.getElementById('modalTitle').textContent = '编辑能力';
+  // 回填数据
+  document.getElementById('fieldTitle').value = item.title;
+  document.getElementById('fieldDescription').value = item.description;
+  document.getElementById('fieldSortOrder').value = item.sortOrder;
+  document.getElementById('fieldAccessUrl').value = item.accessUrl;
+  document.getElementById('fieldRoutePath').value = item.routePath;
+  iconUrl = item.iconUrl || '';
+  iconBg = item.iconBg || '#e6f7ff';
+  iconEmoji = item.iconEmoji || '⚡';
+  schematicUrl = item.schematicUrl || '';
+  // 回填图标预览
+  if (iconUrl) {
+    showUploadPreview('icon', iconUrl);
+  } else {
+    resetUploadArea('icon');
+  }
+  if (schematicUrl) {
+    showUploadPreview('schematic', schematicUrl);
+  } else {
+    resetUploadArea('schematic');
+  }
+  // 重置错误提示
+  hideAllErrors();
+  // 更新预览
+  updatePreview();
+  // 显示弹窗
+  document.getElementById('capabilityModal').classList.add('show');
+}
+
+/**
+ * 关闭弹窗
+ */
+function closeModal() {
+  document.getElementById('capabilityModal').classList.remove('show');
+}
+
+/**
+ * 表单字段实时校验
+ */
+function validateField(field) {
+  // 更新预览
+  updatePreview();
+  // 更新描述字符计数
+  const desc = document.getElementById('fieldDescription').value;
+  document.getElementById('descCounter').textContent = `${desc.length} / 200 字符`;
+
+  switch (field) {
+    case 'title':
+      const title = document.getElementById('fieldTitle').value.trim();
+      if (!title) {
+        showError('errorTitle', 'fieldTitle', '标题不能为空');
+      } else if (title.length < 2 || title.length > 30) {
+        showError('errorTitle', 'fieldTitle', '标题长度需在 2~30 字符之间');
+      } else {
+        hideError('errorTitle', 'fieldTitle');
+      }
+      break;
+    case 'description':
+      const desc2 = document.getElementById('fieldDescription').value.trim();
+      if (!desc2) {
+        showError('errorDescription', 'fieldDescription', '描述不能为空');
+      } else if (desc2.length < 5 || desc2.length > 200) {
+        showError('errorDescription', 'fieldDescription', '描述长度需在 5~200 字符之间');
+      } else {
+        hideError('errorDescription', 'fieldDescription');
+      }
+      break;
+    case 'sortOrder':
+      const sortVal = document.getElementById('fieldSortOrder').value;
+      if (!sortVal) {
+        showError('errorSortOrder', 'fieldSortOrder', '排序值不能为空');
+      } else if (!/^[1-9]\d*$/.test(sortVal)) {
+        showError('errorSortOrder', 'fieldSortOrder', '排序值必须为大于 0 的正整数');
+      } else {
+        hideError('errorSortOrder', 'fieldSortOrder');
+      }
+      break;
+    case 'accessUrl':
+      const url = document.getElementById('fieldAccessUrl').value.trim();
+      if (!url) {
+        showError('errorAccessUrl', 'fieldAccessUrl', '访问地址不能为空');
+      } else if (!/^https?:\/\/.+|^\/\/.+/.test(url)) {
+        showError('errorAccessUrl', 'fieldAccessUrl', '请输入合法的 http 或 https 地址（或以 // 开头的协议相对地址）');
+      } else {
+        hideError('errorAccessUrl', 'fieldAccessUrl');
+      }
+      break;
+    case 'routePath':
+      const path = document.getElementById('fieldRoutePath').value.trim();
+      if (!path) {
+        showError('errorRoutePath', 'fieldRoutePath', '路由路径不能为空');
+      } else if (!path.startsWith('/')) {
+        showError('errorRoutePath', 'fieldRoutePath', '路由路径需以 / 开头');
+      } else {
+        hideError('errorRoutePath', 'fieldRoutePath');
+      }
+      break;
+  }
+}
+
+/**
+ * 显示错误提示
+ */
+function showError(errorId, fieldId, msg) {
+  document.getElementById(errorId).textContent = msg;
+  document.getElementById(errorId).style.display = 'block';
+  document.getElementById(fieldId).classList.add('error');
+}
+
+/**
+ * 隐藏错误提示
+ */
+function hideError(errorId, fieldId) {
+  document.getElementById(errorId).style.display = 'none';
+  document.getElementById(fieldId).classList.remove('error');
+}
+
+/**
+ * 隐藏所有错误提示
+ */
+function hideAllErrors() {
+  ['errorTitle', 'errorDescription', 'errorIcon', 'errorSchematic', 'errorSortOrder', 'errorAccessUrl', 'errorRoutePath'].forEach(id => {
+    document.getElementById(id).style.display = 'none';
+  });
+  ['fieldTitle', 'fieldDescription', 'fieldSortOrder', 'fieldAccessUrl', 'fieldRoutePath'].forEach(id => {
+    document.getElementById(id).classList.remove('error');
+  });
+}
+
+/**
+ * 图标上传处理（模拟）
+ */
+function handleIconUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  // 校验文件类型
+  if (!['image/png', 'image/jpeg', 'image/svg+xml'].includes(file.type)) {
+    document.getElementById('errorIcon').textContent = '仅支持 PNG/JPEG/SVG 格式';
+    document.getElementById('errorIcon').style.display = 'block';
+    return;
+  }
+  // 校验文件大小（200K = 204800 bytes）
+  if (file.size > 204800) {
+    document.getElementById('errorIcon').textContent = '图标大小不能超过 200K';
+    document.getElementById('errorIcon').style.display = 'block';
+    return;
+  }
+  document.getElementById('errorIcon').style.display = 'none';
+  // 模拟上传：用 FileReader 读取预览
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    iconUrl = e.target.result;
+    showUploadPreview('icon', iconUrl);
+    updatePreview();
+    showMessage('图标上传成功', 'success');
+  };
+  reader.readAsDataURL(file);
+}
+
+/**
+ * 示意图上传处理（模拟）
+ */
+function handleSchematicUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  // 校验文件类型
+  if (!['image/png', 'image/jpeg'].includes(file.type)) {
+    document.getElementById('errorSchematic').textContent = '仅支持 PNG/JPEG 格式';
+    document.getElementById('errorSchematic').style.display = 'block';
+    return;
+  }
+  // 校验文件大小（500K = 512000 bytes）
+  if (file.size > 512000) {
+    document.getElementById('errorSchematic').textContent = '示意图大小不能超过 500K';
+    document.getElementById('errorSchematic').style.display = 'block';
+    return;
+  }
+  document.getElementById('errorSchematic').style.display = 'none';
+  // 模拟上传
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    schematicUrl = e.target.result;
+    showUploadPreview('schematic', schematicUrl);
+    updatePreview();
+    showMessage('示意图上传成功', 'success');
+  };
+  reader.readAsDataURL(file);
+}
+
+/**
+ * 显示上传预览
+ */
+function showUploadPreview(type, url) {
+  const areaId = type === 'icon' ? 'iconUploadArea' : 'schematicUploadArea';
+  const placeholderId = type === 'icon' ? 'iconPlaceholder' : 'schematicPlaceholder';
+  const textId = type === 'icon' ? 'iconUploadText' : 'schematicUploadText';
+  const area = document.getElementById(areaId);
+  // 清空原有内容
+  area.innerHTML = '<img class="upload-preview" src="' + url + '" alt="预览">';
+}
+
+/**
+ * 重置上传区域
+ */
+function resetUploadArea(type) {
+  const areaId = type === 'icon' ? 'iconUploadArea' : 'schematicUploadArea';
+  const isIcon = type === 'icon';
+  const area = document.getElementById(areaId);
+  area.innerHTML = isIcon
+    ? '<span class="upload-icon">+</span><span class="upload-text">点击上传</span>'
+    : '<span class="upload-icon">+</span><span class="upload-text">点击上传</span>';
+}
+
+/**
+ * 更新实时预览
+ */
+function updatePreview() {
+  const title = document.getElementById('fieldTitle').value.trim() || '能力标题';
+  const desc = document.getElementById('fieldDescription').value.trim() || '能力描述';
+  document.getElementById('previewTitle').textContent = title;
+  document.getElementById('previewDesc').textContent = desc;
+  // 图标预览
+  const iconEl = document.getElementById('previewIcon');
+  if (iconUrl) {
+    iconEl.innerHTML = '<img src="' + iconUrl + '" style="width:40px;height:40px;object-fit:contain;">';
+    iconEl.style.background = 'transparent';
+  } else {
+    iconEl.textContent = iconEmoji;
+    iconEl.style.background = iconBg;
+    iconEl.style.color = '#1890ff';
+  }
+  // 示意图预览
+  const schematicEl = document.getElementById('previewSchematic');
+  if (schematicUrl) {
+    schematicEl.innerHTML = '<img src="' + schematicUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:4px;">';
+  } else {
+    schematicEl.textContent = '示意图预览区';
+  }
+}
+
+/**
+ * 表单提交处理
+ */
+function handleSubmit() {
+  // 触发所有字段校验
+  let hasError = false;
+  // 校验标题
+  const title = document.getElementById('fieldTitle').value.trim();
+  if (!title) { showError('errorTitle', 'fieldTitle', '标题不能为空'); hasError = true; }
+  else if (title.length < 2 || title.length > 30) { showError('errorTitle', 'fieldTitle', '标题长度需在 2~30 字符之间'); hasError = true; }
+  // 校验描述
+  const desc = document.getElementById('fieldDescription').value.trim();
+  if (!desc) { showError('errorDescription', 'fieldDescription', '描述不能为空'); hasError = true; }
+  else if (desc.length < 5 || desc.length > 200) { showError('errorDescription', 'fieldDescription', '描述长度需在 5~200 字符之间'); hasError = true; }
+  // 校验图标
+  if (!iconUrl) {
+    document.getElementById('errorIcon').textContent = '图标必传';
+    document.getElementById('errorIcon').style.display = 'block';
+    hasError = true;
+  }
+  // 校验排序值
+  const sortVal = document.getElementById('fieldSortOrder').value;
+  if (!sortVal) { showError('errorSortOrder', 'fieldSortOrder', '排序值不能为空'); hasError = true; }
+  else if (!/^[1-9]\d*$/.test(sortVal)) { showError('errorSortOrder', 'fieldSortOrder', '排序值必须为大于 0 的正整数'); hasError = true; }
+  // 校验访问地址
+  const url = document.getElementById('fieldAccessUrl').value.trim();
+  if (!url) { showError('errorAccessUrl', 'fieldAccessUrl', '访问地址不能为空'); hasError = true; }
+  else if (!/^https?:\/\/.+|^\/\/.+/.test(url)) { showError('errorAccessUrl', 'fieldAccessUrl', '请输入合法的 http 或 https 地址'); hasError = true; }
+  // 校验路由路径
+  const path = document.getElementById('fieldRoutePath').value.trim();
+  if (!path) { showError('errorRoutePath', 'fieldRoutePath', '路由路径不能为空'); hasError = true; }
+  else if (!path.startsWith('/')) { showError('errorRoutePath', 'fieldRoutePath', '路由路径需以 / 开头'); hasError = true; }
+
+  if (hasError) {
+    showMessage('请修正表单中的错误', 'error');
+    return;
+  }
+
+  // 构建数据（模拟提交到 marketadmin API）
+  const now = new Date();
+  const timestamp = now.getFullYear() + '-' +
+    String(now.getMonth() + 1).padStart(2, '0') + '-' +
+    String(now.getDate()).padStart(2, '0') + ' ' +
+    String(now.getHours()).padStart(2, '0') + ':' +
+    String(now.getMinutes()).padStart(2, '0') + ':' +
+    String(now.getSeconds()).padStart(2, '0');
+
+  // 随机图标背景色（demo 用）
+  const bgColors = ['#e6f7ff', '#f6ffed', '#fff7e6', '#fff0f6', '#f9f0ff'];
+  const emojis = ['🤖', '🔧', '🏠', '📊', '📱', '💡', '🎯', '⚡'];
+
+  if (editingId) {
+    // 编辑
+    const item = capabilityList.find(c => c.id === editingId);
+    if (item) {
+      item.title = title;
+      item.description = desc;
+      item.iconUrl = iconUrl;
+      item.schematicUrl = schematicUrl;
+      item.sortOrder = parseInt(sortVal);
+      item.accessUrl = url;
+      item.routePath = path;
+      item.updatedAt = timestamp;
+    }
+    showMessage('能力配置更新成功', 'success');
+  } else {
+    // 新增
+    const newItem = {
+      id: Date.now(),
+      title: title,
+      description: desc,
+      iconUrl: iconUrl,
+      iconBg: bgColors[Math.floor(Math.random() * bgColors.length)],
+      iconEmoji: emojis[Math.floor(Math.random() * emojis.length)],
+      schematicUrl: schematicUrl,
+      sortOrder: parseInt(sortVal),
+      accessUrl: url,
+      routePath: path,
+      status: 1,
+      createdBy: 'admin',
+      updatedAt: timestamp
+    };
+    capabilityList.push(newItem);
+    showMessage('能力配置新增成功', 'success');
+  }
+  closeModal();
+  renderTable();
+}
+
+/**
+ * 删除能力
+ */
+function handleDelete(id) {
+  if (!confirm('确定要删除此能力配置吗？删除后 wecodesite 左侧菜单将同步移除该入口。')) return;
+  capabilityList = capabilityList.filter(c => c.id !== id);
+  showMessage('能力配置已删除', 'success');
+  renderTable();
+}
+
+/**
+ * 消息提示
+ */
+function showMessage(text, type) {
+  const msg = document.createElement('div');
+  msg.className = 'message message-' + type;
+  msg.textContent = text;
+  document.body.appendChild(msg);
+  setTimeout(() => { msg.remove(); }, 2500);
+}
+
+// 初始渲染
+renderTable();
+</script>
+
+</body>
+</html>
