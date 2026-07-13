@@ -46,7 +46,7 @@
 | 角色 | 说明 |
 |------|------|
 | **嵌入能力方后端**（IM、云盘、邮件等业务模块的后端服务） | 调用 api-server 的接口完成应用身份校验和成员查询 |
-| **平台运营方** | 配置内部凭证、管理接口授权 |
+| **平台管理员** | 配置内部凭证、管理接口授权 |
 
 ### 2.3 架构关系
 
@@ -109,7 +109,7 @@ sequenceDiagram
 | FR-001 | **应用身份验证**：嵌入能力方调用 api-server 验证应用身份 | • `POST /internal/app/verify`<br/>• 请求参数：`appId`(string)、`authType`(int)、`authCredential`(string)<br/>• 返回：`{ valid: boolean, appInfo: { appId, appName, appType, status } }`<br/>• `appInfo` 仅在 valid=true 时返回<br/>• 开发阶段使用 Mock 验证逻辑，保留策略切换接口 | P0 |
 | FR-002 | **应用信息查询**：嵌入能力方查询应用基本信息 | • `GET /internal/app/info?appId={appId}`<br/>• 返回：`{ appId, appName, appNameEn, appType, status, createTime, description }`<br/>• 不存在的应用返回 404<br/>• 开发阶段返回 Mock 数据（固定字段），联调阶段切换为对接现有应用管理系统 | P0 |
 | FR-003 | **成员列表查询**：嵌入能力方查询应用的成员列表 | • `GET /internal/app/members?appId={appId}`<br/>• 返回：`[{ userId, userName, userAccount, role, joinTime }]`<br/>• `role` 枚举：`owner`(拥有者)、`admin`(管理员)、`member`(普通成员)<br/>• 不存在的应用返回 404<br/>• 开发阶段返回 Mock 数据，联调阶段对接现有成员管理系统 | P0 |
-| FR-004 | **内部凭证鉴权**：所有 `/internal/` 接口需校验调用方身份 | • 请求头 `X-Internal-Token` 携带内部服务凭证<br/>• 凭证由平台运营方预配置，支持多服务方独立凭证<br/>• 凭证无效/缺失返回 401<br/>• 开发阶段可支持绕过（配置开关） | P0 |
+| FR-004 | **内部凭证鉴权**：所有 `/internal/` 接口需校验调用方身份 | • 请求头 `X-Internal-Token` 携带内部服务凭证<br/>• 凭证由平台管理员预配置，支持多服务方独立凭证<br/>• 凭证无效/缺失返回 401<br/>• 开发阶段可支持绕过（配置开关） | P0 |
 | FR-005 | **批量应用信息查询**：嵌入能力方批量查询多个应用的信息 | • `POST /internal/app/info/batch`<br/>• 请求参数：`appIds: string[]`<br/>• 返回：`{ apps: [...] }`<br/>• 单次最多查询 100 个应用<br/>• 不存在或不返回的应用在结果中省略（不抛错） | P1 |
 | FR-006 | **批量成员查询**：嵌入能力方批量查询多个应用的成员信息 | • `POST /internal/app/members/batch`<br/>• 请求参数：`appIds: string[]`<br/>• 返回：`{ members: { [appId]: [...] } }`<br/>• 单次最多查询 20 个应用<br/>• 不存在或不返回的应用结果中省略 | P1 |
 
