@@ -570,7 +570,7 @@ public class FlowPublishValidator {
                 errors.add("节点 [" + ref.getNodeId() + "] 引用的连接器版本不存在（versionId="
                         + ref.getConnectorVersionId() + "）");
             } else if (cv.getStatus() == null
-                    || cv.getStatus() != ConnectorVersionStatus.PUBLISHED.getCode()) {
+                    || !ConnectorVersionStatus.PUBLISHED.getCode().equals(cv.getStatus())) {
                 errors.add("节点 [" + ref.getNodeId() + "] 引用的连接器版本不可用（status="
                         + cv.getStatus() + "，需为已发布状态）");
             }

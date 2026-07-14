@@ -149,7 +149,7 @@ public class FlowService {
             List<FlowVersion> versions = flowVersionMapper.selectListByFlowId(f.getId(), null);
             if (versions != null) {
                 for (FlowVersion v : versions) {
-                    if (v.getStatus() != null && v.getStatus() == FlowVersionStatus.DRAFT.getCode()) {
+                    if (v.getStatus() != null && v.getStatus().equals(FlowVersionStatus.DRAFT.getCode())) {
                         item.setDraftVersionNumber(v.getVersionNumber());
                         break;
                     }
@@ -195,13 +195,13 @@ public class FlowService {
         List<FlowVersion> versions = flowVersionMapper.selectListByFlowId(flowId, null);
         if (versions != null) {
             for (FlowVersion v : versions) {
-                if (v.getStatus() != null && v.getStatus() == FlowVersionStatus.PUBLISHED.getCode()) {
+                if (v.getStatus() != null && v.getStatus().equals(FlowVersionStatus.PUBLISHED.getCode())) {
                     if (response.getLatestPublishedVersionNumber() == null
                             || v.getVersionNumber() > response.getLatestPublishedVersionNumber()) {
                         response.setLatestPublishedVersionNumber(v.getVersionNumber());
                     }
                 }
-                if (v.getStatus() != null && v.getStatus() == FlowVersionStatus.DRAFT.getCode()) {
+                if (v.getStatus() != null && v.getStatus().equals(FlowVersionStatus.DRAFT.getCode())) {
                     response.setDraftVersionNumber(v.getVersionNumber());
                 }
             }
@@ -284,7 +284,7 @@ public class FlowService {
                     "Deployed version not found, please redeploy");
         }
         if (deployedVersion.getStatus() == null
-                || deployedVersion.getStatus() != FlowVersionStatus.PUBLISHED.getCode()) {
+                || !deployedVersion.getStatus().equals(FlowVersionStatus.PUBLISHED.getCode())) {
             return ApiResponse.error("422",
                     "已部署版本（版本" + deployedVersion.getVersionNumber() + "）已失效，请重新部署有效版本后再启动",
                     "Deployed version is invalidated, please redeploy");
@@ -296,14 +296,14 @@ public class FlowService {
             for (ConnectorVersionRef ref : refs) {
                 ConnectorVersion cv = connectorVersionMapper.selectById(ref.getConnectorVersionId());
                 if (cv == null || cv.getStatus() == null
-                        || cv.getStatus() != ConnectorVersionStatus.PUBLISHED.getCode()) {
+                        || !cv.getStatus().equals(ConnectorVersionStatus.PUBLISHED.getCode())) {
                     return ApiResponse.error("422",
                             "引用的连接器版本（版本" + (cv != null ? cv.getVersionNumber() : ref.getConnectorVersionId()) + "）已失效，请重新编排部署后再启动",
                             "Referenced connector version is invalidated");
                 }
                 Connector connector = connectorMapper.selectById(ref.getConnectorId());
                 if (connector == null || connector.getStatus() == null
-                        || connector.getStatus() == ConnectorStatus.INVALIDATED.getCode()) {
+                        || connector.getStatus().equals(ConnectorStatus.INVALIDATED.getCode())) {
                     return ApiResponse.error("422",
                             "连接器（" + (connector != null ? connector.getNameCn() : ref.getConnectorId()) + "）已失效，请重新编排部署后再启动",
                             "Referenced connector is invalidated");

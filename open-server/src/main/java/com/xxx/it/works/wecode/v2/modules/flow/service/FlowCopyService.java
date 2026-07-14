@@ -100,7 +100,7 @@ public class FlowCopyService {
             for (FlowVersion sourceVersion : sourceVersions) {
                 // 跳过已物理删除的版本
                 if (sourceVersion.getStatus() != null
-                        && sourceVersion.getStatus() == FlowVersionStatus.DELETED.getCode()) {
+                        && sourceVersion.getStatus().equals(FlowVersionStatus.DELETED.getCode())) {
                     continue;
                 }
 
@@ -116,8 +116,8 @@ public class FlowCopyService {
 
                 newVersion.setOrchestrationConfig(sourceVersion.getOrchestrationConfig());
                 // 状态改为草稿的版本（原非草稿），清除发布时间和发布人
-                if (convertedStatus == FlowVersionStatus.DRAFT.getCode()
-                        && sourceVersion.getStatus() != FlowVersionStatus.DRAFT.getCode()) {
+                if (FlowVersionStatus.DRAFT.getCode().equals(convertedStatus)
+                        && !Objects.equals(sourceVersion.getStatus(), FlowVersionStatus.DRAFT.getCode())) {
                     newVersion.setPublishedTime(null);
                     newVersion.setPublishedBy(null);
                 } else {

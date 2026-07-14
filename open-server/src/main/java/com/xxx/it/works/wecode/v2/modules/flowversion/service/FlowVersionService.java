@@ -45,6 +45,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * 连接流版本管理服务（V3 多版本模型）
@@ -122,7 +123,7 @@ public class FlowVersionService {
 
         // 检查是否已有草稿
         boolean hasDraft = existingVersions != null && existingVersions.stream()
-                .anyMatch(v -> v.getStatus() != null && v.getStatus() == FlowVersionStatus.DRAFT.getCode());
+                .anyMatch(v -> v.getStatus() != null && v.getStatus().equals(FlowVersionStatus.DRAFT.getCode()));
         if (hasDraft) {
             return ApiResponse.error("409",
                     "已存在草稿版本，请先编辑或删除当前草稿",
@@ -236,13 +237,13 @@ public class FlowVersionService {
         if (version.getStatus() != null) {
             Integer versionStatus = version.getStatus();
             // 非草稿状态时查询审批记录和操作日志
-            if (versionStatus != FlowVersionStatus.DRAFT.getCode()) {
+            if (!Objects.equals(versionStatus, FlowVersionStatus.DRAFT.getCode())) {
                 try {
                     ApprovalRecord record = approvalRecordMapper.selectLatestByBusiness(
                             ApprovalEngine.BusinessType.CONNECTOR_FLOW_VERSION_PUBLISH, versionId);
                     if (record != null) {
                         // 待审批状态：返回当前审批人
-                        if (versionStatus == FlowVersionStatus.PENDING_APPROVAL.getCode()
+                        if (Objects.equals(versionStatus, FlowVersionStatus.PENDING_APPROVAL.getCode())
                                 && record.getCombinedNodes() != null) {
                             JsonNode nodesNode = objectMapper.readTree(record.getCombinedNodes());
                             Integer currentNode = record.getCurrentNode();
@@ -312,17 +313,17 @@ public class FlowVersionService {
         // 草稿、已撤回、已驳回状态可编辑（spec §1.7.4）
         Integer currentStatus = version.getStatus();
         if (currentStatus == null ||
-                (currentStatus != FlowVersionStatus.DRAFT.getCode()
-                        && currentStatus != FlowVersionStatus.WITHDRAWN.getCode()
-                        && currentStatus != FlowVersionStatus.REJECTED.getCode())) {
+                (!Objects.equals(currentStatus, FlowVersionStatus.DRAFT.getCode())
+                        && !Objects.equals(currentStatus, FlowVersionStatus.WITHDRAWN.getCode())
+                        && !Objects.equals(currentStatus, FlowVersionStatus.REJECTED.getCode()))) {
             return ApiResponse.error("409",
                     "非草稿/已撤回/已驳回状态，不可编辑",
                     "Only draft, withdrawn, or rejected versions can be edited");
         }
 
         // 已撤回/已驳回 → 自动转为草稿
-        if (currentStatus == FlowVersionStatus.WITHDRAWN.getCode()
-                || currentStatus == FlowVersionStatus.REJECTED.getCode()) {
+        if (Objects.equals(currentStatus, FlowVersionStatus.WITHDRAWN.getCode())
+                || Objects.equals(currentStatus, FlowVersionStatus.REJECTED.getCode())) {
             version.setStatus(FlowVersionStatus.DRAFT.getCode());
         }
 
@@ -446,7 +447,7 @@ public class FlowVersionService {
      * 校验版本状态是否为草稿
      */
     private ApiResponse<?> validateFlowVersionFields(FlowVersion version) {
-        if (version.getStatus() == null || version.getStatus() != FlowVersionStatus.DRAFT.getCode()) {
+        if (version.getStatus() == null || !version.getStatus().equals(FlowVersionStatus.DRAFT.getCode())) {
             return ApiResponse.error("409",
                     "非草稿状态，不可发布",
                     "Only draft versions can be published");
@@ -538,9 +539,9 @@ public class FlowVersionService {
         // 检查是否有待审批/已驳回/已撤回版本
         boolean hasBlockingVersion = existingVersions != null && existingVersions.stream()
                 .anyMatch(v -> v.getStatus() != null && (
-                        v.getStatus() == FlowVersionStatus.PENDING_APPROVAL.getCode()
-                                || v.getStatus() == FlowVersionStatus.REJECTED.getCode()
-                                || v.getStatus() == FlowVersionStatus.WITHDRAWN.getCode()));
+                        v.getStatus().equals(FlowVersionStatus.PENDING_APPROVAL.getCode())
+                                || v.getStatus().equals(FlowVersionStatus.REJECTED.getCode())
+                                || v.getStatus().equals(FlowVersionStatus.WITHDRAWN.getCode())));
         if (hasBlockingVersion) {
             return ApiResponse.error("409",
                     "存在待审批/已驳回/已撤回的版本，请先处理后再创建草稿",
@@ -551,7 +552,7 @@ public class FlowVersionService {
         int currentCount = existingVersions != null ? existingVersions.size() : 0;
         // 如果有旧草稿且会被覆盖，不计入总数
         long draftCount = existingVersions != null ? existingVersions.stream()
-                .filter(v -> v.getStatus() != null && v.getStatus() == FlowVersionStatus.DRAFT.getCode())
+                .filter(v -> v.getStatus() != null && v.getStatus().equals(FlowVersionStatus.DRAFT.getCode()))
                 .count() : 0;
         int maxVersionCount = propertyService.getFlowMaxVersions();
         if (currentCount - draftCount >= maxVersionCount) {
@@ -564,7 +565,7 @@ public class FlowVersionService {
         String message;
         if (existingVersions != null) {
             for (FlowVersion v : existingVersions) {
-                if (v.getStatus() != null && v.getStatus() == FlowVersionStatus.DRAFT.getCode()) {
+                if (v.getStatus() != null && v.getStatus().equals(FlowVersionStatus.DRAFT.getCode())) {
                     flowVersionMapper.deleteById(v.getId());
                     log.info("Overwritten existing draft: versionId={}, versionNumber={}", v.getId(), v.getVersionNumber());
                     message = "已覆盖当前草稿内容";
@@ -623,7 +624,7 @@ public class FlowVersionService {
         }
 
         // 仅已发布状态可失效
-        if (version.getStatus() == null || version.getStatus() != FlowVersionStatus.PUBLISHED.getCode()) {
+        if (version.getStatus() == null || !version.getStatus().equals(FlowVersionStatus.PUBLISHED.getCode())) {
             return ApiResponse.error("409",
                     "非已发布状态，不可失效",
                     "Only published versions can be invalidated");
@@ -671,7 +672,7 @@ public class FlowVersionService {
         }
 
         // 仅已失效状态可恢复
-        if (version.getStatus() == null || version.getStatus() != FlowVersionStatus.INVALIDATED.getCode()) {
+        if (version.getStatus() == null || !version.getStatus().equals(FlowVersionStatus.INVALIDATED.getCode())) {
             return ApiResponse.error("409",
                     "非已失效状态，不可恢复",
                     "Only invalidated versions can be recovered");
@@ -720,10 +721,10 @@ public class FlowVersionService {
 
         // 仅草稿、已失效、已撤回、已驳回状态可删除 (FR-029)
         if (version.getStatus() == null ||
-                (version.getStatus() != FlowVersionStatus.DRAFT.getCode()
-                        && version.getStatus() != FlowVersionStatus.INVALIDATED.getCode()
-                        && version.getStatus() != FlowVersionStatus.WITHDRAWN.getCode()
-                        && version.getStatus() != FlowVersionStatus.REJECTED.getCode())) {
+                (!version.getStatus().equals(FlowVersionStatus.DRAFT.getCode())
+                        && !version.getStatus().equals(FlowVersionStatus.INVALIDATED.getCode())
+                        && !version.getStatus().equals(FlowVersionStatus.WITHDRAWN.getCode())
+                        && !version.getStatus().equals(FlowVersionStatus.REJECTED.getCode()))) {
             return ApiResponse.error("409",
                     "仅草稿/已失效/已撤回/已驳回状态可删除",
                     "Only draft, invalidated, withdrawn, or rejected versions can be deleted");
@@ -758,7 +759,7 @@ public class FlowVersionService {
         }
 
         // 仅待审批状态可撤回
-        if (version.getStatus() == null || version.getStatus() != FlowVersionStatus.PENDING_APPROVAL.getCode()) {
+        if (version.getStatus() == null || !version.getStatus().equals(FlowVersionStatus.PENDING_APPROVAL.getCode())) {
             return ApiResponse.error("409",
                     "非待审批状态，不可撤回",
                     "Only pending approval versions can be cancelled");
@@ -792,7 +793,7 @@ public class FlowVersionService {
         }
 
         // 仅待审批状态可催办
-        if (version.getStatus() == null || version.getStatus() != FlowVersionStatus.PENDING_APPROVAL.getCode()) {
+        if (version.getStatus() == null || !version.getStatus().equals(FlowVersionStatus.PENDING_APPROVAL.getCode())) {
             return ApiResponse.error("409",
                     "非待审批状态，无需催办",
                     "Only pending approval versions can be urged");

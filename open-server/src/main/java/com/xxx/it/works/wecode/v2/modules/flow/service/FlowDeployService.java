@@ -63,7 +63,7 @@ public class FlowDeployService {
 
         // 仅已发布状态可部署
         if (version.getStatus() == null
-                || version.getStatus() != FlowVersionStatus.PUBLISHED.getCode()) {
+                || !FlowVersionStatus.PUBLISHED.getCode().equals(version.getStatus())) {
             return ApiResponse.error("409",
                     "仅已发布状态的版本可部署",
                     "Only published versions can be deployed");

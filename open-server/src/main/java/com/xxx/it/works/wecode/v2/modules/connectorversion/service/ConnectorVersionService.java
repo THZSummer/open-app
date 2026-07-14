@@ -89,7 +89,7 @@ public class ConnectorVersionService {
         }
 
         boolean hasDraft = existingVersions != null && existingVersions.stream()
-                .anyMatch(v -> v.getStatus() != null && v.getStatus() == ConnectorVersionStatus.DRAFT.getCode());
+                .anyMatch(v -> v.getStatus() != null && v.getStatus().equals(ConnectorVersionStatus.DRAFT.getCode()));
         if (hasDraft) {
             return ApiResponse.error("409",
                     "已存在草稿版本，请先编辑或删除当前草稿",
@@ -202,7 +202,7 @@ public class ConnectorVersionService {
             return ApiResponse.error("404", "版本不存在", "Version not found");
         }
 
-        if (version.getStatus() == null || version.getStatus() != ConnectorVersionStatus.DRAFT.getCode()) {
+        if (version.getStatus() == null || !version.getStatus().equals(ConnectorVersionStatus.DRAFT.getCode())) {
             return ApiResponse.error("409", "非草稿状态，不可编辑", "Only draft versions can be edited");
         }
 
@@ -246,7 +246,7 @@ public class ConnectorVersionService {
             return ApiResponse.error("404", "版本不存在", "Version not found");
         }
 
-        if (version.getStatus() == null || version.getStatus() != ConnectorVersionStatus.DRAFT.getCode()) {
+        if (version.getStatus() == null || !version.getStatus().equals(ConnectorVersionStatus.DRAFT.getCode())) {
             return ApiResponse.error("409", "非草稿状态，不可发布", "Only draft versions can be published");
         }
 
@@ -383,7 +383,7 @@ public class ConnectorVersionService {
         String message = null;
         if (existingVersions != null) {
             for (ConnectorVersion v : existingVersions) {
-                if (v.getStatus() != null && v.getStatus() == ConnectorVersionStatus.DRAFT.getCode()) {
+                if (v.getStatus() != null && v.getStatus().equals(ConnectorVersionStatus.DRAFT.getCode())) {
                     connectorVersionMapper.deleteById(v.getId());
                     message = "已覆盖当前草稿内容";
                     log.info("Overwritten existing draft: versionId={}, versionNumber={}", v.getId(), v.getVersionNumber());
@@ -451,7 +451,7 @@ public class ConnectorVersionService {
             return ApiResponse.error("404", "版本不存在", "Version not found");
         }
 
-        if (version.getStatus() == null || version.getStatus() != ConnectorVersionStatus.PUBLISHED.getCode()) {
+        if (version.getStatus() == null || !version.getStatus().equals(ConnectorVersionStatus.PUBLISHED.getCode())) {
             return ApiResponse.error("409", "非已发布状态，不可失效", "Only published versions can be invalidated");
         }
 
@@ -499,7 +499,7 @@ public class ConnectorVersionService {
             return ApiResponse.error("404", "版本不存在", "Version not found");
         }
 
-        if (version.getStatus() == null || version.getStatus() != ConnectorVersionStatus.INVALIDATED.getCode()) {
+        if (version.getStatus() == null || !version.getStatus().equals(ConnectorVersionStatus.INVALIDATED.getCode())) {
             return ApiResponse.error("409", "非已失效状态，不可恢复", "Only invalidated versions can be recovered");
         }
 
@@ -542,8 +542,8 @@ public class ConnectorVersionService {
         }
 
         if (version.getStatus() == null ||
-                (version.getStatus() != ConnectorVersionStatus.DRAFT.getCode()
-                        && version.getStatus() != ConnectorVersionStatus.INVALIDATED.getCode())) {
+                (!version.getStatus().equals(ConnectorVersionStatus.DRAFT.getCode())
+                        && !version.getStatus().equals(ConnectorVersionStatus.INVALIDATED.getCode()))) {
             return ApiResponse.error("409",
                     "仅草稿或已失效状态可删除",
                     "Only draft or invalidated versions can be deleted");
@@ -565,7 +565,7 @@ public class ConnectorVersionService {
         }
         return versions.stream()
                 .anyMatch(v -> v.getStatus() != null
-                        && v.getStatus() == ConnectorVersionStatus.PUBLISHED.getCode()
+                        && v.getStatus().equals(ConnectorVersionStatus.PUBLISHED.getCode())
                         && !v.getId().equals(excludeVersionId));
     }
 
