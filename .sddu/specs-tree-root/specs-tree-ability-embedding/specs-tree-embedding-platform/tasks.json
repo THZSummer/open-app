@@ -1,0 +1,95 @@
+[
+  {
+    "id": "TASK-001",
+    "name": "DB 迁移 + Ability 实体扩展",
+    "complexity": "S",
+    "dependencies": [],
+    "wave": 1,
+    "fr": ["FR-002"],
+    "files": [
+      {"op": "NEW", "path": "open-server/src/main/resources/db/migration/V4__add_ability_admin_fields.sql"},
+      {"op": "MODIFY", "path": "open-server/src/main/java/com/xxx/it/works/wecode/v2/modules/ability/entity/Ability.java"}
+    ],
+    "verify": "mvn -f open-server/pom.xml compile -q"
+  },
+  {
+    "id": "TASK-002",
+    "name": "管理面 DTO/VO 类定义",
+    "complexity": "S",
+    "dependencies": ["TASK-001"],
+    "wave": 2,
+    "fr": ["FR-001", "FR-002", "FR-003"],
+    "files": [
+      {"op": "NEW", "path": "open-server/.../ability/dto/admin/AdminAbilityListRequest.java"},
+      {"op": "NEW", "path": "open-server/.../ability/dto/admin/AdminAbilityCreateRequest.java"},
+      {"op": "NEW", "path": "open-server/.../ability/dto/admin/AdminAbilityUpdateRequest.java"},
+      {"op": "NEW", "path": "open-server/.../ability/vo/admin/AdminAbilityVO.java"},
+      {"op": "NEW", "path": "open-server/.../ability/vo/admin/AdminAbilityDetailVO.java"}
+    ],
+    "verify": "mvn -f open-server/pom.xml compile -q"
+  },
+  {
+    "id": "TASK-003",
+    "name": "Mapper 层扩展",
+    "complexity": "M",
+    "dependencies": ["TASK-001"],
+    "wave": 2,
+    "fr": ["FR-001", "FR-004"],
+    "files": [
+      {"op": "MODIFY", "path": "open-server/.../ability/mapper/AbilityMapper.java"},
+      {"op": "MODIFY", "path": "open-server/.../ability/mapper/AbilityPropertyMapper.java"}
+    ],
+    "verify": "mvn -f open-server/pom.xml compile -q"
+  },
+  {
+    "id": "TASK-004",
+    "name": "AdminAbilityService 接口与实现",
+    "complexity": "L",
+    "dependencies": ["TASK-002", "TASK-003"],
+    "wave": 3,
+    "fr": ["FR-001", "FR-002", "FR-003", "FR-004"],
+    "files": [
+      {"op": "NEW", "path": "open-server/.../ability/service/AdminAbilityService.java"},
+      {"op": "NEW", "path": "open-server/.../ability/service/impl/AdminAbilityServiceImpl.java"}
+    ],
+    "verify": "mvn -f open-server/pom.xml compile -q"
+  },
+  {
+    "id": "TASK-005",
+    "name": "AdminAbilityController",
+    "complexity": "M",
+    "dependencies": ["TASK-004"],
+    "wave": 4,
+    "fr": ["FR-001", "FR-002", "FR-003", "FR-004"],
+    "files": [
+      {"op": "NEW", "path": "open-server/.../ability/controller/AdminAbilityController.java"}
+    ],
+    "verify": "mvn -f open-server/pom.xml compile -q"
+  },
+  {
+    "id": "TASK-006",
+    "name": "前端能力目录管理页面",
+    "complexity": "L",
+    "dependencies": ["TASK-005"],
+    "wave": 5,
+    "fr": ["FR-001", "FR-002", "FR-003", "FR-004"],
+    "files": [
+      {"op": "NEW", "path": "market-web/src/pages/AbilityAdmin/index.tsx"},
+      {"op": "NEW", "path": "market-web/src/pages/AbilityAdmin/AbilityForm.tsx"},
+      {"op": "NEW", "path": "market-web/src/pages/AbilityAdmin/services.ts"}
+    ],
+    "verify": "cd market-web && npm run build"
+  },
+  {
+    "id": "TASK-007",
+    "name": "前端路由配置",
+    "complexity": "S",
+    "dependencies": ["TASK-006"],
+    "wave": 5,
+    "fr": ["FR-001"],
+    "files": [
+      {"op": "MODIFY", "path": "market-web/src/router/config.ts"}
+    ],
+    "verify": "cd market-web && npm run build"
+  }
+]

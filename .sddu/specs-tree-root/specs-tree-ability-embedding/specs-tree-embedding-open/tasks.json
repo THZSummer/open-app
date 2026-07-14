@@ -1,0 +1,84 @@
+[
+  {
+    "id": "TASK-001",
+    "name": "VO 扩展新增 frontendEntryUrl 字段",
+    "complexity": "S",
+    "dependencies": [],
+    "wave": 1,
+    "fr": ["FR-001", "FR-004"],
+    "crossFeatureDeps": [],
+    "files": [
+      {"op": "MODIFY", "path": "open-server/src/main/java/com/xxx/it/works/wecode/v2/modules/ability/vo/AbilityVO.java"},
+      {"op": "MODIFY", "path": "open-server/src/main/java/com/xxx/it/works/wecode/v2/modules/ability/vo/AppAbilityDetailVO.java"}
+    ],
+    "verify": "mvn -f open-server/pom.xml compile -q"
+  },
+  {
+    "id": "TASK-002",
+    "name": "AbilityServiceImpl 列表/已订阅查询增强",
+    "complexity": "M",
+    "dependencies": ["TASK-001"],
+    "wave": 2,
+    "fr": ["FR-001", "FR-004", "FR-005"],
+    "crossFeatureDeps": ["specs-tree-embedding-platform/TASK-001"],
+    "files": [
+      {"op": "MODIFY", "path": "open-server/src/main/java/com/xxx/it/works/wecode/v2/modules/ability/service/impl/AbilityServiceImpl.java"}
+    ],
+    "verify": "mvn -f open-server/pom.xml compile -q"
+  },
+  {
+    "id": "TASK-003",
+    "name": "AbilityServiceImpl 订阅校验与自动桥接增强",
+    "complexity": "M",
+    "dependencies": ["TASK-001"],
+    "wave": 2,
+    "fr": ["FR-002", "FR-003"],
+    "crossFeatureDeps": ["specs-tree-embedding-platform/TASK-001"],
+    "files": [
+      {"op": "MODIFY", "path": "open-server/src/main/java/com/xxx/it/works/wecode/v2/modules/ability/service/impl/AbilityServiceImpl.java"}
+    ],
+    "verify": "mvn -f open-server/pom.xml compile -q",
+    "note": "与 TASK-002 串行执行（同文件）"
+  },
+  {
+    "id": "TASK-004",
+    "name": "前端 Capabilities 列表渲染改造",
+    "complexity": "M",
+    "dependencies": ["TASK-002"],
+    "wave": 3,
+    "fr": ["FR-101"],
+    "crossFeatureDeps": [],
+    "files": [
+      {"op": "MODIFY", "path": "wecodesite/src/pages/Capabilities/Capabilities.jsx"}
+    ],
+    "verify": "cd wecodesite && npm run build"
+  },
+  {
+    "id": "TASK-005",
+    "name": "前端配置页嵌入子应用",
+    "complexity": "L",
+    "dependencies": ["TASK-002"],
+    "wave": 3,
+    "fr": ["FR-102"],
+    "crossFeatureDeps": [],
+    "files": [
+      {"op": "NEW", "path": "wecodesite/src/pages/Capabilities/EmbeddedSubApp.jsx"},
+      {"op": "MODIFY", "path": "wecodesite/src/pages/Capabilities/Capabilities.jsx"}
+    ],
+    "verify": "cd wecodesite && npm run build",
+    "note": "与 TASK-004 串行执行（同改 Capabilities.jsx）"
+  },
+  {
+    "id": "TASK-006",
+    "name": "constants 场景分组扩展",
+    "complexity": "S",
+    "dependencies": ["TASK-004"],
+    "wave": 3,
+    "fr": ["FR-103"],
+    "crossFeatureDeps": [],
+    "files": [
+      {"op": "MODIFY", "path": "wecodesite/src/utils/constants.js"}
+    ],
+    "verify": "cd wecodesite && npm run build"
+  }
+]

@@ -55,3 +55,6 @@ logging:
 # 平台配置（开发环境）
 platform:
   approval-url-prefix: http://localhost:3000/approval/
+
+card-service:
+  default-tenant-id: openapp-tenandId

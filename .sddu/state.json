@@ -1,66 +1,51 @@
 {
-  "feature_id": "CAP-OPEN-001",
-  "feature_name": "能力开放平台（Capability Open Platform）",
-  "current_phase": "build",
-  "status": "implementing",
-  "created_at": "2026-04-20T10:00:00+08:00",
-  "updated_at": "2026-04-22T00:10:00+08:00",
-  "progress": {
-    "total_tasks": 13,
-    "completed_tasks": 13,
-    "pending_tasks": 0,
-    "percentage": 100
-  },
-  "current_task": {
-    "id": "TASK-013",
-    "name": "集成测试与系统联调",
-    "status": "completed",
-    "started_at": "2026-04-22T00:05:00+08:00",
-    "completed_at": "2026-04-22T00:10:00+08:00"
-  },
-  "task_status": {
-    "TASK-001": "completed",
-    "TASK-002": "completed",
-    "TASK-003": "completed",
-    "TASK-004": "completed",
-    "TASK-005": "completed",
-    "TASK-006": "completed",
-    "TASK-007": "completed",
-    "TASK-008": "completed",
-    "TASK-009": "completed",
-    "TASK-010": "completed",
-    "TASK-011": "completed",
-    "TASK-012": "completed",
-    "TASK-013": "completed",
-    "TASK-U10": "completed"
-  },
-  "wave_status": {
-    "wave_1": "completed",
-    "wave_2": "completed",
-    "wave_3": "completed",
-    "wave_4": "completed",
-    "wave_5": "completed"
-  },
-  "build_summary": {
-    "tests_run": 25,
-    "tests_passed": 25,
-    "tests_failed": 0,
-    "code_coverage": "67%",
-    "api_coverage": "100%",
-    "performance": {
-      "category_query_p99": "7ms",
-      "api_list_query_p99": "7ms",
-      "target": "<50ms"
+  "feature_id": "EMBED-001",
+  "feature_name": "狭义嵌入能力（Ability Embedding）",
+  "current_phase": "tasked",
+  "status": "tracked",
+  "created_at": "2026-07-13T10:00:00+08:00",
+  "updated_at": "2026-07-13T18:00:00+08:00",
+  "sub_features": {
+    "EMBED-PLATFORM-001": {
+      "name": "嵌入能力平台面",
+      "phase": "tasked",
+      "spec_path": ".sddu/specs-tree-root/specs-tree-ability-embedding/specs-tree-embedding-platform/spec.md",
+      "plan_path": ".sddu/specs-tree-root/specs-tree-ability-embedding/specs-tree-embedding-platform/plan.md",
+      "tasks_path": ".sddu/specs-tree-root/specs-tree-ability-embedding/specs-tree-embedding-platform/tasks.md",
+      "task_count": 7,
+      "wave_count": 5,
+      "complexity": {"S": 3, "M": 2, "L": 2}
+    },
+    "EMBED-OPEN-001": {
+      "name": "嵌入能力开放面",
+      "phase": "tasked",
+      "spec_path": ".sddu/specs-tree-root/specs-tree-ability-embedding/specs-tree-embedding-open/spec.md",
+      "plan_path": ".sddu/specs-tree-root/specs-tree-ability-embedding/specs-tree-embedding-open/plan.md",
+      "tasks_path": ".sddu/specs-tree-root/specs-tree-ability-embedding/specs-tree-embedding-open/tasks.md",
+      "task_count": 6,
+      "wave_count": 3,
+      "complexity": {"S": 2, "M": 3, "L": 1}
+    },
+    "EMBED-API-001": {
+      "name": "嵌入能力API面",
+      "phase": "tasked",
+      "spec_path": ".sddu/specs-tree-root/specs-tree-ability-embedding/specs-tree-embedding-api/spec.md",
+      "plan_path": ".sddu/specs-tree-root/specs-tree-ability-embedding/specs-tree-embedding-api/plan.md",
+      "tasks_path": ".sddu/specs-tree-root/specs-tree-ability-embedding/specs-tree-embedding-api/tasks.md",
+      "task_count": 6,
+      "wave_count": 4,
+      "complexity": {"S": 2, "M": 4, "L": 0}
     }
   },
-  "artifacts": {
-    "test_plan": "docs/test-plan.md",
-    "deployment_guide": "docs/deployment-guide.md",
-    "build_report": ".sddu/specs-tree-root/specs-tree-capability-open-platform/build-task-013.md"
+  "progress": {
+    "total_tasks": 19,
+    "completed_tasks": 0,
+    "pending_tasks": 19,
+    "percentage": 0
   },
   "next_steps": [
-    "运行 @sddu-review 审查实现",
-    "运行 @sddu-validate 验证规范",
-    "准备生产环境部署"
+    "运行 @sddu-build TASK-001 开始实现平台面第一个任务",
+    "平台面先行（开放面后端依赖平台面 DB 迁移）",
+    "API面可与平台面并行启动（无跨 Feature 依赖）"
   ]
 }
