@@ -417,7 +417,54 @@ if (nodeType.toLowerCase().equals("connector")) {
 
 ---
 
-## 11. 空代码块规范
+## 11. 包装类型值比较规范
+
+**规则**：`Integer`、`Long`、`Boolean` 等包装类型**禁止使用 `==` / `!=` 比较**，必须使用 `.equals()` 或 `Objects.equals()` 进行值比较。
+
+| ✅ 正确示例 | ❌ 错误示例 |
+|------------|------------|
+| `.equals()` 值比较 | `==` / `!=` 引用比较 |
+
+```java
+// ✅ 正确示例 — 用 .equals() 做值比较
+if (cv.getStatus() == null
+        || !cv.getStatus().equals(ConnectorVersionStatus.PUBLISHED.getCode())) {
+    return ApiResponse.error("422", "引用的连接器版本已失效", "...");
+}
+
+if (v.getStatus() != null
+        && v.getStatus().equals(ConnectorVersionStatus.DRAFT.getCode())) {
+    // 草稿版本
+}
+
+// ✅ 也可用 Objects.equals() 处理 null 安全
+if (!Objects.equals(cv.getStatus(), ConnectorVersionStatus.PUBLISHED.getCode())) {
+    return ApiResponse.error("422", "引用的连接器版本已失效", "...");
+}
+
+// ❌ 错误示例 — ==/!= 是引用比较，值 > 127 时永远出错
+if (cv.getStatus() != ConnectorVersionStatus.PUBLISHED.getCode()) {
+    return ApiResponse.error("422", "...", "...");
+}
+
+if (v.getStatus() == ConnectorVersionStatus.DRAFT.getCode()) {
+    // 值 > 127 时永远为 false！
+}
+```
+
+**原因**：
+- Java 的 `Integer`/`Long` 是对象类型，`==`/`!=` 比较的是**引用地址**而非值
+- JVM 对 -128~127 的 `Integer` 有缓存池，该范围内 `==` 碰巧能工作；超出此范围（如状态码 > 127）则必然失败
+- 项目中 `status` 等字段定义为 `private Integer`，`getCode()` 也返回 `Integer`，必须用 `.equals()` 做值比较
+- 经典案例：某系统状态码定义为 200，本地测试 `==` 正常；线上某个实例 Integer 缓存失效后状态永远不匹配，故障定位数小时
+
+**与规则 10（Locale.ROOT）的关系**：
+- 两者都是 Java 常见陷阱 — 规则 10 防范国际化 Locale 差异，本条防范装箱类型比较陷阱
+- 共同原则：永远不依赖 JVM 的隐式优化（字符串大小写转换的默认 Locale、Integer 缓存池）
+
+---
+
+## 12. 空代码块规范
 
 **规则**：禁止空代码块，所有代码块（if/else/for/while/try/catch 等）必须有实际代码。
 
@@ -463,7 +510,7 @@ try {
 
 ---
 
-## 12. 注释块换行规范
+## 13. 注释块换行规范
 
 **规则**：代码块内的注释必须独立成行并缩进，禁止注释与花括号挤在同一行。
 
@@ -505,7 +552,7 @@ if (nodes == null || !nodes.isArray()) { /* 空节点跳过 */ return; }
 
 ---
 
-## 13. 行尾空格规范
+## 14. 行尾空格规范
 
 **规则**：禁止代码行尾有多余空格（Trailing Whitespace）。
 
@@ -536,7 +583,7 @@ log.info("Creating connector: {}", connectorId);
 
 ---
 
-## 14. Shell 脚本规范
+## 15. Shell 脚本规范
 
 **规则**：Shell 脚本必须以 `#!/bin/bash` 和 `set -ex` 开头，确保异常退出和调试输出。
 
@@ -590,7 +637,7 @@ main "$@"
 
 ---
 
-## 15. 圈复杂度规范
+## 16. 圈复杂度规范
 
 **规则**：方法圈复杂度必须维持在 15 以下，超过时必须重构拆分。
 
@@ -664,7 +711,7 @@ public void updateConnector(String id, ConnectorUpdateRequest request) {
 
 ---
 
-## 16. 函数深度规范
+## 17. 函数深度规范
 
 **规则**：方法最大嵌套深度不得超过 5 层，超过时必须重构。
 
@@ -765,7 +812,7 @@ public void processFlowExecution(String executionId) {
 
 ---
 
-## 17. 敏感信息规范
+## 18. 敏感信息规范
 
 **规则**：日志中禁止打印敏感信息，如直接打印请求头、Token、密码等。
 
@@ -834,7 +881,7 @@ public class WebhookController {
 
 ---
 
-## 18. 日期格式化规范
+## 19. 日期格式化规范
 
 **规则**：禁止使用 `SimpleDateFormat`，必须使用 `DateTimeFormatter`。
 
@@ -874,7 +921,7 @@ public String formatTime(Date date) {
 
 ## 总结
 
-以上 18 条规范为连接器平台项目的**强制要求**，所有代码提交前必须确保符合规范。
+以上 19 条规范为连接器平台项目的**强制要求**，所有代码提交前必须确保符合规范。
 
 请在 IDE 中配置相应的代码格式化和检查规则，确保代码风格统一。
 
