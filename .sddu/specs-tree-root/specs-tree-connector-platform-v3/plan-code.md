@@ -335,7 +335,45 @@ String connectorName = "IM 发送消息", connectorType = "HTTP";
 
 ---
 
-## 9. 大括号规范
+## 9. 冗余中间变量规范
+
+**规则**：如果变量的唯一用途是紧随其后的 `return`，省略中间变量，直接在 `return` 中表达。
+
+| ✅ 正确 | ❌ 错误 |
+|---------|--------|
+| 直接在 return 中返回 | 创建仅用于 return 的中间变量 |
+
+```java
+// ❌ 错误 — 变量 resultMap 仅用于下一行 return
+Map<String, Object> resultMap = (Map<String, Object>) rawResult;
+return resultMap;
+
+User user = userService.findById(id);
+return user;
+
+// ✅ 正确 — 直接 return
+return (Map<String, Object>) rawResult;
+
+return userService.findById(id);
+```
+
+**例外**：如果语句需要 `@SuppressWarnings` 等只能标注在声明上的注解，允许保留中间变量。
+
+```java
+// ✅ 允许 — @SuppressWarnings 要求有声明目标，无法标注裸 return
+@SuppressWarnings("unchecked")
+Map<String, Object> resultMap = (Map<String, Object>) rawResult;
+return resultMap;
+```
+
+**原因**：
+- 减少不必要的命名负担——读者需要额外记忆变量名到下一行才能理解意图
+- 消除冗余代码，提高代码密度
+- 中间变量可能误导读者以为后续还有使用
+
+---
+
+## 10. 大括号规范
 
 **规则**：条件语句（if/else）和循环语句（for/while）必须使用大括号，即使只有一行代码。
 
@@ -379,7 +417,7 @@ while (hasNextNode()) executeNext();
 
 ---
 
-## 10. 字符串操作规范
+## 11. 字符串操作规范
 
 **规则**：使用 `toLowerCase()` 和 `toUpperCase()` 必须指定 `Locale.ROOT`，避免不同地区的转换差异。
 
@@ -417,7 +455,7 @@ if (nodeType.toLowerCase().equals("connector")) {
 
 ---
 
-## 11. 包装类型值比较规范
+## 12. 包装类型值比较规范
 
 **规则**：`Integer`、`Long`、`Boolean` 等包装类型**禁止使用 `==` / `!=` 比较**，必须使用 `.equals()` 或 `Objects.equals()` 进行值比较。
 
@@ -464,7 +502,7 @@ if (v.getStatus() == ConnectorVersionStatus.DRAFT.getCode()) {
 
 ---
 
-## 12. 空代码块规范
+## 13. 空代码块规范
 
 **规则**：禁止空代码块，所有代码块（if/else/for/while/try/catch 等）必须有实际代码。
 
@@ -510,7 +548,7 @@ try {
 
 ---
 
-## 13. 注释块换行规范
+## 14. 注释块换行规范
 
 **规则**：代码块内的注释必须独立成行并缩进，禁止注释与花括号挤在同一行。
 
@@ -552,7 +590,7 @@ if (nodes == null || !nodes.isArray()) { /* 空节点跳过 */ return; }
 
 ---
 
-## 14. 行尾空格规范
+## 15. 行尾空格规范
 
 **规则**：禁止代码行尾有多余空格（Trailing Whitespace）。
 
@@ -583,7 +621,7 @@ log.info("Creating connector: {}", connectorId);
 
 ---
 
-## 15. Shell 脚本规范
+## 16. Shell 脚本规范
 
 **规则**：Shell 脚本必须以 `#!/bin/bash` 和 `set -ex` 开头，确保异常退出和调试输出。
 
@@ -637,7 +675,7 @@ main "$@"
 
 ---
 
-## 16. 圈复杂度规范
+## 17. 圈复杂度规范
 
 **规则**：方法圈复杂度必须维持在 15 以下，超过时必须重构拆分。
 
@@ -711,7 +749,7 @@ public void updateConnector(String id, ConnectorUpdateRequest request) {
 
 ---
 
-## 17. 函数深度规范
+## 18. 函数深度规范
 
 **规则**：方法最大嵌套深度不得超过 5 层，超过时必须重构。
 
@@ -812,7 +850,7 @@ public void processFlowExecution(String executionId) {
 
 ---
 
-## 18. 敏感信息规范
+## 19. 敏感信息规范
 
 **规则**：日志中禁止打印敏感信息，如直接打印请求头、Token、密码等。
 
@@ -881,7 +919,7 @@ public class WebhookController {
 
 ---
 
-## 19. 日期格式化规范
+## 20. 日期格式化规范
 
 **规则**：禁止使用 `SimpleDateFormat`，必须使用 `DateTimeFormatter`。
 
@@ -921,7 +959,7 @@ public String formatTime(Date date) {
 
 ## 总结
 
-以上 19 条规范为连接器平台项目的**强制要求**，所有代码提交前必须确保符合规范。
+以上 20 条规范为连接器平台项目的**强制要求**，所有代码提交前必须确保符合规范。
 
 请在 IDE 中配置相应的代码格式化和检查规则，确保代码风格统一。
 

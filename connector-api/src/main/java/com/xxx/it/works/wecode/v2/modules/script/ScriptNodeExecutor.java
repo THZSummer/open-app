@@ -163,6 +163,7 @@ public class ScriptNodeExecutor implements NodeExecutor {
      * @throws PolyglotException     GraalJS 执行错误
      * @throws IllegalStateException 脚本未定义 main 函数
      */
+    @SuppressWarnings("unchecked")
     private Map<String, Object> executeScript(String scriptSource, Map<String, Object> ctxMap) {
         Context jsContext = null;
         try {
@@ -204,9 +205,7 @@ public class ScriptNodeExecutor implements NodeExecutor {
             // 通用类型转换
             Object rawResult = resultValue.as(Object.class);
             if (rawResult instanceof Map) {
-                @SuppressWarnings("unchecked")
-                Map<String, Object> resultMap = (Map<String, Object>) rawResult;
-                return resultMap;
+                return (Map<String, Object>) rawResult;
             }
 
             // 非 Map 结果包装
