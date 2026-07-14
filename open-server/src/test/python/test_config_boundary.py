@@ -505,22 +505,21 @@ class TestParallelBranchesLimit:
 
     @pytest.mark.L4
     def test_publish_with_9_parallel_branches_rejected(self, draft_flow):
-        """9 条并行边 → 422"""
+        """9 条并行边从 parallel 网关出发 → 422"""
         fid, fvid = draft_flow
         config = {
             "nodes": [
                 {"id": "trigger", "type": "trigger", "data": {"type": "trigger", "triggerType": "http"}},
-                {"id": "n1", "type": "script", "data": {"type": "script", "script": "1+1"}},
+                {"id": "parallel_gw", "type": "parallel", "data": {"type": "parallel"}},
             ],
             "edges": [],
-            "flowConfig": {"flowMode": "serial"}
+            "flowConfig": {"flowMode": "parallel"}
         }
         for i in range(1, 10):
             exit_id = f"exit{i}"
             config["nodes"].append({"id": exit_id, "type": "exit", "data": {"type": "exit"}})
             config["edges"].append({
-                "id": f"pe{i}", "source": "n1", "target": exit_id,
-                "data": {"connectionMode": "parallel"}
+                "id": f"pe{i}", "source": "parallel_gw", "target": exit_id,
             })
         _set_orchestration(fvid, config)
         resp = _publish_flow(fid, fvid)
