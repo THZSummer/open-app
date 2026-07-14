@@ -47,14 +47,14 @@
 
 ## Keywords 关键字
 
-中文：微前端、qiankun、动态注册、能力配置、业务助手、marketadmin、wecodesite、market-web
-英文：Micro Frontend, qiankun, Dynamic Registration, Capability Configuration, Business Assistant, marketadmin, wecodesite, market-web
+中文：微前端、qiankun、动态注册、能力配置、业务助手、marketadmin、open-server、wecodesite、market-web
+英文：Micro Frontend, qiankun, Dynamic Registration, Capability Configuration, Business Assistant, marketadmin, open-server, wecodesite, market-web
 
 ## Abstract 摘要
 
-中文：本需求旨在通过微前端架构，实现业务助手管理配置的在线化与动态化。wecodesite 作为主应用（基座），通过动态读取 marketadmin 中配置的应用能力信息，自动生成左侧菜单入口并加载对应的子应用页面（如助手广场），无需修改 wecodesite 代码即可扩展新的嵌入工程。market-web 作为管理端，提供应用能力的增删改查管理界面，支持配置能力的标题、描述、图标、示意图、排序和访问地址。最终实现运维效率提升、业务体验改善、团队维护成本降低的目标。
+中文：本需求旨在通过微前端架构，实现业务助手管理配置的在线化与动态化。wecodesite 作为主应用（基座），通过 open-server 接口动态读取 marketadmin 中配置的应用能力信息，自动生成左侧菜单入口并加载对应的子应用页面（如助手广场），无需修改 wecodesite 代码即可扩展新的嵌入工程。market-web 作为管理端，提供应用能力的增删改查管理界面，支持配置能力的标题、描述、图标、示意图、排序和访问地址。最终实现运维效率提升、业务体验改善、团队维护成本降低的目标。
 
-英文：This requirement aims to achieve online and dynamic configuration management of business assistants through micro-frontend architecture. wecodesite, as the main application (base), dynamically reads application capability configurations from marketadmin to automatically generate left sidebar menu entries and load corresponding sub-application pages (such as the Assistant Square). New embedded projects can be added without modifying wecodesite code. market-web, as the management portal, provides CRUD interfaces for capability configuration, supporting title, description, icon, schematic, sort order, and access URL configuration. The ultimate goal is to improve operational efficiency, enhance business experience, and reduce team maintenance costs.
+英文：This requirement aims to achieve online and dynamic configuration management of business assistants through micro-frontend architecture. wecodesite, as the main application (base), dynamically reads application capability configurations from marketadmin via open-server to automatically generate left sidebar menu entries and load corresponding sub-application pages (such as the Assistant Square). New embedded projects can be added without modifying wecodesite code. market-web, as the management portal, provides CRUD interfaces for capability configuration, supporting title, description, icon, schematic, sort order, and access URL configuration. The ultimate goal is to improve operational efficiency, enhance business experience, and reduce team maintenance costs.
 
 ## List 偶发 abbreviations 缩略语清单
 
@@ -116,20 +116,25 @@
 │   │  (管理端)            │         │  (主应用/基座)            │       │
 │   │                     │         │                         │       │
 │   │  - 能力列表管理      │         │  - 左侧动态菜单           │       │
-│   │  - 能力增删改查      │  配置    │  - 微前端动态注册         │       │
-│   │  - 图标/示意图上传   │  存储    │  - 子应用挂载容器         │       │
+│   │  - 能力增删改查      │  CRUD   │  - 微前端动态注册         │       │
+│   │  - 图标/示意图上传   │         │  - 子应用挂载容器         │       │
 │   │  - 字段校验         │         │  - 路由分发              │       │
 │   └────────┬────────────┘         └───────────┬─────────────┘       │
-│            │                                  │                     │
-│            │  CRUD                    读取配置 │                     │
+│            │                                  │ 读取配置             │
 │            ▼                                  ▼                     │
-│   ┌─────────────────────────────────────────────────────────┐       │
-│   │              marketadmin (后端服务)                       │       │
-│   │                                                         │       │
-│   │  - 能力配置 CRUD API                                    │       │
-│   │  - 文件上传 API (图标/示意图)                             │       │
-│   │  - 能力配置数据持久化                                     │       │
-│   └─────────────────────────────────────────────────────────┘       │
+│   ┌─────────────────────┐    ┌──────────────────────────┐          │
+│   │  marketadmin        │    │  open-server              │          │
+│   │  (后端服务)          │    │  (开放服务)                │          │
+│   │                     │    │                          │          │
+│   │  - 能力配置 CRUD API │    │  - 能力配置查询接口        │          │
+│   │  - 文件上传 API      │    │    (读取 marketadmin 配置) │          │
+│   │  - 数据持久化        │    │                          │          │
+│   └────────┬────────────┘    └────────────┬─────────────┘          │
+│            │                              │                        │
+│            │         ┌────────┐           │                        │
+│            └────────>│ 数据库  │<──────────┘                        │
+│                      └────────┘                                   │
+│                  (marketadmin 与 open-server 共享同一数据库)          │
 │                                                                     │
 │                          qiankun 微前端                              │
 │   ┌─────────────────────────────────────────────────────────┐       │
@@ -146,6 +151,15 @@
 │   └─────────────────────────────────────────────────────────┘       │
 └─────────────────────────────────────────────────────────────────────┘
 ```
+
+**数据流转说明：**
+
+marketadmin 与 open-server 读取的是同一个数据库，配置数据的流转路径如下：
+
+1. **写入路径**：业务管理员在 market-web 中修改能力配置 → market-web 调用 marketadmin 后端服务的 CRUD API → marketadmin 将数据保存到数据库
+2. **读取路径**：wecodesite 通过调用 open-server 的接口获取能力配置 → open-server 从数据库中读取 marketadmin 已保存的配置数据 → 返回给 wecodesite 用于动态渲染菜单和加载子应用
+
+通过共享同一数据库，实现 market-web 中的配置修改经由 marketadmin 持久化后，wecodesite 可通过 open-server 实时读取最新配置，无需 marketadmin 与 open-server 之间直接通信。
 
 ### 利益相关方
 
@@ -165,11 +179,12 @@
 
 | 所属场景 | 场景名称 | 场景简要说明 | 涉及角色 |
 |---------|---------|------------|---------|
+| 助手配置管理 | 能力配置列表查看 | 业务管理员在 market-web 中查看所有已配置的应用能力列表，支持分页和关键词搜索 | 业务管理员 |
 | 助手配置管理 | 能力配置创建 | 业务管理员在 market-web 中新增应用能力配置，填写标题、描述、图标、示意图、排序、访问地址 | 业务管理员 |
 | 助手配置管理 | 能力配置编辑 | 业务管理员修改已有能力配置，修改后即时生效 | 业务管理员 |
 | 助手配置管理 | 能力配置删除 | 业务管理员删除不再需要的能力配置，删除后 wecodesite 菜单同步移除 | 业务管理员 |
 | 助手配置管理 | 图标/示意图上传 | 业务管理员上传能力图标和示意图，支持预览和替换 | 业务管理员 |
-| 微前端动态展示 | 菜单动态渲染 | wecodesite 启动时从 marketadmin 读取能力配置，动态生成左侧菜单入口 | 系统（自动） |
+| 微前端动态展示 | 菜单动态渲染 | wecodesite 启动时从 open-server 读取能力配置，动态生成左侧菜单入口 | 系统（自动） |
 | 微前端动态展示 | 子应用动态加载 | 用户点击菜单项，wecodesite 根据 activeRule 通过 qiankun 加载对应子应用页面 | 业务管理员 |
 | 微前端动态展示 | 新工程零代码接入 | 运维在 market-web 配置新工程能力信息，wecodesite 自动展示，无需改代码 | 运维人员 |
 
@@ -207,7 +222,7 @@
 | 特性名称 | 修改说明 |
 |---------|---------|
 | wecodesite 左侧导航菜单 | Sidebar 当前已从 microApps.js 动态渲染微前端应用菜单，需改为从 API 配置动态渲染；已订阅能力菜单已从 API 动态加载，保持不变 |
-| wecodesite 子应用注册 | 当前使用 loadMicroApp 手动加载模式（在 Layout.jsx 中），配置来源为静态 microApps.js，需改为从 API 异步获取配置后仍使用 loadMicroApp 手动加载 |
+| wecodesite 子应用注册 | 当前通过主动调用 loadMicroApp 加载子应用（在 Layout.jsx 中），配置来源为静态 microApps.js，需改为从 API 异步获取配置后仍通过主动调用 loadMicroApp 加载 |
 
 **【删除】**
 
@@ -227,7 +242,7 @@
 | 业务管理员 | UC-04 删除能力配置 | 删除不再需要的能力配置，二次确认后删除 | 是 |
 | 业务管理员 | UC-05 上传图标/示意图 | 上传能力图标和示意图文件，支持预览和替换 | 是 |
 | 业务管理员 | UC-06 查看嵌入页面 | 在 wecodesite 中点击菜单项，查看嵌入的子应用页面 | 是 |
-| 系统 | UC-07 动态加载能力配置 | wecodesite 启动时从 marketadmin API 获取能力配置，通过 loadMicroApp 动态加载子应用 | 是 |
+| 系统 | UC-07 动态加载能力配置 | wecodesite 启动时从 open-server API 获取能力配置，通过主动调用 loadMicroApp 加载子应用 | 是 |
 | 运维人员 | UC-08 新增工程接入 | 在 market-web 配置新工程能力信息，wecodesite 自动展示 | 是 |
 
 ### 5.2 用例分析
@@ -273,14 +288,14 @@
 
 #### UC-07 动态加载能力配置
 
-**【简要说明】** wecodesite 当前使用 `loadMicroApp` 在 Layout.jsx 中手动加载子应用，配置来源为静态 `microApps.js` 文件，使用 HashRouter 路由模式。需改为从 marketadmin API 异步获取能力配置列表，将配置传入 Layout.jsx 中的 `loadMicroApp` 逻辑，替换静态 `microApps.js` 数据源。同时根据配置动态渲染左侧菜单。
+**【简要说明】** wecodesite 当前在 Layout.jsx 中主动调用 `loadMicroApp` 加载子应用，配置来源为静态 `microApps.js` 文件，使用 HashRouter 路由模式。需改为从 open-server API 异步获取能力配置列表，将配置传入 Layout.jsx 中的 `loadMicroApp` 逻辑，替换静态 `microApps.js` 数据源。同时根据配置动态渲染左侧菜单。
 
 **【Actor】** 系统（wecodesite 前端）
 
 **【前置条件】**
 1. wecodesite 前端已加载 qiankun 依赖
 2. wecodesite 使用 HashRouter 路由模式，子应用 activeRule 需基于 location.hash 匹配
-3. marketadmin 服务正常运行，能力配置 API 可访问
+3. open-server 服务正常运行，能力配置查询接口可访问
 4. 配置中的子应用（如助手广场）已部署且可访问
 
 **【最小保证】** API 请求失败时，wecodesite 展示基础功能页面（自有页面），左侧菜单显示加载失败提示，不影响主应用自身功能。
@@ -289,12 +304,12 @@
 
 **【主成功场景】**
 1. wecodesite 页面加载，渲染主应用基础布局（头部、侧边栏骨架、内容区）
-2. wecodesite 调用 marketadmin API 获取能力配置列表
+2. wecodesite 调用 open-server API 获取能力配置列表
 3. API 返回能力配置数组（按 sortOrder 排序）
 4. wecodesite 将配置数组转换为两个部分：
    - 菜单数据：渲染左侧导航菜单（标题、图标、路由路径）
    - 子应用注册数据：转换为 qiankun 的 `{ name, entry, container, activeRule }` 格式
-5. Layout.jsx 中 `loadMicroApp` 使用 API 返回的配置数据（替换静态 microApps.js），手动加载对应子应用
+5. Layout.jsx 中主动调用 `loadMicroApp` 使用 API 返回的配置数据（替换静态 microApps.js）加载对应子应用
 6. 左侧菜单渲染完成，显示所有已配置的能力入口
 7. 用户点击菜单项，hash 路由变化触发 Layout useEffect 重新匹配，通过 `loadMicroApp` 加载对应子应用到 `#sub-app-viewport`
 
@@ -336,27 +351,27 @@
 
 | 方案 | 实现方式 | 优点 | 缺点 | 是否采用 |
 |------|---------|------|------|---------|
-| qiankun manual loadMicroApp + 静态配置（当前现状） | 在 Layout.jsx 中通过 loadMicroApp 手动加载，配置来自静态 microApps.js | 灵活控制加载时机，已验证可用 | 配置静态硬编码，新增子应用需改代码 | 否（当前现状，需改造） |
+| qiankun manual loadMicroApp + 静态配置（当前现状） | 在 Layout.jsx 中主动调用 loadMicroApp 加载，配置来自静态 microApps.js | 灵活控制加载时机，已验证可用 | 配置静态硬编码，新增子应用需改代码 | 否（当前现状，需改造） |
 | qiankun manual loadMicroApp + API 配置 | 保持 loadMicroApp 模式，配置源改为 API 异步获取 | 改动量最小，复用现有已验证逻辑；配置驱动，零代码扩展 | 无预加载能力；需手动管理生命周期 | **是** |
 | qiankun 动态注册 | 从 API 获取配置后调用 registerMicroApps + start | 配置驱动；qiankun 自动管理生命周期和路由匹配 | 需从 loadMicroApp 迁移；HashRouter 下 activeRule 处理复杂 | 否 |
 | iframe 嵌入 | 使用 iframe 加载子页面 | 天然隔离，简单 | 交互受限、性能差、UX 差 | 否 |
 | Module Federation | Webpack 5 模块联邦 | 编译时集成，性能好 | 强依赖 Webpack 5，子应用改造成本高 | 否 |
 
-**选型说明：** 采用 `loadMicroApp` + API 配置方案。wecodesite 当前已在 Layout.jsx 中使用 `loadMicroApp` 手动加载子应用，配置来源为静态 `microApps.js`。仅需将配置源从静态文件改为 API 动态获取，保持 `loadMicroApp` 手动加载模式不变，改动量最小且基于已验证的代码。满足"后续新增工程仅需配置"的核心需求。
+**选型说明：** 采用 `loadMicroApp` + API 配置方案。wecodesite 当前已在 Layout.jsx 中主动调用 `loadMicroApp` 加载子应用，配置来源为静态 `microApps.js`。仅需将配置源从静态文件改为 API 动态获取，保持主动调用 `loadMicroApp` 加载模式不变，改动量最小且基于已验证的代码。满足"后续新增工程仅需配置"的核心需求。
 
 ### 6.2 功能实现整体设计方案
 
 #### 6.2.1 整体方案
 
 **设计原则：**
-1. **配置驱动**：所有能力信息通过 marketadmin API 管理，前端动态读取
+1. **配置驱动**：所有能力信息通过 marketadmin API 管理，wecodesite 通过 open-server API 动态读取
 2. **零代码扩展**：新增嵌入工程仅需在 market-web 配置，wecodesite 无需改代码
 3. **渐进增强**：API 加载失败时降级展示主应用基础功能，不影响核心体验
 4. **样式隔离**：通过 qiankun 沙箱 `experimentalStyleIsolation` 实现主子应用样式隔离
 5. **技术栈无关**：子应用可为 React、Vue 等任意技术栈，通过 qiankun 统一接入
 
 **设计约束：**
-1. wecodesite 作为主应用，必须首先从 API 获取能力配置后，通过 `loadMicroApp` 手动加载子应用
+1. wecodesite 作为主应用，必须首先从 API 获取能力配置后，通过主动调用 `loadMicroApp` 加载子应用
 2. wecodesite 使用 HashRouter 路由模式，子应用 activeRule 需为基于 location.hash 的匹配函数
 3. 子应用必须按 qiankun 规范导出 `bootstrap`、`mount`、`unmount` 生命周期函数
 4. 子应用必须配置 CORS 允许主应用跨域拉取资源
@@ -392,17 +407,32 @@
 │                   │ └────────┴─────────────────────────┘ │ │
 │                   └──────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────┘
-         │ API请求                              │ fetch entry
+         │ API请求(读取配置)                      │ fetch entry
          ▼                                      ▼
 ┌─────────────────┐              ┌──────────────────────────┐
-│  marketadmin    │              │  子应用 (如: 助手广场)     │
+│  open-server    │              │  子应用 (如: 助手广场)     │
 │                 │              │                          │
 │  /api/capabilities│            │  导出生命周期:            │
-│  /api/upload     │              │  bootstrap/mount/unmount │
+│  (查询接口)      │              │  bootstrap/mount/unmount │
 │                  │              │  CORS: *                 │
-│  数据库          │              │  UMD/ESM 格式            │
-└─────────────────┘              └──────────────────────────┘
-         ▲
+│  读取数据库      │              │  UMD/ESM 格式            │
+└────────┬────────┘              └──────────────────────────┘
+         │
+         │  共享
+         ▼
+┌─────────────────┐
+│  数据库          │
+│  (共享)          │
+└────────▲────────┘
+         │
+         │ CRUD + 持久化
+┌─────────────────┐
+│  marketadmin    │
+│  (后端服务)      │
+│                  │
+│  /api/capabilities│
+│  /api/upload     │
+└────────▲────────┘
          │ CRUD
 ┌─────────────────┐
 │  market-web     │
@@ -517,7 +547,7 @@ open-app/
 
 **wecodesite 动态注册实现思路：**
 
-1. **异步初始化**：wecodesite 入口文件（main.jsx）当前仅做 React 渲染，qiankun 子应用加载逻辑位于 Layout.jsx 中，使用 `loadMicroApp` 手动加载，配置来源为静态 `microApps.js`。需改为异步流程：先请求 API 获取能力配置，将配置数据传入 App/Layout，替换静态 `microApps.js` 作为 `loadMicroApp` 的数据源。保持 `loadMicroApp` 手动加载模式不变。
+1. **异步初始化**：wecodesite 入口文件（main.jsx）当前仅做 React 渲染，qiankun 子应用加载逻辑位于 Layout.jsx 中，通过主动调用 `loadMicroApp` 加载子应用，配置来源为静态 `microApps.js`。需改为异步流程：先请求 API 获取能力配置，将配置数据传入 App/Layout，替换静态 `microApps.js` 作为 `loadMicroApp` 的数据源。保持主动调用 `loadMicroApp` 加载模式不变。
 
 2. **配置转换**：API 返回的能力配置字段需映射为 qiankun 注册格式。映射关系如下：
 
@@ -535,7 +565,7 @@ open-app/
    | sortOrder | - | - | 菜单排序依据 |
    | routePath | - | menuKey | 菜单高亮 key，当前 microApps.js 中为 `qiankun/xxx` 格式 |
 
-3. **activeRule / menuKey 匹配策略**：wecodesite 使用 HashRouter，URL 形式为 `/#/qiankun/xxx`。当前 `loadMicroApp` 模式不依赖 qiankun 的 activeRule 自动匹配，而是由 Layout.jsx 中的 `useEffect` 根据当前路由 `location.pathname` 匹配 `microApps` 配置的 `menuKey`，手动调用 `loadMicroApp` 加载子应用。当前 `microApps.js` 中 `menuKey` 为 `qiankun/xxx` 格式，Layout 通过 `location.pathname.startsWith('/' + app.menuKey)` 匹配。迁移后由后端配置提供 routePath 字段（如 `/qiankun/assistant-square`），前端生成对应的 menuKey 供 Layout 匹配。
+3. **activeRule / menuKey 匹配策略**：wecodesite 使用 HashRouter，URL 形式为 `/#/qiankun/xxx`。当前 `loadMicroApp` 模式不依赖 qiankun 的 activeRule 自动匹配，而是由 Layout.jsx 中的 `useEffect` 根据当前路由 `location.pathname` 匹配 `microApps` 配置的 `menuKey`，主动调用 `loadMicroApp` 加载子应用。当前 `microApps.js` 中 `menuKey` 为 `qiankun/xxx` 格式，Layout 通过 `location.pathname.startsWith('/' + app.menuKey)` 匹配。迁移后由后端配置提供 routePath 字段（如 `/qiankun/assistant-square`），前端生成对应的 menuKey 供 Layout 匹配。
 
 4. **菜单动态渲染**：左侧导航菜单中微前端应用部分当前已从 `microApps.js` 动态 `map` 渲染（位于 Sidebar.jsx），需改为根据 API 返回数据渲染。Sidebar 中已有「已订阅能力」菜单从 API 动态加载的逻辑（`fetchSubscribedAbilities`），保持不变。
 
@@ -583,21 +613,21 @@ open-app/
      </AntLayout>
    </AntLayout>
    ```
-   注：Layout.jsx 中包含 `loadMicroApp` 手动加载逻辑（useEffect 中根据当前路由匹配 microApps 配置，调用 loadMicroApp 加载子应用，离开时 unmount），保持此逻辑不变，仅将 microApps 数据源改为 API 配置。
+   注：Layout.jsx 中包含主动调用 `loadMicroApp` 加载子应用的逻辑（useEffect 中根据当前路由匹配 microApps 配置，调用 loadMicroApp 加载子应用，离开时 unmount），保持此逻辑不变，仅将 microApps 数据源改为 API 配置。
 
-   **关键约束**：wecodesite 使用 React Router v6 嵌套路由 + HashRouter，`<Layout>` 作为父路由组件（`path="/"`），自有页面路由通过 `<Outlet />` 渲染到 Content 区域内。Layout 组件根据路由条件渲染 Header、AppInfoBar、Sider（仅详情页面显示 Sider）。当前微前端子应用页面（`/qiankun/*`）通过条件渲染 `#sub-app-viewport` 容器替代 `<Outlet />`，并由 Layout 中的 `loadMicroApp` 在 useEffect 中手动加载子应用。
+   **关键约束**：wecodesite 使用 React Router v6 嵌套路由 + HashRouter，`<Layout>` 作为父路由组件（`path="/"`），自有页面路由通过 `<Outlet />` 渲染到 Content 区域内。Layout 组件根据路由条件渲染 Header、AppInfoBar、Sider（仅详情页面显示 Sider）。当前微前端子应用页面（`/qiankun/*`）通过条件渲染 `#sub-app-viewport` 容器替代 `<Outlet />`，并由 Layout 中的 `loadMicroApp` 在 useEffect 中主动加载子应用。
 
    **方案对比**：
 
    | 方案 | 实现方式 | 优点 | 缺点 |
    |------|---------|------|------|
-   | A. 现有方案优化（Layout loadMicroApp + API 配置） | 保持 Layout.jsx 中 `loadMicroApp` 手动加载逻辑和条件渲染 `#sub-app-viewport` 的现有逻辑，配置源从静态 `microApps.js` 改为 API；保留 `qiankun/*` 路由 | 改动量最小，复用现有已验证逻辑；`#sub-app-viewport` 已在 Layout 中条件渲染；`qiankun/*` 路由已存在；useEffect 加载/卸载逻辑保持不变 | 无预加载能力；需手动管理生命周期（现有逻辑已实现） |
-   | B. 迁移到 registerMicroApps + start | 从 loadMicroApp 迁移到 registerMicroApps 自动注册，移除 Layout 中的 useEffect 手动加载逻辑 | qiankun 自动管理生命周期和路由匹配；支持 prefetch 预加载 | 迁移成本高；HashRouter 下 activeRule 需改为函数形式；需移除现有已验证的 loadMicroApp 逻辑 |
+   | A. 现有方案优化（Layout loadMicroApp + API 配置） | 保持 Layout.jsx 中主动调用 `loadMicroApp` 加载逻辑和条件渲染 `#sub-app-viewport` 的现有逻辑，配置源从静态 `microApps.js` 改为 API；保留 `qiankun/*` 路由 | 改动量最小，复用现有已验证逻辑；`#sub-app-viewport` 已在 Layout 中条件渲染；`qiankun/*` 路由已存在；useEffect 加载/卸载逻辑保持不变 | 无预加载能力；需手动管理生命周期（现有逻辑已实现） |
+   | B. 迁移到 registerMicroApps + start | 从 loadMicroApp 迁移到 registerMicroApps 自动注册，移除 Layout 中的 useEffect 主动加载逻辑 | qiankun 自动管理生命周期和路由匹配；支持 prefetch 预加载 | 迁移成本高；HashRouter 下 activeRule 需改为函数形式；需移除现有已验证的 loadMicroApp 逻辑 |
    | C. 动态路由生成 | 根据 API 配置动态生成 `<Route>` | 路由最精确 | 需异步渲染路由，复杂度高；每次 API 更新需重新生成路由表 |
 
    **推荐方案 A（保持 loadMicroApp 模式，配置源改为 API）**：
 
-   **理由**：wecodesite Layout.jsx 中已实现 `loadMicroApp` 手动加载子应用的完整逻辑（useEffect 中根据路由匹配配置、加载子应用、离开时 unmount），条件渲染 `#sub-app-viewport` 容器也已就绪，`qiankun/*` 路由已存在。仅需将 `microApps` 数据源从静态 `microApps.js` 改为 API 动态获取，改动量最小且基于已验证的代码。
+   **理由**：wecodesite Layout.jsx 中已实现主动调用 `loadMicroApp` 加载子应用的完整逻辑（useEffect 中根据路由匹配配置、加载子应用、离开时 unmount），条件渲染 `#sub-app-viewport` 容器也已就绪，`qiankun/*` 路由已存在。仅需将 `microApps` 数据源从静态 `microApps.js` 改为 API 动态获取，改动量最小且基于已验证的代码。
 
    **改造点（一次性，后续新增子应用无需再改）**：
 
@@ -616,7 +646,7 @@ open-app/
 
    - **两套独立路由系统并行工作，互不干扰**：
      - wecodesite 的 React Router（HashRouter）负责渲染 Layout 布局和匹配自有页面路由
-     - Layout 的 useEffect 监听路由变化，手动调用 `loadMicroApp` 加载匹配的子应用
+     - Layout 的 useEffect 监听路由变化，主动调用 `loadMicroApp` 加载匹配的子应用
 
    - **访问自有页面（如 `/appList`）的流程**：
      1. HashRouter 匹配 `<Route path="appList">` -> `<Outlet />` 渲染 AppList 到 Content 区域
@@ -940,7 +970,7 @@ CapabilityFormModal 打开
 ##### wecodesite 动态加载流程时序图
 
 ```
-用户浏览器          wecodesite           marketadmin API        qiankun
+用户浏览器          wecodesite           open-server API         qiankun
     │                  │                      │                    │
     │  访问页面         │                      │                    │
     ├─────────────────>│                      │                    │
@@ -983,7 +1013,7 @@ CapabilityFormModal 打开
 
 | 故障场景 | 影响 | 应对措施 |
 |---------|------|---------|
-| marketadmin API 不可达 | wecodesite 无法加载能力配置，菜单无法展示 | 降级展示主应用基础功能，显示"配置加载失败"提示和重试按钮 |
+| open-server API 不可达 | wecodesite 无法加载能力配置，菜单无法展示 | 降级展示主应用基础功能，显示"配置加载失败"提示和重试按钮 |
 | 单条能力配置的 accessUrl 不合法 | 该子应用无法注册，菜单项缺失 | 跳过该条配置，控制台输出警告，其他配置正常注册 |
 | 子应用 entry 不可达 | 点击菜单后页面空白 | 显示"页面加载失败"错误提示，不影响其他子应用 |
 | 文件上传失败 | 图标/示意图无法保存 | 显示上传失败提示，允许重试，表单数据保留 |
@@ -1037,7 +1067,7 @@ CapabilityFormModal 打开
 | TASK-03 | 能力新增/编辑弹窗开发 | market-web | 实现新增和编辑弹窗表单，复用同一表单组件；编辑时回填数据；实现前端字段校验 | US-02 |
 | TASK-04 | 图标/示意图上传组件开发 | market-web | 实现图标上传（40x40，200K）和示意图上传（520x288，500K）组件；支持预览和替换；上传前尺寸和大小校验 | US-02 |
 | TASK-05 | 能力删除功能开发 | market-web | 实现删除功能，二次确认后调用删除接口；删除成功后刷新列表 | US-02 |
-| TASK-06 | wecodesite 配置异步加载模块 | wecodesite | 实现从 marketadmin API 异步获取能力配置；请求超时和失败容错处理；在 main.jsx 中新增异步初始化流程，将配置传入 App/Layout | US-03 |
+| TASK-06 | wecodesite 配置异步加载模块 | wecodesite | 实现从 open-server API 异步获取能力配置；请求超时和失败容错处理；在 main.jsx 中新增异步初始化流程，将配置传入 App/Layout | US-03 |
 | TASK-07 | wecodesite 配置转换与传入 | wecodesite | 实现将 API 配置转换为 loadMicroApp 所需格式（含 menuKey 生成）；将配置数据传入 Layout.jsx；保留现有 loadMicroApp useEffect 逻辑，仅替换数据源 | US-03 |
 | TASK-08 | wecodesite 子应用容器保留与优化 | wecodesite | 保留 Layout.jsx 中条件渲染 `#sub-app-viewport` 和 loadMicroApp useEffect 的现有逻辑；处理子应用加载 loading/error 状态；App.jsx 现有 `qiankun/*` 路由保持不变 | US-03 |
 | TASK-09 | wecodesite 动态菜单集成 | wecodesite | 改造 Sidebar.jsx，将微前端应用菜单数据源从 microApps.js 改为 API 配置（按 sortOrder 排序）；保留已订阅能力菜单的现有 API 加载逻辑 | US-03 |
@@ -1049,7 +1079,7 @@ CapabilityFormModal 打开
 
 | 失效模式 | 失效原因 | 失效影响 | 严重度 | 发生度 | 检测度 | RPN | 应对措施 |
 |---------|---------|---------|--------|--------|--------|-----|---------|
-| API 不可达 | marketadmin 服务宕机或网络故障 | wecodesite 无法加载菜单和子应用 | 高 | 低 | 高 | 中 | 降级展示主应用基础功能；提供重试机制；配置监控告警 |
+| API 不可达 | open-server 服务宕机或网络故障 | wecodesite 无法加载菜单和子应用 | 高 | 低 | 高 | 中 | 降级展示主应用基础功能；提供重试机制；配置监控告警 |
 | API 响应超时 | 数据库慢查询或网络延迟 | wecodesite 初始化卡顿 | 中 | 中 | 高 | 中 | 设置 5s 请求超时；超时后降级；API 端优化查询性能 |
 | 子应用资源加载失败 | 子应用未部署或网络异常 | 对应菜单项页面空白 | 中 | 低 | 高 | 低 | 显示错误提示；不影响其他子应用；qiankun 错误边界捕获 |
 | 配置数据异常 | API 返回格式错误或字段缺失 | 部分或全部子应用无法注册 | 中 | 低 | 中 | 低 | 前端做数据格式校验；单条异常跳过不影响整体 |
@@ -1094,7 +1124,7 @@ CapabilityFormModal 打开
 | 日志监控 | marketadmin 记录能力配置操作日志（操作人、操作时间、操作内容）；wecodesite 控制台输出子应用注册和加载日志 |
 | 健康检查 | marketadmin 提供能力配置 API 健康检查端点；监控 API 可用性和响应时间 |
 | 告警通知 | API 不可达或响应超时阈值告警；文件上传失败率告警 |
-| 故障恢复 | API 故障时 wecodesite 降级运行；marketadmin 数据库支持定期备份和恢复 |
+| 故障恢复 | API 故障时 wecodesite 降级运行；共享数据库支持定期备份和恢复 |
 | 灰度发布 | 能力配置支持按环境（UAT/生产）独立管理；可在 UAT 环境验证后发布到生产 |
 
 ### 7.5 资料
@@ -1115,7 +1145,7 @@ CapabilityFormModal 打开
 | check 点 | 是否达标 | 说明 |
 |---------|---------|------|
 | 需求背景和价值是否清晰描述 | 是 | 第1章详细描述了背景、价值、客户问题 |
-| 涉及的角色和场景是否完整识别 | 是 | 第3.1节识别了8个场景和4类角色 |
+| 涉及的角色和场景是否完整识别 | 是 | 第3.1节识别了9个场景和4类角色 |
 | 结构化IR是否完整 | 是 | 第3.2节包含完整的IR属性 |
 | 用例分析是否覆盖所有核心功能 | 是 | 第5章分析了8个用例，含主成功场景和扩展场景 |
 | 功能设计是否包含接口定义 | 是 | 第6.3.6节定义了5个API接口，含输入参数和返回值 |
