@@ -229,7 +229,9 @@ public class FlowPublishValidator {
     }
 
     private void validateSingleMode(JsonNode nodes, List<String> errors) {
-        boolean hasTrigger = false, hasConnector = false, hasExit = false;
+        boolean hasTrigger = false;
+        boolean hasConnector = false;
+        boolean hasExit = false;
         int connectorCount = 0;
         for (JsonNode node : nodes) {
             String type = NodeTypeResolver.businessType(node);
@@ -248,7 +250,8 @@ public class FlowPublishValidator {
     }
 
     private void validateSerialMode(JsonNode nodes, Map<String, String> propertyConfig, List<String> errors) {
-        boolean hasTrigger = false, hasExit = false;
+        boolean hasTrigger = false;
+        boolean hasExit = false;
         int connectorCount = 0;
         for (JsonNode node : nodes) {
             String type = NodeTypeResolver.businessType(node);
@@ -273,7 +276,9 @@ public class FlowPublishValidator {
     }
 
     private void validateParallelMode(JsonNode nodes, List<String> errors) {
-        boolean hasTrigger = false, hasParallel = false, hasExit = false;
+        boolean hasTrigger = false;
+        boolean hasParallel = false;
+        boolean hasExit = false;
         for (JsonNode node : nodes) {
             String type = NodeTypeResolver.businessType(node);
             if (type == null) continue;
