@@ -8,13 +8,47 @@ from conftest import assert_operate_log, _find_approval, _set_orchestration
 
 
 def _mk_config(**kw):
+    """构建编排配置对象（返回 dict，由 requests 一次序列化）。
+
+    避免返回 json.dumps 字符串导致 Jackson 侧被解析为 TextNode 而非 ObjectNode，
+    从而引发"节点列表为空"等误报。
+    """
     nodes = kw.get("nodes", [
         {"id": "trigger", "type": "trigger", "data": {"type": "trigger", "triggerType": "http"}},
         {"id": "exit", "type": "exit", "data": {"type": "exit"}},
     ])
     edges = kw.get("edges", [{"id": "e1", "source": "trigger", "target": "exit"}])
     flow_config = kw.get("flowConfig", {"flowMode": "single"})
-    return json.dumps({"nodes": nodes, "edges": edges, "flowConfig": flow_config})
+    return {"nodes": nodes, "edges": edges, "flowConfig": flow_config}
+
+
+def _mk_parallel_config(branch_count, **kw):
+    """构建并行模式编排配置：trigger -> parallel -> [b1..bN] -> exit
+
+    并行分支数 = parallel 网关节点出度。connector 节点不携带 connectorId，
+    故不会触发连接器版本引用校验，便于聚焦测试分支数校验本身。
+
+    返回 dict（非 json.dumps 字符串），由 requests 库的 json= 参数一次序列化，
+    确保 orchestrationConfig 以 JSON object 形式发送（避免 Jackson TextNode 问题）。
+
+    Args:
+        branch_count: 并行分支数（parallel 节点的出度）
+    Returns:
+        dict: 编排配置对象 {nodes, edges, flowConfig}
+    """
+    nodes = [
+        {"id": "trigger", "type": "trigger", "data": {"type": "trigger", "triggerType": "http"}},
+        {"id": "parallel", "type": "parallel", "data": {"type": "parallel"}},
+    ]
+    edges = [{"id": "e0", "source": "trigger", "target": "parallel"}]
+    for i in range(1, branch_count + 1):
+        bid = f"b{i}"
+        nodes.append({"id": bid, "type": "connector", "data": {"type": "connector"}})
+        edges.append({"id": f"ep{i}", "source": "parallel", "target": bid})
+        edges.append({"id": f"ex{i}", "source": bid, "target": "exit"})
+    nodes.append({"id": "exit", "type": "exit", "data": {"type": "exit"}})
+    flow_config = kw.get("flowConfig", {"flowMode": "parallel"})
+    return {"nodes": nodes, "edges": edges, "flowConfig": flow_config}
 
 
 class TestFlowVersionPublish:
@@ -144,33 +178,46 @@ class TestFlowVersionPublish:
 
     @pytest.mark.L4
     def test_parallel_branches_refused(self, draft_flow):
-        """#11 Flow.Max.Parallel.Branches: 并行分支数 > 上限 → 拒绝"""
+        """#11 Flow.Max.Parallel.Branches: parallel 网关出度 > 上限 → 拒绝（修正拓扑含 parallel 网关）"""
         fid, fvid = draft_flow
         set_lookup_config("Flow.Max.Parallel.Branches", "2")
         try:
-            cfg = _mk_config(
-                flowConfig={"flowMode": "parallel"},
-                nodes=[
-                    {"id": "trigger", "type": "trigger", "data": {"type": "trigger", "triggerType": "http"}},
-                    {"id": "b1", "type": "connector", "data": {"type": "connector"}},
-                    {"id": "b2", "type": "connector", "data": {"type": "connector"}},
-                    {"id": "b3", "type": "connector", "data": {"type": "connector"}},
-                    {"id": "exit", "type": "exit", "data": {"type": "exit"}},
-                ],
-                edges=[
-                    {"id": "e1", "source": "trigger", "target": "b1"},
-                    {"id": "e2", "source": "trigger", "target": "b2"},
-                    {"id": "e3", "source": "trigger", "target": "b3"},
-                    {"id": "e4", "source": "b1", "target": "exit"},
-                    {"id": "e5", "source": "b2", "target": "exit"},
-                    {"id": "e6", "source": "b3", "target": "exit"},
-                ],
-            )
+            # parallel 出度 = 4 > 上限 2
+            cfg = _mk_parallel_config(branch_count=4)
             api("PUT", f"/flows/{fid}/versions/{fvid}", {"orchestrationConfig": cfg})
             resp = api("POST", f"/flows/{fid}/versions/{fvid}/publish")
-            assert resp.json()["code"] != "200", f"#11 parallel branches exceed should be refused"
+            body = resp.json()
+            assert body["code"] != "200", f"#11 4 分支应超过上限 2，实际通过: {body}"
+            assert "并行分支数超过上限" in body.get("messageZh", ""), \
+                f"错误信息应提示超上限，实际 messageZh={body.get('messageZh')}"
         finally:
             set_lookup_config("Flow.Max.Parallel.Branches", "8")
+
+    @pytest.mark.L4
+    def test_parallel_branches_below_min_refused(self, draft_flow):
+        """并行分支数 < 下限(2) → 拒绝：单分支不构成并行语义"""
+        fid, fvid = draft_flow
+        # parallel 出度 = 1 < 下限 2（硬编码常量 MIN_PARALLEL_BRANCHES=2，无需改 lookup）
+        cfg = _mk_parallel_config(branch_count=1)
+        api("PUT", f"/flows/{fid}/versions/{fvid}", {"orchestrationConfig": cfg})
+        resp = api("POST", f"/flows/{fid}/versions/{fvid}/publish")
+        body = resp.json()
+        assert body["code"] != "200", f"单分支应被拒绝（不构成并行语义），实际: {body}"
+        assert "并行分支数至少" in body.get("messageZh", ""), \
+            f"错误信息应提示不足下限，实际 messageZh={body.get('messageZh')}"
+
+    @pytest.mark.L4
+    def test_parallel_branches_boundary_min_ok(self, draft_flow):
+        """并行分支数边界下限 2 → 通过分支数校验"""
+        fid, fvid = draft_flow
+        # parallel 出度 = 2 = MIN_PARALLEL_BRANCHES，应通过
+        cfg = _mk_parallel_config(branch_count=2)
+        api("PUT", f"/flows/{fid}/versions/{fvid}", {"orchestrationConfig": cfg})
+        resp = api("POST", f"/flows/{fid}/versions/{fvid}/publish")
+        body = resp.json()
+        msg = body.get("messageZh", "") + body.get("messageEn", "")
+        assert "并行分支" not in msg, \
+            f"2 条分支应在合法范围内（不应因分支数原因被拒），实际: {body}"
 
     @pytest.mark.L4
     def test_serial_nodes_refused(self, draft_flow):

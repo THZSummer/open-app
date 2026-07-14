@@ -231,15 +231,69 @@ class FlowPublishValidatorTest {
         }
     }
 
-    // ===== 校验 6: 并行分支数上限 =====
+    // ===== 校验 6: 并行分支数上下限 =====
 
     @Nested
-    @DisplayName("校验6: 并行分支数上限")
+    @DisplayName("校验6: 并行分支数上下限")
     class ValidateParallelBranchesTest {
 
+        /**
+         * 构建正确并行拓扑编排配置：trigger → parallel → [b1..bN] → exit
+         * 并行分支数 = parallel 网关节点出度
+         */
+        private static String buildParallelConfig(int branchCount) {
+            StringBuilder nodes = new StringBuilder();
+            nodes.append("{\"id\":\"trigger\",\"type\":\"trigger\",\"data\":{\"type\":\"trigger\"}},");
+            nodes.append("{\"id\":\"parallel\",\"type\":\"parallel\",\"data\":{\"type\":\"parallel\"}}");
+            for (int i = 1; i <= branchCount; i++) {
+                nodes.append(",{\"id\":\"b").append(i).append("\",\"type\":\"connector\",\"data\":{\"type\":\"connector\"}}");
+            }
+            nodes.append(",{\"id\":\"exit\",\"type\":\"exit\",\"data\":{\"type\":\"exit\"}}");
+
+            StringBuilder edges = new StringBuilder();
+            edges.append("{\"id\":\"e0\",\"source\":\"trigger\",\"target\":\"parallel\"}");
+            for (int i = 1; i <= branchCount; i++) {
+                edges.append(",{\"id\":\"ep").append(i).append("\",\"source\":\"parallel\",\"target\":\"b").append(i).append("\"}");
+                edges.append(",{\"id\":\"ex").append(i).append("\",\"source\":\"b").append(i).append("\",\"target\":\"exit\"}");
+            }
+
+            return "{\"nodes\":[" + nodes + "],\"edges\":[" + edges + "],\"flowConfig\":{\"flowMode\":\"parallel\"}}";
+        }
+
         @Test
-        @DisplayName("并行分支数 ≤ 8 → 通过")
-        void testParallelBranchesUnderLimit_Pass() {
+        @DisplayName("并行分支数在 [2, 8] 范围内 → 通过")
+        void testParallelBranchesWithinRange_Pass() {
+            // parallel 网关出度 = 3 ∈ [2, 8]
+            String config = buildParallelConfig(3);
+            List<String> errors = validator.validateOrchestrationConfig(config, TEST_APP_ID);
+            assertTrue(errors.stream().noneMatch(e -> e.contains("并行分支")),
+                    "Expected no branch count errors but got: " + errors);
+        }
+
+        @Test
+        @DisplayName("并行分支超过上限 8 → 失败")
+        void testParallelBranchesExceeded_Fail() {
+            // parallel 网关出度 = 10 > 上限 8
+            String config = buildParallelConfig(10);
+            List<String> errors = validator.validateOrchestrationConfig(config, TEST_APP_ID);
+            assertTrue(errors.stream().anyMatch(e -> e.contains("并行分支数超过上限")),
+                    "Expected branch count exceeded error but got: " + errors);
+        }
+
+        @Test
+        @DisplayName("并行分支数不足下限 2 → 失败")
+        void testParallelBranchesBelowMinimum_Fail() {
+            // parallel 网关出度 = 1 < 下限 2
+            String config = buildParallelConfig(1);
+            List<String> errors = validator.validateOrchestrationConfig(config, TEST_APP_ID);
+            assertTrue(errors.stream().anyMatch(e -> e.contains("并行分支数至少")),
+                    "Expected branch count below minimum error but got: " + errors);
+        }
+
+        @Test
+        @DisplayName("无 parallel 网关 → 不触发分支校验")
+        void testNoParallelNode_NoBranchCheck() {
+            // serial 模式无 parallel 节点 → validateParallelBranches early return
             String config = "{\"nodes\":[" +
                     "{\"id\":\"t\",\"type\":\"trigger\",\"data\":{\"type\":\"trigger\"}}," +
                     "{\"id\":\"c\",\"type\":\"connector\",\"data\":{\"type\":\"connector\"}}," +
@@ -249,24 +303,8 @@ class FlowPublishValidatorTest {
                     "{\"id\":\"e2\",\"source\":\"c\",\"target\":\"e\"}" +
                     "],\"flowConfig\":{\"flowMode\":\"serial\"}}";
             List<String> errors = validator.validateOrchestrationConfig(config, TEST_APP_ID);
-            assertTrue(errors.isEmpty(), "Expected no errors but got: " + errors);
-        }
-
-        @Test
-        @DisplayName("并行分支超过 8 → 失败")
-        void testParallelBranchesExceeded_Fail() {
-            StringBuilder edges = new StringBuilder();
-            for (int i = 0; i < 10; i++) {
-                if (i > 0) edges.append(",");
-                edges.append("{\"id\":\"pe").append(i).append("\",\"source\":\"t\",\"target\":\"e\",\"data\":{\"connectionMode\":\"parallel\"}}");
-            }
-            String config = "{\"nodes\":[" +
-                    "{\"id\":\"t\",\"type\":\"trigger\",\"data\":{\"type\":\"trigger\"}}," +
-                    "{\"id\":\"c\",\"type\":\"connector\",\"data\":{\"type\":\"connector\"}}," +
-                    "{\"id\":\"e\",\"type\":\"exit\",\"data\":{\"type\":\"exit\"}}" +
-                    "],\"edges\":[" + edges + "],\"flowConfig\":{\"flowMode\":\"serial\"}}";
-            List<String> errors = validator.validateOrchestrationConfig(config, TEST_APP_ID);
-            assertTrue(errors.stream().anyMatch(e -> e.contains("并行分支数超过上限")));
+            assertTrue(errors.stream().noneMatch(e -> e.contains("并行分支")),
+                    "Expected no branch count errors for serial mode but got: " + errors);
         }
     }
 
