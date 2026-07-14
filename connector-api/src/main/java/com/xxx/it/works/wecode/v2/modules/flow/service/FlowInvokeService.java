@@ -593,77 +593,121 @@ public class FlowInvokeService {
     @SuppressWarnings("unchecked")
     private TransparentFlowResponse buildTransparentResponse(String flowId, ExecutionResult result) {
         Map<String, Object> resultData = result.getResultData();
-        Map<String, String> userHeaders = new LinkedHashMap<>();
-        Object responseBody = null;
-
-        if (resultData != null) {
-            // 提取 header
-            Object headerObj = resultData.get("header");
-            if (headerObj instanceof Map) {
-                ((Map<String, ?>) headerObj).forEach((k, v) -> {
-                    userHeaders.put(String.valueOf(k), String.valueOf(v));
-                });
-            }
-            // 提取 body
-            Object bodyObj = resultData.get("body");
-            if (bodyObj != null) {
-                responseBody = bodyObj;
-            } else {
-                // 降级: 无 outputMapping 时, 整个 resultData 去掉 __ 元字段作为 body
-                Map<String, Object> fallback = new LinkedHashMap<>();
-                resultData.forEach((k, v) -> { if (!k.startsWith("__")) { fallback.put(k, v); } });
-                responseBody = fallback.isEmpty() ? null : fallback;
-            }
-        }
-
-        int execStatus = "success".equals(result.getStatus()) ? 0
-                : ("timeout".equals(result.getStatus()) ? 2 : 1);
-
-        // v5.8: 执行失败/超时时, 响应体必须为空 (错误信息仅通过 X- 头传递, 对齐 preExecutionError 语义)
+        Map<String, String> userHeaders = extractUserHeaders(resultData);
+        Object responseBody = extractResponseBody(resultData);
+        int execStatus = determineExecStatus(result.getStatus());
         Object effectiveBody = execStatus == 0 ? responseBody : null;
 
         TransparentFlowResponse r = TransparentFlowResponse.success(
                 flowId, result.getExecutionId(), execStatus, result.getTotalDurationMs(),
                 userHeaders, effectiveBody);
 
-        // v5.8: 执行失败/超时时补充 X-Code / X-Message-* 错误头
-        if (execStatus != 0 && result.getErrorInfo() != null) {
-            Map<String, Object> err = result.getErrorInfo();
-            if (err.containsKey("code")) {
-                r.getPlatformHeaders().put("X-Code", String.valueOf(err.get("code")));
-            }
-            if (err.containsKey("messageZh")) {
-                r.getPlatformHeaders().put("X-Message-Zh", String.valueOf(err.get("messageZh")));
-            }
-            if (err.containsKey("messageEn")) {
-                r.getPlatformHeaders().put("X-Message-En", String.valueOf(err.get("messageEn")));
-            }
-        }
-
-        // 补充失败节点诊断信息: 告知用户哪个节点出了问题
-        if (execStatus != 0 && result.getSteps() != null) {
-            for (ExecutionResult.StepDetail step : result.getSteps()) {
-                if ("failed".equals(step.getStatus()) || "timeout".equals(step.getStatus())) {
-                    r.getPlatformHeaders().put("X-Error-Node", step.getNodeId());
-                    r.getPlatformHeaders().put("X-Error-Node-Type", step.getNodeType());
-                    break;
-                }
-            }
-        }
-
+        populateErrorHeaders(r, result.getErrorInfo());
+        populateFailedNodeInfo(r, result.getSteps());
         r.getPlatformHeaders().put("X-Cache-Status", result.isCacheHit() ? "1" : "0");
-
-        // v5.9: 失败时设置正确的 HTTP 状态码（原先始终返回 200）
-        if (execStatus != 0) {
-            String xCode = r.getPlatformHeaders().get("X-Code");
-            if (xCode != null && xCode.contains("timeout")) {
-                r.setHttpStatus(HttpStatus.GATEWAY_TIMEOUT);
-            } else {
-                r.setHttpStatus(HttpStatus.BAD_GATEWAY);
-            }
-        }
+        setHttpStatusForError(r);
 
         return r;
+    }
+
+    /**
+     * 从执行结果中提取用户级 HTTP 响应头
+     */
+    @SuppressWarnings("unchecked")
+    private Map<String, String> extractUserHeaders(Map<String, Object> resultData) {
+        Map<String, String> userHeaders = new LinkedHashMap<>();
+        if (resultData == null) {
+            return userHeaders;
+        }
+        Object headerObj = resultData.get("header");
+        if (headerObj instanceof Map) {
+            ((Map<String, ?>) headerObj).forEach((k, v) ->
+                    userHeaders.put(String.valueOf(k), String.valueOf(v)));
+        }
+        return userHeaders;
+    }
+
+    /**
+     * 从执行结果中提取响应体；无 outputMapping 时降级为整个 resultData（去掉 __ 元字段）
+     */
+    private Object extractResponseBody(Map<String, Object> resultData) {
+        if (resultData == null) {
+            return null;
+        }
+        Object bodyObj = resultData.get("body");
+        if (bodyObj != null) {
+            return bodyObj;
+        }
+        // 降级: 整个 resultData 去掉 __ 前缀元字段作为 body
+        Map<String, Object> fallback = new LinkedHashMap<>();
+        resultData.forEach((k, v) -> {
+            if (!k.startsWith("__")) {
+                fallback.put(k, v);
+            }
+        });
+        return fallback.isEmpty() ? null : fallback;
+    }
+
+    /**
+     * 将执行状态字符串映射为 HTTP 状态码：0=success, 2=timeout, 1=other failure
+     */
+    private int determineExecStatus(String status) {
+        if ("success".equals(status)) {
+            return 0;
+        }
+        if ("timeout".equals(status)) {
+            return 2;
+        }
+        return 1;
+    }
+
+    /**
+     * 执行失败/超时时通过 X- 头传递错误信息
+     */
+    private void populateErrorHeaders(TransparentFlowResponse r, Map<String, Object> errorInfo) {
+        if (errorInfo == null) {
+            return;
+        }
+        if (errorInfo.containsKey("code")) {
+            r.getPlatformHeaders().put("X-Code", String.valueOf(errorInfo.get("code")));
+        }
+        if (errorInfo.containsKey("messageZh")) {
+            r.getPlatformHeaders().put("X-Message-Zh", String.valueOf(errorInfo.get("messageZh")));
+        }
+        if (errorInfo.containsKey("messageEn")) {
+            r.getPlatformHeaders().put("X-Message-En", String.valueOf(errorInfo.get("messageEn")));
+        }
+    }
+
+    /**
+     * 补充失败节点诊断信息（第一个 failed/timeout 节点）
+     */
+    private void populateFailedNodeInfo(TransparentFlowResponse r, List<ExecutionResult.StepDetail> steps) {
+        if (steps == null) {
+            return;
+        }
+        for (ExecutionResult.StepDetail step : steps) {
+            if ("failed".equals(step.getStatus()) || "timeout".equals(step.getStatus())) {
+                r.getPlatformHeaders().put("X-Error-Node", step.getNodeId());
+                r.getPlatformHeaders().put("X-Error-Node-Type", step.getNodeType());
+                break;
+            }
+        }
+    }
+
+    /**
+     * 执行失败时根据错误码设置对应的 HTTP 状态码
+     */
+    private void setHttpStatusForError(TransparentFlowResponse r) {
+        String xCode = r.getPlatformHeaders().get("X-Code");
+        if (xCode == null) {
+            return;
+        }
+        if (xCode.contains("timeout")) {
+            r.setHttpStatus(HttpStatus.GATEWAY_TIMEOUT);
+        } else {
+            r.setHttpStatus(HttpStatus.BAD_GATEWAY);
+        }
     }
 
     /**

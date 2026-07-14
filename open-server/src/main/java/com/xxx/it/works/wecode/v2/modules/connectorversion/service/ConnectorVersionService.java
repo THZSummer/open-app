@@ -250,6 +250,37 @@ public class ConnectorVersionService {
             return ApiResponse.error("409", "非草稿状态，不可发布", "Only draft versions can be published");
         }
 
+        Date now = new Date();
+        String currentUser = UserContextHolder.getUserName();
+
+        ApiResponse<?> configError = validateAndApplyPublish(connector, version, internalAppId, now, currentUser);
+        if (configError != null) {
+            return configError;
+        }
+
+        writePublishAuditLog(connector, version, internalAppId, currentUser, now);
+
+        log.info("Version published: connectorId={}, versionId={}, versionNumber={}",
+                connectorId, versionId, version.getVersionNumber());
+
+        ConnectorPublishResponse response = ConnectorPublishResponse.builder()
+                .versionId(String.valueOf(versionId))
+                .versionNumber(version.getVersionNumber())
+                .status(ConnectorVersionStatus.PUBLISHED.getCode())
+                .connectorStatus(connector.getStatus())
+                .publishedTime(formatDate(now))
+                .build();
+
+        return ApiResponse.success(response);
+    }
+
+    /**
+     * 校验发布配置并执行状态更新（JSON 语法/大小/白名单/正则校验 + 版本与连接器状态变更）
+     *
+     * @return 校验失败时返回 ApiResponse 错误，成功返回 null
+     */
+    private ApiResponse<?> validateAndApplyPublish(Connector connector, ConnectorVersion version,
+                                                    Long internalAppId, Date now, String currentUser) {
         if (version.getConnectionConfig() == null || version.getConnectionConfig().isEmpty()) {
             return ApiResponse.error("422",
                     "草稿配置为空，请先完善连接配置",
@@ -280,9 +311,6 @@ public class ConnectorVersionService {
             if (result != null) return result;
         }
 
-        Date now = new Date();
-        String currentUser = UserContextHolder.getUserName();
-
         version.setStatus(ConnectorVersionStatus.PUBLISHED.getCode());
         version.setPublishedTime(now);
         version.setPublishedBy(currentUser);
@@ -290,15 +318,23 @@ public class ConnectorVersionService {
         version.setLastUpdateBy(currentUser);
         connectorVersionMapper.update(version);
 
-        boolean isFirstPublished = !hasOtherPublishedVersion(connectorId, versionId);
+        boolean isFirstPublished = !hasOtherPublishedVersion(connector.getId(), version.getId());
         if (isFirstPublished) {
             connector.setStatus(ConnectorStatus.AVAILABLE.getCode());
             connector.setLastUpdateTime(now);
             connector.setLastUpdateBy(currentUser);
             connectorMapper.update(connector);
-            log.info("First version published, connector status -> AVAILABLE: connectorId={}", connectorId);
+            log.info("First version published, connector status -> AVAILABLE: connectorId={}", connector.getId());
         }
 
+        return null;
+    }
+
+    /**
+     * 写入发布审计日志（异步，失败仅 warn）
+     */
+    private void writePublishAuditLog(Connector connector, ConnectorVersion version,
+                                       Long internalAppId, String currentUser, Date now) {
         try {
             OperateLog auditLog = new OperateLog();
             auditLog.setOperateType("PUBLISH");
@@ -315,21 +351,9 @@ public class ConnectorVersionService {
             auditLog.setStatus(1);
             auditLogService.saveAsync(auditLog);
         } catch (Exception e) {
-            log.warn("Failed to write audit log for connector publish: connectorId={}, versionId={}", connectorId, versionId, e);
+            log.warn("Failed to write audit log for connector publish: connectorId={}, versionId={}",
+                    connector.getId(), version.getId(), e);
         }
-
-        log.info("Version published: connectorId={}, versionId={}, versionNumber={}",
-                connectorId, versionId, version.getVersionNumber());
-
-        ConnectorPublishResponse response = ConnectorPublishResponse.builder()
-                .versionId(String.valueOf(versionId))
-                .versionNumber(version.getVersionNumber())
-                .status(ConnectorVersionStatus.PUBLISHED.getCode())
-                .connectorStatus(connector.getStatus())
-                .publishedTime(formatDate(now))
-                .build();
-
-        return ApiResponse.success(response);
     }
 
     // ==================== #13 复制到草稿 ====================

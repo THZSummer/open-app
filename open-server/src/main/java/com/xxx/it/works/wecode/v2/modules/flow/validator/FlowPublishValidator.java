@@ -150,46 +150,62 @@ public class FlowPublishValidator {
         Set<String> triggerIds = new HashSet<>();
         Set<String> exitIds = new HashSet<>();
         for (JsonNode node : nodes) {
-            String id = node.has("id") ? node.get("id").asText() : null;
-            if (id == null) {
-                continue;
-            }
-            nodeIds.add(id);
-            String type = NodeTypeResolver.businessType(node);
-            if ("trigger".equals(type)) {
-                triggerIds.add(id);
-            } else if ("exit".equals(type)) {
-                exitIds.add(id);
-            }
+            collectNodeTypeInfo(node, nodeIds, triggerIds, exitIds);
         }
 
         for (JsonNode edge : edges) {
-            String source = edge.has("source") ? edge.get("source").asText() : null;
-            String target = edge.has("target") ? edge.get("target").asText() : null;
-            String edgeId = edge.has("id") ? edge.get("id").asText() : (source + "->" + target);
+            validateSingleEdge(edge, nodeIds, triggerIds, exitIds, errors);
+        }
+    }
 
-            if (source == null || target == null) {
-                errors.add("边 [" + edgeId + "] 缺少 source 或 target");
-                continue;
-            }
+    /**
+     * 收集节点的 id 及类型归属（trigger / exit）
+     */
+    private void collectNodeTypeInfo(JsonNode node, Set<String> nodeIds,
+                                     Set<String> triggerIds, Set<String> exitIds) {
+        String id = node.has("id") ? node.get("id").asText() : null;
+        if (id == null) {
+            return;
+        }
+        nodeIds.add(id);
+        String type = NodeTypeResolver.businessType(node);
+        if ("trigger".equals(type)) {
+            triggerIds.add(id);
+        } else if ("exit".equals(type)) {
+            exitIds.add(id);
+        }
+    }
 
-            if (source.equals(target)) {
-                errors.add("边 [" + edgeId + "] 为自环边（source == target），不允许");
-            }
+    /**
+     * 校验单条边的拓扑约束（自环、引用存在性、出入度）
+     */
+    private void validateSingleEdge(JsonNode edge, Set<String> nodeIds,
+                                    Set<String> triggerIds, Set<String> exitIds, List<String> errors) {
+        String source = edge.has("source") ? edge.get("source").asText() : null;
+        String target = edge.has("target") ? edge.get("target").asText() : null;
+        String edgeId = edge.has("id") ? edge.get("id").asText() : (source + "->" + target);
 
-            if (!nodeIds.contains(source)) {
-                errors.add("边 [" + edgeId + "] 的 source \"" + source + "\" 不存在于节点列表中");
-            }
-            if (!nodeIds.contains(target)) {
-                errors.add("边 [" + edgeId + "] 的 target \"" + target + "\" 不存在于节点列表中");
-            }
+        if (source == null || target == null) {
+            errors.add("边 [" + edgeId + "] 缺少 source 或 target");
+            return;
+        }
 
-            if (exitIds.contains(source)) {
-                errors.add("边 [" + edgeId + "] exit 节点 \"" + source + "\" 不允许有出边");
-            }
-            if (triggerIds.contains(target)) {
-                errors.add("边 [" + edgeId + "] trigger 节点 \"" + target + "\" 不允许有入边");
-            }
+        if (source.equals(target)) {
+            errors.add("边 [" + edgeId + "] 为自环边（source == target），不允许");
+        }
+
+        if (!nodeIds.contains(source)) {
+            errors.add("边 [" + edgeId + "] 的 source \"" + source + "\" 不存在于节点列表中");
+        }
+        if (!nodeIds.contains(target)) {
+            errors.add("边 [" + edgeId + "] 的 target \"" + target + "\" 不存在于节点列表中");
+        }
+
+        if (exitIds.contains(source)) {
+            errors.add("边 [" + edgeId + "] exit 节点 \"" + source + "\" 不允许有出边");
+        }
+        if (triggerIds.contains(target)) {
+            errors.add("边 [" + edgeId + "] trigger 节点 \"" + target + "\" 不允许有入边");
         }
     }
 
@@ -433,38 +449,52 @@ public class FlowPublishValidator {
             String typeStr = NodeTypeResolver.businessType(node);
             if (typeStr != null && "script".equals(typeStr)) {
                 scriptNodeCount++;
-                JsonNode data = node.get("data");
-                if (data != null) {
-                    JsonNode scriptSource = data.get("script");
-                    if (scriptSource != null && !scriptSource.isNull()) {
-                        String source = scriptSource.asText();
-                        String nodeId = node.has("id") ? node.get("id").asText() : "unknown";
-                        int maxSourceLength = getIntFromConfig(propertyConfig, ConnectorPlatformConstants.ITEM_SCRIPT_MAX_LENGTH_CHARS, ConnectorPlatformConstants.MAX_SCRIPT_SOURCE_LENGTH);
-                        if (source == null || source.trim().isEmpty()) {
-                            errors.add(String.format(Locale.ROOT, "脚本节点 [%s] 源码不能为空", nodeId));
-                        } else if (source.length() > maxSourceLength) {
-                            errors.add("脚本源码超过最大长度限制 "
-                                    + maxSourceLength + "字符");
-                        } else {
-                            executeScriptValidation(source, nodeId, errors);
-                        }
-                        // 校验 13：脚本节点超时值上限
-                        JsonNode scriptTimeout = data.get("timeout");
-                        if (scriptTimeout != null && scriptTimeout.isNumber()) {
-                            int timeoutValue = scriptTimeout.asInt();
-                            int maxTimeoutSeconds = getIntFromConfig(propertyConfig, ConnectorPlatformConstants.ITEM_SCRIPT_MAX_TIMEOUT_SECONDS, ConnectorPlatformConstants.MAX_SCRIPT_TIMEOUT_SECONDS);
-                            if (timeoutValue > maxTimeoutSeconds) {
-                                errors.add(String.format(Locale.ROOT, "脚本节点 [%s] 超时值(%d秒) 超过上限(%d秒)",
-                                        nodeId, timeoutValue, maxTimeoutSeconds));
-                            }
-                        }
-                    }
-                }
+                validateSingleScriptNode(node, propertyConfig, errors);
             }
         }
         if (scriptNodeCount > ConnectorPlatformConstants.MAX_SCRIPT_NODES_PER_FLOW) {
             errors.add("脚本节点数量超过上限 " + ConnectorPlatformConstants.MAX_SCRIPT_NODES_PER_FLOW
                     + "，当前：" + scriptNodeCount);
+        }
+    }
+
+    /**
+     * 校验单个脚本节点的源码合法性、长度限制、语法及超时值上限
+     */
+    private void validateSingleScriptNode(JsonNode node, Map<String, String> propertyConfig, List<String> errors) {
+        JsonNode data = node.get("data");
+        if (data == null) {
+            return;
+        }
+
+        JsonNode scriptSource = data.get("script");
+        if (scriptSource == null || scriptSource.isNull()) {
+            return;
+        }
+
+        String source = scriptSource.asText();
+        String nodeId = node.has("id") ? node.get("id").asText() : "unknown";
+        int maxSourceLength = getIntFromConfig(propertyConfig,
+                ConnectorPlatformConstants.ITEM_SCRIPT_MAX_LENGTH_CHARS, ConnectorPlatformConstants.MAX_SCRIPT_SOURCE_LENGTH);
+
+        if (source == null || source.trim().isEmpty()) {
+            errors.add(String.format(Locale.ROOT, "脚本节点 [%s] 源码不能为空", nodeId));
+        } else if (source.length() > maxSourceLength) {
+            errors.add("脚本源码超过最大长度限制 " + maxSourceLength + "字符");
+        } else {
+            executeScriptValidation(source, nodeId, errors);
+        }
+
+        // 校验脚本节点超时值上限
+        JsonNode scriptTimeout = data.get("timeout");
+        if (scriptTimeout != null && scriptTimeout.isNumber()) {
+            int timeoutValue = scriptTimeout.asInt();
+            int maxTimeoutSeconds = getIntFromConfig(propertyConfig,
+                    ConnectorPlatformConstants.ITEM_SCRIPT_MAX_TIMEOUT_SECONDS, ConnectorPlatformConstants.MAX_SCRIPT_TIMEOUT_SECONDS);
+            if (timeoutValue > maxTimeoutSeconds) {
+                errors.add(String.format(Locale.ROOT, "脚本节点 [%s] 超时值(%d秒) 超过上限(%d秒)",
+                        nodeId, timeoutValue, maxTimeoutSeconds));
+            }
         }
     }
 
