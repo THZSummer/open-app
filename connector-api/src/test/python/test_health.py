@@ -23,8 +23,8 @@ class TestHealth:
 
     @pytest.mark.L0
     def test_trigger_endpoint_reachable(self):
-        """验证触发端点可访问（404 = 服务在线 + flow 不存在）"""
+        """验证触发端点可访问（403 = 服务在线 + flow 不存在/未授权）"""
         resp = trigger(999999999999999999, body={"sender": "test"})
         assert resp is not None, "connector-api 未运行"
-        assert resp.status_code in (200, 401, 404), \
-            f"Expected 200/401/404, got {resp.status_code}"
+        assert resp.status_code in (200, 401, 403), \
+            f"Expected 200/401/403, got {resp.status_code}"

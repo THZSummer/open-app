@@ -9,9 +9,9 @@ v5.8 透明透传格式：
 
 校验点：
   - X- 响应头存在且符合格式
-  - HTTP 状态码正确 (401/404)
+  - HTTP 状态码正确 (401/403)
   - body 为空
-  - 错误码覆盖：401（无认证）, 404（流不存在）
+  - 错误码覆盖：401（无认证）, 403（流不存在/未授权）
 """
 from client import *
 import pytest
@@ -64,7 +64,7 @@ def test_contract_response():
     auth_resp = api("POST", f"/flows/{test_flow_id}/invoke",
                         {"sender": "test"})
 
-    print("\n=== 获取 404 响应（flow 不存在）===")
+    print("\n=== 获取 403 响应（flow 不存在/未授权）===")
     notfound_resp = api("POST", "/flows/999999999999999999/invoke",
                             {"sender": "test"},
                             headers={"X-Sys-Token": "test-token"})
@@ -76,7 +76,7 @@ def test_contract_response():
 
     # ── X- 响应头存在性 ──────────────────────────────────
     print("\n--- X- 响应头存在性 ---")
-    for label, resp in [("401-无认证", auth_resp), ("404-flow不存在", notfound_resp)]:
+    for label, resp in [("401-无认证", auth_resp), ("403-flow不存在", notfound_resp)]:
         if resp is None:
             continue
         check(f"[{label}] X-Flow-Id 存在", bool(resp.headers.get("X-Flow-Id")))
@@ -86,7 +86,7 @@ def test_contract_response():
 
     # ── X-Code 格式 ──────────────────────────────────────
     print("\n--- X-Code 格式（数字字符串）---")
-    for label, resp in [("401-无认证", auth_resp), ("404-flow不存在", notfound_resp)]:
+    for label, resp in [("401-无认证", auth_resp), ("403-flow不存在", notfound_resp)]:
         if resp is None:
             continue
         code = _parse_header_int("X-Code", resp)
@@ -101,13 +101,13 @@ def test_contract_response():
               auth_resp.status_code == 401,
               f"status={auth_resp.status_code}")
     if notfound_resp is not None:
-        check("HTTP 状态码为 404（flow 不存在）",
-              notfound_resp.status_code == 404,
+        check("HTTP 状态码为 403（flow 不存在）",
+              notfound_resp.status_code == 403,
               f"status={notfound_resp.status_code}")
 
     # ── body 为空 ────────────────────────────────────────
     print("\n--- 错误响应 body 为空 ---")
-    for label, resp in [("401-无认证", auth_resp), ("404-flow不存在", notfound_resp)]:
+    for label, resp in [("401-无认证", auth_resp), ("403-flow不存在", notfound_resp)]:
         if resp is None:
             continue
         body_text = resp.text.strip() if resp.text else ""
@@ -118,7 +118,7 @@ def test_contract_response():
     # ── 错误码覆盖率 ────────────────────────────────────
     print("\n--- 错误码覆盖率 ---")
     codes_seen = set()
-    for label, resp in [("401-无认证", auth_resp), ("404-flow不存在", notfound_resp)]:
+    for label, resp in [("401-无认证", auth_resp), ("403-flow不存在", notfound_resp)]:
         if resp is not None:
             code = _parse_header_int("X-Code", resp)
             if code and re.match(r"^\d+$", code):
@@ -126,8 +126,8 @@ def test_contract_response():
     check("错误码 401 覆盖（无认证）",
           "401" in codes_seen,
           f"已覆盖: {codes_seen}")
-    check("错误码 404 覆盖（flow 不存在）",
-          "404" in codes_seen,
+    check("错误码 403 覆盖（flow 不存在）",
+          "403" in codes_seen,
           f"已覆盖: {codes_seen}")
 
     # ── 清理测试数据 ──
