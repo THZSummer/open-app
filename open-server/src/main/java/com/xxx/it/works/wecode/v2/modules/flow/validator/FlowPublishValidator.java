@@ -291,35 +291,66 @@ public class FlowPublishValidator {
     }
 
     /**
-     * 校验并行分支数是否超过应用上限
+     * 校验并行分支数是否在允许范围内 [MIN_PARALLEL_BRANCHES, maxParallelBranches]
+     * <p>
+     * 统计逻辑：并行分支数 = parallel 网关节点的出度（从 parallel 节点出发的边数）。
+     * <ul>
+     *   <li>识别 parallel 网关：node.data.type == "parallel"（与 validateParallelMode 口径一致）</li>
+     *   <li>统计分支：edges 中 source ∈ parallelNodeIds 的边数</li>
+     *   <li>不依赖 edge.data.connectionMode / businessType 标记字段，避免实际数据无标记时计数恒为 0</li>
+     * </ul>
+     * 仅当存在 parallel 网关节点时才校验，single/serial 模式（无 parallel 节点）直接跳过。
+     * </p>
      *
-     * @param config 编排配置 JSON 节点
-     * @param appId  应用ID
-     * @param errors 错误列表
+     * @param config          编排配置 JSON 节点
+     * @param propertyConfig  应用配置
+     * @param errors          错误列表
      */
     private void validateParallelBranches(JsonNode config, Map<String, String> propertyConfig, List<String> errors) {
+        JsonNode nodes = config.get("nodes");
         JsonNode edges = config.get("edges");
-        if (edges != null && edges.isArray()) {
-            int parallelBranchCount = 0;
-            for (JsonNode edge : edges) {
-                JsonNode data = edge.get("data");
-                if (data != null) {
-                    JsonNode connectionMode = data.get("connectionMode");
-                    if (connectionMode != null && "parallel".equals(connectionMode.asText())) {
-                        parallelBranchCount++;
-                    }
-                    // 无 data 或无 connectionMode 时，业务类型可能为 parallel-gateway
-                    JsonNode businessType = data != null ? data.get("businessType") : null;
-                    if (businessType != null && "parallel-gateway".equals(businessType.asText())) {
-                        parallelBranchCount++;
-                    }
-                }
+        if (nodes == null || !nodes.isArray() || edges == null || !edges.isArray()) {
+            return;
+        }
+
+        // 1. 识别所有 parallel 网关节点 id
+        Set<String> parallelNodeIds = new HashSet<>();
+        for (JsonNode node : nodes) {
+            if (!"parallel".equals(NodeTypeResolver.businessType(node))) {
+                continue;
             }
-            int maxParallelBranches = getIntFromConfig(propertyConfig, ConnectorPlatformConstants.ITEM_FLOW_MAX_PARALLEL_BRANCHES, ConnectorPlatformConstants.MAX_PARALLEL_BRANCHES);
-            if (parallelBranchCount > maxParallelBranches) {
-                errors.add("并行分支数超过上限 " + maxParallelBranches
-                        + "，当前：" + parallelBranchCount);
+            String id = node.has("id") ? node.get("id").asText() : null;
+            if (id != null) {
+                parallelNodeIds.add(id);
             }
+        }
+        if (parallelNodeIds.isEmpty()) {
+            // 无 parallel 网关则无需校验分支数（single/serial 模式由 validateFlowMode 拦截）
+            return;
+        }
+
+        // 2. 统计从 parallel 网关出发的边数 = 并行分支数
+        int parallelBranchCount = 0;
+        for (JsonNode edge : edges) {
+            String source = edge.has("source") ? edge.get("source").asText() : null;
+            if (source != null && parallelNodeIds.contains(source)) {
+                parallelBranchCount++;
+            }
+        }
+
+        // 3. 上限校验
+        int maxParallelBranches = getIntFromConfig(propertyConfig,
+                ConnectorPlatformConstants.ITEM_FLOW_MAX_PARALLEL_BRANCHES,
+                ConnectorPlatformConstants.MAX_PARALLEL_BRANCHES);
+        if (parallelBranchCount > maxParallelBranches) {
+            errors.add("并行分支数超过上限 " + maxParallelBranches
+                    + "，当前：" + parallelBranchCount);
+        }
+
+        // 4. 下限校验：至少 2 条分支才构成并行语义
+        if (parallelBranchCount < ConnectorPlatformConstants.MIN_PARALLEL_BRANCHES) {
+            errors.add("并行分支数至少 " + ConnectorPlatformConstants.MIN_PARALLEL_BRANCHES
+                    + " 条，当前：" + parallelBranchCount);
         }
     }
 
