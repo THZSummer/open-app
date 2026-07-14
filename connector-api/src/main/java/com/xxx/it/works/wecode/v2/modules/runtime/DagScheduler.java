@@ -29,8 +29,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  * <p>
  * 支持:
  * <ul>
- *   <li>串行边: flatMap 顺序链式执行</li>
- *   <li>并行边 (edge.data.connectionMode=parallel): Flux.merge() 并发执行</li>
+ *   <li>串行边: 单个下游目标 → flatMap 顺序链式执行</li>
+ *   <li>并行边: 多个下游目标 → Flux.merge() 并发执行（基于 DAG 出度，不依赖 edge.data.connectionMode）</li>
  *   <li>节点超时: ③(node.data.timeoutMs)存在用③不截断, ③不存在回退①(平台全局)</li>
  *   <li>单分支失败不影响其他并行分支</li>
  * </ul>
@@ -139,13 +139,10 @@ public class DagScheduler {
     }
 
     /**
-     * 构建 DAG 邻接表: source node ID → target node ID 列表
+     * 构建 DAG 邻接表: source node ID → target node ID 列表。
      * <p>
-     * 解析 edge.data.connectionMode 判断串行/并行:
-     * <ul>
-     *   <li>"parallel" → 并行分支</li>
-     *   <li>默认/其他 → 串行</li>
-     * </ul>
+     * 并行/串行决策不由边标记控制，而由 executeDag() 中 source 节点的
+     * 下游目标数决定：单目标 → 串行，多目标 → 并行。
      * </p>
      */
     private Map<String, List<String>> buildAdjacencyMap(JsonNode edges, Map<String, JsonNode> nodeMap) {
