@@ -276,7 +276,9 @@ public class FlowPublishValidator {
                 case "trigger" -> hasTrigger = true;
                 case "exit" -> hasExit = true;
                 case "connector" -> connectorCount++;
-                case "script" -> { /* 允许 */ }
+                case "script" -> {
+                    // 串行模式允许脚本节点
+                }
                 case "parallel" -> errors.add("串行模式不允许包含并行节点（parallel），请切换为并行模式");
                 default -> errors.add("串行模式不支持节点类型：" + type);
             }
@@ -302,7 +304,9 @@ public class FlowPublishValidator {
                 case "trigger" -> hasTrigger = true;
                 case "parallel" -> hasParallel = true;
                 case "exit" -> hasExit = true;
-                case "connector", "script" -> { /* 允许 */ }
+                case "connector", "script" -> {
+                    // 并行模式允许连接器和脚本节点
+                }
                 default -> errors.add("并行模式不支持节点类型：" + type);
             }
         }
