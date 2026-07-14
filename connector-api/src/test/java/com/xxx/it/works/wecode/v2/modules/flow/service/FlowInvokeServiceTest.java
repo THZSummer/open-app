@@ -85,8 +85,8 @@ class FlowInvokeServiceTest {
     @BeforeEach
     void setUp() {
         objectMapper = new ObjectMapper();
-        when(reactiveRedisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.get(anyString())).thenReturn(Mono.empty());
+        lenient().when(reactiveRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        lenient().when(valueOperations.get(anyString())).thenReturn(Mono.empty());
         lenient().when(valueOperations.set(anyString(), anyString(), any())).thenReturn(Mono.just(true));
         when(idGenerator.nextId()).thenReturn(1L);
         lenient().when(propertyService.isLogCollectionEnabled()).thenReturn(Mono.just(true));
@@ -115,9 +115,11 @@ class FlowInvokeServiceTest {
                 "header", Map.of("X-Custom", "val1")));
         mockCtx.setNodeContext(exitNodeCtx);
 
+        FlowEntity runningFlow = new FlowEntity();
+        runningFlow.setLifecycleStatus(2);
+        when(entityCacheManager.getFlow(100L)).thenReturn(Mono.just(runningFlow));
         when(flowVersionReadRepository.findByFlowId(100L)).thenReturn(Mono.just(flowVersion));
         when(dagScheduler.schedule(anyString(), any())).thenReturn(Mono.just(mockCtx));
-        when(entityCacheManager.getFlow(100L)).thenReturn(Mono.empty());
 
         Mono<TransparentFlowResponse> resultMono = triggerService.invokeFlow(
                 100L, Map.of("sender", "test"), Map.of(), Map.of());
@@ -147,7 +149,7 @@ class FlowInvokeServiceTest {
 
         when(entityCacheManager.getFlow(100L)).thenReturn(Mono.just(stoppedFlow));
         // switchIfEmpty fallback 兜底 mock (虽然不应执行到, 但 NPE 会掩盖真实错误)
-        when(flowVersionReadRepository.findByFlowId(100L)).thenReturn(Mono.empty());
+        lenient().when(flowVersionReadRepository.findByFlowId(100L)).thenReturn(Mono.empty());
 
         Mono<TransparentFlowResponse> resultMono = triggerService.invokeFlow(
                 100L, Map.of(), Map.of(), Map.of());
@@ -173,7 +175,7 @@ class FlowInvokeServiceTest {
         when(invalidatedFlow.getLifecycleStatus()).thenReturn(3); // INVALIDATED
 
         when(entityCacheManager.getFlow(100L)).thenReturn(Mono.just(invalidatedFlow));
-        when(flowVersionReadRepository.findByFlowId(100L)).thenReturn(Mono.empty());
+        lenient().when(flowVersionReadRepository.findByFlowId(100L)).thenReturn(Mono.empty());
 
         Mono<TransparentFlowResponse> resultMono = triggerService.invokeFlow(
                 100L, Map.of(), Map.of(), Map.of());
@@ -189,9 +191,11 @@ class FlowInvokeServiceTest {
     }
 
     @Test
-    @DisplayName("流不存在返回 404 (preExecutionError)")
+    @DisplayName("流版本不存在返回 403 (preExecutionError)")
     void testInvokeFlow_NotFound() {
-        when(entityCacheManager.getFlow(999L)).thenReturn(Mono.empty());
+        FlowEntity runningFlow = new FlowEntity();
+        runningFlow.setLifecycleStatus(2);
+        when(entityCacheManager.getFlow(999L)).thenReturn(Mono.just(runningFlow));
         when(flowVersionReadRepository.findByFlowId(999L)).thenReturn(Mono.empty());
 
         Mono<TransparentFlowResponse> resultMono = triggerService.invokeFlow(
@@ -199,9 +203,9 @@ class FlowInvokeServiceTest {
 
         StepVerifier.create(resultMono)
                 .assertNext(response -> {
-                    assertEquals(404, response.getHttpStatus().value());
+                    assertEquals(403, response.getHttpStatus().value());
                     assertNull(response.getBody(), "错误响应应为空Body");
-                    assertEquals("404", response.getPlatformHeaders().get("X-Code"));
+                    assertEquals("403", response.getPlatformHeaders().get("X-Code"));
                     assertNotNull(response.getPlatformHeaders().get("X-Message-Zh"),
                             "should have X-Message-Zh");
                     assertNotNull(response.getPlatformHeaders().get("X-Message-En"),
@@ -217,9 +221,11 @@ class FlowInvokeServiceTest {
         flowVersion.setFlowId(100L);
         flowVersion.setOrchestrationConfig(VALID_ORCHESTRATION_CONFIG);
 
+        FlowEntity runningFlow = new FlowEntity();
+        runningFlow.setLifecycleStatus(2);
+        when(entityCacheManager.getFlow(100L)).thenReturn(Mono.just(runningFlow));
         when(flowVersionReadRepository.findByFlowId(100L)).thenReturn(Mono.just(flowVersion));
         when(dagScheduler.schedule(anyString(), any())).thenReturn(Mono.error(new RuntimeException("Execution error")));
-        when(entityCacheManager.getFlow(100L)).thenReturn(Mono.empty());
 
         Mono<TransparentFlowResponse> resultMono = triggerService.invokeFlow(
                 100L, Map.of(), Map.of(), Map.of());

@@ -31,7 +31,7 @@ class ExecutionRecordServiceTest {
     void testStartRecord_HttpTrigger() {
         when(repository.save(any())).thenReturn(Mono.just(new ExecutionRecordEntity()));
 
-        Long recordId = service.startRecord(1000L, 100L, 200L, 1L, 1);
+        Long recordId = service.startRecord(1000L, 100L, 200L, 1L, 1, null, null, null, null, null);
         assertEquals(1000L, recordId);
         verify(repository).save(any(ExecutionRecordEntity.class));
     }
@@ -41,7 +41,7 @@ class ExecutionRecordServiceTest {
     void testStartRecord_DebugTrigger() {
         when(repository.save(any())).thenReturn(Mono.just(new ExecutionRecordEntity()));
 
-        Long recordId = service.startRecord(1001L, 100L, 200L, 1L, 2);
+        Long recordId = service.startRecord(1001L, 100L, 200L, 1L, 2, null, null, null, null, null);
         assertEquals(1001L, recordId);
         verify(repository).save(any(ExecutionRecordEntity.class));
     }
@@ -52,7 +52,7 @@ class ExecutionRecordServiceTest {
         when(repository.save(any())).thenReturn(Mono.error(new RuntimeException("DB error")));
 
         Long recordId = assertDoesNotThrow(() ->
-                service.startRecord(1000L, 100L, 200L, 1L, 1));
+                service.startRecord(1000L, 100L, 200L, 1L, 1, null, null, null, null, null));
         assertEquals(1000L, recordId);
     }
 

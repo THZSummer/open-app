@@ -77,7 +77,7 @@ public class FlowVersionApprovalService {
         );
 
         // 3. 无审批人时引擎已自动通过（record.status=APPROVED），不设 PENDING_APPROVAL
-        if (record.getStatus() != ApprovalEngine.Status.APPROVED) {
+        if (!Integer.valueOf(ApprovalEngine.Status.APPROVED).equals(record.getStatus())) {
             version.setStatus(FlowVersionStatus.PENDING_APPROVAL.getCode());
             version.setLastUpdateTime(new Date());
             version.setLastUpdateBy(applicantId);

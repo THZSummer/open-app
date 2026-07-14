@@ -9,6 +9,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
 import org.springframework.web.server.WebFilterChain;
+import org.springframework.data.redis.core.script.RedisScript;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -57,10 +59,8 @@ class InboundRateLimiterTest {
     @Test
     @DisplayName("触发端点 - QPS 限流通过")
     void testQpsLimit_Pass() {
-        ReactiveValueOperations<String, String> mockValueOps = mock(ReactiveValueOperations.class);
-        when(redisTemplate.opsForValue()).thenReturn(mockValueOps);
-        when(mockValueOps.increment(anyString())).thenReturn(Mono.just(1L));
-        when(redisTemplate.expire(anyString(), any())).thenReturn(Mono.just(true));
+        when(redisTemplate.execute(any(RedisScript.class), anyList(), anyList()))
+                .thenReturn(Flux.just(1L));
 
         MockServerHttpRequest request = MockServerHttpRequest
                 .post("http://localhost:18180/api/v1/flows/123/invoke")
@@ -76,9 +76,8 @@ class InboundRateLimiterTest {
     @Test
     @DisplayName("触发端点 - QPS 超限返回 429")
     void testQpsLimit_Exceeded_Returns429() {
-        ReactiveValueOperations<String, String> mockValueOps = mock(ReactiveValueOperations.class);
-        when(redisTemplate.opsForValue()).thenReturn(mockValueOps);
-        when(mockValueOps.increment(anyString())).thenReturn(Mono.just(1001L));
+        when(redisTemplate.execute(any(RedisScript.class), anyList(), anyList()))
+                .thenReturn(Flux.just(0L));
 
         MockServerHttpRequest request = MockServerHttpRequest
                 .post("http://localhost:18180/api/v1/flows/456/invoke")
@@ -96,9 +95,8 @@ class InboundRateLimiterTest {
     @Test
     @DisplayName("Redis ops 返回空 → 降级放行")
     void testRedisEmptyResult_DegradePass() {
-        ReactiveValueOperations<String, String> mockValueOps = mock(ReactiveValueOperations.class);
-        when(redisTemplate.opsForValue()).thenReturn(mockValueOps);
-        when(mockValueOps.increment(anyString())).thenReturn(Mono.empty());
+        when(redisTemplate.execute(any(RedisScript.class), anyList(), anyList()))
+                .thenReturn(Flux.empty());
 
         MockServerHttpRequest request = MockServerHttpRequest
                 .post("http://localhost:18180/api/v1/flows/789/invoke")
@@ -137,10 +135,10 @@ class InboundRateLimiterTest {
                 .thenReturn(Mono.just(new RateLimitConfig("concurrency", 1000, 10)));
 
         ReactiveValueOperations<String, String> mockValueOps = mock(ReactiveValueOperations.class);
+        when(redisTemplate.execute(any(RedisScript.class), anyList(), anyList()))
+                .thenReturn(Flux.just(1L));
         when(redisTemplate.opsForValue()).thenReturn(mockValueOps);
-        when(mockValueOps.increment(anyString())).thenReturn(Mono.just(1L));
         when(mockValueOps.decrement(anyString())).thenReturn(Mono.just(0L));
-        when(redisTemplate.expire(anyString(), any())).thenReturn(Mono.just(true));
 
         MockServerHttpRequest request = MockServerHttpRequest
                 .post("http://localhost:18180/api/v1/flows/123/invoke")

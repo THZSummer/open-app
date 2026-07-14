@@ -25,6 +25,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -87,9 +88,9 @@ class DagSchedulerTest {
     @DisplayName("串行 DAG: trigger → connector → exit 按序执行")
     void testSerialDag_TriggerConnectorExit() {
         String orchestrationConfig = "{\"nodes\":[" +
-                "{\"id\":\"node_trigger\",\"type\":\"trigger\"}," +
-                "{\"id\":\"node_conn\",\"type\":\"connector\"}," +
-                "{\"id\":\"node_exit\",\"type\":\"exit\"}" +
+                "{\"id\":\"node_trigger\",\"data\":{\"type\":\"trigger\"}}," +
+                "{\"id\":\"node_conn\",\"data\":{\"type\":\"connector\"}}," +
+                "{\"id\":\"node_exit\",\"data\":{\"type\":\"exit\"}}" +
                 "],\"edges\":[" +
                 "{\"id\":\"e1\",\"source\":\"node_trigger\",\"target\":\"node_conn\"}," +
                 "{\"id\":\"e2\",\"source\":\"node_conn\",\"target\":\"node_exit\"}" +
@@ -132,8 +133,8 @@ class DagSchedulerTest {
     @DisplayName("串行 DAG: 仅 trigger → exit")
     void testSerialDag_TriggerExit_SimpleLinear() {
         String orchestrationConfig = "{\"nodes\":[" +
-                "{\"id\":\"node_trigger\",\"type\":\"trigger\"}," +
-                "{\"id\":\"node_exit\",\"type\":\"exit\"}" +
+                "{\"id\":\"node_trigger\",\"data\":{\"type\":\"trigger\"}}," +
+                "{\"id\":\"node_exit\",\"data\":{\"type\":\"exit\"}}" +
                 "],\"edges\":[" +
                 "{\"id\":\"e1\",\"source\":\"node_trigger\",\"target\":\"node_exit\"}" +
                 "]}";
@@ -162,10 +163,10 @@ class DagSchedulerTest {
     @DisplayName("并行 DAG: trigger → 2 个并行 connector → 汇聚到 exit")
     void testParallelDag_TwoBranches_Converge() {
         String orchestrationConfig = "{\"nodes\":[" +
-                "{\"id\":\"node_trigger\",\"type\":\"trigger\"}," +
-                "{\"id\":\"node_conn_a\",\"type\":\"connector\"}," +
-                "{\"id\":\"node_conn_b\",\"type\":\"connector\"}," +
-                "{\"id\":\"node_exit\",\"type\":\"exit\"}" +
+                "{\"id\":\"node_trigger\",\"data\":{\"type\":\"trigger\"}}," +
+                "{\"id\":\"node_conn_a\",\"data\":{\"type\":\"connector\"}}," +
+                "{\"id\":\"node_conn_b\",\"data\":{\"type\":\"connector\"}}," +
+                "{\"id\":\"node_exit\",\"data\":{\"type\":\"exit\"}}" +
                 "],\"edges\":[" +
                 "{\"id\":\"e1\",\"source\":\"node_trigger\",\"target\":\"node_conn_a\"}," +
                 "{\"id\":\"e2\",\"source\":\"node_trigger\",\"target\":\"node_conn_b\"}," +
@@ -210,9 +211,9 @@ class DagSchedulerTest {
     @DisplayName("节点执行超时 → 标记为 timeout 状态, 不中断其他流程")
     void testNodeTimeout_MarkedAsTimeout() {
         String orchestrationConfig = "{\"nodes\":[" +
-                "{\"id\":\"node_trigger\",\"type\":\"trigger\"}," +
-                "{\"id\":\"node_conn\",\"type\":\"connector\",\"data\":{\"timeoutMs\":100}}," +
-                "{\"id\":\"node_exit\",\"type\":\"exit\"}" +
+                "{\"id\":\"node_trigger\",\"data\":{\"type\":\"trigger\"}}," +
+                "{\"id\":\"node_conn\",\"data\":{\"type\":\"connector\",\"timeoutMs\":100}}," +
+                "{\"id\":\"node_exit\",\"data\":{\"type\":\"exit\"}}" +
                 "],\"edges\":[" +
                 "{\"id\":\"e1\",\"source\":\"node_trigger\",\"target\":\"node_conn\"}," +
                 "{\"id\":\"e2\",\"source\":\"node_conn\",\"target\":\"node_exit\"}" +
@@ -250,8 +251,8 @@ class DagSchedulerTest {
     @DisplayName("节点无自定义超时 → 使用默认 30s 超时")
     void testNodeDefaultTimeout_30s() {
         String orchestrationConfig = "{\"nodes\":[" +
-                "{\"id\":\"node_trigger\",\"type\":\"trigger\"}," +
-                "{\"id\":\"node_exit\",\"type\":\"exit\"}" +
+                "{\"id\":\"node_trigger\",\"data\":{\"type\":\"trigger\"}}," +
+                "{\"id\":\"node_exit\",\"data\":{\"type\":\"exit\"}}" +
                 "],\"edges\":[" +
                 "{\"id\":\"e1\",\"source\":\"node_trigger\",\"target\":\"node_exit\"}" +
                 "]}";
@@ -280,9 +281,9 @@ class DagSchedulerTest {
     @DisplayName("未知节点类型 → 标记为 skipped, 不中断 DAG")
     void testUnknownNodeType_Skipped() {
         String orchestrationConfig = "{\"nodes\":[" +
-                "{\"id\":\"node_trigger\",\"type\":\"trigger\"}," +
-                "{\"id\":\"node_unknown\",\"type\":\"unknown_type\"}," +
-                "{\"id\":\"node_exit\",\"type\":\"exit\"}" +
+                "{\"id\":\"node_trigger\",\"data\":{\"type\":\"trigger\"}}," +
+                "{\"id\":\"node_unknown\",\"data\":{\"type\":\"unknown_type\"}}," +
+                "{\"id\":\"node_exit\",\"data\":{\"type\":\"exit\"}}" +
                 "],\"edges\":[" +
                 "{\"id\":\"e1\",\"source\":\"node_trigger\",\"target\":\"node_unknown\"}," +
                 "{\"id\":\"e2\",\"source\":\"node_unknown\",\"target\":\"node_exit\"}" +
@@ -332,9 +333,9 @@ class DagSchedulerTest {
     @DisplayName("编排配置无 trigger 节点 → 顺序执行所有节点")
     void testNoTriggerNode_SequentialExecution() {
         String orchestrationConfig = "{\"nodes\":[" +
-                "{\"id\":\"node_conn_a\",\"type\":\"connector\"}," +
-                "{\"id\":\"node_conn_b\",\"type\":\"connector\"}," +
-                "{\"id\":\"node_exit\",\"type\":\"exit\"}" +
+                "{\"id\":\"node_conn_a\",\"data\":{\"type\":\"connector\"}}," +
+                "{\"id\":\"node_conn_b\",\"data\":{\"type\":\"connector\"}}," +
+                "{\"id\":\"node_exit\",\"data\":{\"type\":\"exit\"}}" +
                 "],\"edges\":[]}";
 
         ResolvedFlowConfig resolved = makeResolvedFlowConfig(orchestrationConfig);
@@ -363,10 +364,10 @@ class DagSchedulerTest {
     @DisplayName("并行分支中一个分支失败 → 其他分支正常完成并汇聚")
     void testParallelBranchOneFails_OthersProceed() {
         String orchestrationConfig = "{\"nodes\":[" +
-                "{\"id\":\"node_trigger\",\"type\":\"trigger\"}," +
-                "{\"id\":\"node_conn_a\",\"type\":\"connector\"}," +
-                "{\"id\":\"node_conn_b\",\"type\":\"connector\"}," +
-                "{\"id\":\"node_exit\",\"type\":\"exit\"}" +
+                "{\"id\":\"node_trigger\",\"data\":{\"type\":\"trigger\"}}," +
+                "{\"id\":\"node_conn_a\",\"data\":{\"type\":\"connector\"}}," +
+                "{\"id\":\"node_conn_b\",\"data\":{\"type\":\"connector\"}}," +
+                "{\"id\":\"node_exit\",\"data\":{\"type\":\"exit\"}}" +
                 "],\"edges\":[" +
                 "{\"id\":\"e1\",\"source\":\"node_trigger\",\"target\":\"node_conn_a\"}," +
                 "{\"id\":\"e2\",\"source\":\"node_trigger\",\"target\":\"node_conn_b\"}," +
@@ -380,10 +381,13 @@ class DagSchedulerTest {
         when(triggerExecutor.execute(any(ExecutionContext.class), any()))
                 .thenReturn(Mono.just(successOutput("node_trigger", "trigger")));
 
-        // branch A 正常返回
+        // branch A 正常返回 — 按 nodeId 精准匹配，避免并行顺序不确定性
         // branch B 直接失败
-        when(connectorExecutor.execute(any(ExecutionContext.class), any()))
-                .thenReturn(Mono.just(successOutput("node_conn_a", "connector")))
+        when(connectorExecutor.execute(any(ExecutionContext.class),
+                argThat((Map<String, Object> cfg) -> "node_conn_a".equals(cfg.get("id")))))
+                .thenReturn(Mono.just(successOutput("node_conn_a", "connector")));
+        when(connectorExecutor.execute(any(ExecutionContext.class),
+                argThat((Map<String, Object> cfg) -> "node_conn_b".equals(cfg.get("id")))))
                 .thenReturn(Mono.error(new RuntimeException("Branch B downstream error")));
 
         when(exitExecutor.execute(any(ExecutionContext.class), any()))
@@ -408,10 +412,10 @@ class DagSchedulerTest {
     @DisplayName("并行 DAG: 两分支并发执行总耗时 ≈ max(分支耗时)")
     void testParallelDag_ConcurrentExecution() {
         String orchestrationConfig = "{\"nodes\":[" +
-                "{\"id\":\"node_trigger\",\"type\":\"trigger\"}," +
-                "{\"id\":\"node_conn_a\",\"type\":\"connector\"}," +
-                "{\"id\":\"node_conn_b\",\"type\":\"connector\"}," +
-                "{\"id\":\"node_exit\",\"type\":\"exit\"}" +
+                "{\"id\":\"node_trigger\",\"data\":{\"type\":\"trigger\"}}," +
+                "{\"id\":\"node_conn_a\",\"data\":{\"type\":\"connector\"}}," +
+                "{\"id\":\"node_conn_b\",\"data\":{\"type\":\"connector\"}}," +
+                "{\"id\":\"node_exit\",\"data\":{\"type\":\"exit\"}}" +
                 "],\"edges\":[" +
                 "{\"id\":\"e1\",\"source\":\"node_trigger\",\"target\":\"node_conn_a\"}," +
                 "{\"id\":\"e2\",\"source\":\"node_trigger\",\"target\":\"node_conn_b\"}," +
@@ -457,7 +461,7 @@ class DagSchedulerTest {
     @DisplayName("单节点 DAG: 仅 trigger → 无下游")
     void testSingleNodeDag_TriggerOnly() {
         String orchestrationConfig = "{\"nodes\":[" +
-                "{\"id\":\"node_trigger\",\"type\":\"trigger\"}" +
+                "{\"id\":\"node_trigger\",\"data\":{\"type\":\"trigger\"}}" +
                 "],\"edges\":[]}";
 
         ResolvedFlowConfig resolved = makeResolvedFlowConfig(orchestrationConfig);
