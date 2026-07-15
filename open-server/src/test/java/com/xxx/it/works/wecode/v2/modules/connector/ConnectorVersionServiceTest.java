@@ -180,20 +180,8 @@ class ConnectorVersionServiceTest {
             assertTrue(response.getMessageZh().contains("草稿配置为空"));
         }
 
-        @Test
-        @DisplayName("URL 白名单正则无效 → 422")
-        void testPublish_InvalidUrlRegex_Returns422() {
-            ConnectorVersion draft = makeDraftVersion(200L);
-            draft.setConnectionConfig("{\"urlWhitelist\":[{\"pattern\":\"[invalid\"}]}");
-            when(connectorMapper.selectById(connectorId)).thenReturn(connector);
-            when(connectorVersionMapper.selectById(200L)).thenReturn(draft);
-
-            ApiResponse<?> response = connectorVersionService.publish(connectorId, 200L);
-
-            assertEquals("422", response.getCode());
-            assertTrue(response.getMessageZh().contains("URL 白名单正则无效"));
-        }
     }
+
 
     // ===== 复制到草稿 =====
 

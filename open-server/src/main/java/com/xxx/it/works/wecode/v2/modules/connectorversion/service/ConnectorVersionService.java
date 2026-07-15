@@ -275,7 +275,7 @@ public class ConnectorVersionService {
     }
 
     /**
-     * 校验发布配置并执行状态更新（JSON 语法/大小/白名单/正则校验 + 版本与连接器状态变更）
+     * 校验发布配置并执行状态更新（JSON 语法/大小/平台 URL 正则校验 + 版本与连接器状态变更）
      *
      * @return 校验失败时返回 ApiResponse 错误，成功返回 null
      */
@@ -301,9 +301,6 @@ public class ConnectorVersionService {
                     "连接配置 JSON 格式无效：" + e.getMessage(),
                     "Invalid connection config JSON: " + e.getMessage());
         }
-
-        result = validateUrlWhitelist(root);
-        if (result != null) return result;
 
         String urlRegexPattern = propertyService.getUrlRegexPattern();
         if (urlRegexPattern != null && !urlRegexPattern.isEmpty()) {
@@ -606,33 +603,6 @@ public class ConnectorVersionService {
                 return ApiResponse.error("422",
                         "连接配置 JSON 超过最大字节数限制 " + maxBytes + "，当前：" + actualBytes + "字节",
                         "Connection config JSON exceeds max bytes " + maxBytes + ", actual: " + actualBytes);
-            }
-        }
-        return null;
-    }
-
-    /**
-     * 校验 URL 白名单中的正则表达式是否合法
-     *
-     * @param root 连接配置 JSON 根节点
-     * @return ApiResponse.error 或 null（通过）
-     */
-    private ApiResponse<?> validateUrlWhitelist(com.fasterxml.jackson.databind.JsonNode root) {
-        if (!root.has("urlWhitelist") || !root.get("urlWhitelist").isArray()) {
-            return null;
-        }
-        for (com.fasterxml.jackson.databind.JsonNode rule : root.get("urlWhitelist")) {
-            if (rule.has("pattern")) {
-                String pattern = rule.get("pattern").asText();
-                if (pattern != null && !pattern.isEmpty()) {
-                    try {
-                        Pattern.compile(pattern);
-                    } catch (PatternSyntaxException e) {
-                        return ApiResponse.error("422",
-                                "URL 白名单正则无效：" + pattern + " — " + e.getMessage(),
-                                "Invalid URL whitelist regex: " + pattern);
-                    }
-                }
             }
         }
         return null;
