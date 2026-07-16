@@ -17,9 +17,9 @@
 | 组件 | 现状 | 变更 |
 |------|------|------|
 | `AbilityController` | 3 个接口（list / subscribe / subscribed） | 接口参数和返回不变，内部逻辑调整 |
-| `AbilityServiceImpl` | 列表查询硬编码排除 type=6；订阅通过 `AbilityTypeEnum.isValidCode()` 校验 | 列表：改为 `hidden` 字段过滤 + 返回 `frontendEntryUrl`；订阅：改为 DB 校验 |
-| `AbilityVO` | 无 `frontendEntryUrl` 字段 | 新增字段 |
-| `AppAbilityDetailVO` | 无 `frontendEntryUrl` 字段 | 新增字段 |
+| `AbilityServiceImpl` | 列表查询硬编码排除 type=6；订阅通过 `AbilityTypeEnum.isValidCode()` 校验；版本发布硬编码排除 type=6 | 列表：改为 `hidden` 字段过滤 + 返回 `entryUrl`/`routePath`/`aliasName`/`requireRelease`；订阅：改为 DB 校验；版本发布：改为按 `require_release` 字段过滤 |
+| `AbilityVO` | 无 `entryUrl` 等字段 | 新增 `entryUrl`/`routePath`/`aliasName`/`requireRelease` |
+| `AppAbilityDetailVO` | 无 `entryUrl` 等字段 | 新增 `entryUrl`/`routePath`/`aliasName`/`requireRelease` |
 | `AbilityMapper` | 基础 CRUD | 可能需新增按 `abilityType` 查询方法 |
 | `AbilityTypeEnum` | 7 个硬编码常量 | **不变**（只用于预置类型本地化展示，不用于校验） |
 
@@ -36,12 +36,13 @@
 
 | 组件 | 变更类型 | 说明 |
 |------|---------|------|
-| `AbilityVO.frontendEntryUrl` | 修改 | 新增字段 |
-| `AppAbilityDetailVO.frontendEntryUrl` | 修改 | 新增字段 |
-| `AbilityServiceImpl.getAbilityList()` | 修改 | type=6 硬编码排除 → `hidden` 字段过滤；新增 `frontendEntryUrl` |
+| `AbilityVO.entryUrl` / `routePath` / `aliasName` / `requireRelease` | 修改 | 新增字段；`frontendEntryUrl` 改为 `entryUrl` |
+| `AppAbilityDetailVO.entryUrl` / `routePath` / `aliasName` / `requireRelease` | 修改 | 新增字段；`frontendEntryUrl` 改为 `entryUrl` |
+| `AbilityServiceImpl.getAbilityList()` | 修改 | type=6 硬编码排除 → `hidden` 字段过滤；新增 `entryUrl`/`routePath`/`aliasName`/`requireRelease` |
 | `AbilityServiceImpl.addAbility()` | 修改 | 枚举校验 → DB 校验 |
-| `AbilityServiceImpl.getSubscribedAbilities()` | 修改 | 新增 `frontendEntryUrl` |
+| `AbilityServiceImpl.getSubscribedAbilities()` | 修改 | 新增 `entryUrl`/`routePath`/`aliasName`/`requireRelease` |
 | `AbilityServiceImpl.autoSubscribeAfterAbility()` | 修改 | 空实现 → 打日志 |
+| `VersionServiceImpl.createVersion()` | 修改 | 硬编码排除 type=6 → 按 `require_release` 字段过滤 |
 | `Capabilities.jsx` | 修改 | type=6 过滤逻辑去掉；配置页加载子应用 |
 | 动态子应用加载模块 | 新增 | 在配置页组件内运行时 `loadMicroApp` |
 | `ABILITY_SCENE_MAP` | 修改（可选） | 扩展场景分组或新增"其他"场景 |
@@ -64,7 +65,7 @@ graph TB
     end
 
     subgraph Platform["平台面产物"]
-        AbilityTable["openplatform_ability_t<br/>(新增 frontend_entry_url, hidden)"]
+        AbilityTable["openplatform_ability_t<br/>(新增 entry_url, hidden, route_path, alias_name, require_release)"]
         AdminCRUD["AdminAbilityController<br/>(平台面新增)"]
     end
 
@@ -84,7 +85,7 @@ graph TB
 
 ## 2. 数据库设计
 
-开放面**不新增数据库变更**。平台面已负责 `openplatform_ability_t` 新增 `frontend_entry_url` 和 `hidden` 字段。开放面直接读取平台面写入的数据，无需独立迁移。
+开放面**不新增数据库变更**。平台面已负责 `openplatform_ability_t` 新增 `entry_url`、`hidden`、`route_path`、`alias_name`、`require_release` 字段。开放面直接读取平台面写入的数据，无需独立迁移。
 
 ## 3. API设计
 
@@ -137,7 +138,10 @@ graph TB
 
 | 变更 | 说明 |
 |------|------|
-| ✅ 新增 `frontendEntryUrl` (string) | 前端入口URL，有则返回，无则返回 null |
+| ✅ 新增 `entryUrl` (string) | 进入地址，有则返回，无则返回 null |
+| ✅ 新增 `routePath` (string) | 路由路径 |
+| ✅ 新增 `aliasName` (string) | 别名 |
+| ✅ 新增 `requireRelease` (int) | 是否需要版本发布才生效（0=即时，1=需发布） |
 | ✅ 过滤逻辑变更 | 不再硬编码排除 type=6，改为按 `hidden=1` 过滤 |
 | ✅ 自定义类型 | 自定义类型（≥100）正常返回，不受 `AbilityTypeEnum` 限制 |
 
@@ -154,7 +158,10 @@ graph TB
 | diagramUrl | string | 示意图 URL | — |
 | subscribed | boolean | 已订阅标记 | — |
 | orderNum | int | 排序号 | — |
-| frontendEntryUrl | string | 前端入口URL | **新增** |
+| entryUrl | string | 进入地址 | **新增** |
+| routePath | string | 路由路径 | **新增** |
+| aliasName | string | 别名 | **新增** |
+| requireRelease | int | 是否需要版本发布才生效 | **新增** |
 
 **数据流**：
 
@@ -168,7 +175,7 @@ sequenceDiagram
     OPeN->>DB: 查询所有 ability（hidden=0）
     OPeN->>DB: 查询应用的已订阅列表（标记订阅状态）
     DB-->>OPeN: 结果
-    OPeN-->>WECODE: 列表（含 frontendEntryUrl）
+    OPeN-->>WECODE: 列表（含 entryUrl/routePath/aliasName/requireRelease）
     WECODE->>WECODE: 渲染（预设回退常量，自定义用后端数据）
 ```
 
@@ -231,7 +238,10 @@ sequenceDiagram
 
 | 变更 | 说明 |
 |------|------|
-| ✅ 新增 `frontendEntryUrl` (string) | 前端入口URL |
+| ✅ 新增 `entryUrl` (string) | 进入地址 |
+| ✅ 新增 `routePath` (string) | 路由路径 |
+| ✅ 新增 `aliasName` (string) | 别名 |
+| ✅ 新增 `requireRelease` (int) | 是否需要版本发布才生效 |
 | ✅ 过滤逻辑变更 | 不再硬编码排除 type=6 |
 
 **响应体 `data[]`**
@@ -244,7 +254,10 @@ sequenceDiagram
 | nameEn | string | 英文名 | — |
 | iconUrl | string | 图标 URL | — |
 | orderNum | int | 排序号 | — |
-| frontendEntryUrl | string | 前端入口URL | **新增** |
+| entryUrl | string | 进入地址 | **新增** |
+| routePath | string | 路由路径 | **新增** |
+| aliasName | string | 别名 | **新增** |
+| requireRelease | int | 是否需要版本发布才生效 | **新增** |
 
 ### 3.4 前端变更说明
 
@@ -264,7 +277,7 @@ sequenceDiagram
 
 | 旧逻辑 | 新逻辑 |
 |--------|--------|
-| 配置页展示占位文本"该能力已添加，配置页面由能力方提供" | 从 `frontendEntryUrl` 获取子应用入口，运行时动态加载 |
+| 配置页展示占位文本"该能力已添加，配置页面由能力方提供" | 从 `entryUrl` 获取子应用入口，运行时动态加载 |
 | 无微前端加载 | 使用 QianKun `loadMicroApp` API 动态加载子应用 |
 | - | 向子应用传递上下文：appId、abilityType、nameCn |
 
@@ -277,13 +290,37 @@ sequenceDiagram
     participant SubApp as 微前端子应用
 
     User->>WECODE: 点击已订阅能力的"配置"按钮
-    WECODE->>WECODE: 读取 frontendEntryUrl
+    WECODE->>WECODE: 读取 entryUrl
     WECODE->>SubApp: 运行时加载子应用<br/>传递 { appId, abilityType, nameCn }
     SubApp-->>WECODE: 渲染配置UI
     User->>SubApp: 配置操作
     User->>WECODE: 切换/退出配置
     WECODE->>SubApp: 卸载子应用
 ```
+
+### 3.5 VersionServiceImpl 硬编码改造
+
+**背景**：现有 `VersionServiceImpl.createVersion()` 第173行硬编码排除 `GROUP_JOIN_NOTIFICATION`（type=6）：
+
+```java
+// 旧逻辑：硬编码排除 type=6
+.filter(r -> !Objects.equals(r.getAbilityType(), AbilityTypeEnum.GROUP_JOIN_NOTIFICATION.getCode()))
+```
+
+**改造内容**：将硬编码逻辑改为按 `require_release` 字段过滤：
+
+```java
+// 新逻辑：按 require_release 字段过滤
+// 仅将 require_release=1 的能力纳入版本发布检查
+.filter(r -> Boolean.TRUE.equals(r.getRequireRelease()))
+```
+
+**改造位置**：`open-server/.../version/service/impl/VersionServiceImpl.java`
+
+**影响**：
+- type=6（应用入群通知）的 `require_release` 默认值为 0（即时生效），行为与改造前一致
+- 自定义能力通过平台面设置 `require_release` 控制是否需要版本发布
+- 现有 `VersionServiceImpl` 其他逻辑不变
 
 ## 4. 方案对比
 
@@ -313,7 +350,7 @@ sequenceDiagram
 
 理由：
 1. 后端变更范围可控：只需修改 `AbilityServiceImpl` 中两三处逻辑 + 两个 VO 加字段
-2. 接口向后兼容：新增 `frontendEntryUrl` 为 optional 字段，不破坏现有前端
+2. 接口向后兼容：新增 `entryUrl`/`routePath`/`aliasName`/`requireRelease` 为 optional 字段，不破坏现有前端
 3. 前端配置页嵌入为新增功能（运行时动态加载），不修改现有导航和路由
 4. 前置依赖（平台面 DB migration）后，开放面直接读取即可
 
@@ -323,9 +360,10 @@ sequenceDiagram
 
 | 文件 | 修改内容 |
 |------|---------|
-| `open-server/.../ability/vo/AbilityVO.java` | 新增 `frontendEntryUrl` 字段 |
-| `open-server/.../ability/vo/AppAbilityDetailVO.java` | 新增 `frontendEntryUrl` 字段 |
-| `open-server/.../ability/service/impl/AbilityServiceImpl.java` | 列表: `hidden` 过滤 + `frontendEntryUrl`；订阅: DB 校验；自动桥接: 日志 |
+| `open-server/.../ability/vo/AbilityVO.java` | 新增 `entryUrl`/`routePath`/`aliasName`/`requireRelease` 字段 |
+| `open-server/.../ability/vo/AppAbilityDetailVO.java` | 新增 `entryUrl`/`routePath`/`aliasName`/`requireRelease` 字段 |
+| `open-server/.../ability/service/impl/AbilityServiceImpl.java` | 列表: `hidden` 过滤 + `entryUrl`/`routePath`/`aliasName`/`requireRelease`；订阅: DB 校验；自动桥接: 日志 |
+| `open-server/.../version/service/impl/VersionServiceImpl.java` | 硬编码排除 type=6 改为按 `require_release` 字段过滤 |
 | `open-server/.../ability/controller/AbilityController.java` | 可能小调整（如接口注释） |
 | `wecodesite/.../pages/Capabilities/Capabilities.jsx` | 去掉 type=6 硬编码；配置页加载子应用 |
 | `wecodesite/.../utils/constants.js` | 可能扩展 `ABILITY_SCENE_MAP` |
@@ -341,7 +379,7 @@ sequenceDiagram
 | 风险 | 影响 | 缓解措施 |
 |------|------|---------|
 | 现有前端已硬编码过滤 type=6 | 升级后老版本前端可能仍显示隐藏类型 | 后端控制 `hidden` 字段 + 前端升级同步去掉前端硬编码 |
-| 微前端动态加载方案不成熟 | 配置页无法正常加载子应用 | 兜底：无 `frontendEntryUrl` 的能力仍展示占位文本 |
+| 微前端动态加载方案不成熟 | 配置页无法正常加载子应用 | 兜底：无 `entryUrl` 的能力仍展示占位文本 |
 | `autoSubscribeAfterAbility` 在现有流程中已有调用 | 日志不影响功能 | 仅加日志，不改逻辑 |
 
 ## 8. ADR
@@ -355,7 +393,7 @@ sequenceDiagram
 - 变更范围可被现有类结构容纳
 
 **决策**：
-直接修改 `AbilityServiceImpl` 的现有方法（`getAbilityList()`、`addAbility()`、`getSubscribedAbilities()`），不新建 Controller 或 Service。VO 类新增 optional 字段 `frontendEntryUrl`。
+直接修改 `AbilityServiceImpl` 的现有方法（`getAbilityList()`、`addAbility()`、`getSubscribedAbilities()`），不新建 Controller 或 Service。VO 类新增 optional 字段 `entryUrl`、`routePath`、`aliasName`、`requireRelease`。
 
 **后果**：
 - 正面：改动小、代码复用、兼容现有调用方
@@ -367,7 +405,7 @@ sequenceDiagram
 
 **背景**：
 - 现有 `microApps.js` 使用静态注册方式
-- 能力配置页的子应用 `frontendEntryUrl` 由平台面录入，运行时才能确定
+- 能力配置页的子应用 `entryUrl`/`routePath`/`aliasName` 由平台面录入，运行时才能确定
 
 **决策**：
 在 Capabilities 页配置视图组件内，使用 QianKun 的 `loadMicroApp` API 在运行时动态加载子应用。不修改 `microApps.js`。
@@ -391,10 +429,10 @@ sequenceDiagram
 
 | 验证产物 | 验证基准 |
 |---------|---------|
-| 能力列表查询 | hidden=1 不出现在列表；自定义类型正常展示；frontendEntryUrl 正常返回 |
+| 能力列表查询 | hidden=1 不出现在列表；自定义类型正常展示；entryUrl/routePath/aliasName/requireRelease 正常返回 |
 | 能力订阅 | 自定义类型可通过校验正常订阅 |
-| 已订阅列表 | 新增 frontendEntryUrl 字段 |
-| 配置页 | 无 frontendEntryUrl 展示占位；有则加载子应用 |
+| 已订阅列表 | 新增 entryUrl/routePath/aliasName/requireRelease 字段 |
+| 配置页 | 无 entryUrl 展示占位；有则加载子应用 |
 
 ## 修订记录
 
@@ -402,3 +440,4 @@ sequenceDiagram
 |------|---------|------|--------|
 | v1.0 | 初始创建 — 开放面技术规划 | 2026-07-13 | SDDU Plan Agent |
 | v1.1 | 对齐平台面格式：独立数据库设计+API设计章节；接口详细定义含设计规范/接口清单/请求响应/数据流 | 2026-07-13 | SDDU Plan Agent |
+| v1.2 | DB 字段更新：新增 route_path/alias_name/require_release 字段；frontendEntryUrl 改为 entryUrl；新增 §3.5 VersionServiceImpl 硬编码改造（按 require_release 过滤）；文件影响分析同步更新 | 2026-07-16 | SDDU Plan Agent |

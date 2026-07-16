@@ -19,7 +19,7 @@
 | `AbilityTypeEnum` | 7 个硬编码常量 | 保持不动，新增自定义类型通过 DB 存储 |
 | `AbilityController` | 3 个接口（list / subscribe / subscribed） | 不变，平台面新增独立 AdminController |
 | `AbilityMapper` / `AbilityPropertyMapper` | 已有 CRUD 映射 | 平台面复用现有映射 |
-| `Ability` 实体 | 映射 `openplatform_ability_t` | 新增字段 `frontendEntryUrl`、`hidden` |
+| `Ability` 实体 | 映射 `openplatform_ability_t` | 新增字段 `entryUrl`、`hidden`、`routePath`、`aliasName`、`requireRelease`；`frontendEntryUrl` 改为 `entryUrl` |
 | `AbilityProperty` 实体 | 映射 `openplatform_ability_p_t`（图标/示意图） | 不动，继续复用 |
 | `AbilitySnapshotLoader` | 启动时加载 ability 到缓存 | 新增字段不影响 |
 
@@ -42,7 +42,7 @@
 | `AdminAbilityVO` | 列表响应 VO（含新增字段） | open-server ability |
 | `AdminAbilityCreateRequest` | 创建请求 DTO | open-server ability |
 | `AdminAbilityUpdateRequest` | 编辑请求 DTO | open-server ability |
-| Flyway migration 文件 | `openplatform_ability_t` 新增 `frontend_entry_url` / `hidden` 字段 | open-server DB |
+| Flyway migration 文件 | `openplatform_ability_t` 新增 `entry_url`/`hidden`/`route_path`/`alias_name`/`require_release` 字段及 `ability_type` 类型调整 | open-server DB |
 | 前端页面（market-web） | 能力目录管理页面：列表页 + 创建/编辑表单 | market-web |
 
 ### 1.3 依赖关系图
@@ -64,7 +64,7 @@ graph TB
     end
 
     subgraph DB["数据库"]
-        T1["openplatform_ability_t<br/>(新增 frontend_entry_url, hidden)"]
+        T1["openplatform_ability_t<br/>(新增 entry_url, hidden, route_path, alias_name, require_release)"]
         T2["openplatform_ability_p_t<br/>(图标/示意图, 不变)"]
     end
 
@@ -84,25 +84,88 @@ graph TB
 
 ## 2. 数据库设计
 
-### 2.1 openplatform_ability_t（主表）
+### 2.1 当前 `openplatform_ability_t`（迁移前）
 
-复用现有表，新增字段：
+```sql
+CREATE TABLE `openplatform_ability_t`  (
+  `id` bigint NOT NULL COMMENT '主键',
+  `ability_name_cn` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '能力中文名',
+  `ability_name_en` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '能力英文名',
+  `ability_desc_cn` varchar(2000) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '' COMMENT '能力中文描述',
+  `ability_desc_en` varchar(2000) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '' COMMENT '能力英文描述',
+  `ability_type` tinyint(1) NOT NULL DEFAULT 0 COMMENT '能力类型 1-群置顶 2-群通知 3-链接增强 4-点对点通知 5-we码 6-应用入群通知 7-助手广场卡片',
+  `order_num` int NOT NULL COMMENT '序号',
+  `status` tinyint NULL DEFAULT 1 COMMENT '状态：0=失效, 1=有效',
+  `create_by` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '创建人',
+  `create_time` datetime(3) NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
+  `last_update_by` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '最后更新人',
+  `last_update_time` datetime(3) NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '最后更新时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_ability_type`(`ability_type` ASC) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '能力表' ROW_FORMAT = Dynamic;
+```
 
-| 字段名 | 类型 | 说明 | 约束 |
-|--------|------|------|------|
-| `frontend_entry_url` | VARCHAR(512) | 微前端子应用入口 URL | nullable |
-| `hidden` | TINYINT(1) | 是否在开放面展示（0=展示，1=隐藏） | 默认 0 |
+### 2.2 当前 `openplatform_ability_p_t`（迁移前，本期不变）
 
-> 其余字段（`ability_name_cn`, `ability_name_en`, `ability_desc_cn`, `ability_desc_en`, `ability_type`, `order_num`, `status` 等）保持现有结构不变。
+```sql
+CREATE TABLE `openplatform_ability_p_t`  (
+  `id` bigint NOT NULL COMMENT '主键',
+  `parent_id` bigint NOT NULL COMMENT '能力id',
+  `property_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '属性名',
+  `property_value` varchar(2000) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '' COMMENT '属性值',
+  `status` tinyint NULL DEFAULT 1 COMMENT '状态：0=失效, 1=有效',
+  `create_by` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '创建人',
+  `create_time` datetime(3) NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
+  `last_update_by` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '最后更新人',
+  `last_update_time` datetime(3) NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '最后更新时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_parent_id`(`parent_id` ASC) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '能力属性表' ROW_FORMAT = Dynamic;
+```
 
-### 2.2 openplatform_ability_p_t（属性表）
+### 2.3 本期修改后 `openplatform_ability_t`
 
-**不变**。继续存储图标（`property_name = 'icon'`）和示意图（`property_name = 'illustration'`）。
+```sql
+CREATE TABLE `openplatform_ability_t`  (
+  `id` bigint NOT NULL COMMENT '主键',
+  `ability_name_cn` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '能力中文名',
+  `ability_name_en` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '能力英文名',
+  `ability_desc_cn` varchar(2000) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '' COMMENT '能力中文描述',
+  `ability_desc_en` varchar(2000) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '' COMMENT '能力英文描述',
+  `ability_type` tinyint NOT NULL DEFAULT 0 COMMENT '能力类型编码（1-7 预置，自定义类型统一分配，不区分范围）',
+  `order_num` int NOT NULL COMMENT '序号',
+  `status` tinyint NULL DEFAULT 1 COMMENT '状态：0=失效, 1=有效',
+  `entry_url` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '进入地址（微前端子应用入口）',
+  `hidden` tinyint(1) NULL DEFAULT 0 COMMENT '是否在开放面展示：0=展示, 1=隐藏',
+  `route_path` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '路由路径（子应用激活路由）',
+  `alias_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '别名（子应用唯一标识）',
+  `require_release` tinyint(1) NULL DEFAULT 0 COMMENT '是否需要版本发布才生效：0=即时生效, 1=需版本发布',
+  `create_by` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '创建人',
+  `create_time` datetime(3) NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
+  `last_update_by` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '最后更新人',
+  `last_update_time` datetime(3) NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '最后更新时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  INDEX `idx_ability_type`(`ability_type` ASC) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '能力表' ROW_FORMAT = Dynamic;
+```
 
-### 2.3 迁移版本
+### 2.4 V4 Flyway 迁移脚本
 
-- 新增 Flyway migration: `V4__add_ability_admin_fields.sql`
-- 迁移内容：`ALTER TABLE openplatform_ability_t ADD COLUMN frontend_entry_url VARCHAR(512) DEFAULT NULL COMMENT '前端入口URL'`, `ADD COLUMN hidden TINYINT(1) DEFAULT 0 COMMENT '是否在开放面展示'`
+```sql
+-- V4__add_ability_admin_fields.sql
+
+-- 1. 调整 ability_type 类型注释（去掉显示宽度，更新注释）
+ALTER TABLE `openplatform_ability_t` 
+  MODIFY COLUMN `ability_type` tinyint NOT NULL DEFAULT 0 COMMENT '能力类型编码（1-7 预置，自定义类型统一分配，不区分范围）';
+
+-- 2. 新增嵌入能力相关字段
+ALTER TABLE `openplatform_ability_t`
+  ADD COLUMN `entry_url` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '进入地址（微前端子应用入口）' AFTER `status`,
+  ADD COLUMN `hidden` tinyint(1) NULL DEFAULT 0 COMMENT '是否在开放面展示：0=展示, 1=隐藏' AFTER `entry_url`,
+  ADD COLUMN `route_path` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '路由路径（子应用激活路由）' AFTER `hidden`,
+  ADD COLUMN `alias_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '别名（子应用唯一标识）' AFTER `route_path`,
+  ADD COLUMN `require_release` tinyint(1) NULL DEFAULT 0 COMMENT '是否需要版本发布才生效：0=即时生效, 1=需版本发布' AFTER `alias_name`;
+```
 
 ## 3. API设计
 
@@ -137,15 +200,19 @@ graph TB
 
 **字段命名**：驼峰命名（camelCase），与现有 ability 模块保持一致。
 
-| 数据库列名 | API 字段名 |
-|-----------|----------|
-| `ability_type` | `abilityType` |
-| `name_cn` | `nameCn` |
-| `name_en` | `nameEn` |
-| `ability_desc_cn` | `descCn` |
-| `desc_en` | `descEn` |
-| `order_num` | `orderNum` |
-| `frontend_entry_url` | `frontendEntryUrl` |
+| DB 列名 | Java 字段 | API 字段 |
+|---------|----------|---------|
+| `ability_type` | `abilityType` | `abilityType` |
+| `ability_name_cn` | `abilityNameCn` | `nameCn` |
+| `ability_name_en` | `abilityNameEn` | `nameEn` |
+| `ability_desc_cn` | `abilityDescCn` | `descCn` |
+| `ability_desc_en` | `abilityDescEn` | `descEn` |
+| `order_num` | `orderNum` | `orderNum` |
+| `entry_url` | `entryUrl` | `entryUrl` |
+| `hidden` | `hidden` | `hidden` |
+| `route_path` | `routePath` | `routePath` |
+| `alias_name` | `aliasName` | `aliasName` |
+| `require_release` | `requireRelease` | `requireRelease` |
 
 ### 3.2 接口清单
 
@@ -186,8 +253,11 @@ graph TB
 | iconUrl | string | 图标 URL |
 | diagramUrl | string | 示意图 URL（缩略图） |
 | orderNum | int | 排序号 |
-| frontendEntryUrl | string | 前端入口 URL |
+| entryUrl | string | 进入地址 |
 | hidden | int | 是否在开放面展示（0=展示，1=隐藏） |
+| routePath | string | 路由路径 |
+| aliasName | string | 别名 |
+| requireRelease | int | 是否需要版本发布才生效（0=即时生效，1=需版本发布） |
 | createTime | string | 创建时间 |
 | updateBy | string | 更新人 |
 | updateTime | string | 更新时间 |
@@ -228,8 +298,11 @@ sequenceDiagram
 | iconUrl | string | ❌ | 图标文件上传返回的 URL |
 | diagramUrl | string | ❌ | 示意图文件上传返回的 URL |
 | orderNum | int | ❌ | 排序号，默认 0 |
-| frontendEntryUrl | string | ❌ | 前端入口 URL（http/https 协议） |
+| entryUrl | string | ❌ | 进入地址（http/https 协议） |
 | hidden | int | ❌ | 是否隐藏（0=展示，1=隐藏），默认 0 |
+| routePath | string | ❌ | 路由路径（子应用激活路由） |
+| aliasName | string | ❌ | 别名（子应用唯一标识） |
+| requireRelease | int | ❌ | 是否需要版本发布才生效（0=即时生效，1=需版本发布），默认 0 |
 
 **响应体 `data`**
 
@@ -291,8 +364,11 @@ sequenceDiagram
 | iconUrl | string | ❌ | 图标 URL（新文件上传后替换） |
 | diagramUrl | string | ❌ | 示意图 URL |
 | orderNum | int | ❌ | 排序号 |
-| frontendEntryUrl | string | ❌ | 前端入口 URL |
+| entryUrl | string | ❌ | 进入地址 |
 | hidden | int | ❌ | 是否隐藏 |
+| routePath | string | ❌ | 路由路径 |
+| aliasName | string | ❌ | 别名 |
+| requireRelease | int | ❌ | 是否需要版本发布才生效 |
 
 > 所有字段可选，仅更新传入的字段。abilityType 不可修改。
 
@@ -434,7 +510,7 @@ sequenceDiagram
 
 | 文件 | 修改内容 |
 |------|---------|
-| `open-server/.../ability/entity/Ability.java` | 新增 `frontendEntryUrl`、`hidden` 字段 |
+| `open-server/.../ability/entity/Ability.java` | `frontendEntryUrl` 改为 `entryUrl`；新增 `hidden`、`routePath`、`aliasName`、`requireRelease` 字段 |
 | `open-server/.../ability/mapper/AbilityMapper.java` | 可能新增管理面查询方法 |
 | `open-server/.../ability/mapper/AbilityPropertyMapper.java` | 可能新增按 abilityType 查询/删除方法 |
 | `market-web/.../router/config.ts` | 新增能力目录管理路由 |
@@ -468,20 +544,41 @@ sequenceDiagram
 
 ### ADR-002: abilityType 编码规则
 
-**状态**: ACCEPTED
+**状态**: ACCEPTED（已更新）
 
 **背景**：
 - 现有 7 种预置类型使用 1-7 编码
 - 自定义类型需要手动输入编码
 
 **决策**：
-- 1-7 保留给 `AbilityTypeEnum` 预置类型
-- 自定义类型推荐编码 ≥ 100，后端校验唯一性（包括预置编码）
+- 1-7 保留给 `AbilityTypeEnum` 预置类型（群置顶、群通知、链接增强、点对点通知、we码、应用入群通知、助手广场卡片）
+- 自定义类型统一在 tinyint 范围内分配，不区分类型大小
+- 系统校验唯一性（包括已创建的记录和预置编码中的值）
 - 创建后不可修改
 
 **后果**：
-- 正面：业务字段可读性强，不依赖自增ID
-- 负面：需要人工管理编码范围，无冲突时系统保障
+- 正面：业务字段可读性强，不依赖自增ID；自定义不再受 ≥100 约束，更灵活
+- 负面：需要前端提示避免与预置编码冲突，人工管理编码值
+
+### ADR-004: require_release 字段替代硬编码能力类型排除
+
+**状态**: ACCEPTED
+
+**背景**：
+- 现有 `VersionServiceImpl.createVersion()` 第173行硬编码排除 `GROUP_JOIN_NOTIFICATION`（type=6），逻辑为 `!Objects.equals(r.getAbilityType(), AbilityTypeEnum.GROUP_JOIN_NOTIFICATION.getCode())`
+- 新增的自定义能力也需要按需控制是否需要版本发布后才生效，硬编码方式不可扩展
+
+**决策**：
+- `openplatform_ability_t` 新增 `require_release` 字段（tinyint, 默认0）
+- 0 = 即时生效，订阅后无需等待版本发布即可使用（如 type=6 应用入群通知）
+- 1 = 需要应用版本发布后才允许用户使用（如卡片类、群置顶等）
+- 将 `VersionServiceImpl.createVersion()` 中的硬编码过滤逻辑改为按 `require_release = 1` 字段过滤
+- 改造位置：`open-server/.../version/service/impl/VersionServiceImpl.java`
+
+**后果**：
+- 正面：能力是否需要版本发布由 DB 字段控制，新增自定义能力无需改代码
+- 正面：与现有预置能力行为一致（type=6 现有即时生效行为不变）
+- 负面：需确保迁移后 type=6 的 `require_release` 默认为 0，保持行为一致
 
 ---
 
@@ -512,3 +609,4 @@ sequenceDiagram
 | v1.1 | 1.3 数据流重写：按4个FR场景逐一对应独立序列图 | 2026-07-13 | SDDU Plan Agent |
 | v1.2 | 结构调整：独立数据库设计+API设计章节，数据流融入接口 | 2026-07-13 | SDDU Plan Agent |
 | v1.3 | API设计重写：按 plan-api.md 格式，含设计规范/接口清单/请求响应JSON示例 | 2026-07-13 | SDDU Plan Agent |
+| v1.4 | DB设计更新：新增 route_path/alias_name/require_release 字段；frontend_entry_url 改为 entry_url；ability_type 类型调整；编码规则简化（取消≥100约束）；新增 ADR-004；V4 迁移脚本更新 | 2026-07-16 | SDDU Plan Agent |
