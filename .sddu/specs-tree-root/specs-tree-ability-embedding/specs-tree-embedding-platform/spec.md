@@ -141,7 +141,7 @@
 
 | # | 问题 | 影响范围 | 建议方案 | 状态 |
 |---|------|---------|---------|:----:|
-| 1 | 管理接口路径前缀如何设计？当前 open-server 已有 `/service/open/v2/ability`，需要区分管理面 vs 开放面 | 平台面 API 设计 | 使用 `admin` 子路径区分，或启用独立 market-server controller | ⏳ 待决策 |
+| 1 | 管理接口路径前缀如何设计？当前 open-server 已有 `/service/open/v2/ability`，需要区分管理面 vs 开放面 | 平台面 API 设计 | 使用 `admin` 子路径区分，或启用独立 market-server controller | ✅ 已决策 |
 | 2 | entry_url/route_path/alias_name/require_release 字段及 ability_type 调整需要 DB 迁移 | 数据库版本管理 | 已决策：新增 V4 migration 文件 | ✅ 已决策 |
 | 3 | abilityType 编码手动输入，是否有推荐的范围约束？ | 数据治理 | 已决策：自定义类型统一在 tinyint 范围内分配，不区分类型大小，前端提示避免与预置编码 1-7 冲突 | ✅ 已决策 |
 

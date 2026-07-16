@@ -1,5 +1,5 @@
 {
-  "feature": "platform-db",
+  "feature": "platform-01-db",
   "feature_id": "EMBED-PLATFORM-DB-001",
   "feature_name": "数据库变更",
   "phase": "tasked",
@@ -10,7 +10,6 @@
   "description": "V4 Flyway迁移脚本（open-server），为 openplatform_ability_t 新增5个字段 + ability_type 类型调整",
   "task_ref": "TASK-001",
   "complexity": "S",
-  "wave": 1,
   "fr": ["FR-002"],
   "artifacts": {}
 }
