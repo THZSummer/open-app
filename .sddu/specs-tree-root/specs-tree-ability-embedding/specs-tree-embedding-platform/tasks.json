@@ -23,7 +23,7 @@
     "files": [
       {"op": "NEW", "path": "open-server/src/main/resources/db/migration/V4__add_ability_admin_fields.sql"}
     ],
-    "verify": "mvn -f open-server/pom.xml flyway:migrate"
+    "verify": "mysql -h 192.168.3.155 -P 3306 -u root -proot openapp < open-server/src/main/resources/db/migration/V4__add_ability_admin_fields.sql"
   },
   {
     "id": "TASK-003",

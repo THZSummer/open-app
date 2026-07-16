@@ -34,7 +34,7 @@
 | `AdminAbilityCreateRequest` | 创建请求 DTO | `market-server/.../ability/dto/admin/AdminAbilityCreateRequest.java` |
 | `AdminAbilityUpdateRequest` | 编辑请求 DTO | `market-server/.../ability/dto/admin/AdminAbilityUpdateRequest.java` |
 | `AbilityPropertyMapper` | 图标/示意图属性 Mapper（新建） | `market-server/.../ability/mapper/AbilityPropertyMapper.java` |
-| Flyway migration 文件 | `openplatform_ability_t` 新增 `entry_url`/`hidden`/`route_path`/`alias_name`/`require_release` 字段及 `ability_type` 类型调整 | `open-server/src/main/resources/db/migration/V4__add_ability_admin_fields.sql` |
+| V4 迁移脚本 | `openplatform_ability_t` 新增 `entry_url`/`hidden`/`route_path`/`alias_name`/`require_release` 字段及 `ability_type` 类型调整 | `open-server/src/main/resources/db/migration/V4__add_ability_admin_fields.sql` |
 | 前端页面（market-web） | 能力目录管理页面：列表页 + 创建/编辑表单 | market-web |
 
 ### 1.3 依赖关系图
@@ -139,7 +139,9 @@ CREATE TABLE `openplatform_ability_t`  (
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '能力表' ROW_FORMAT = Dynamic;
 ```
 
-### 2.4 V4 Flyway 迁移脚本
+### 2.4 V4 迁移脚本
+
+> ⚠️ 实际实施必须遵循 `../plan-code.md` §4 数据库脚本编写规范（幂等设计、每条语句独立、safe_add_column 等存储过程）。以下 SQL 仅为设计意图示意，不可直接用于生产。
 
 ```sql
 -- V4__add_ability_admin_fields.sql
@@ -463,7 +465,7 @@ sequenceDiagram
 
 | ~~维度~~ | ~~评价~~ |
 |:---:|:---:|
-| ~~优点~~ | ~~与 spec"服务端：market-server"一致，职责分离清晰；ability 独立模块不再寄生 approval；market-server 已有 AbilityEntity + AbilityMapper，直连同库，无需跨服务；已有 Flyway 基础设施~~ |
+| ~~优点~~ | ~~与 spec"服务端：market-server"一致，职责分离清晰；ability 独立模块不再寄生 approval；market-server 已有 AbilityEntity + AbilityMapper，直连同库，无需跨服务；已有迁移基础设施~~ |
 | ~~缺点~~ | ~~需要结构重组（将寄生在 approval 中的 ability 代码分离出来）~~ |
 | ~~风险~~ | ~~中——需确保搬迁后 import 引用正确，全局替换无遗漏~~ |
 
@@ -536,7 +538,7 @@ sequenceDiagram
 **背景**：
 - spec 指定"服务端：market-server"
 - market-server 已有 AbilityEntity + AbilityMapper，直连 `openplatform_ability_t`
-- market-server 已有 Flyway 基础设施
+- market-server 已有迁移基础设施
 - 原方案（open-server 扩展）已废弃，与 spec 矛盾
 
 **决策**：
@@ -591,12 +593,28 @@ sequenceDiagram
 
 ## 9. 产物审查策略
 
-| 审查产物 | 审查基准 |
-|---------|---------|
+> 审查基准详见 `../plan-code.md`（父级共享代码规范）（代码规范，沿用能力开放平台已有技术标准）。以下列出本 Feature 的审查产物和对应检查项。
+
+### 9.1 审查基准
+
+| 类别 | 基准文档 |
+|------|---------|
+| 代码规范 | `../plan-code.md`（父级共享代码规范）（注释/命名/异常/日志/测试等 16 条规范） |
+| 功能需求 | `spec.md`（FR-001 ~ FR-004 验收标准） |
+| 数据库设计 | plan.md §2（字段类型/默认值/约束） |
+
+### 9.2 审查清单
+
+| 审查产物 | 计划审查内容 |
+|---------|------------|
 | `build.md`（代码变更清单） | spec.md（规范基准） |
-| AdminAbilityController.java | 接口参数校验、错误处理、权限校验 |
-| AdminAbilityService.java | 业务逻辑完整性（创建/编辑/删除/列表） |
+| AdminAbilityController.java | 接口参数校验、错误处理、权限校验；对照 ../plan-code.md（父级共享代码规范）注释/异常规范 |
+| AdminAbilityService.java | 业务逻辑完整性（创建/编辑/删除/列表）；对照 ../plan-code.md（父级共享代码规范）事务/日志规范 |
+| AdminAbilityCreateRequest.java 等 DTO | 字段校验注解、命名规范 |
+| AdminAbilityVO.java 等 VO | 字段映射、序列化规范 |
+| AbilityEntity.java | 新增字段映射、Lombok 注解 |
 | V4 迁移文件 | 字段类型、默认值、约束 |
+| 前端页面（market-web） | 组件结构、API 调用、错误处理 |
 
 ## 10. 产物验证策略
 
@@ -605,6 +623,8 @@ sequenceDiagram
 ---
 
 ### 10.1 数据库脚本验证
+
+> **脚本编写规范**: V4 脚本实施时严格遵循 `../plan-code.md` §4（幂等设计 + 存储过程 + 无事务包裹），验证时确保脚本可重复执行不报错。
 
 **⚠️ 安全原则**: 数据库变更影响面大，验证全程**禁止直接操作原库原表**。必须先在独立副本库上完成全部验证，确认无误后方可在原库执行。
 
@@ -671,35 +691,23 @@ SELECT '副本库', TABLE_NAME, TABLE_ROWS
 
 #### 10.1.2 阶段二：副本库上执行 V4 迁移
 
-> 配置 Flyway 连接副本库，在隔离环境执行迁移。
+> 使用 mysql 命令行在隔离环境执行迁移。
 
-**步骤 4: 配置 Flyway 指向副本库**
+**步骤 4: mysql 命令行执行迁移**
 
-修改 `open-server/pom.xml` 中 Flyway 配置（或通过 `-D` 参数覆盖），将 JDBC URL 指向副本库：
+通过 mysql 命令行指向副本库执行 V4 脚本：
 
 ```bash
-# 方式一：Maven 命令行参数覆盖（推荐，不修改 pom.xml）
-mvn -f open-server/pom.xml flyway:migrate \
-  -Dflyway.url="jdbc:mysql://${MYSQL_HOST}:${MYSQL_PORT}/${COPY_DB}?useSSL=false&allowPublicKeyRetrieval=true" \
-  -Dflyway.user="${ROOT_USER}" \
-  -Dflyway.password="${ROOT_PASS}"
-
-# 方式二：环境变量注入（若 pom.xml 支持占位符）
-export FLYWAY_URL="jdbc:mysql://${MYSQL_HOST}:${MYSQL_PORT}/${COPY_DB}?useSSL=false"
-export FLYWAY_USER="${ROOT_USER}"
-export FLYWAY_PASSWORD="${ROOT_PASS}"
-mvn -f open-server/pom.xml flyway:migrate
+mysql -h ${MYSQL_HOST} -P ${MYSQL_PORT} -u ${ROOT_USER} -p${ROOT_PASS} ${COPY_DB} \
+  < open-server/src/main/resources/db/migration/V4__add_ability_admin_fields.sql
 ```
 
 **检查迁移结果**:
 
 ```bash
-# 验证 V4 迁移记录已写入
-${MYSQL_CMD} ${COPY_DB} -e \
-  "SELECT version, description, type, installed_on, success
-   FROM flyway_schema_history
-   WHERE version = '4';"
-# 预期: 1 行, success=1
+# 验证 V4 脚本已执行（检查新字段是否存在）
+${MYSQL_CMD} ${COPY_DB} -e "DESC openplatform_ability_t" \
+  | grep -q "entry_url" && echo "✅ V4 脚本已执行" || echo "❌ V4 脚本未执行"
 ```
 
 ---
@@ -824,7 +832,7 @@ ${MYSQL_CMD} -e \
 
 | # | 检查项 | 状态 |
 |---|--------|:----:|
-| 1 | 副本库迁移成功（flyway_schema_history 有 V4 success 记录） | ☐ |
+| 1 | V4 脚本已成功执行（新字段存在） | ☐ |
 | 2 | 5 个新字段存在且类型正确 | ☐ |
 | 3 | ability_type 类型已调整为 tinyint | ☐ |
 | 4 | 原库与副本库行数一致（无数据丢失） | ☐ |
@@ -836,16 +844,12 @@ ${MYSQL_CMD} -e \
 **步骤 9: 原库执行迁移**
 
 ```bash
-# ⚠️ 执行前确认：Flyway URL 已切回原库
-mvn -f open-server/pom.xml flyway:migrate \
-  -Dflyway.url="jdbc:mysql://${MYSQL_HOST}:${MYSQL_PORT}/${ORIGINAL_DB}?useSSL=false&allowPublicKeyRetrieval=true" \
-  -Dflyway.user="${ROOT_USER}" \
-  -Dflyway.password="${ROOT_PASS}"
+mysql -h ${MYSQL_HOST} -P ${MYSQL_PORT} -u ${ROOT_USER} -p${ROOT_PASS} ${ORIGINAL_DB} \
+  < open-server/src/main/resources/db/migration/V4__add_ability_admin_fields.sql
 
-# 验证原库迁移记录
-${MYSQL_CMD} ${ORIGINAL_DB} -e \
-  "SELECT version, description, installed_on, success
-   FROM flyway_schema_history WHERE version = '4';"
+# 验证原库新字段
+${MYSQL_CMD} ${ORIGINAL_DB} -e "DESC openplatform_ability_t" \
+  | grep -q "entry_url" && echo "✅ 原库 V4 脚本已执行" || echo "❌ 原库执行失败"
 ```
 
 **步骤 10: 原库迁移后快速验证**
@@ -875,9 +879,7 @@ ${MYSQL_CMD} ${ORIGINAL_DB} -e \
 若原库迁移后发现问题，执行以下步骤回滚：
 
 ```bash
-# 1. 删除 V4 迁移记录
-${MYSQL_CMD} ${ORIGINAL_DB} -e \
-  "DELETE FROM flyway_schema_history WHERE version = '4';"
+# 1. 确认回滚操作（无迁移记录表，直接执行逆向 DDL）
 
 # 2. 删除新增字段（逆向 DDL）
 ${MYSQL_CMD} ${ORIGINAL_DB} -e \
@@ -898,7 +900,7 @@ echo "⚠️ 原库已回滚到 V4 迁移前状态"
 ```
 
 **验证产物**:
-- Flyway 迁移报告（副本库 + 原库两份）
+- V4 脚本执行日志（副本库 + 原库两份）
 - 数据完整性对比日志（行数 / 字段抽样 / 关联表）
 - CRUD 功能验证截图
 - 前置检查清单（8 项全部打勾）
@@ -1666,7 +1668,7 @@ pytest tests/e2e/ability_admin/ --html=reports/ability-admin-report.html --self-
 
 | 产物 | 验证方式 | 工具 | 通过标准 | 门禁 |
 |------|---------|------|---------|:----:|
-| V4 迁移脚本 | DDL 执行 + 字段验证 | Flyway + MySQL CLI | 迁移成功执行，5 新字段存在且类型正确 | 开发完成 |
+| V4 迁移脚本 | DDL 执行 + 字段验证 | MySQL CLI | 迁移成功执行，5 新字段存在且类型正确 | 开发完成 |
 | AdminAbilityController | 单元测试 | JUnit 5 + Mockito | 所有 L0/L1 通过，覆盖率 ≥ 80% | PR |
 | AdminAbilityService | 单元测试 | JUnit 5 + Mockito | 所有 L0/L1/L2 通过，覆盖率 ≥ 85% | PR |
 | Admin CRUD 接口 | 集成测试 | pytest (L1/L2) | 所有 CRUD 正常场景 + 异常场景通过 | PR |

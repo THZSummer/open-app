@@ -5,9 +5,9 @@
 
 ## 描述
 
-新增 Flyway V4 迁移脚本，为 `openplatform_ability_t` 新增 5 个字段（entry_url / hidden / route_path / alias_name / require_release），调整 ability_type 类型为 tinyint。
+新增 V4 数据库变更脚本（按 Flyway 命名规范，实际通过 mysql 命令行执行），为 `openplatform_ability_t` 新增 5 个字段（entry_url / hidden / route_path / alias_name / require_release），调整 ability_type 类型为 tinyint。
 
-> ⚠️ 迁移脚本放在 open-server（表 `openplatform_ability_t` 属于 open-server schema，Flyway 在此管理）。  
+> ⚠️ 迁移脚本放在 open-server（表 `openplatform_ability_t` 属于 open-server schema，脚本跟随 open-server 管理）。  
 > ⚠️ Entity / Mapper 等应用代码同步由 TASK-003（列表接口后端）承接。
 
 ## 涉及文件
@@ -18,7 +18,7 @@
 
 ## 验收标准
 
-- [ ] 迁移文件命名为 `V4__add_ability_admin_fields.sql`，Flyway 可识别
+- [ ] 迁移文件命名为 `V4__add_ability_admin_fields.sql`（遵循 Flyway 命名规范）
 - [ ] 新增 5 个字段：entry_url / hidden / route_path / alias_name / require_release
 - [ ] ability_type MODIFY 为 tinyint
 - [ ] 迁移在测试库实际执行成功
@@ -39,10 +39,9 @@ mysql -h 192.168.3.155 -P 3306 -u root -proot -e \
 mysqldump -h 192.168.3.155 -P 3306 -u root -proot --single-transaction openapp \
   | mysql -h 192.168.3.155 -P 3306 -u root -proot openapp_v4_migration_test
 
-# 3. 在副本库执行 V4 迁移
-mvn -f open-server/pom.xml flyway:migrate \
-  -Dflyway.url="jdbc:mysql://192.168.3.155:3306/openapp_v4_migration_test?useSSL=false" \
-  -Dflyway.user=root -Dflyway.password=root
+# 3. 在副本库执行 V4 脚本
+mysql -h 192.168.3.155 -P 3306 -u root -proot openapp_v4_migration_test \
+  < open-server/src/main/resources/db/migration/V4__add_ability_admin_fields.sql
 
 # 4. 验证新字段
 mysql -h 192.168.3.155 -P 3306 -u root -proot openapp_v4_migration_test -e \
@@ -64,12 +63,15 @@ mysql -h 192.168.3.155 -P 3306 -u root -proot openapp_v4_migration_test -e \
 ### 阶段二：推广到原库（阶段一全部 ✅ 后执行）
 
 ```bash
-mvn -f open-server/pom.xml flyway:migrate
+# 原库执行 V4 脚本
+mysql -h 192.168.3.155 -P 3306 -u root -proot openapp \
+  < open-server/src/main/resources/db/migration/V4__add_ability_admin_fields.sql
 ```
 
 ## 验证
 
 ```bash
-# 原库执行 V4 迁移（副本验证已通过）
-mvn -f open-server/pom.xml flyway:migrate
+# 原库执行 V4 脚本（副本验证已通过）
+mysql -h 192.168.3.155 -P 3306 -u root -proot openapp \
+  < open-server/src/main/resources/db/migration/V4__add_ability_admin_fields.sql
 ```
