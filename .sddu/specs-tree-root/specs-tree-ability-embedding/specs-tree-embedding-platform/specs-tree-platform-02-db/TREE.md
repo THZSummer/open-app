@@ -2,17 +2,17 @@
 
 **Feature ID**: EMBED-PLATFORM-DB-001
 **父 Feature**: EMBED-PLATFORM-001（嵌入能力平台面）
-**阶段**: tasked | 复杂度: S | 顺序: 01/10
+**阶段**: tasked | 复杂度: S | 顺序: 02/10
 
 ## 对应任务
 
-- **任务ID**: TASK-001
+- **任务ID**: TASK-002
 - **关联FR**: FR-002
 
 ## 目录结构
 
 ```
-specs-tree-platform-01-db/
+specs-tree-platform-02-db/
 ├── state.json        # 任务状态
 ├── tasks.md          # 任务详情
 └── TREE.md           # 本文件 — 目录导航

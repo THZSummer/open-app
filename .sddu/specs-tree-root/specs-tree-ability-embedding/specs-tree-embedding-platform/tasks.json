@@ -1,22 +1,9 @@
 [
   {
     "id": "TASK-001",
-    "name": "数据库变更",
-    "complexity": "S",
-    "dependencies": [],
-    "wave": 1,
-    "fr": ["FR-002"],
-    "files": [
-      {"op": "NEW", "path": "open-server/src/main/resources/db/migration/V4__add_ability_admin_fields.sql"}
-    ],
-    "verify": "mvn -f open-server/pom.xml flyway:migrate"
-  },
-  {
-    "id": "TASK-002",
     "name": "模块重组",
     "complexity": "M",
     "dependencies": [],
-    "wave": 1,
     "fr": [],
     "files": [
       {"op": "NEW", "path": "market-server/.../modules/ability/ (新模块目录)"},
@@ -28,11 +15,21 @@
     "verify": "mvn -f market-server/pom.xml compile -q"
   },
   {
+    "id": "TASK-002",
+    "name": "数据库变更",
+    "complexity": "S",
+    "dependencies": ["TASK-001"],
+    "fr": ["FR-002"],
+    "files": [
+      {"op": "NEW", "path": "open-server/src/main/resources/db/migration/V4__add_ability_admin_fields.sql"}
+    ],
+    "verify": "mvn -f open-server/pom.xml flyway:migrate"
+  },
+  {
     "id": "TASK-003",
     "name": "列表接口（后端）",
     "complexity": "M",
-    "dependencies": ["TASK-001", "TASK-002"],
-    "wave": 2,
+    "dependencies": ["TASK-002"],
     "fr": ["FR-001"],
     "files": [
       {"op": "MODIFY", "path": "market-server/.../ability/entity/AbilityEntity.java"},
@@ -50,7 +47,6 @@
     "name": "列表页面（前端）",
     "complexity": "L",
     "dependencies": ["TASK-003"],
-    "wave": 3,
     "fr": ["FR-001"],
     "files": [
       {"op": "NEW", "path": "market-web/src/router/routeRedBlue/ability-admin/index.tsx"},
@@ -63,8 +59,7 @@
     "id": "TASK-005",
     "name": "新增接口（后端）",
     "complexity": "M",
-    "dependencies": ["TASK-001", "TASK-002"],
-    "wave": 2,
+    "dependencies": ["TASK-004"],
     "fr": ["FR-002"],
     "files": [
       {"op": "NEW", "path": "market-server/.../ability/dto/admin/AdminAbilityCreateRequest.java"},
@@ -80,7 +75,6 @@
     "name": "新增表单（前端）",
     "complexity": "M",
     "dependencies": ["TASK-005"],
-    "wave": 3,
     "fr": ["FR-002"],
     "files": [
       {"op": "NEW", "path": "market-web/src/router/routeRedBlue/ability-admin/components/CreateForm.tsx"},
@@ -92,8 +86,7 @@
     "id": "TASK-007",
     "name": "编辑接口（后端）",
     "complexity": "M",
-    "dependencies": ["TASK-001", "TASK-002"],
-    "wave": 2,
+    "dependencies": ["TASK-006"],
     "fr": ["FR-003"],
     "files": [
       {"op": "NEW", "path": "market-server/.../ability/dto/admin/AdminAbilityUpdateRequest.java"},
@@ -108,7 +101,6 @@
     "name": "编辑表单（前端）",
     "complexity": "M",
     "dependencies": ["TASK-007"],
-    "wave": 3,
     "fr": ["FR-003"],
     "files": [
       {"op": "NEW", "path": "market-web/src/router/routeRedBlue/ability-admin/components/EditForm.tsx"},
@@ -120,8 +112,7 @@
     "id": "TASK-009",
     "name": "删除接口（后端）",
     "complexity": "S",
-    "dependencies": ["TASK-001", "TASK-002"],
-    "wave": 2,
+    "dependencies": ["TASK-008"],
     "fr": ["FR-004"],
     "files": [
       {"op": "MODIFY", "path": "market-server/.../ability/service/AdminAbilityService.java"},
@@ -134,8 +125,7 @@
     "id": "TASK-010",
     "name": "删除操作（前端）",
     "complexity": "S",
-    "dependencies": ["TASK-004", "TASK-009"],
-    "wave": 4,
+    "dependencies": ["TASK-009"],
     "fr": ["FR-004"],
     "files": [
       {"op": "MODIFY", "path": "market-web/src/router/routeRedBlue/ability-admin/index.tsx"},

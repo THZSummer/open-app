@@ -15,6 +15,10 @@
 | MODIFY | `market-server/.../ability/service/AdminAbilityService.java` |
 | MODIFY | `market-server/.../ability/service/impl/AdminAbilityServiceImpl.java` |
 | MODIFY | `market-server/.../ability/controller/AdminAbilityController.java` |
+| NEW | `market-server/src/test/java/.../ability/controller/AdminAbilityDeleteControllerTest.java` |
+| NEW | `market-server/src/test/java/.../ability/service/AdminAbilityDeleteServiceTest.java` |
+| NEW | `market-server/src/test/java/.../ability/entity/AbilityEntityTest.java` |
+| NEW | `market-server/src/test/python/modules/ability/test_admin_delete.py` |
 
 ## 验收标准
 
@@ -22,9 +26,18 @@
 - [ ] 有关联订阅 → 禁止删除，返回 409 + 订阅数量
 - [ ] 不存在的 id 返回 404
 - [ ] 接口路径: DELETE /service/open/v2/ability/admin/{id}
+- [ ] Java 单元测试: AdminAbilityDeleteControllerTest 通过（覆盖正常删除/有订阅禁止删除）
+- [ ] Java 单元测试: AdminAbilityDeleteServiceTest 通过
+- [ ] Java 单元测试: AbilityEntityTest 通过（entryUrl/hidden/routePath/aliasName/requireRelease 字段映射）
+- [ ] Python 集成测试: test_admin_delete.py L1/L2/L4 全部通过
 
 ## 验证
 
 ```bash
-mvn -f market-server/pom.xml compile -q
+# Java 单元测试
+mvn -f market-server/pom.xml test -Dtest="AdminAbilityDeleteControllerTest,AdminAbilityDeleteServiceTest,AbilityEntityTest"
+
+# Python 集成测试
+cd market-server/src/test/python
+pytest modules/ability/test_admin_delete.py -m "" -v
 ```

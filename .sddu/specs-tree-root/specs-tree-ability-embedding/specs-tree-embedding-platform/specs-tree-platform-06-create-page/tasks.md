@@ -14,6 +14,7 @@
 |:--:|------|
 | NEW | `market-web/src/router/routeRedBlue/ability-admin/components/CreateForm.tsx` |
 | MODIFY | `market-web/src/router/routeRedBlue/ability-admin/thunk.ts`（追加 create API） |
+| NEW | `market-web/tests/e2e/ability_admin/test_create.py` |
 
 ## 验收标准
 
@@ -21,9 +22,14 @@
 - [ ] abilityType 编码校验、entryUrl 格式校验
 - [ ] 图标/示意图文件上传正常
 - [ ] 创建成功后跳转列表页
+- [ ] Playwright E2E: test_create.py L1/L2/L4 全部通过（正常创建/全字段创建/重复编码拒绝/空名称校验/非法URL拒绝）
 
 ## 验证
 
 ```bash
+# 编译检查
 cd market-web && npm run build
+
+# Playwright E2E
+pytest tests/e2e/ability_admin/test_create.py -m "" -v
 ```

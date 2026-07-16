@@ -14,6 +14,7 @@
 |:--:|------|
 | NEW | `market-web/src/router/routeRedBlue/ability-admin/components/EditForm.tsx` |
 | MODIFY | `market-web/src/router/routeRedBlue/ability-admin/thunk.ts`（追加 update API） |
+| NEW | `market-web/tests/e2e/ability_admin/test_edit.py` |
 
 ## 验收标准
 
@@ -21,9 +22,14 @@
 - [ ] abilityType 字段只读
 - [ ] 图标/示意图可替换上传
 - [ ] 提交后跳转列表
+- [ ] Playwright E2E: test_edit.py L1/L2 全部通过（编辑提交成功/abilityType只读/取消编辑数据不变）
 
 ## 验证
 
 ```bash
+# 编译检查
 cd market-web && npm run build
+
+# Playwright E2E
+pytest tests/e2e/ability_admin/test_edit.py -m "" -v
 ```

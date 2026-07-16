@@ -1,1 +1,0 @@
-[{"id":"TASK-001","name":"数据库变更","complexity":"S","dependencies":[],"wave":1,"fr":["FR-002"],"files":[{"op":"NEW","path":"open-server/src/main/resources/db/migration/V4__add_ability_admin_fields.sql"}],"verify":"mvn -f open-server/pom.xml flyway:migrate"}]

@@ -17,6 +17,9 @@
 | MODIFY | `market-server/.../ability/service/impl/AdminAbilityServiceImpl.java` |
 | MODIFY | `market-server/.../ability/controller/AdminAbilityController.java` |
 | MODIFY | `market-server/.../ability/mapper/AbilityPropertyMapper.java` |
+| NEW | `market-server/src/test/java/.../ability/controller/AdminAbilityCreateControllerTest.java` |
+| NEW | `market-server/src/test/java/.../ability/service/AdminAbilityCreateServiceTest.java` |
+| NEW | `market-server/src/test/python/modules/ability/test_admin_create.py` |
 
 ## 验收标准
 
@@ -24,9 +27,17 @@
 - [ ] entryUrl 格式校验（http/https 协议），不合法返回 400
 - [ ] 创建成功写入 ability_t（主表）+ ability_p_t（图标/示意图属性）
 - [ ] 接口路径: POST /service/open/v2/ability/admin
+- [ ] Java 单元测试: AdminAbilityCreateControllerTest 通过（覆盖正常创建/编码唯一性/URL校验）
+- [ ] Java 单元测试: AdminAbilityCreateServiceTest 通过
+- [ ] Python 集成测试: test_admin_create.py L1/L2/L4 全部通过
 
 ## 验证
 
 ```bash
-mvn -f market-server/pom.xml compile -q
+# Java 单元测试
+mvn -f market-server/pom.xml test -Dtest="AdminAbilityCreateControllerTest,AdminAbilityCreateServiceTest"
+
+# Python 集成测试
+cd market-server/src/test/python
+pytest modules/ability/test_admin_create.py -m "" -v
 ```

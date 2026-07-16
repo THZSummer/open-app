@@ -17,8 +17,8 @@ specs-tree-embedding-platform/
 ├── ADR-004.md                        # require_release 替代硬编码
 ├── 需求设计说明.md
 │
-├── specs-tree-platform-01-db/            # TASK-001 [S] 01/10
-├── specs-tree-platform-02-restructure/   # TASK-002 [M] 02/10
+├── specs-tree-platform-01-restructure/   # TASK-001 [M] 01/10
+├── specs-tree-platform-02-db/            # TASK-002 [S] 02/10
 ├── specs-tree-platform-03-list-api/      # TASK-003 [M] 03/10
 ├── specs-tree-platform-04-list-page/     # TASK-004 [L] 04/10
 ├── specs-tree-platform-05-create-api/    # TASK-005 [M] 05/10
@@ -33,8 +33,8 @@ specs-tree-embedding-platform/
 
 | 顺序 | 子Feature | 目录 | 复杂度 | 职责 |
 |:--:|-----------|------|:--:|------|
-| 01/10 | 数据库变更 | specs-tree-platform-01-db | S | V4迁移（open-server） |
-| 02/10 | 模块重组 | specs-tree-platform-02-restructure | M | ability代码从approval独立 |
+| 01/10 | 模块重组 | specs-tree-platform-01-restructure | M | ability代码从approval独立 |
+| 02/10 | 数据库变更 | specs-tree-platform-02-db | S | V4迁移（open-server） |
 | 03/10 | 列表接口（后端） | specs-tree-platform-03-list-api | M | 分页查询接口 |
 | 04/10 | 列表页面（前端） | specs-tree-platform-04-list-page | L | 列表页 + 路由 |
 | 05/10 | 新增接口（后端） | specs-tree-platform-05-create-api | M | 创建能力接口 |

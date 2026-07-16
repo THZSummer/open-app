@@ -21,6 +21,14 @@
 | NEW | `market-server/.../ability/service/AdminAbilityService.java` |
 | NEW | `market-server/.../ability/service/impl/AdminAbilityServiceImpl.java` |
 | NEW | `market-server/.../ability/controller/AdminAbilityController.java` |
+| NEW | `market-server/src/test/java/.../ability/controller/AdminAbilityListControllerTest.java` |
+| NEW | `market-server/src/test/java/.../ability/service/AdminAbilityListServiceTest.java` |
+| NEW | `market-server/src/test/python/conftest.py` |
+| NEW | `market-server/src/test/python/common/__init__.py` |
+| NEW | `market-server/src/test/python/common/client.py` |
+| NEW | `market-server/src/test/python/common/db.py` |
+| NEW | `market-server/src/test/python/pytest.ini` |
+| NEW | `market-server/src/test/python/modules/ability/test_admin_list.py` |
 
 ## 验收标准
 
@@ -32,9 +40,18 @@
 - [ ] 返回字段含 entryUrl / routePath / aliasName / requireRelease / hidden
 - [ ] 图标/示意图 URL 从属性表关联查询
 - [ ] 接口: GET /service/open/v2/ability/admin/list
+- [ ] Java 单元测试: AdminAbilityListControllerTest 通过（覆盖分页/搜索/排序/字段映射）
+- [ ] Java 单元测试: AdminAbilityListServiceTest 通过
+- [ ] Python 集成测试: test_admin_list.py L1/L2/L4 全部通过
 
 ## 验证
 
 ```bash
-mvn -f market-server/pom.xml compile -q
+# Java 单元测试
+mvn -f market-server/pom.xml test -pl . -Dtest="AdminAbilityListControllerTest,AdminAbilityListServiceTest"
+
+# Python 集成测试
+cd market-server/src/test/python
+pip install -r requirements.txt -q
+pytest modules/ability/test_admin_list.py -m "" -v
 ```
