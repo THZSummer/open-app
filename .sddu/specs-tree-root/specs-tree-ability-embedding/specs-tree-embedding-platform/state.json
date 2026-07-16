@@ -6,15 +6,28 @@
   "status": "tracked",
   "parent": "EMBED-001",
   "created_at": "2026-07-13T10:11:00+08:00",
-  "updated_at": "2026-07-13T12:00:00+08:00",
+  "updated_at": "2026-07-16T00:00:00+08:00",
   "spec_version": "v1.0",
-  "plan_version": "v1.0",
+  "plan_version": "v3.0",
+  "childrens": [
+    {"name": "数据库变更", "dir": "specs-tree-platform-01-db", "description": "V4 Flyway迁移脚本（open-server）", "task_ref": "TASK-001", "wave": 1},
+    {"name": "模块重组", "dir": "specs-tree-platform-01-restructure", "description": "ability代码从approval独立为独立模块", "task_ref": "TASK-002", "wave": 1},
+    {"name": "列表接口（后端）", "dir": "specs-tree-platform-02-list-api", "description": "AdminAbilityListRequest → VO → Mapper → Service.list() → GET /list", "task_ref": "TASK-003", "wave": 2},
+    {"name": "列表页面（前端）", "dir": "specs-tree-platform-03-list-page", "description": "market-web能力目录列表页 + 分页 + 搜索 + 路由", "task_ref": "TASK-004", "wave": 3},
+    {"name": "新增接口（后端）", "dir": "specs-tree-platform-02-create-api", "description": "CreateRequest → 校验 → Service.create() → POST", "task_ref": "TASK-005", "wave": 2},
+    {"name": "新增表单（前端）", "dir": "specs-tree-platform-03-create-page", "description": "创建能力表单(文件上传+校验)", "task_ref": "TASK-006", "wave": 3},
+    {"name": "编辑接口（后端）", "dir": "specs-tree-platform-02-edit-api", "description": "UpdateRequest → Service.update() → PUT /{id}", "task_ref": "TASK-007", "wave": 2},
+    {"name": "编辑表单（前端）", "dir": "specs-tree-platform-03-edit-page", "description": "编辑能力表单(回填+提交)", "task_ref": "TASK-008", "wave": 3},
+    {"name": "删除接口（后端）", "dir": "specs-tree-platform-02-delete-api", "description": "Service.delete()(订阅检查) → DELETE /{id}", "task_ref": "TASK-009", "wave": 2},
+    {"name": "删除操作（前端）", "dir": "specs-tree-platform-04-delete-page", "description": "删除按钮 + 确认弹窗 + 错误提示", "task_ref": "TASK-010", "wave": 4}
+  ],
   "artifacts": {
     "spec": "./spec.md",
     "plan": "./plan.md",
     "adr": [
       "./ADR-001.md",
-      "./ADR-002.md"
+      "./ADR-002.md",
+      "./ADR-004.md"
     ]
   }
 }

@@ -1,7 +1,7 @@
 # 技术规划：嵌入能力平台面
 
 **Feature ID**: EMBED-PLATFORM-001  
-**规划版本**: v1.0  
+**规划版本**: v3.0  
 **创建日期**: 2026-07-13  
 **规划作者**: SDDU Plan Agent  
 **规范版本**: spec.md v1.0
@@ -12,51 +12,41 @@
 
 ### 1.1 现有架构影响
 
-**当前 ability 模块**（open-server）：
+**当前 ability 模块**（market-server ability 模块，从 approval 移出独立）：
 
 | 组件 | 现状 | 影响 |
 |------|------|------|
 | `AbilityTypeEnum` | 7 个硬编码常量 | 保持不动，新增自定义类型通过 DB 存储 |
-| `AbilityController` | 3 个接口（list / subscribe / subscribed） | 不变，平台面新增独立 AdminController |
-| `AbilityMapper` / `AbilityPropertyMapper` | 已有 CRUD 映射 | 平台面复用现有映射 |
-| `Ability` 实体 | 映射 `openplatform_ability_t` | 新增字段 `entryUrl`、`hidden`、`routePath`、`aliasName`、`requireRelease`；`frontendEntryUrl` 改为 `entryUrl` |
-| `AbilityProperty` 实体 | 映射 `openplatform_ability_p_t`（图标/示意图） | 不动，继续复用 |
+| `AbilityEntity` | 位于 `modules/approval/` | **移至** `modules/ability/`，新增 5 个字段 `entryUrl`、`hidden`、`routePath`、`aliasName`、`requireRelease`；`frontendEntryUrl` 改为 `entryUrl` |
+| `AbilityMapper` | 位于 `modules/approval/` | **移至** `modules/ability/`，新增 CRUD 方法 |
+| `AbilityPropertyMapper` (market-server) | 不存在 | **新建**（管理图标/示意图属性） |
 | `AbilitySnapshotLoader` | 启动时加载 ability 到缓存 | 新增字段不影响 |
-
-**关键决策**：admin CRUD controller 放在 **market-server** 还是 **open-server**？
-
-| 选项 | 说明 |
-|------|------|
-| 放在 open-server | 数据表 `openplatform_ability_t` 在 open-server 的 schema 中，复用现有 Mapper/Entity/Service |
-| 放在 market-server | spec 指定"服务端：market-server"，但需跨服务访问 ability 数据 |
-
-**决策**：AdminController 放在 **open-server** 中扩展，market-web 对接。数据直接写入 open-server 的已有表 `openplatform_ability_t`/`openplatform_ability_p_t`，由开放面直接读取，符合 NFR-003"写入即对开放面可见"的要求。
 
 ### 1.2 新增组件
 
-| 组件 | 说明 | 所属模块 |
-|------|------|---------|
-| `AdminAbilityController` | 管理面控制器（列表/创建/编辑/删除） | open-server ability |
-| `AdminAbilityService` / `AdminAbilityServiceImpl` | 管理面业务逻辑 | open-server ability |
-| `AdminAbilityListRequest` | 列表请求 DTO（分页 + 模糊搜索） | open-server ability |
-| `AdminAbilityVO` | 列表响应 VO（含新增字段） | open-server ability |
-| `AdminAbilityCreateRequest` | 创建请求 DTO | open-server ability |
-| `AdminAbilityUpdateRequest` | 编辑请求 DTO | open-server ability |
-| Flyway migration 文件 | `openplatform_ability_t` 新增 `entry_url`/`hidden`/`route_path`/`alias_name`/`require_release` 字段及 `ability_type` 类型调整 | open-server DB |
+| 组件 | 说明 | 路径 |
+|------|------|------|
+| `AdminAbilityController` | 管理面控制器（列表/创建/编辑/删除） | `market-server/.../ability/controller/AdminAbilityController.java` |
+| `AdminAbilityService` / `AdminAbilityServiceImpl` | 管理面业务逻辑 | `market-server/.../ability/service/AdminAbilityService.java` |
+| `AdminAbilityListRequest` | 列表请求 DTO（分页 + 模糊搜索） | `market-server/.../ability/dto/admin/AdminAbilityListRequest.java` |
+| `AdminAbilityVO` | 列表响应 VO（含新增字段） | `market-server/.../ability/vo/admin/AdminAbilityVO.java` |
+| `AdminAbilityDetailVO` | 详情 VO | `market-server/.../ability/vo/admin/AdminAbilityDetailVO.java` |
+| `AdminAbilityCreateRequest` | 创建请求 DTO | `market-server/.../ability/dto/admin/AdminAbilityCreateRequest.java` |
+| `AdminAbilityUpdateRequest` | 编辑请求 DTO | `market-server/.../ability/dto/admin/AdminAbilityUpdateRequest.java` |
+| `AbilityPropertyMapper` | 图标/示意图属性 Mapper（新建） | `market-server/.../ability/mapper/AbilityPropertyMapper.java` |
+| Flyway migration 文件 | `openplatform_ability_t` 新增 `entry_url`/`hidden`/`route_path`/`alias_name`/`require_release` 字段及 `ability_type` 类型调整 | `open-server/src/main/resources/db/migration/V4__add_ability_admin_fields.sql` |
 | 前端页面（market-web） | 能力目录管理页面：列表页 + 创建/编辑表单 | market-web |
 
 ### 1.3 依赖关系图
 
 ```mermaid
 graph TB
-    subgraph OpenServer["open-server ability 模块"]
+    subgraph MarketServer["market-server ability 模块"]
         direction TB
-        AbilityController["AbilityController<br/>(现有: 列表/订阅/已订阅)"]
         AdminController["AdminAbilityController<br/>(新增: 管理面 CRUD)"]
-        AbilityService["AbilityService<br/>(现有)"]
         AdminService["AdminAbilityService<br/>(新增)"]
         AbilityMapper["AbilityMapper (现有)"]
-        AbilityPropertyMapper["AbilityPropertyMapper (现有)"]
+        AbilityPropertyMapper["AbilityPropertyMapper<br/>(新建)"]
     end
 
     subgraph MarketWeb["market-web"]
@@ -69,7 +59,6 @@ graph TB
     end
 
     AdminPages --> AdminController
-    AbilityController --> AbilityService
     AdminController --> AdminService
     AdminService --> AbilityMapper
     AdminService --> AbilityPropertyMapper
@@ -78,6 +67,7 @@ graph TB
 
     style AdminController fill:#e1f5e1,stroke:#2e7d32
     style AdminService fill:#e1f5e1,stroke:#2e7d32
+    style AbilityPropertyMapper fill:#e1f5e1,stroke:#2e7d32
     style AdminPages fill:#e1f5e1,stroke:#2e7d32
     style T1 fill:#fff3cd,stroke:#f9a825
 ```
@@ -173,9 +163,9 @@ ALTER TABLE `openplatform_ability_t`
 
 **基础路径**：`/service/open/v2/ability/admin`
 
-**认证方式**：管理面接口复用 open-server 现有 Cookie/SSO 登录态，接口内校验当前用户角色是否为平台管理员（NFR-001）。
+**认证方式**：管理面接口复用 market-server 自身的认证体系（Cookie/SSO），接口内校验当前用户角色是否为平台管理员（NFR-001）。
 
-**响应格式**：统一使用 open-server 现有 `ApiResponse` 信封：
+**响应格式**：统一使用 market-server 现有 `ApiResponse` 信封：
 
 ```json
 // 成功
@@ -457,90 +447,105 @@ sequenceDiagram
 
 ## 4. 方案对比
 
-### 方案 A：扩展 open-server ability 模块（推荐）
+### ~~方案 A：扩展 open-server ability 模块（已废弃：与 spec 矛盾）~~
 
-**描述**：在 open-server 的 ability 模块内新增 AdminAbilityController 和 AdminAbilityService，复用现有 Mapper/Entity。
+~~**描述**：在 open-server 的 ability 模块内新增 AdminAbilityController 和 AdminAbilityService，复用现有 Mapper/Entity。~~
+
+| ~~维度~~ | ~~评价~~ |
+|:---:|:---:|
+| ~~优点~~ | ~~数据表在同一 schema，无需跨服务调用；复用现有能力（fileV2Service 文件上传、AbilityMapper）；写入即对开放面可见~~ |
+| ~~缺点~~ | ~~与"服务端：market-server"的 spec 表述不一致~~ |
+| ~~风险~~ | ~~低——只需新增 Controller+Service，不修改现有接口~~ |
+
+### ~~方案 B：market-server 扩展（已废弃：迁移脚本错放 market-server）~~
+
+~~**描述**：在 market-server 新建独立 ability 模块，将 approval 模块中现有 AbilityEntity/AbilityMapper 迁移至独立模块，新建 AdminAbilityController + AdminAbilityService，直连同一 DB。~~
+
+| ~~维度~~ | ~~评价~~ |
+|:---:|:---:|
+| ~~优点~~ | ~~与 spec"服务端：market-server"一致，职责分离清晰；ability 独立模块不再寄生 approval；market-server 已有 AbilityEntity + AbilityMapper，直连同库，无需跨服务；已有 Flyway 基础设施~~ |
+| ~~缺点~~ | ~~需要结构重组（将寄生在 approval 中的 ability 代码分离出来）~~ |
+| ~~风险~~ | ~~中——需确保搬迁后 import 引用正确，全局替换无遗漏~~ |
+
+### 方案 C：迁移放 open-server + CRUD 放 market-server 独立 ability 模块（推荐）
+
+**描述**：V4 迁移脚本放 open-server（`openplatform_ability_t` 所在服务），Admin CRUD 代码放 market-server 新建独立 `modules/ability/` 模块，直连同一 DB。
 
 | 维度 | 评价 |
 |------|------|
-| 优点 | 数据表在同一 schema，无需跨服务调用；复用现有能力（fileV2Service 文件上传、AbilityMapper）；写入即对开放面可见 |
-| 缺点 | 与"服务端：market-server"的 spec 表述不一致 |
-| 风险 | 低——只需新增 Controller+Service，不修改现有接口 |
-
-### 方案 B：market-server 独立模块
-
-**描述**：在 market-server 中新建独立 controller，跨服务访问 open-server 数据或直连同一 DB。
-
-| 维度 | 评价 |
-|------|------|
-| 优点 | 与 spec"服务端：market-server"一致；体现职责分离 |
-| 缺点 | 需要跨服务访问或重复创建 Mapper/Entity；增加部署耦合；写入操作与现有 open-server 异步问题 |
-| 风险 | 中——跨服务调用的可靠性和数据一致性问题 |
+| 优点 | 迁移在表所属服务管理，DB 一致性有保障；CRUD 与 spec"服务端：market-server"一致；ability 模块独立不寄生 approval |
+| 缺点 | 需在两个服务各自维护部分代码 |
+| 风险 | 低——迁移脚本单一文件，CRUD 模块独立清晰 |
 
 ## 5. 推荐方案
 
-**选择方案 A**：在 open-server 的 ability 模块扩展 admin 能力。
+**选择方案 C**：迁移放 open-server + CRUD 放 market-server 独立 ability 模块。
 
 理由：
-1. `openplatform_ability_t` 表在 open-server 的 schema 中，直接操作最简洁
-2. 复用现有 Mapper/Entity/Service，减少重复代码
-3. 开放面（open-server 自身）读取同一数据源，写入即对开放面可见（NFR-003）
-4. 不影响现有订阅/列表接口
-
-> 注：spec 中"服务端：market-server"的表述在实际实现中调整为 open-server。market-web 作为前端调用 open-server 的 admin 接口。
+1. V4 迁移脚本放在表所属服务（open-server）管理，DB 一致性有保障
+2. CRUD 代码与 spec"服务端：market-server"一致，职责分离清晰
+3. ability 独立模块不再寄生 approval，消除代码位置错误
+4. market-server 已有 AbilityEntity + AbilityMapper 基线，直连同库 `openplatform_ability_t`，无需跨服务
+5. 管理面与开放面代码分离，不污染 open-server 现有模块
+6. 写入即对开放面可见（同一 DB，NFR-003）
 
 ## 6. 文件影响分析
+
+> ⚠️ 文件按部署服务拆分：V4 迁移脚本在 **open-server**（表归属服务），其余所有 CRUD 代码在 **market-server**（ability 独立模块），前端页面在 **market-web**。
 
 ### 新增文件
 
 | 文件 | 说明 |
 |------|------|
-| `open-server/.../ability/controller/AdminAbilityController.java` | 管理面控制器 |
-| `open-server/.../ability/service/AdminAbilityService.java` | 管理面业务接口 |
-| `open-server/.../ability/service/impl/AdminAbilityServiceImpl.java` | 管理面业务实现 |
-| `open-server/.../ability/dto/admin/AdminAbilityListRequest.java` | 列表请求 DTO |
-| `open-server/.../ability/dto/admin/AdminAbilityCreateRequest.java` | 创建请求 DTO |
-| `open-server/.../ability/dto/admin/AdminAbilityUpdateRequest.java` | 编辑请求 DTO |
-| `open-server/.../ability/vo/admin/AdminAbilityVO.java` | 列表响应 VO |
-| `open-server/.../ability/vo/admin/AdminAbilityDetailVO.java` | 详情 VO |
-| `open-server/.../db/migration/V4__add_ability_admin_fields.sql` | DB 迁移 |
-| `market-web/.../pages/AbilityAdmin/` | 前端管理页面（列表/创建/编辑/删除） |
+| `market-server/.../ability/controller/AdminAbilityController.java` | 管理面控制器 |
+| `market-server/.../ability/service/AdminAbilityService.java` | 管理面业务接口 |
+| `market-server/.../ability/service/impl/AdminAbilityServiceImpl.java` | 管理面业务实现 |
+| `market-server/.../ability/dto/admin/AdminAbilityListRequest.java` | 列表请求 DTO |
+| `market-server/.../ability/dto/admin/AdminAbilityCreateRequest.java` | 创建请求 DTO |
+| `market-server/.../ability/dto/admin/AdminAbilityUpdateRequest.java` | 编辑请求 DTO |
+| `market-server/.../ability/vo/admin/AdminAbilityVO.java` | 列表响应 VO |
+| `market-server/.../ability/vo/admin/AdminAbilityDetailVO.java` | 详情 VO |
+| `market-server/.../ability/mapper/AbilityPropertyMapper.java` | 图标/示意图属性 Mapper（新建） |
+| `open-server/src/main/resources/db/migration/V4__add_ability_admin_fields.sql` | DB 迁移（open-server） |
+| `market-web/.../router/routeRedBlue/ability-admin/` | 前端管理页面（列表/创建/编辑/删除，含 index.tsx + components/ + thunk.ts） |
 
 ### 修改文件
 
 | 文件 | 修改内容 |
 |------|---------|
-| `open-server/.../ability/entity/Ability.java` | `frontendEntryUrl` 改为 `entryUrl`；新增 `hidden`、`routePath`、`aliasName`、`requireRelease` 字段 |
-| `open-server/.../ability/mapper/AbilityMapper.java` | 可能新增管理面查询方法 |
-| `open-server/.../ability/mapper/AbilityPropertyMapper.java` | 可能新增按 abilityType 查询/删除方法 |
-| `market-web/.../router/config.ts` | 新增能力目录管理路由 |
+| `market-server/.../ability/entity/AbilityEntity.java` | `frontendEntryUrl` 改为 `entryUrl`；新增 `hidden`、`routePath`、`aliasName`、`requireRelease` 字段；包路径从 approval 修正为 ability |
+| `market-server/.../ability/mapper/AbilityMapper.java` | 新增管理面查询方法（分页列表）；包路径从 approval 修正为 ability |
+| `market-server/src/main/resources/mapper/AbilityMapper.xml` | 新增 resultMap 字段映射 + 分页查询 SQL |
+| `market-web/.../router/index.tsx` | 新增 ability-admin import + Route |
 
 ## 7. 风险评估
 
 | 风险 | 影响 | 缓解措施 |
 |------|------|---------|
-| abilityType 编码手动输入可能不一致 | 数据混乱 | 前端提示推荐范围（≥100）；后端校验唯一性 |
-| 文件上传（图标/示意图）依赖 fileV2Service | 联调阻塞 | Mock 阶段使用固定 URL 占位 |
+| abilityType 编码手动输入可能不一致 | 数据混乱 | 后端校验唯一性 |
+| 文件上传（图标/示意图）需在 market-server 侧处理 | 联调阻塞 | Mock 阶段使用固定 URL 占位 |
 | DB migration 与现有表结构冲突 | 部署失败 | 新增 migration V4，命名规范避免冲突 |
+| market-server 需新建 AbilityPropertyMapper | 重复实现 | 参照 open-server 现有 AbilityPropertyMapper 实现简化版，仅包含 admin 所需方法 |
 
 ## 8. ADR
 
-### ADR-001: Admin 能力 CRUD 放在 open-server 扩展
+### ADR-001: Admin 能力 CRUD 放在 market-server 扩展（替代原 open-server 方案）
 
-**状态**: ACCEPTED
+**状态**: ACCEPTED（原 open-server 方案已废弃）
 
 **背景**：
-- `openplatform_ability_t` 表位于 open-server 的 schema 中
-- open-server ability 模块已有 AbilityMapper、AbilityPropertyMapper、fileV2Service
-- spec 要求"写入即对开放面可见"
-- spec 写"服务端：market-server"但实际数据在 open-server
+- spec 指定"服务端：market-server"
+- market-server 已有 AbilityEntity + AbilityMapper，直连 `openplatform_ability_t`
+- market-server 已有 Flyway 基础设施
+- 原方案（open-server 扩展）已废弃，与 spec 矛盾
 
 **决策**：
-在 open-server 的 ability 模块内新增 AdminAbilityController + AdminAbilityService。market-web 作为前端直接调用 open-server 的 admin 接口。
+在 market-server 新建独立 ability 模块，将 approval 模块中现有 AbilityEntity/AbilityMapper 迁移至独立模块，新建 AdminAbilityController + AdminAbilityService。market-web 作为前端调用 market-server 的 admin 接口。
 
 **后果**：
-- 正面：复用现有 Mapper/Entity，无需跨服务，写入即时对开放面可见
-- 负面：与 spec 中"服务端：market-server"的表述不符，需在 plan 中说明实际调整
+- 正面：与 spec 一致，职责分离清晰，管理面与开放面代码隔离
+- 正面：market-server 已有基础设施，无需从零搭建
+- 负面：需要在 market-server 侧新建 PropertyMapper（图标/示意图）
 
 ### ADR-002: abilityType 编码规则
 
@@ -610,3 +615,6 @@ sequenceDiagram
 | v1.2 | 结构调整：独立数据库设计+API设计章节，数据流融入接口 | 2026-07-13 | SDDU Plan Agent |
 | v1.3 | API设计重写：按 plan-api.md 格式，含设计规范/接口清单/请求响应JSON示例 | 2026-07-13 | SDDU Plan Agent |
 | v1.4 | DB设计更新：新增 route_path/alias_name/require_release 字段；frontend_entry_url 改为 entry_url；ability_type 类型调整；编码规则简化（取消≥100约束）；新增 ADR-004；V4 迁移脚本更新 | 2026-07-16 | SDDU Plan Agent |
+| v1.5 | **回退 ADR-001**：Admin CRUD 从 open-server 改回 market-server；§1/§4/§5/§6/§7/§8 全部对应修正 | 2026-07-16 | SDDU Plan Agent |
+| v2.0 | **模块重组**：ability 代码从 approval 独立为 modules/ability/；全部路径 approval→ability 修正 | 2026-07-16 | SDDU Plan Agent |
+| v3.0 | **方案 C 实施**：V4 迁移回退到 open-server；新增 01-restructure 子 Feature；TASK ID 全部重编号 | 2026-07-16 | SDDU Plan Agent |
