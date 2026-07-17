@@ -1,7 +1,7 @@
 # 技术规划：嵌入能力平台面
 
 **Feature ID**: EMBED-PLATFORM-001  
-**规划版本**: v3.0  
+**规划版本**: v3.4  
 **创建日期**: 2026-07-13  
 **规划作者**: SDDU Plan Agent  
 **规范版本**: spec.md v1.0
@@ -1677,6 +1677,130 @@ pytest tests/e2e/ability_admin/ --html=reports/ability-admin-report.html --self-
 | 前端编辑/删除页 | E2E 测试 | Playwright | 编辑回填正确，删除确认+拒绝流程通过 | 发布前 |
 | 操作日志 | 集成测试 | pytest | 创建/编辑/删除均有审计日志记录 | 发布前 |
 
+## 11. 代码管理与原子化合并方案
+
+> 本章解决"10 个子Feature 如何以原子方式合入主干 main"的问题。
+
+### 11.1 方案概述
+
+**核心诉求**：每个子Feature（TASK-001~010）独立分支、独立审查、独立合入、独立回滚。
+**前驱分支接力模式**：TASK-N 基于 TASK-(N-1) 分支创建，前驱验证通过即可启动开发，**不等合入 main**。合入时严格按 001→010 顺序逐一 `merge --no-ff` 到 main。git 以已合入前驱点为 merge-base 自动只合入本子Feature 增量，**无需 rebase**。
+**核心优势**：开发不阻塞（不等合入）+ 合入原子化（顺序 merge 自动提纯）+ 独立回滚（各子Feature 独立 merge commit）。
+当前 TASK-001 已完成开发，此方案无缝衔接现有工作。
+
+### 11.2 分支策略
+
+**接力模式**：TASK-001 基于 `main` 创建；TASK-N (N≥2) 基于 `feature/embedding-platform-(N-1)-xxx` 创建，前驱验证通过即可启动开发，不等合入 main。
+
+**命名规范**：
+```
+feature/embedding-platform-<NN>-<short-desc>
+```
+- `NN`: 01-10，与子Feature 编号对齐；`short-desc`: 英文短描述，与子Feature 目录名对齐
+- 全部小写，单词间用连字符 `-` 连接
+
+**10 个子Feature 分支清单**：
+
+| # | 子Feature | 分支名 | 基于 | 状态 |
+|---|-----------|--------|------|:----:|
+| 1 | 模块重组 | `feature/embedding-platform-01-restructure` | main | ✅ 已存在 |
+| 2 | 数据库变更 | `feature/embedding-platform-02-db` | 01 | 📌 待 01 验证后创建 |
+| 3 | 列表接口（后端） | `feature/embedding-platform-03-list-api` | 02 | 📌 待 02 验证后创建 |
+| 4 | 列表页面（前端） | `feature/embedding-platform-04-list-page` | 03 | 📌 待 03 验证后创建 |
+| 5 | 新增接口（后端） | `feature/embedding-platform-05-create-api` | 04 | 📌 待 04 验证后创建 |
+| 6 | 新增表单（前端） | `feature/embedding-platform-06-create-page` | 05 | 📌 待 05 验证后创建 |
+| 7 | 编辑接口（后端） | `feature/embedding-platform-07-edit-api` | 06 | 📌 待 06 验证后创建 |
+| 8 | 编辑表单（前端） | `feature/embedding-platform-08-edit-page` | 07 | 📌 待 07 验证后创建 |
+| 9 | 删除接口（后端） | `feature/embedding-platform-09-delete-api` | 08 | 📌 待 08 验证后创建 |
+| 10 | 删除操作（前端） | `feature/embedding-platform-10-delete-page` | 09 | 📌 待 09 验证后创建 |
+
+**串行依赖处理**：依赖链 001→002→...→010。开新分支命令：
+
+```bash
+# TASK-001 验证通过后即可创建 TASK-002 分支（不等合入 main）
+git checkout feature/embedding-platform-01-restructure
+git checkout -b feature/embedding-platform-02-db
+git push -u origin feature/embedding-platform-02-db
+```
+
+### 11.3 标签策略
+
+使用 annotated 标签（`git tag -a`）确保包含创建者、日期、消息，审计友好且不可变。两层语义：
+
+| 标签 | 时机 | 位置 | 含义 |
+|------|------|------|------|
+| `embed-platform-NNN-v1` | 子Feature 验证通过、准备合入 | Feature 分支 HEAD | "可以合了" |
+| `embed-platform-NNN-merged` | 合入 main 完成后 | main 上的 merge commit | "已合入主干" |
+
+每次重新验证递增版本号（v1, v2...）。标签不重复列举 10 个——命名固定为 `embed-platform-{001..010}-v1` 和 `embed-platform-{001..010}-merged`。标签用于差异获取和回滚定位。
+
+### 11.4 差异获取
+
+| 场景 | 命令 | 说明 |
+|------|------|------|
+| 单子Feature 增量（审查用） | `git diff embed-platform-(N-1)-v1..embed-platform-N-v1` | 001 用 `git diff main..embed-platform-001-v1` |
+| 相邻子Feature 差异 | `git diff embed-platform-(N-1)-merged..embed-platform-N-merged` | 合入后对比两子Feature |
+| 平台面累计差异 | `git diff embed-platform-001-merged~1..embed-platform-010-merged` | 整个 Feature 总变更 |
+
+**重要说明**：接力分支下 `git diff main...feature/embedding-platform-NN-xxx` 显示的是累计变更（含前驱所有代码），**不是**单子Feature 增量。审查时必须用相邻标签 diff。单子Feature 统计增减行数加 `--stat` 参数。
+
+**示例**（审查 TASK-002）：
+```bash
+# ✅ 正确：仅 TASK-002 增量
+git diff embed-platform-001-v1..embed-platform-002-v1 --stat
+
+# ❌ 错误：含 TASK-001+TASK-002 累计变更
+git diff main...feature/embedding-platform-02-db --stat
+```
+
+### 11.5 合入与回滚
+
+**合入方式**：`merge --no-ff`（保留分支拓扑，每个子Feature 有独立 merge commit，revert 可精准定位）。
+
+**顺序合入自动提纯原理**：接力分支按 001→010 顺序合入 main 时，git 以前驱已合入点为 merge-base，自动只合入本子Feature 增量。例如 TASK-002 分支含 001+002 代码，但 001 先合入 main 后，merge 002 时共同祖先是 001 分支 HEAD（已在 main），git 自动计算 merge-base = 001 合入点，只合入 002 增量。**无需 rebase，无需 cherry-pick**。
+
+**回滚**：`git revert -m 1 <merge-commit>` 精准回滚单个子Feature，不修改历史。连续回滚多个时从最新开始逐个 revert。
+
+**TASK-001 关键命令演示**（当前已在 `feature/embedding-platform-01-restructure` 分支完成开发）：
+
+```bash
+# 1. 打验证标签
+git tag -a embed-platform-001-v1 \
+  -m "TASK-001 模块重组 验证通过 (22 files, +873/-19)" \
+  feature/embedding-platform-01-restructure
+git push origin embed-platform-001-v1
+
+# 2. 合入 main
+git checkout main && git pull origin main
+git merge --no-ff feature/embedding-platform-01-restructure \
+  -m "feat(embedding-platform): TASK-001 模块重组"
+git push origin main
+
+# 3. 打合入标签（在 merge commit 上）
+git tag -a embed-platform-001-merged -m "TASK-001 模块重组 已合入 main"
+git push origin embed-platform-001-merged
+
+# 4. 回滚演示（如需）：git revert -m 1 <merge-commit-hash> && git push origin main
+```
+
+### 11.6 命令速查表
+
+| 操作 | 命令 |
+|------|------|
+| 开接力分支 | `git checkout feature/embedding-platform-NN-xxx && git checkout -b feature/embedding-platform-(N+1)-yyy && git push -u origin feature/embedding-platform-(N+1)-yyy` |
+| 打验证标签 | `git tag -a embed-platform-NNN-v1 -m "msg" feature/branch && git push origin embed-platform-NNN-v1` |
+| 打合入标签 | `git tag -a embed-platform-NNN-merged -m "msg" && git push origin embed-platform-NNN-merged` |
+| 查看单子Feature 增量 | `git diff embed-platform-(N-1)-v1..embed-platform-N-v1`（加 `--stat` 看统计） |
+| 查看累计变更 | `git diff embed-platform-001-merged~1..embed-platform-010-merged`（加 `--stat` 看统计） |
+| 查看某个子Feature 包含的 commits | `git log --oneline embed-platform-(N-1)-v1..embed-platform-N-v1` |
+| 合入 main | `git checkout main && git pull && git merge --no-ff feature/embedding-platform-NN-xxx -m "feat: TASK-NNN" && git push origin main` |
+| 查找 merge commit | `git log --oneline --merges main \| grep "TASK-NNN"` |
+| 回滚子Feature | `git revert -m 1 <merge-commit-hash> && git push origin main` |
+| 删除分支（本地） | `git branch -d feature/embedding-platform-NN-xxx` |
+| 删除分支（远端） | `git push origin --delete feature/embedding-platform-NN-xxx` |
+
+---
+
 ## 修订记录
 
 | 版本 | 变更说明 | 日期 | 修订人 |
@@ -1692,3 +1816,5 @@ pytest tests/e2e/ability_admin/ --html=reports/ability-admin-report.html --self-
 | v3.1 | 第10章重写：补充数据库/后端/前端三层验证策略（含单元测试、集成测试、Playwright） | 2026-07-16 | SDDU Plan Agent |
 | v3.2 | §10.1 数据库验证流程重构：隔离副本策略（root 建新库 → 全量复制 → 副本上验证 → 通过后才允许操作原库） | 2026-07-16 | SDDU Plan Agent |
 | v3.3 | §10.3 Playwright 从 JS 改为 Python（pytest-playwright），避免与前端 JS 代码混淆 | 2026-07-16 | SDDU Plan Agent |
+| v3.4 | **新增 §11 代码管理与原子化合并方案**：分支策略（主干接力模式）、标签策略（annotated 双层标签）、差异获取命令、合入流程（merge --no-ff 逐个子Feature 合入）、回滚策略（revert -m 1）、TASK-001 端到端演示 | 2026-07-17 | SDDU Plan Agent |
+| v3.5 | **重写 §11**：主干接力模式 → 前驱分支接力模式（开发不阻塞）；精简篇幅 425→122 行，删除对比表、10 标签示例、8 步骤演示等冗余 | 2026-07-17 | SDDU Plan Agent |
