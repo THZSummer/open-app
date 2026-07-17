@@ -1,8 +1,8 @@
 # 任务：编辑表单（前端）
 
 > 父 Feature: 嵌入能力平台面（EMBED-PLATFORM-001）  
-> 对应任务: TASK-008 | 复杂度: M | FR: FR-003  
-> 前置依赖: TASK-007
+> 对应任务: TASK-009 | 复杂度: M | FR: FR-003  
+> 前置依赖: TASK-008
 
 ## 描述
 
@@ -21,6 +21,10 @@
 - [ ] 表单回填现有数据（含 loadType 回填）
 - [ ] abilityType 字段只读
 - [ ] loadType 选择器联动：loadType=2 时 entryUrl/routePath/aliasName 输入框显示为必填
+- [ ] 名称前端校验：若修改，2-30 字符，不满足时内联提示
+- [ ] 描述前端校验：若修改，5-200 字符，不满足时内联提示
+- [ ] 排序值：≥1，支持手动输入和加减按钮
+- [ ] 示意图替换上传校验：PNG/JPG、520×288PX、≤500KB
 - [ ] 图标/示意图可替换上传
 - [ ] 提交后跳转列表
 - [ ] Playwright E2E: test_edit.py L1/L2 全部通过（编辑提交成功/abilityType只读/取消编辑数据不变）
