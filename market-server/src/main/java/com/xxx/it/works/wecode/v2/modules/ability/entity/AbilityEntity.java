@@ -1,4 +1,4 @@
-package com.xxx.it.works.wecode.v2.modules.approval.entity;
+package com.xxx.it.works.wecode.v2.modules.ability.entity;
 
 import lombok.Data;
 

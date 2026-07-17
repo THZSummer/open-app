@@ -1,6 +1,6 @@
-package com.xxx.it.works.wecode.v2.modules.approval.mapper;
+package com.xxx.it.works.wecode.v2.modules.ability.mapper;
 
-import com.xxx.it.works.wecode.v2.modules.approval.entity.AbilityEntity;
+import com.xxx.it.works.wecode.v2.modules.ability.entity.AbilityEntity;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
