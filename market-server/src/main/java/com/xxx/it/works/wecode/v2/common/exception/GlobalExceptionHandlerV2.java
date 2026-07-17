@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.multipart.MultipartException;
 import java.util.stream.Collectors;
 
 /**
@@ -69,6 +71,26 @@ public class GlobalExceptionHandlerV2 {
                 .collect(Collectors.joining(", "));
         log.warn("Parameter validation failed: {}", errorMessage);
         return ApiResponse.<Void>error(ResponseCodeEnum.PARAM_ERROR, "Parameter error: " + errorMessage, "Bad Request: " + errorMessage);
+    }
+
+    /**
+     * Handle missing request parameter (@RequestParam required)
+     */
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiResponse<Void> handleMissingServletRequestParameterException(MissingServletRequestParameterException e) {
+        log.warn("Missing request parameter: {}", e.getMessage());
+        return ApiResponse.error(ResponseCodeEnum.PARAM_ERROR, "缺少必要参数: " + e.getParameterName(), "Missing required parameter: " + e.getParameterName());
+    }
+
+    /**
+     * Handle multipart request error (e.g. missing file parameter)
+     */
+    @ExceptionHandler(MultipartException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiResponse<Void> handleMultipartException(MultipartException e) {
+        log.warn("Multipart request error: {}", e.getMessage());
+        return ApiResponse.error(ResponseCodeEnum.PARAM_ERROR, "缺少文件或请求不是 multipart 格式", "Missing file or request is not multipart");
     }
 
     /**

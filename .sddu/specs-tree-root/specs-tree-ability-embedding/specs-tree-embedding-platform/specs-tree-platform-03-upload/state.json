@@ -1,0 +1,36 @@
+{
+  "feature": "embedding-platform-03-upload",
+  "feature_id": "EMBED-PLATFORM-001",
+  "task_ref": "TASK-003",
+  "task_name": "\u901a\u7528\u6587\u4ef6\u4e0a\u4f20\uff08\u540e\u7aef\uff09",
+  "phase": "validated",
+  "status": "completed",
+  "parent": "EMBED-PLATFORM-001",
+  "created_at": "2026-07-17T16:10:00+08:00",
+  "updated_at": "2026-07-17T17:10:00+08:00",
+  "source_files": [
+    "market-server/src/main/java/com/xxx/it/works/wecode/v2/modules/file/service/CommonFileService.java",
+    "market-server/src/main/java/com/xxx/it/works/wecode/v2/modules/file/service/impl/CommonFileServiceImpl.java",
+    "market-server/src/main/java/com/xxx/it/works/wecode/v2/modules/file/controller/CommonFileController.java",
+    "market-server/src/main/java/com/xxx/it/works/wecode/v2/modules/file/validator/IconFileValidator.java",
+    "market-server/src/main/java/com/xxx/it/works/wecode/v2/modules/file/validator/DiagramFileValidator.java",
+    "market-server/src/main/java/com/xxx/it/works/wecode/v2/modules/file/validator/ImageValidationUtils.java",
+    "market-server/src/main/java/com/xxx/it/works/wecode/v2/modules/file/storage/FileStorageStrategy.java",
+    "market-server/src/main/java/com/xxx/it/works/wecode/v2/modules/file/storage/StandardFileStorageStrategy.java",
+    "market-server/src/main/java/com/xxx/it/works/wecode/v2/modules/file/storage/DevFileStorageStrategy.java",
+    "market-server/src/main/java/com/xxx/it/works/wecode/v2/modules/file/dto/UploadResult.java",
+    "open-server/src/main/resources/db/migration/V5__create_common_file.sql"
+  ],
+  "test_files": [
+    "market-server/src/test/java/com/xxx/it/works/wecode/v2/modules/file/service/CommonFileServiceTest.java",
+    "market-server/src/test/java/com/xxx/it/works/wecode/v2/modules/file/controller/CommonFileControllerTest.java",
+    "market-server/src/test/python/modules/file/test_common_file_upload.py"
+  ],
+  "test_results": {
+    "java_unit_tests": "10 passed, 0 failed (7 Service + 3 Controller)",
+    "python_integration_tests": "15 tests written (2 L1 + 8 L2 + 5 L4), not executed (requires market-server rebuild + DB)",
+    "build_check": "mvn compile passed (both market-server and open-server)",
+    "validation_date": "2026-07-17",
+    "validation_conclusion": "passed"
+  }
+}

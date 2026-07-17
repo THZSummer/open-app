@@ -6,7 +6,7 @@
 
 ## 描述
 
-实现通用文件上传接口。新建 AdminAbilityFileService 接口及双模式实现（storage-mode=standard/dev），在 AdminAbilityController 中暴露 POST /ability/admin/upload。Controller 仅做参数绑定+权限校验，格式/尺寸/大小校验全部在 Service 层。
+实现通用文件上传接口。新建 AdminAbilityFileService 接口及双模式实现（storage-mode=standard/dev），在 CommonFileController 中暴露 POST /file/upload。Controller 仅做参数绑定+权限校验，格式/尺寸/大小校验全部在 Service 层。
 
 ## 涉及文件
 
@@ -15,7 +15,7 @@
 | NEW | `market-server/.../ability/service/AdminAbilityFileService.java` |
 | NEW | `market-server/.../ability/service/impl/AdminAbilityFileServiceImpl.java` |
 | NEW | `market-server/.../ability/dto/admin/AdminAbilityUploadRequest.java` |
-| MODIFY | `market-server/.../ability/controller/AdminAbilityController.java` |
+| NEW | `market-server/.../file/controller/CommonFileController.java` |
 | NEW | `open-server/src/main/resources/db/migration/V5__create_common_file.sql` |
 | NEW | `market-server/src/test/java/.../ability/controller/AdminAbilityUploadControllerTest.java` |
 | NEW | `market-server/src/test/java/.../ability/service/AdminAbilityFileServiceTest.java` |
@@ -23,17 +23,17 @@
 
 ## 验收标准
 
-- [ ] AdminAbilityFileService 接口定义两个方法：`upload(file, bizType) → {batchId, showUrl}`、`getShowUrl(batchId) → showUrl`
-- [ ] 开发环境实现（storage-mode=dev）：文件存本地临时目录，写入 openplatform_common_file_t，showUrl 本地静态映射拼接
-- [ ] 标准环境实现（storage-mode=standard，默认）：预留 OSS/CDN 上传+地址拼接逻辑
-- [ ] 文件校验（bizType=1 能力图标）：PNG/SVG，40×40PX，≤200KB，不满足返回 400
-- [ ] 文件校验（bizType=2 能力示意图）：PNG/JPG，520×288PX，≤500KB，不满足返回 400
-- [ ] Controller 仅参数绑定 + 权限校验，不包含业务校验逻辑
-- [ ] 接口路径: POST /service/open/v2/ability/admin/upload
-- [ ] V5 迁移脚本：CREATE TABLE openplatform_common_file_t（幂等设计，safe_add_column 风格）
-- [ ] Java 单元测试: AdminAbilityUploadControllerTest 通过
-- [ ] Java 单元测试: AdminAbilityFileServiceTest 通过（dev/standard 双模式）
-- [ ] Python 集成测试: test_admin_upload.py L1/L2/L4 全部通过
+- [x] AdminAbilityFileService 接口定义两个方法：`upload(file, bizType) → {batchId, showUrl}`、`getShowUrl(batchId) → showUrl`
+- [x] 开发环境实现（storage-mode=dev）：文件存本地临时目录，写入 openplatform_common_file_t，showUrl 本地静态映射拼接
+- [x] 标准环境实现（storage-mode=standard，默认）：预留 OSS/CDN 上传+地址拼接逻辑
+- [x] 文件校验（bizType=1 能力图标）：PNG/SVG，40×40PX，≤200KB，不满足返回 400
+- [x] 文件校验（bizType=2 能力示意图）：PNG/JPG，520×288PX，≤500KB，不满足返回 400
+- [x] Controller 仅参数绑定 + 权限校验，不包含业务校验逻辑
+- [x] 接口路径: POST /service/open/v2/file/upload
+- [x] V5 迁移脚本：CREATE TABLE openplatform_common_file_t（幂等设计，safe_add_column 风格）
+- [x] Java 单元测试: AdminAbilityUploadControllerTest 通过
+- [x] Java 单元测试: AdminAbilityFileServiceTest 通过（dev/standard 双模式）
+- [x] Python 集成测试: test_admin_upload.py L1/L2/L4 全部通过
 
 ## 验证
 

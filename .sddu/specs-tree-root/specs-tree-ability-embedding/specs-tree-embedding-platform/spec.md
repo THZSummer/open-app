@@ -88,7 +88,7 @@
 
 | ID | 需求描述 | 验收标准 | 优先级 |
 |----|---------|---------|--------|
-| FR-005 | **通用文件上传**：平台管理员在创建/编辑能力时统一通过此接口上传图标或示意图 | • 接口路径: `POST /service/open/v2/ability/admin/upload`<br/>• 请求参数: `file`（MultipartFile）、`bizType`（int，1=能力图标，2=能力示意图）<br/>• 图标校验（bizType=1）: 仅允许 PNG/SVG 格式，尺寸固定 40×40PX，文件大小 ≤200KB<br/>• 示意图校验（bizType=2）: 仅允许 PNG/JPG 格式，尺寸固定 520×288PX，文件大小 ≤500KB<br/>• 校验失败返回 400，提示具体规则（格式不符/尺寸不符/文件过大）<br/>• 校验通过后写入 `openplatform_common_file_t` 表（开发环境临时表），返回 `{batchId, showUrl}`<br/>• 接口权限：仅平台管理员可调用 | P0 |
+| FR-005 | **通用文件上传**：平台管理员在创建/编辑能力时统一通过此接口上传图标或示意图 | • 接口路径: `POST /service/open/v2/file/upload`<br/>• 请求参数: `file`（MultipartFile）、`bizType`（int，1=能力图标，2=能力示意图）<br/>• 图标校验（bizType=1）: 仅允许 PNG/SVG 格式，尺寸固定 40×40PX，文件大小 ≤200KB<br/>• 示意图校验（bizType=2）: 仅允许 PNG/JPG 格式，尺寸固定 520×288PX，文件大小 ≤500KB<br/>• 校验失败返回 400，提示具体规则（格式不符/尺寸不符/文件过大）<br/>• 校验通过后写入 `openplatform_common_file_t` 表（开发环境临时表），返回 `{batchId, showUrl}`<br/>• 接口权限：仅平台管理员可调用 | P0 |
 
 ### 5.3 字段约束
 

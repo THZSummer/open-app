@@ -37,13 +37,19 @@ _TIMEOUT = REQUEST_TIMEOUT
 # ═══════════════════════════════════════════════════════════
 # API — 默认全自动，参数可覆盖
 # ═══════════════════════════════════════════════════════════
-def api(method, path, body=None, *, headers=None, timeout=None):
+def api(method, path, body=None, *, headers=None, timeout=None,
+        expected_status=None, **kwargs):
     """
     发送 HTTP 请求。
-    返回 requests.Response 或 None（连接失败）。
+
+    - body: JSON 请求体（自动设置 Content-Type: application/json）
+    - kwargs: 额外参数透传给 requests.request，例如 files/data 用于 multipart 上传
+    - expected_status: 期望的 HTTP 状态码，不匹配则断言失败
+
+    返回 JSON 响应（dict）或 None（连接失败）。
     """
     url = f"{_API_BASE}{path}"
-    h = {"Content-Type": "application/json"}
+    h = {}
 
     h["Cookie"] = TEST_COOKIE
     h["X-XSRF-TOKEN"] = TEST_XSRF_TOKEN
@@ -52,9 +58,29 @@ def api(method, path, body=None, *, headers=None, timeout=None):
 
     t = timeout if timeout is not None else _TIMEOUT
     try:
-        return requests.request(method, url, json=body, headers=h, timeout=t)
+        if kwargs:
+            # Multipart/文件上传：用 kwargs（files, data 等）
+            resp = requests.request(method, url, headers=h, timeout=t, **kwargs)
+        else:
+            # JSON 请求
+            if "Content-Type" not in h:
+                h["Content-Type"] = "application/json"
+            resp = requests.request(method, url, json=body, headers=h, timeout=t)
     except requests.ConnectionError:
         print("  SKIP: market-server 未运行 (port 18083)")
+        return None
+
+    if expected_status is not None and resp.status_code != expected_status:
+        detail = f"HTTP {resp.status_code} (期望 {expected_status})"
+        try:
+            detail += f" body={resp.text[:300]}"
+        except Exception:
+            pass
+        raise AssertionError(f"  FAIL: {method} {path} - {detail}")
+
+    try:
+        return resp.json()
+    except Exception:
         return None
 
 # ═══════════════════════════════════════════════════════════
