@@ -22,12 +22,12 @@
 
 ## 验收标准
 
-- [ ] `modules/ability/entity/AbilityEntity.java` 存在，包名正确
-- [ ] `modules/ability/mapper/AbilityMapper.java` 存在，包名正确
-- [ ] `AbilityMapper.xml` namespace 已更新
-- [ ] 全项目无残留 `import ...approval...Ability*`
-- [ ] 回归测试: AbilityMapperSmokeTest 通过（Spring 集成测试，真实 autowire + DB 查询，证明重构后已有功能不受影响）
-- [ ] Python 集成测试: test_approval_smoke.py 通过（调用已有审批接口验证 AbilityMapper 重构后全链路正常）
+- [x] `modules/ability/entity/AbilityEntity.java` 存在，包名正确
+- [x] `modules/ability/mapper/AbilityMapper.java` 存在，包名正确
+- [x] `AbilityMapper.xml` namespace 已更新
+- [x] 全项目无残留 `import ...approval...Ability*`
+- [x] 回归测试: AbilityMapperSmokeTest 通过（Spring 集成测试，真实 autowire + DB 查询，证明重构后已有功能不受影响）
+- [x] Python 集成测试: test_approval_smoke.py 通过（调用已有审批接口验证 AbilityMapper 重构后全链路正常）
 
 ## 验证
 
