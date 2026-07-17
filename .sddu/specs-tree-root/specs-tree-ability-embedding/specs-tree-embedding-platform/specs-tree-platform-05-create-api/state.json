@@ -1,0 +1,15 @@
+{
+  "feature": "platform-05-create-api",
+  "feature_id": "EMBED-PLATFORM-CREATE-API-001",
+  "feature_name": "新增接口（后端）",
+  "phase": "tasked",
+  "status": "tracked",
+  "parent": "EMBED-PLATFORM-001",
+  "created_at": "2026-07-16T00:00:00+08:00",
+  "updated_at": "2026-07-16T00:00:00+08:00",
+  "description": "AdminAbilityCreateRequest → 校验(编码唯一性/URL格式) → Service.create() → 写主表+属性表 → Controller POST",
+  "task_ref": "TASK-005",
+  "complexity": "M",
+  "fr": ["FR-002"],
+  "artifacts": {}
+}

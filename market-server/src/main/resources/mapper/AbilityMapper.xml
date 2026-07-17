@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.xxx.it.works.wecode.v2.modules.approval.mapper.AbilityMapper">
+<mapper namespace="com.xxx.it.works.wecode.v2.modules.ability.mapper.AbilityMapper">
 
-    <resultMap id="BaseResultMap" type="com.xxx.it.works.wecode.v2.modules.approval.entity.AbilityEntity">
+    <resultMap id="BaseResultMap" type="com.xxx.it.works.wecode.v2.modules.ability.entity.AbilityEntity">
         <id column="id" property="id"/>
         <result column="ability_name_cn" property="abilityNameCn"/>
         <result column="ability_name_en" property="abilityNameEn"/>

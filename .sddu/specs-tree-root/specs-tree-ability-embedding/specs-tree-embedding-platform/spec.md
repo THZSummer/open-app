@@ -4,10 +4,10 @@
 > **前置依赖**: `specs-tree-ability-embedding/discovery-report.md`、`specs-tree-ability-embedding/spec.md`（父规范）  
 > **创建人**: SDDU Spec Agent  
 > **创建时间**: 2026-07-13  
-> **版本**: v1.0  
-> **更新人**: SDDU Spec Agent  
-> **更新时间**: 2026-07-13  
-> **更新说明**: 初始创建
+> **版本**: v1.1  
+> **更新人**: SDDU Plan Agent  
+> **更新时间**: 2026-07-16  
+> **更新说明**: DB 字段变更：新增 route_path/alias_name/require_release，frontend_entry_url→entry_url，ability_type 类型调整，编码规则简化
 
 ## 1. 元数据
 > Feature 基本信息
@@ -80,7 +80,7 @@
 | ID | 需求描述 | 验收标准 | 优先级 |
 |----|---------|---------|--------|
 | FR-001 | **能力目录列表**：平台管理员在 market-web 查看所有 ability 类型列表 | • 列表展示字段：abilityType 编码、中文名、英文名、描述、图标、示意图缩略图、排序号、前端入口URL、创建时间、更新人、更新时间<br/>• 分页展示，默认按排序号升序 | P0 |
-| FR-002 | **创建能力**：平台管理员创建新的 ability 类型 | • 表单字段：abilityType 编码（int，手动输入）、中文名、英文名、中文描述、英文描述、图标（文件上传）、示意图（文件上传）、排序号（int）、前端入口URL、是否在开放面展示（hidden，默认展示）<br/>• abilityType 编码需校验唯一性（不与已有编码冲突）<br/>• 图标/示意图上传调用 `fileV2Service`（复用已有文件服务）<br/>• 创建后状态默认为「启用」<br/>• 创建后同步写入 `openplatform_ability_t` 主表和 `openplatform_ability_p_t` 属性表 | P0 |
+| FR-002 | **创建能力**：平台管理员创建新的 ability 类型 | • 表单字段：abilityType 编码（int，手动输入）、中文名、英文名、中文描述、英文描述、图标（文件上传）、示意图（文件上传）、排序号（int）、进入地址（entryUrl）、路由路径（routePath）、别名（aliasName）、是否在开放面展示（hidden，默认展示）、需版本发布（requireRelease，默认0）<br/>• abilityType 编码需校验唯一性（不与已有编码冲突）<br/>• 图标/示意图上传调用 `fileV2Service`（复用已有文件服务）<br/>• 创建后状态默认为「启用」<br/>• 创建后同步写入 `openplatform_ability_t` 主表和 `openplatform_ability_p_t` 属性表 | P0 |
 | FR-003 | **编辑能力**：平台管理员修改已有 ability 类型的信息 | • 支持修改 FR-002 中所有字段<br/>• abilityType 编码不可修改（作为业务标识）<br/>• 图标/示意图可替换上传，新文件覆盖旧文件引用<br/>• `hidden` 字段可切换（展示/隐藏状态） | P0 |
 | FR-004 | **删除能力**：平台管理员删除 ability 类型 | • 删除前检查是否有应用订阅了该能力<br/>• 有关联订阅 > 禁止删除，提示"该能力已被 XX 个应用订阅，无法删除"<br/>• 无关联订阅 > 允许删除 | P1 |
 
@@ -90,14 +90,19 @@
 
 | 业务字段 | 说明 |
 |---------|------|
-| 前端入口URL | QianKun 子应用入口地址 |
-| 是否在开放面展示 | 控制是否在开放面目录展示（默认展示） |
+| 进入地址（entry_url） | 微前端子应用入口地址 |
+| 路由路径（route_path） | 子应用激活路由（QianKun activeRule） |
+| 别名（alias_name） | 子应用唯一标识（QianKun name） |
+| 是否在开放面展示（hidden） | 控制是否在开放面目录展示（默认展示） |
+| 需版本发布（require_release） | 是否需要版本发布才生效（0=即时生效，1=需版本发布） |
 
+> 💡 entry_url + route_path + alias_name 对应 QianKun 微前端注册三要素：entry + activeRule + name。
+>
 > 💡 其余字段（中文名、英文名、中文描述、英文描述、能力编码、排序号、状态、图标、示意图等）保持现有结构不变。
 
 **abilityType 编码规则**：
 - 1-7：保留给现有预置能力（群置顶、群通知、链接增强、点对点通知、we码、应用入群通知、助手广场卡片）
-- 100+：平台管理员手动创建的自定义能力编码
+- 自定义类型统一在 tinyint 范围内分配，不区分类型大小
 - 创建时校验编码唯一性（包括已创建的记录和预置编码）
 
 ### 5.3 业务接口
@@ -114,7 +119,7 @@
 
 | ID | 类别 | 需求描述 | 验收标准 |
 |----|------|---------|---------|
-| NFR-001 | 安全性 | 平台面操作仅限平台管理员 | 接口需校验当前用户角色，非管理员返回 403 |
+| NFR-001 | 安全性 | 平台面操作仅限平台管理员 | 接口需校验当前用户角色，非管理员返回 403。备注：平台管理员角色校验沿用现有的角色权限校验逻辑即可，不需新建。 |
 | NFR-002 | 可用性 | 图标/示意图上传支持常见图片格式 | 支持 JPG、PNG、SVG，单文件 ≤ 5MB |
 | NFR-003 | 一致性 | 平台面创建/编辑的 ability 类型即时同步到开放面 | 开放面查询接口直接读库，无需缓存刷新，写入即对开放面可见 |
 | NFR-004 | 审计 | 关键操作记录审计日志 | 创建/编辑/删除操作需记录操作用户、时间、变更内容 |
@@ -136,9 +141,9 @@
 
 | # | 问题 | 影响范围 | 建议方案 | 状态 |
 |---|------|---------|---------|:----:|
-| 1 | 管理接口路径前缀如何设计？当前 open-server 已有 `/service/open/v2/ability`，需要区分管理面 vs 开放面 | 平台面 API 设计 | 使用 `admin` 子路径区分，或启用独立 market-server controller | ⏳ 待决策 |
-| 2 | frontend_entry_url 字段需要 DB 迁移，是否放入现有 migration 文件还是新增？ | 数据库版本管理 | 新增 V4 migration 文件（Flyway 命名规范） | ⏳ 待决策 |
-| 3 | abilityType 编码手动输入，是否有推荐的范围约束（如 ≥ 100）？ | 数据治理 | 建议编码范围 ≥ 100 用于自定义类型，前端可提示推荐范围 | ⏳ 待确认 |
+| 1 | 管理接口路径前缀如何设计？当前 open-server 已有 `/service/open/v2/ability`，需要区分管理面 vs 开放面 | 平台面 API 设计 | 使用 `admin` 子路径区分，或启用独立 market-server controller | ✅ 已决策 |
+| 2 | entry_url/route_path/alias_name/require_release 字段及 ability_type 调整需要 DB 迁移 | 数据库版本管理 | 已决策：新增 V4 migration 文件 | ✅ 已决策 |
+| 3 | abilityType 编码手动输入，是否有推荐的范围约束？ | 数据治理 | 已决策：自定义类型统一在 tinyint 范围内分配，不区分类型大小，前端提示避免与预置编码 1-7 冲突 | ✅ 已决策 |
 
 ## 修订记录
 > 记录本文档的版本变更历史
@@ -146,3 +151,4 @@
 | 版本 | 变更说明 | 日期 | 修订人 |
 |------|---------|------|--------|
 | v1.0 | 初始创建 — 嵌入能力平台面完整规范 | 2026-07-13 | SDDU Spec Agent |
+| v1.1 | DB 字段变更：新增 route_path/alias_name/require_release，frontend_entry_url 改为 entry_url，ability_type 类型调整，编码规则简化（取消≥100约束），补充 QianKun 三要素说明 | 2026-07-16 | SDDU Plan Agent |
