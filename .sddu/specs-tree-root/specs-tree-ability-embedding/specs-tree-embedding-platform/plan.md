@@ -1725,6 +1725,8 @@ git push -u origin feature/embedding-platform-02-db
 
 ### 11.3 标签策略
 
+**基准标签**：开发开始前在 main HEAD 打 `embed-platform-base`（annotated），作为整个平台面所有子Feature 变更的固定基准点。后续 main 因合入会前进，但 base 固定不变，用于累计差异和首个子Feature 增量的获取。
+
 使用 annotated 标签（`git tag -a`）确保包含创建者、日期、消息，审计友好且不可变。两层语义：
 
 | 标签 | 时机 | 位置 | 含义 |
@@ -1738,9 +1740,9 @@ git push -u origin feature/embedding-platform-02-db
 
 | 场景 | 命令 | 说明 |
 |------|------|------|
-| 单子Feature 增量（审查用） | `git diff embed-platform-(N-1)-v1..embed-platform-N-v1` | 001 用 `git diff main..embed-platform-001-v1` |
+| 单子Feature 增量（审查用） | `git diff embed-platform-(N-1)-v1..embed-platform-N-v1` | 001 用 `git diff embed-platform-base..embed-platform-001-v1` |
 | 相邻子Feature 差异 | `git diff embed-platform-(N-1)-merged..embed-platform-N-merged` | 合入后对比两子Feature |
-| 平台面累计差异 | `git diff embed-platform-001-merged~1..embed-platform-010-merged` | 整个 Feature 总变更 |
+| 平台面累计差异 | `git diff embed-platform-base..embed-platform-010-merged` | 整个 Feature 总变更 |
 
 **重要说明**：接力分支下 `git diff main...feature/embedding-platform-NN-xxx` 显示的是累计变更（含前驱所有代码），**不是**单子Feature 增量。审查时必须用相邻标签 diff。单子Feature 统计增减行数加 `--stat` 参数。
 
@@ -1791,7 +1793,7 @@ git push origin embed-platform-001-merged
 | 打验证标签 | `git tag -a embed-platform-NNN-v1 -m "msg" feature/branch && git push origin embed-platform-NNN-v1` |
 | 打合入标签 | `git tag -a embed-platform-NNN-merged -m "msg" && git push origin embed-platform-NNN-merged` |
 | 查看单子Feature 增量 | `git diff embed-platform-(N-1)-v1..embed-platform-N-v1`（加 `--stat` 看统计） |
-| 查看累计变更 | `git diff embed-platform-001-merged~1..embed-platform-010-merged`（加 `--stat` 看统计） |
+| 查看累计变更 | `git diff embed-platform-base..embed-platform-010-merged`（加 `--stat` 看统计） |
 | 查看某个子Feature 包含的 commits | `git log --oneline embed-platform-(N-1)-v1..embed-platform-N-v1` |
 | 合入 main | `git checkout main && git pull && git merge --no-ff feature/embedding-platform-NN-xxx -m "feat: TASK-NNN" && git push origin main` |
 | 查找 merge commit | `git log --oneline --merges main \| grep "TASK-NNN"` |
