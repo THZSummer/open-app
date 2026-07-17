@@ -4,17 +4,17 @@
 > **前置依赖**: plan.md（技术方案）、spec.md（需求规范）  
 > **创建人**: SDDU Tasks Agent  
 > **创建时间**: 2026-07-13  
-> **版本**: v1.0  
-> **更新人**: SDDU Tasks Agent  
-> **更新时间**: 2026-07-13  
-> **更新说明**: 初始创建
+> **版本**: v1.1  
+> **更新人**: SDDU Plan Agent  
+> **更新时间**: 2026-07-17  
+> **更新说明**: 同步平台面字段变更：frontendEntryUrl → entryUrl/routePath/aliasName/requireRelease/loadType；所有接口返回字段加 loadType；TASK-005 配置页嵌入增加 loadType 分支
 
 ## 1. 依赖拓扑总览
 > 任务依赖关系和执行顺序
 
 ```
 Wave 1 ─── (无依赖，全部并行)
-  TASK-001 [S]  VO 扩展（frontendEntryUrl 字段）
+  TASK-001 [S]  VO 扩展（entryUrl/routePath/aliasName/requireRelease/loadType 字段）
 
 Wave 2 ─── (依赖 Wave 1 + 平台面 TASK-001 DB 迁移)
   TASK-002 [M]  AbilityServiceImpl 列表/已订阅增强
@@ -26,13 +26,13 @@ Wave 3 ─── (依赖 Wave 2，前端）
   TASK-006 [S]  constants 场景分组扩展
 ```
 
-> ⚠️ **跨 Feature 依赖**：本面后端任务（TASK-002/003）依赖平台面 `specs-tree-embedding-platform` 的 TASK-001（DB 迁移新增 `hidden`、`frontend_entry_url` 字段）。执行前需确认平台面 TASK-001 已完成。
+> ⚠️ **跨 Feature 依赖**：本面后端任务（TASK-002/003）依赖平台面 `specs-tree-embedding-platform` 的 TASK-002（DB 迁移新增 `hidden`、`entry_url`、`route_path`、`alias_name`、`require_release`、`load_type` 字段）。执行前需确认平台面 TASK-002 已完成。
 
 ## 2. 任务列表
 > 每个任务的详细定义
 
-### TASK-001: VO 扩展新增 frontendEntryUrl 字段
-> 开放面响应结构扩展
+### TASK-001: VO 扩展新增 entryUrl/routePath/aliasName/requireRelease/loadType 字段
+> 开放面响应结构扩展（同步平台面字段变更）
 
 | 属性 | 值 |
 |------|-----|
@@ -41,7 +41,7 @@ Wave 3 ─── (依赖 Wave 2，前端）
 | **执行波次** | 1 |
 | **对应 FR** | FR-001、FR-004 |
 
-**描述**: 在 `AbilityVO` 和 `AppAbilityDetailVO` 中新增 `frontendEntryUrl` 字段（可选，无值返回 null），保持向后兼容。
+**描述**: 在 `AbilityVO` 和 `AppAbilityDetailVO` 中新增 `entryUrl`/`routePath`/`aliasName`/`requireRelease`/`loadType` 字段（可选，无值返回 null），移除已废弃的 `frontendEntryUrl`，保持向后兼容。
 
 **涉及文件**:
 
@@ -51,9 +51,9 @@ Wave 3 ─── (依赖 Wave 2，前端）
 | MODIFY | `open-server/src/main/java/com/xxx/it/works/wecode/v2/modules/ability/vo/AppAbilityDetailVO.java` |
 
 **验收标准**:
-- [ ] `AbilityVO` 新增 `frontendEntryUrl`(String) 字段及 getter/setter
-- [ ] `AppAbilityDetailVO` 新增 `frontendEntryUrl`(String) 字段及 getter/setter
-- [ ] 字段为可选，序列化时无值返回 null，不破坏现有前端
+- [ ] `AbilityVO` 移除 `frontendEntryUrl`，新增 `entryUrl`(String)、`routePath`(String)、`aliasName`(String)、`requireRelease`(Integer)、`loadType`(Integer) 字段及 getter/setter
+- [ ] `AppAbilityDetailVO` 移除 `frontendEntryUrl`，新增以上 5 个字段
+- [ ] 所有字段为可选，序列化时无值返回 null，不破坏现有前端
 - [ ] Maven 编译通过
 
 **验证命令**:
@@ -67,11 +67,11 @@ mvn -f open-server/pom.xml compile -q
 | 属性 | 值 |
 |------|-----|
 | **复杂度** | M |
-| **前置依赖** | TASK-001、平台面 TASK-001 |
+| **前置依赖** | TASK-001、平台面 TASK-002 |
 | **执行波次** | 2 |
 | **对应 FR** | FR-001、FR-004、FR-005 |
 
-**描述**: 修改 `AbilityServiceImpl` 的 `getAbilityList()` 和 `getSubscribedAbilities()` 方法：移除 type=6 硬编码排除逻辑，改为按 `hidden` 字段过滤（列表查询）；新增返回 `frontendEntryUrl`。
+**描述**: 修改 `AbilityServiceImpl` 的 `getAbilityList()` 和 `getSubscribedAbilities()` 方法：移除 type=6 硬编码排除逻辑，改为按 `hidden` 字段过滤（列表查询）；新增返回 `entryUrl`/`routePath`/`aliasName`/`requireRelease`/`loadType`。
 
 **涉及文件**:
 
@@ -81,9 +81,9 @@ mvn -f open-server/pom.xml compile -q
 
 **验收标准**:
 - [ ] `getAbilityList()`：移除 `abilityType != 6` 硬编码，改为按 `hidden=0` 过滤
-- [ ] `getAbilityList()`：返回结果含 `frontendEntryUrl`（从 Ability 实体读取）
+- [ ] `getAbilityList()`：返回结果含 `entryUrl`/`routePath`/`aliasName`/`requireRelease`/`loadType`
 - [ ] `getSubscribedAbilities()`：移除 type=6 硬编码排除
-- [ ] `getSubscribedAbilities()`：返回结果含 `frontendEntryUrl`
+- [ ] `getSubscribedAbilities()`：返回结果含 `entryUrl`/`routePath`/`aliasName`/`requireRelease`/`loadType`
 - [ ] 自定义类型（≥100）正常出现在列表中
 - [ ] 已订阅标记逻辑不变
 - [ ] Maven 编译通过
@@ -157,7 +157,7 @@ cd wecodesite && npm run build
 ```
 
 ### TASK-005: 前端配置页嵌入子应用
-> 配置页动态加载微前端子应用
+> 配置页根据 loadType 分支加载
 
 | 属性 | 值 |
 |------|-----|
@@ -166,7 +166,11 @@ cd wecodesite && npm run build
 | **执行波次** | 3 |
 | **对应 FR** | FR-102 |
 
-**描述**: 新增 `EmbeddedSubApp.jsx` 组件，在配置页视图通过 QianKun `loadMicroApp` API 运行时动态加载子应用（入口来自 `frontendEntryUrl`），传递上下文 {appId, abilityType, nameCn}；无 frontendEntryUrl 时展示占位文本；切换/退出时卸载子应用。
+**描述**: 在配置页视图根据 `loadType` 分支处理：
+- loadType=1（路由加载）：根据 `routePath` 做内部路由跳转，不加载子应用
+- loadType=2（微前端加载）：通过 QianKun `loadMicroApp` API 运行时动态加载子应用（入口来自 `entryUrl`），传递上下文 {appId, abilityType, nameCn}；无 entryUrl 时展示占位文本；切换/退出时卸载子应用。
+
+同时新增 `EmbeddedSubApp.jsx` 组件封装微前端加载逻辑（loadType=2 场景）。
 
 **涉及文件**:
 
@@ -176,10 +180,12 @@ cd wecodesite && npm run build
 | MODIFY | `wecodesite/src/pages/Capabilities/Capabilities.jsx` |
 
 **验收标准**:
-- [ ] 新增 `EmbeddedSubApp.jsx` 组件，使用 `loadMicroApp` 动态加载子应用
-- [ ] 从 `frontendEntryUrl` 获取子应用入口地址
+- [ ] `Capabilities.jsx` 配置视图根据 `loadType` 分支：1=路由跳转，2=微前端加载
+- [ ] loadType=1 时根据 `routePath` 做内部路由跳转
+- [ ] loadType=2 时新增 `EmbeddedSubApp.jsx` 组件，使用 `loadMicroApp` 动态加载子应用
+- [ ] 从 `entryUrl` 获取子应用入口地址（非 `frontendEntryUrl`）
 - [ ] 向子应用传递上下文：appId、abilityType、nameCn
-- [ ] 无 `frontendEntryUrl` 的能力展示占位文本"配置页面由能力方提供"
+- [ ] 无 `entryUrl` 的能力展示占位文本"配置页面由能力方提供"
 - [ ] 切换能力或退出配置时自动卸载子应用（unload）
 - [ ] `microApps.js` 静态注册列表不变
 - [ ] 前端构建通过
@@ -244,3 +250,4 @@ cd wecodesite && npm run build
 | 版本 | 变更说明 | 日期 | 修订人 |
 |------|---------|------|--------|
 | v1.0 | 初始创建 - 开放面任务分解（6 任务 / 3 波次） | 2026-07-13 | SDDU Tasks Agent |
+| v1.1 | 同步平台面字段变更：TASK-001 重写（frontendEntryUrl → entryUrl/routePath/aliasName/requireRelease/loadType）；TASK-002 返回字段增加 loadType；TASK-005 配置页嵌入增加 loadType 分支 | 2026-07-17 | SDDU Plan Agent |

@@ -6,7 +6,7 @@
 
 ## 描述
 
-在 market-web 实现创建能力表单，含所有字段输入框、图标/示意图文件上传、前端校验（编码范围提示、URL 格式），提交后跳转列表。API 调用 market-server 的 `/service/open/v2/ability/admin` 接口。
+在 market-web 实现创建能力表单，含所有字段输入框、图标/示意图文件上传、前端校验（编码范围提示、URL 格式、loadType 联动校验），提交后跳转列表。API 调用 market-server 的 `/service/open/v2/ability/admin` 接口。
 
 ## 涉及文件
 
@@ -18,8 +18,9 @@
 
 ## 验收标准
 
-- [ ] 表单含所有字段输入框（含新增5字段）
+- [ ] 表单含所有字段输入框（含新增6字段，loadType 默认1=路由加载）
 - [ ] abilityType 编码校验、entryUrl 格式校验
+- [ ] loadType 选择器联动：loadType=2 时 entryUrl/routePath/aliasName 输入框置为必填
 - [ ] 图标/示意图文件上传正常
 - [ ] 创建成功后跳转列表页
 - [ ] Playwright E2E: test_create.py L1/L2/L4 全部通过（正常创建/全字段创建/重复编码拒绝/空名称校验/非法URL拒绝）

@@ -6,7 +6,7 @@
 
 ## 描述
 
-实现创建能力接口。新建 AdminAbilityCreateRequest（含所有字段 + JSR-303 校验），在 AdminAbilityService 中实现 create()（含编码唯一性校验 + URL 格式校验），写主表 + 属性表（图标/示意图），在 AdminAbilityController 中暴露 POST /ability/admin。
+实现创建能力接口。新建 AdminAbilityCreateRequest（含所有字段 + JSR-303 校验），在 AdminAbilityService 中实现 create()（含编码唯一性校验 + URL 格式校验 + load_type 联动校验），写主表 + 属性表（图标/示意图），在 AdminAbilityController 中暴露 POST /ability/admin。
 
 ## 涉及文件
 
@@ -25,6 +25,7 @@
 
 - [ ] abilityType 编码唯一性校验，冲突返回 409 "编码已被占用"
 - [ ] entryUrl 格式校验（http/https 协议），不合法返回 400
+- [ ] loadType=2 时 entryUrl/routePath/aliasName 三要素必填校验，缺失返回 400 "微前端加载模式下三要素必填"
 - [ ] 创建成功写入 ability_t（主表）+ ability_p_t（图标/示意图属性）
 - [ ] 接口路径: POST /service/open/v2/ability/admin
 - [ ] Java 单元测试: AdminAbilityCreateControllerTest 通过（覆盖正常创建/编码唯一性/URL校验）

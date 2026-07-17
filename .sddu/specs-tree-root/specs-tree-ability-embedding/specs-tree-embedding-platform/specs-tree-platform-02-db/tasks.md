@@ -18,10 +18,10 @@
 
 ## 验收标准
 
-- [ ] 迁移文件命名为 `V4__add_ability_admin_fields.sql`（遵循 Flyway 命名规范）
-- [ ] 新增 5 个字段：entry_url / hidden / route_path / alias_name / require_release
-- [ ] ability_type MODIFY 为 tinyint
-- [ ] 迁移在测试库实际执行成功
+- [x] 迁移文件命名为 `V4__add_ability_admin_fields.sql`（遵循 Flyway 命名规范）
+- [x] 新增 5 个字段：entry_url / hidden / route_path / alias_name / require_release
+- [x] ability_type MODIFY 为 tinyint
+- [x] 迁移在测试库实际执行成功
 
 ## 验证步骤
 

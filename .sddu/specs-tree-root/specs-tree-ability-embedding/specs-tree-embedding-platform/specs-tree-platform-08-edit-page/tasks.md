@@ -6,7 +6,7 @@
 
 ## 描述
 
-在 market-web 实现编辑能力表单，从列表跳转时携带能力数据回填表单，abilityType 字段只读，支持图标/示意图替换上传，提交后跳转列表。API 调用 market-server 的 `/service/open/v2/ability/admin/{id}` 接口。
+在 market-web 实现编辑能力表单，从列表跳转时携带能力数据回填表单（含 loadType），abilityType 字段只读，支持图标/示意图替换上传，loadType 联动显示三要素必填状态，提交后跳转列表。API 调用 market-server 的 `/service/open/v2/ability/admin/{id}` 接口。
 
 ## 涉及文件
 
@@ -18,8 +18,9 @@
 
 ## 验收标准
 
-- [ ] 表单回填现有数据
+- [ ] 表单回填现有数据（含 loadType 回填）
 - [ ] abilityType 字段只读
+- [ ] loadType 选择器联动：loadType=2 时 entryUrl/routePath/aliasName 输入框显示为必填
 - [ ] 图标/示意图可替换上传
 - [ ] 提交后跳转列表
 - [ ] Playwright E2E: test_edit.py L1/L2 全部通过（编辑提交成功/abilityType只读/取消编辑数据不变）

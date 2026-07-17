@@ -1,10 +1,10 @@
 # 技术规划：嵌入能力开放面
 
 **Feature ID**: EMBED-OPEN-001  
-**规划版本**: v1.0  
+**规划版本**: v1.3  
 **创建日期**: 2026-07-13  
 **规划作者**: SDDU Plan Agent  
-**规范版本**: spec.md v1.1
+**规范版本**: spec.md v1.3
 
 ---
 
@@ -18,8 +18,8 @@
 |------|------|------|
 | `AbilityController` | 3 个接口（list / subscribe / subscribed） | 接口参数和返回不变，内部逻辑调整 |
 | `AbilityServiceImpl` | 列表查询硬编码排除 type=6；订阅通过 `AbilityTypeEnum.isValidCode()` 校验；版本发布硬编码排除 type=6 | 列表：改为 `hidden` 字段过滤 + 返回 `entryUrl`/`routePath`/`aliasName`/`requireRelease`；订阅：改为 DB 校验；版本发布：改为按 `require_release` 字段过滤 |
-| `AbilityVO` | 无 `entryUrl` 等字段 | 新增 `entryUrl`/`routePath`/`aliasName`/`requireRelease` |
-| `AppAbilityDetailVO` | 无 `entryUrl` 等字段 | 新增 `entryUrl`/`routePath`/`aliasName`/`requireRelease` |
+| `AbilityVO` | 无 `entryUrl` 等字段 | 新增 `entryUrl`/`routePath`/`aliasName`/`requireRelease`/`loadType` |
+| `AppAbilityDetailVO` | 无 `entryUrl` 等字段 | 新增 `entryUrl`/`routePath`/`aliasName`/`requireRelease`/`loadType` |
 | `AbilityMapper` | 基础 CRUD | 可能需新增按 `abilityType` 查询方法 |
 | `AbilityTypeEnum` | 7 个硬编码常量 | **不变**（只用于预置类型本地化展示，不用于校验） |
 
@@ -36,8 +36,8 @@
 
 | 组件 | 变更类型 | 说明 |
 |------|---------|------|
-| `AbilityVO.entryUrl` / `routePath` / `aliasName` / `requireRelease` | 修改 | 新增字段；`frontendEntryUrl` 改为 `entryUrl` |
-| `AppAbilityDetailVO.entryUrl` / `routePath` / `aliasName` / `requireRelease` | 修改 | 新增字段；`frontendEntryUrl` 改为 `entryUrl` |
+| `AbilityVO.entryUrl` / `routePath` / `aliasName` / `requireRelease` / `loadType` | 修改 | 新增字段；`frontendEntryUrl` 改为 `entryUrl` |
+| `AppAbilityDetailVO.entryUrl` / `routePath` / `aliasName` / `requireRelease` / `loadType` | 修改 | 新增字段；`frontendEntryUrl` 改为 `entryUrl` |
 | `AbilityServiceImpl.getAbilityList()` | 修改 | type=6 硬编码排除 → `hidden` 字段过滤；新增 `entryUrl`/`routePath`/`aliasName`/`requireRelease` |
 | `AbilityServiceImpl.addAbility()` | 修改 | 枚举校验 → DB 校验 |
 | `AbilityServiceImpl.getSubscribedAbilities()` | 修改 | 新增 `entryUrl`/`routePath`/`aliasName`/`requireRelease` |
@@ -142,6 +142,7 @@ graph TB
 | ✅ 新增 `routePath` (string) | 路由路径 |
 | ✅ 新增 `aliasName` (string) | 别名 |
 | ✅ 新增 `requireRelease` (int) | 是否需要版本发布才生效（0=即时，1=需发布） |
+| ✅ 新增 `loadType` (int) | 加载类型（1=路由加载，2=微前端加载） |
 | ✅ 过滤逻辑变更 | 不再硬编码排除 type=6，改为按 `hidden=1` 过滤 |
 | ✅ 自定义类型 | 自定义类型（≥100）正常返回，不受 `AbilityTypeEnum` 限制 |
 
@@ -162,6 +163,7 @@ graph TB
 | routePath | string | 路由路径 | **新增** |
 | aliasName | string | 别名 | **新增** |
 | requireRelease | int | 是否需要版本发布才生效 | **新增** |
+| loadType | int | 加载类型（1=路由加载，2=微前端加载） | **新增** |
 
 **数据流**：
 
@@ -242,6 +244,7 @@ sequenceDiagram
 | ✅ 新增 `routePath` (string) | 路由路径 |
 | ✅ 新增 `aliasName` (string) | 别名 |
 | ✅ 新增 `requireRelease` (int) | 是否需要版本发布才生效 |
+| ✅ 新增 `loadType` (int) | 加载类型（1=路由加载，2=微前端加载） |
 | ✅ 过滤逻辑变更 | 不再硬编码排除 type=6 |
 
 **响应体 `data[]`**
@@ -258,6 +261,7 @@ sequenceDiagram
 | routePath | string | 路由路径 | **新增** |
 | aliasName | string | 别名 | **新增** |
 | requireRelease | int | 是否需要版本发布才生效 | **新增** |
+| loadType | int | 加载类型（1=路由加载，2=微前端加载） | **新增** |
 
 ### 3.4 前端变更说明
 
@@ -277,11 +281,12 @@ sequenceDiagram
 
 | 旧逻辑 | 新逻辑 |
 |--------|--------|
-| 配置页展示占位文本"该能力已添加，配置页面由能力方提供" | 从 `entryUrl` 获取子应用入口，运行时动态加载 |
-| 无微前端加载 | 使用 QianKun `loadMicroApp` API 动态加载子应用 |
+| 配置页展示占位文本"该能力已添加，配置页面由能力方提供" | 根据 `loadType` 分支：1=路由跳转，2=微前端动态加载 |
+| 无微前端加载 | loadType=2 时使用 QianKun `loadMicroApp` API 动态加载子应用 |
+| - | loadType=1 时仅使用 routePath 做路由跳转 |
 | - | 向子应用传递上下文：appId、abilityType、nameCn |
 
-**交互流程**：
+**交互流程**（loadType=2 时）：
 
 ```mermaid
 sequenceDiagram
@@ -290,12 +295,17 @@ sequenceDiagram
     participant SubApp as 微前端子应用
 
     User->>WECODE: 点击已订阅能力的"配置"按钮
-    WECODE->>WECODE: 读取 entryUrl
-    WECODE->>SubApp: 运行时加载子应用<br/>传递 { appId, abilityType, nameCn }
-    SubApp-->>WECODE: 渲染配置UI
-    User->>SubApp: 配置操作
-    User->>WECODE: 切换/退出配置
-    WECODE->>SubApp: 卸载子应用
+    WECODE->>WECODE: 读取 loadType
+    alt loadType === 2
+        WECODE->>WECODE: 读取 entryUrl
+        WECODE->>SubApp: 运行时加载子应用<br/>传递 { appId, abilityType, nameCn }
+        SubApp-->>WECODE: 渲染配置UI
+        User->>SubApp: 配置操作
+        User->>WECODE: 切换/退出配置
+        WECODE->>SubApp: 卸载子应用
+    else loadType === 1
+        WECODE->>WECODE: 根据 routePath 路由跳转
+    end
 ```
 
 ### 3.5 VersionServiceImpl 硬编码改造
@@ -360,8 +370,8 @@ sequenceDiagram
 
 | 文件 | 修改内容 |
 |------|---------|
-| `open-server/.../ability/vo/AbilityVO.java` | 新增 `entryUrl`/`routePath`/`aliasName`/`requireRelease` 字段 |
-| `open-server/.../ability/vo/AppAbilityDetailVO.java` | 新增 `entryUrl`/`routePath`/`aliasName`/`requireRelease` 字段 |
+| `open-server/.../ability/vo/AbilityVO.java` | 新增 `entryUrl`/`routePath`/`aliasName`/`requireRelease`/`loadType` 字段 |
+| `open-server/.../ability/vo/AppAbilityDetailVO.java` | 新增 `entryUrl`/`routePath`/`aliasName`/`requireRelease`/`loadType` 字段 |
 | `open-server/.../ability/service/impl/AbilityServiceImpl.java` | 列表: `hidden` 过滤 + `entryUrl`/`routePath`/`aliasName`/`requireRelease`；订阅: DB 校验；自动桥接: 日志 |
 | `open-server/.../version/service/impl/VersionServiceImpl.java` | 硬编码排除 type=6 改为按 `require_release` 字段过滤 |
 | `open-server/.../ability/controller/AbilityController.java` | 可能小调整（如接口注释） |
@@ -393,7 +403,7 @@ sequenceDiagram
 - 变更范围可被现有类结构容纳
 
 **决策**：
-直接修改 `AbilityServiceImpl` 的现有方法（`getAbilityList()`、`addAbility()`、`getSubscribedAbilities()`），不新建 Controller 或 Service。VO 类新增 optional 字段 `entryUrl`、`routePath`、`aliasName`、`requireRelease`。
+直接修改 `AbilityServiceImpl` 的现有方法（`getAbilityList()`、`addAbility()`、`getSubscribedAbilities()`），不新建 Controller 或 Service。VO 类新增 optional 字段 `entryUrl`、`routePath`、`aliasName`、`requireRelease`、`loadType`。
 
 **后果**：
 - 正面：改动小、代码复用、兼容现有调用方
@@ -429,10 +439,10 @@ sequenceDiagram
 
 | 验证产物 | 验证基准 |
 |---------|---------|
-| 能力列表查询 | hidden=1 不出现在列表；自定义类型正常展示；entryUrl/routePath/aliasName/requireRelease 正常返回 |
+| 能力列表查询 | hidden=1 不出现在列表；自定义类型正常展示；entryUrl/routePath/aliasName/requireRelease/loadType 正常返回 |
 | 能力订阅 | 自定义类型可通过校验正常订阅 |
-| 已订阅列表 | 新增 entryUrl/routePath/aliasName/requireRelease 字段 |
-| 配置页 | 无 entryUrl 展示占位；有则加载子应用 |
+| 已订阅列表 | 新增 entryUrl/routePath/aliasName/requireRelease/loadType 字段 |
+| 配置页 | loadType=1 路由跳转；loadType=2 加载子应用；无 entryUrl 展示占位 |
 
 ## 修订记录
 
@@ -441,3 +451,4 @@ sequenceDiagram
 | v1.0 | 初始创建 — 开放面技术规划 | 2026-07-13 | SDDU Plan Agent |
 | v1.1 | 对齐平台面格式：独立数据库设计+API设计章节；接口详细定义含设计规范/接口清单/请求响应/数据流 | 2026-07-13 | SDDU Plan Agent |
 | v1.2 | DB 字段更新：新增 route_path/alias_name/require_release 字段；frontendEntryUrl 改为 entryUrl；新增 §3.5 VersionServiceImpl 硬编码改造（按 require_release 过滤）；文件影响分析同步更新 | 2026-07-16 | SDDU Plan Agent |
+| v1.3 | 同步平台面 load_type 字段：§1.1/§1.2 VO 扩展加 loadType；§3.3 接口响应加 loadType；§3.4 FR-102 配置页嵌入增加 loadType 分支（路由跳转 vs QianKun 加载）；§6/§8/§10 同步更新 | 2026-07-17 | SDDU Plan Agent |

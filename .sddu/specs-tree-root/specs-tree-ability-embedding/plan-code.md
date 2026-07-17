@@ -295,6 +295,19 @@ DROP PROCEDURE IF EXISTS safe_add_column;
 -- ============================================================================
 ```
 
+### 4.7 字段字符集规范
+
+**规则**：DDL 字段定义禁止显式指定 `CHARACTER SET` / `COLLATE`，直接继承表级字符集。
+
+| ✅ 正确示例 | ❌ 错误示例 |
+|------------|------------|
+| `varchar(255) NULL DEFAULT NULL COMMENT '路由路径'` | `varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '路由路径'` |
+
+**原因**：
+- 字段级字符集与表级不一致会导致隐式转换、索引失效、排序异常
+- 表级字符集已统一为 utf8mb4/utf8mb4_unicode_ci，字段继承即可，无需重复声明
+- 减少冗余，避免维护字段级字符集的额外成本
+
 ---
 
 ## 5. 字符串格式化规范
