@@ -111,23 +111,6 @@ CALL safe_add_column('openplatform_ability_t', 'require_release',
 CALL safe_add_column('openplatform_ability_t', 'load_type',
     'TINYINT(10) NOT NULL DEFAULT 1 COMMENT ''加载类型：1=路由加载, 2=微前端加载''');
 
--- ----------------------------------------------------------------------------
--- 1.3 统一枚举字段类型为 TINYINT(10)（V2 规范：枚举 TINYINT(10) NOT NULL DEFAULT x）
---     变更：hidden / require_release 从 tinyint(1) NULL → TINYINT(10) NOT NULL
---     注意：已有行 NULL 值在 NOT NULL 约束下会自动转为 DEFAULT 0
--- ----------------------------------------------------------------------------
-CALL safe_modify_column('openplatform_ability_t', 'hidden',
-    'TINYINT(10) NOT NULL DEFAULT 1 COMMENT ''是否在开放面展示：0=展示, 1=隐藏''');
-
-CALL safe_modify_column('openplatform_ability_t', 'require_release',
-    'TINYINT(10) NOT NULL DEFAULT 0 COMMENT ''是否需要版本发布才生效：0=即时生效, 1=需版本发布''');
-
--- ----------------------------------------------------------------------------
--- 1.4 entry_url 长度扩展：512 → 1000（支持更长微前端子应用入口 URL）
--- ----------------------------------------------------------------------------
-CALL safe_modify_column('openplatform_ability_t', 'entry_url',
-    'varchar(1000) NULL DEFAULT NULL COMMENT ''进入地址（微前端子应用入口）''');
-
 -- ============================================================================
 -- 第 2 部分: 新建表（此版本无新建表）
 -- ============================================================================
@@ -144,5 +127,5 @@ DROP PROCEDURE IF EXISTS safe_modify_column;
 -- 嵌入能力平台面 V4 Schema 迁移完成（幂等版，支持重复执行）
 -- 变更汇总:
 --   公共存储过程 (2): safe_add_column, safe_modify_column
---   ALTER (1 表 / 9 条): MODIFY ability_type, ADD entry_url, ADD hidden, ADD route_path, ADD alias_name, ADD require_release, ADD load_type, MODIFY hidden(TINYINT(10) NOT NULL), MODIFY require_release(TINYINT(10) NOT NULL)
+--   ALTER (1 表 / 7 条): MODIFY ability_type, ADD entry_url, ADD hidden, ADD route_path, ADD alias_name, ADD require_release, ADD load_type
 -- ============================================================================
