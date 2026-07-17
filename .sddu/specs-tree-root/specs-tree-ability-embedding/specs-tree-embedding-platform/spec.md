@@ -4,10 +4,10 @@
 > **前置依赖**: `specs-tree-ability-embedding/discovery-report.md`、`specs-tree-ability-embedding/spec.md`（父规范）  
 > **创建人**: SDDU Spec Agent  
 > **创建时间**: 2026-07-13  
-> **版本**: v1.1  
+> **版本**: v1.2  
 > **更新人**: SDDU Plan Agent  
-> **更新时间**: 2026-07-16  
-> **更新说明**: DB 字段变更：新增 route_path/alias_name/require_release，frontend_entry_url→entry_url，ability_type 类型调整，编码规则简化
+> **更新时间**: 2026-07-17  
+> **更新说明**: 新增 load_type 字段：加载类型（1=路由加载，2=微前端加载），默认 1；load_type=2 时三要素（entryUrl/routePath/aliasName）必填
 
 ## 1. 元数据
 > Feature 基本信息
@@ -79,9 +79,9 @@
 
 | ID | 需求描述 | 验收标准 | 优先级 |
 |----|---------|---------|--------|
-| FR-001 | **能力目录列表**：平台管理员在 market-web 查看所有 ability 类型列表 | • 列表展示字段：abilityType 编码、中文名、英文名、描述、图标、示意图缩略图、排序号、前端入口URL、创建时间、更新人、更新时间<br/>• 分页展示，默认按排序号升序 | P0 |
-| FR-002 | **创建能力**：平台管理员创建新的 ability 类型 | • 表单字段：abilityType 编码（int，手动输入）、中文名、英文名、中文描述、英文描述、图标（文件上传）、示意图（文件上传）、排序号（int）、进入地址（entryUrl）、路由路径（routePath）、别名（aliasName）、是否在开放面展示（hidden，默认展示）、需版本发布（requireRelease，默认0）<br/>• abilityType 编码需校验唯一性（不与已有编码冲突）<br/>• 图标/示意图上传调用 `fileV2Service`（复用已有文件服务）<br/>• 创建后状态默认为「启用」<br/>• 创建后同步写入 `openplatform_ability_t` 主表和 `openplatform_ability_p_t` 属性表 | P0 |
-| FR-003 | **编辑能力**：平台管理员修改已有 ability 类型的信息 | • 支持修改 FR-002 中所有字段<br/>• abilityType 编码不可修改（作为业务标识）<br/>• 图标/示意图可替换上传，新文件覆盖旧文件引用<br/>• `hidden` 字段可切换（展示/隐藏状态） | P0 |
+| FR-001 | **能力目录列表**：平台管理员在 market-web 查看所有 ability 类型列表 | • 列表展示字段：abilityType 编码、中文名、英文名、描述、图标、示意图缩略图、排序号、加载类型、前端入口URL、创建时间、更新人、更新时间<br/>• 分页展示，默认按排序号升序 | P0 |
+| FR-002 | **创建能力**：平台管理员创建新的 ability 类型 | • 表单字段：abilityType 编码（int，手动输入）、中文名、英文名、中文描述、英文描述、图标（文件上传）、示意图（文件上传）、排序号（int）、加载类型（loadType，默认1=路由加载）、进入地址（entryUrl）、路由路径（routePath）、别名（aliasName）、是否在开放面展示（hidden，默认隐藏）、需版本发布（requireRelease，默认0）<br/>• abilityType 编码需校验唯一性（不与已有编码冲突）<br/>• 加载类型校验：loadType=2（微前端加载）时，entryUrl/routePath/aliasName 三要素必填<br/>• 图标/示意图上传调用 `fileV2Service`（复用已有文件服务）<br/>• 创建后状态默认为「启用」<br/>• 创建后同步写入 `openplatform_ability_t` 主表和 `openplatform_ability_p_t` 属性表 | P0 |
+| FR-003 | **编辑能力**：平台管理员修改已有 ability 类型的信息 | • 支持修改 FR-002 中所有字段（含 loadType）<br/>• abilityType 编码不可修改（作为业务标识）<br/>• 图标/示意图可替换上传，新文件覆盖旧文件引用<br/>• `hidden` 字段可切换（展示/隐藏状态）<br/>• 当 loadType 改为 2 时，entryUrl/routePath/aliasName 三要素必填 | P0 |
 | FR-004 | **删除能力**：平台管理员删除 ability 类型 | • 删除前检查是否有应用订阅了该能力<br/>• 有关联订阅 > 禁止删除，提示"该能力已被 XX 个应用订阅，无法删除"<br/>• 无关联订阅 > 允许删除 | P1 |
 
 ### 5.2 业务字段
@@ -90,10 +90,11 @@
 
 | 业务字段 | 说明 |
 |---------|------|
+| 加载类型（load_type） | 加载方式：1=路由加载（wecodesite 内部路由跳转），2=微前端加载（QianKun loadMicroApp），默认 1 |
 | 进入地址（entry_url） | 微前端子应用入口地址 |
 | 路由路径（route_path） | 子应用激活路由（QianKun activeRule） |
 | 别名（alias_name） | 子应用唯一标识（QianKun name） |
-| 是否在开放面展示（hidden） | 控制是否在开放面目录展示（默认展示） |
+| 是否在开放面展示（hidden） | 控制是否在开放面目录展示（默认隐藏） |
 | 需版本发布（require_release） | 是否需要版本发布才生效（0=即时生效，1=需版本发布） |
 
 > 💡 entry_url + route_path + alias_name 对应 QianKun 微前端注册三要素：entry + activeRule + name。
@@ -152,3 +153,4 @@
 |------|---------|------|--------|
 | v1.0 | 初始创建 — 嵌入能力平台面完整规范 | 2026-07-13 | SDDU Spec Agent |
 | v1.1 | DB 字段变更：新增 route_path/alias_name/require_release，frontend_entry_url 改为 entry_url，ability_type 类型调整，编码规则简化（取消≥100约束），补充 QianKun 三要素说明 | 2026-07-16 | SDDU Plan Agent |
+| v1.2 | 新增 load_type 字段（加载类型：1=路由加载，2=微前端加载，默认1）；FR-002/FR-003 增加 loadType 表单字段及校验规则（load_type=2 时三要素必填）；FR-001 列表字段增加 loadType | 2026-07-17 | SDDU Plan Agent |

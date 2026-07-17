@@ -6,7 +6,7 @@
 
 ## 描述
 
-实现能力目录分页查询接口。同步 AbilityEntity 实体类新增 5 个字段（entryUrl / hidden / routePath / aliasName / requireRelease）及 Mapper resultMap，新建 AdminAbilityListRequest / AdminAbilityVO，扩展 Mapper 分页查询方法，实现 AdminAbilityService.list()，在 AdminAbilityController 中暴露 GET /ability/admin/list。
+实现能力目录分页查询接口。同步 AbilityEntity 实体类新增 6 个字段（entryUrl / hidden / routePath / aliasName / requireRelease / loadType）及 Mapper resultMap，新建 AdminAbilityListRequest / AdminAbilityVO，扩展 Mapper 分页查询方法，实现 AdminAbilityService.list()，在 AdminAbilityController 中暴露 GET /ability/admin/list。
 
 > 💡 Entity / Mapper 变更是所有后端任务的公共基础，由本任务（首个创建 VO 的后端任务）承接。
 
@@ -32,12 +32,12 @@
 
 ## 验收标准
 
-- [ ] AbilityEntity 新增 5 个字段及 getter/setter
-- [ ] Mapper resultMap 同步新增 5 个字段映射
+- [ ] AbilityEntity 新增 6 个字段（entryUrl / hidden / routePath / aliasName / requireRelease / loadType）及 getter/setter
+- [ ] Mapper resultMap 同步新增 6 个字段映射
 - [ ] 分页查询正常（curPage / pageSize）
 - [ ] keyword 模糊搜索按中文名/英文名
 - [ ] sortField / sortOrder 排序
-- [ ] 返回字段含 entryUrl / routePath / aliasName / requireRelease / hidden
+- [ ] 返回字段含 entryUrl / routePath / aliasName / requireRelease / hidden / loadType
 - [ ] 图标/示意图 URL 从属性表关联查询
 - [ ] 接口: GET /service/open/v2/ability/admin/list
 - [ ] Java 单元测试: AdminAbilityListControllerTest 通过（覆盖分页/搜索/排序/字段映射）

@@ -1,10 +1,10 @@
 # 技术规划：嵌入能力平台面
 
 **Feature ID**: EMBED-PLATFORM-001  
-**规划版本**: v3.4  
+**规划版本**: v3.6  
 **创建日期**: 2026-07-13  
 **规划作者**: SDDU Plan Agent  
-**规范版本**: spec.md v1.0
+**规范版本**: spec.md v1.2
 
 ---
 
@@ -122,14 +122,15 @@ CREATE TABLE `openplatform_ability_t`  (
   `ability_name_en` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '能力英文名',
   `ability_desc_cn` varchar(2000) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '' COMMENT '能力中文描述',
   `ability_desc_en` varchar(2000) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '' COMMENT '能力英文描述',
-  `ability_type` tinyint NOT NULL DEFAULT 0 COMMENT '能力类型编码（1-7 预置，自定义类型统一分配，不区分范围）',
+  `ability_type` TINYINT(10) UNSIGNED NOT NULL DEFAULT 0 COMMENT '能力类型编码（1-7 预置，自定义类型统一分配，不区分范围）',
   `order_num` int NOT NULL COMMENT '序号',
   `status` tinyint NULL DEFAULT 1 COMMENT '状态：0=失效, 1=有效',
-  `entry_url` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '进入地址（微前端子应用入口）',
-  `hidden` tinyint(1) NULL DEFAULT 0 COMMENT '是否在开放面展示：0=展示, 1=隐藏',
-  `route_path` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '路由路径（子应用激活路由）',
-  `alias_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '别名（子应用唯一标识）',
-  `require_release` tinyint(1) NULL DEFAULT 0 COMMENT '是否需要版本发布才生效：0=即时生效, 1=需版本发布',
+  `entry_url` varchar(1000) NULL DEFAULT NULL COMMENT '进入地址（微前端子应用入口）',
+  `hidden` TINYINT(10) NOT NULL DEFAULT 1 COMMENT '是否在开放面展示：0=展示, 1=隐藏',
+  `route_path` varchar(255) NULL DEFAULT NULL COMMENT '路由路径（子应用激活路由）',
+  `alias_name` varchar(100) NULL DEFAULT NULL COMMENT '别名（子应用唯一标识）',
+  `require_release` TINYINT(10) NOT NULL DEFAULT 0 COMMENT '是否需要版本发布才生效：0=即时生效, 1=需版本发布',
+  `load_type` TINYINT(10) NOT NULL DEFAULT 1 COMMENT '加载类型：1=路由加载, 2=微前端加载',
   `create_by` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '创建人',
   `create_time` datetime(3) NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
   `last_update_by` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '最后更新人',
@@ -146,17 +147,18 @@ CREATE TABLE `openplatform_ability_t`  (
 ```sql
 -- V4__add_ability_admin_fields.sql
 
--- 1. 调整 ability_type 类型注释（去掉显示宽度，更新注释）
+-- 1. 调整 ability_type: 统一枚举字段列类型为 TINYINT(10) UNSIGNED，更新注释
 ALTER TABLE `openplatform_ability_t` 
-  MODIFY COLUMN `ability_type` tinyint NOT NULL DEFAULT 0 COMMENT '能力类型编码（1-7 预置，自定义类型统一分配，不区分范围）';
+  MODIFY COLUMN `ability_type` TINYINT(10) UNSIGNED NOT NULL DEFAULT 0 COMMENT '能力类型编码（1-7 预置，自定义类型统一分配，不区分范围）';
 
 -- 2. 新增嵌入能力相关字段
 ALTER TABLE `openplatform_ability_t`
-  ADD COLUMN `entry_url` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '进入地址（微前端子应用入口）' AFTER `status`,
-  ADD COLUMN `hidden` tinyint(1) NULL DEFAULT 0 COMMENT '是否在开放面展示：0=展示, 1=隐藏' AFTER `entry_url`,
-  ADD COLUMN `route_path` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '路由路径（子应用激活路由）' AFTER `hidden`,
-  ADD COLUMN `alias_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NULL DEFAULT NULL COMMENT '别名（子应用唯一标识）' AFTER `route_path`,
-  ADD COLUMN `require_release` tinyint(1) NULL DEFAULT 0 COMMENT '是否需要版本发布才生效：0=即时生效, 1=需版本发布' AFTER `alias_name`;
+  ADD COLUMN `entry_url` varchar(1000) NULL DEFAULT NULL COMMENT '进入地址（微前端子应用入口）' AFTER `status`,
+  ADD COLUMN `hidden` TINYINT(10) NOT NULL DEFAULT 1 COMMENT '是否在开放面展示：0=展示, 1=隐藏' AFTER `entry_url`,
+  ADD COLUMN `route_path` varchar(255) NULL DEFAULT NULL COMMENT '路由路径（子应用激活路由）' AFTER `hidden`,
+  ADD COLUMN `alias_name` varchar(100) NULL DEFAULT NULL COMMENT '别名（子应用唯一标识）' AFTER `route_path`,
+  ADD COLUMN `require_release` TINYINT(10) NOT NULL DEFAULT 0 COMMENT '是否需要版本发布才生效：0=即时生效, 1=需版本发布' AFTER `alias_name`,
+  ADD COLUMN `load_type` TINYINT(10) NOT NULL DEFAULT 1 COMMENT '加载类型：1=路由加载, 2=微前端加载' AFTER `require_release`;
 ```
 
 ## 3. API设计
@@ -205,6 +207,7 @@ ALTER TABLE `openplatform_ability_t`
 | `route_path` | `routePath` | `routePath` |
 | `alias_name` | `aliasName` | `aliasName` |
 | `require_release` | `requireRelease` | `requireRelease` |
+| `load_type` | `loadType` | `loadType` |
 
 ### 3.2 接口清单
 
@@ -250,6 +253,7 @@ ALTER TABLE `openplatform_ability_t`
 | routePath | string | 路由路径 |
 | aliasName | string | 别名 |
 | requireRelease | int | 是否需要版本发布才生效（0=即时生效，1=需版本发布） |
+| loadType | int | 加载类型（1=路由加载，2=微前端加载） |
 | createTime | string | 创建时间 |
 | updateBy | string | 更新人 |
 | updateTime | string | 更新时间 |
@@ -282,7 +286,7 @@ sequenceDiagram
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|:--:|------|
-| abilityType | int | ✅ | 能力编码（≥100），需唯一 |
+| abilityType | int | ✅ | 能力编码（8~255，自定义范围），需唯一 |
 | nameCn | string | ✅ | 中文名，最长 64 字符 |
 | nameEn | string | ✅ | 英文名，最长 128 字符 |
 | descCn | string | ❌ | 中文描述，最长 512 字符 |
@@ -291,10 +295,13 @@ sequenceDiagram
 | diagramUrl | string | ❌ | 示意图文件上传返回的 URL |
 | orderNum | int | ❌ | 排序号，默认 0 |
 | entryUrl | string | ❌ | 进入地址（http/https 协议） |
-| hidden | int | ❌ | 是否隐藏（0=展示，1=隐藏），默认 0 |
+| hidden | int | ❌ | 是否隐藏（0=展示，1=隐藏），默认 1（默认隐藏） |
 | routePath | string | ❌ | 路由路径（子应用激活路由） |
 | aliasName | string | ❌ | 别名（子应用唯一标识） |
 | requireRelease | int | ❌ | 是否需要版本发布才生效（0=即时生效，1=需版本发布），默认 0 |
+| loadType | int | ❌ | 加载类型（1=路由加载，2=微前端加载），默认 1 |
+
+> 🔍 校验规则补充：当 `loadType=2` 时，`entryUrl`、`routePath`、`aliasName` 三要素均必填，否则返回 400 参数校验失败。
 
 **响应体 `data`**
 
@@ -361,8 +368,9 @@ sequenceDiagram
 | routePath | string | ❌ | 路由路径 |
 | aliasName | string | ❌ | 别名 |
 | requireRelease | int | ❌ | 是否需要版本发布才生效 |
+| loadType | int | ❌ | 加载类型（1=路由加载，2=微前端加载） |
 
-> 所有字段可选，仅更新传入的字段。abilityType 不可修改。
+> 所有字段可选，仅更新传入的字段。abilityType 不可修改。当 loadType 改为 2 时，同样校验 entryUrl/routePath/aliasName 三要素必填。
 
 **响应体 `data`**
 
@@ -559,12 +567,14 @@ sequenceDiagram
 
 **决策**：
 - 1-7 保留给 `AbilityTypeEnum` 预置类型（群置顶、群通知、链接增强、点对点通知、we码、应用入群通知、助手广场卡片）
-- 自定义类型统一在 tinyint 范围内分配，不区分类型大小
+- `ability_type` 为 `tinyint UNSIGNED`，范围 0~255（1-7 预置，8~255 自定义）
+- 自定义类型统一在范围内分配，不区分类型大小
 - 系统校验唯一性（包括已创建的记录和预置编码中的值）
 - 创建后不可修改
 
 **后果**：
 - 正面：业务字段可读性强，不依赖自增ID；自定义不再受 ≥100 约束，更灵活
+- 正面：UNSIGNED 支持 0~255 范围，覆盖原 signed tinyint 的 0~127 自定义范围，向后兼容
 - 负面：需要前端提示避免与预置编码冲突，人工管理编码值
 
 ### ADR-004: require_release 字段替代硬编码能力类型排除
@@ -1820,3 +1830,4 @@ git push origin embed-platform-001-merged
 | v3.3 | §10.3 Playwright 从 JS 改为 Python（pytest-playwright），避免与前端 JS 代码混淆 | 2026-07-16 | SDDU Plan Agent |
 | v3.4 | **新增 §11 代码管理与原子化合并方案**：分支策略（主干接力模式）、标签策略（annotated 双层标签）、差异获取命令、合入流程（merge --no-ff 逐个子Feature 合入）、回滚策略（revert -m 1）、TASK-001 端到端演示 | 2026-07-17 | SDDU Plan Agent |
 | v3.5 | **重写 §11**：主干接力模式 → 前驱分支接力模式（开发不阻塞）；精简篇幅 425→122 行，删除对比表、10 标签示例、8 步骤演示等冗余 | 2026-07-17 | SDDU Plan Agent |
+| v3.6 | §2.3 DDL/§2.4 V4 SQL/§3.1 字段命名表/§3.3 各接口 VO/Request：新增 load_type 字段（TINYINT(10) NOT NULL DEFAULT 1，加载类型：1=路由加载, 2=微前端加载）；创建/更新接口增加 loadType=2 时三要素必填校验规则 | 2026-07-17 | SDDU Plan Agent |
