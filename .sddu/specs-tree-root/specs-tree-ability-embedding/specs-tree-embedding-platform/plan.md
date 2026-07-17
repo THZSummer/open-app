@@ -1,7 +1,7 @@
 # 技术规划：嵌入能力平台面
 
 **Feature ID**: EMBED-PLATFORM-001  
-**规划版本**: v3.6  
+**规划版本**: v3.8  
 **创建日期**: 2026-07-13  
 **规划作者**: SDDU Plan Agent  
 **规范版本**: spec.md v1.2
@@ -34,6 +34,8 @@
 | `AdminAbilityCreateRequest` | 创建请求 DTO | `market-server/.../ability/dto/admin/AdminAbilityCreateRequest.java` |
 | `AdminAbilityUpdateRequest` | 编辑请求 DTO | `market-server/.../ability/dto/admin/AdminAbilityUpdateRequest.java` |
 | `AbilityPropertyMapper` | 图标/示意图属性 Mapper（新建） | `market-server/.../ability/mapper/AbilityPropertyMapper.java` |
+| `AdminAbilityController`（upload 方法） | 管理面文件上传入口 | `market-server/.../ability/controller/AdminAbilityController.java` |
+| `AdminAbilityFileService` / `AdminAbilityFileServiceImpl` | 通用文件上传 Service（接口+开发环境实现） | `market-server/.../ability/service/AdminAbilityFileService.java` |
 | V4 迁移脚本 | `openplatform_ability_t` 新增 `entry_url`/`hidden`/`route_path`/`alias_name`/`require_release` 字段及 `ability_type` 类型调整 | `open-server/src/main/resources/db/migration/V4__add_ability_admin_fields.sql` |
 | 前端页面（market-web） | 能力目录管理页面：列表页 + 创建/编辑表单 | market-web |
 
@@ -161,6 +163,32 @@ ALTER TABLE `openplatform_ability_t`
   ADD COLUMN `load_type` TINYINT(10) NOT NULL DEFAULT 1 COMMENT '加载类型：1=路由加载, 2=微前端加载' AFTER `require_release`;
 ```
 
+### 2.5 `openplatform_common_file_t`（新增，开发环境临时表）
+
+> ⚠️ 本表为开发环境临时表，仅用于 FR-005 通用文件上传接口的文件记录。生产环境如有需要可后续调整。
+
+```sql
+CREATE TABLE `openplatform_common_file_t` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `batch_id` varchar(100) NOT NULL COMMENT '文件批次ID',
+  `file_name` varchar(500) NOT NULL COMMENT '原始文件名',
+  `file_path` varchar(1000) NOT NULL COMMENT '磁盘路径（开发环境为本地临时目录）',
+  `biz_type` tinyint NOT NULL COMMENT '业务类型：1=能力图标，2=能力示意图',
+  `file_size` bigint NOT NULL COMMENT '文件大小（字节）',
+  `content_type` varchar(100) DEFAULT NULL COMMENT 'MIME类型',
+  `create_time` datetime(3) DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_batch_id` (`batch_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='通用文件表（开发环境临时表）';
+```
+
+> **设计说明**：
+> - `show_url` 不落库，由 Service 层动态生成
+> - Controller 不做业务校验（格式/尺寸/大小），全部委托 Service
+> - **存储模式开关**：通过配置 `ability.file.storage-mode` 切换实现（默认 `standard`）
+>   - `standard`（默认）：标准环境，文件上传与地址拼接走 OSS/CDN 实现（不写 `openplatform_common_file_t`）
+>   - `dev`：开发环境，文件存本地临时目录，`showUrl` 通过本地静态资源映射拼接，写 `openplatform_common_file_t`
+
 ## 3. API设计
 
 ### 3.1 设计规范
@@ -208,6 +236,8 @@ ALTER TABLE `openplatform_ability_t`
 | `alias_name` | `aliasName` | `aliasName` |
 | `require_release` | `requireRelease` | `requireRelease` |
 | `load_type` | `loadType` | `loadType` |
+| `batch_id`（上传返回） | `batchId` | `batchId` |
+| `show_url`（上传返回） | `showUrl` | `showUrl` |
 
 ### 3.2 接口清单
 
@@ -217,6 +247,7 @@ ALTER TABLE `openplatform_ability_t`
 | 2 | POST | `/ability/admin` | 创建能力 | FR-002 | 创建新的能力类型 |
 | 3 | PUT | `/ability/admin/{id}` | 更新能力 | FR-003 | 更新能力信息，abilityType 不可修改 |
 | 4 | DELETE | `/ability/admin/{id}` | 删除能力 | FR-004 | 删除（含订阅检查） |
+| 5 | POST | `/ability/admin/upload` | 通用文件上传 | FR-005 | 接收文件+bizType，校验格式/尺寸/大小，返回 batchId+showUrl |
 
 ### 3.3 接口详细定义
 
@@ -258,6 +289,8 @@ ALTER TABLE `openplatform_ability_t`
 | updateBy | string | 更新人 |
 | updateTime | string | 更新时间 |
 
+> 💡 iconUrl/diagramUrl 由 `AdminAbilityFileService.getShowUrl(batchId)` 动态解析，不计入列表查询的 DB 字段映射。
+
 **数据流**：
 
 ```mermaid
@@ -287,14 +320,14 @@ sequenceDiagram
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|:--:|------|
 | abilityType | int | ✅ | 能力编码（8~255，自定义范围），需唯一 |
-| nameCn | string | ✅ | 中文名，最长 64 字符 |
-| nameEn | string | ✅ | 英文名，最长 128 字符 |
-| descCn | string | ❌ | 中文描述，最长 512 字符 |
-| descEn | string | ❌ | 英文描述，最长 512 字符 |
-| iconUrl | string | ❌ | 图标文件上传返回的 URL |
-| diagramUrl | string | ❌ | 示意图文件上传返回的 URL |
-| orderNum | int | ❌ | 排序号，默认 0 |
-| entryUrl | string | ❌ | 进入地址（http/https 协议） |
+| nameCn | string | ✅ | 中文名，2-30 字符 |
+| nameEn | string | ✅ | 英文名，2-30 字符 |
+| descCn | string | ✅ | 中文描述，5-200 字符 |
+| descEn | string | ✅ | 英文描述，5-200 字符 |
+| iconBatchId | string | ✅ | 图标文件 batchId（由接口 #5 上传后返回） |
+| diagramBatchId | string | ❌ | 示意图文件 batchId（由接口 #5 上传后返回），未上传时不展示 |
+| orderNum | int | ✅ | 排序号，正整数 ≥1，默认当前最大值 +1 |
+| entryUrl | string | ❌ | 进入地址，HTTP/HTTPS 协议，≤1000 字符 |
 | hidden | int | ❌ | 是否隐藏（0=展示，1=隐藏），默认 1（默认隐藏） |
 | routePath | string | ❌ | 路由路径（子应用激活路由） |
 | aliasName | string | ❌ | 别名（子应用唯一标识） |
@@ -302,6 +335,8 @@ sequenceDiagram
 | loadType | int | ❌ | 加载类型（1=路由加载，2=微前端加载），默认 1 |
 
 > 🔍 校验规则补充：当 `loadType=2` 时，`entryUrl`、`routePath`、`aliasName` 三要素均必填，否则返回 400 参数校验失败。
+> 🔍 字段级校验详见 spec.md §5.2：名称 2-30 字符、描述 5-200 字符、图标必填（PNG/SVG/40×40/≤200KB）、排序 ≥1。所有校验在 DTO 层通过 JSR-303 注解 + 自定义 Validator 实现。
+> 🔍 图标/示意图文件格式/尺寸/大小校验在接口 #5（上传）中完成，本接口仅校验 iconBatchId 非空（图标必填）。
 
 **响应体 `data`**
 
@@ -329,9 +364,9 @@ sequenceDiagram
     participant DB as openplatform_ability_t / _p_t
 
     Admin->>Web: 填写创建表单
-    Web->>AdminCtrl: POST /ability/admin { abilityType, nameCn, iconUrl, ... }
+    Web->>AdminCtrl: POST /ability/admin { abilityType, nameCn, iconBatchId, ... }
     AdminCtrl->>AdminCtrl: 校验 abilityType 唯一性
-    AdminCtrl->>FileSvc: 上传图标/示意图文件（如有时）
+    AdminCtrl->>FileSvc: 调用通用文件上传接口
     FileSvc-->>AdminCtrl: 返回文件 URL
     AdminCtrl->>DB: 写入 ability_t（主表）
     AdminCtrl->>DB: 写入 ability_p_t（图标/示意图）
@@ -356,14 +391,14 @@ sequenceDiagram
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|:--:|------|
-| nameCn | string | ❌ | 中文名 |
-| nameEn | string | ❌ | 英文名 |
-| descCn | string | ❌ | 中文描述 |
-| descEn | string | ❌ | 英文描述 |
-| iconUrl | string | ❌ | 图标 URL（新文件上传后替换） |
-| diagramUrl | string | ❌ | 示意图 URL |
-| orderNum | int | ❌ | 排序号 |
-| entryUrl | string | ❌ | 进入地址 |
+| nameCn | string | ❌ | 中文名，2-30 字符（若传入） |
+| nameEn | string | ❌ | 英文名，2-30 字符（若传入） |
+| descCn | string | ❌ | 中文描述，5-200 字符（若传入） |
+| descEn | string | ❌ | 英文描述，5-200 字符（若传入） |
+| iconBatchId | string | ❌ | 图标文件 batchId（由接口 #5 上传后返回），新 batchId 覆盖旧引用 |
+| diagramBatchId | string | ❌ | 示意图文件 batchId（由接口 #5 上传后返回），新 batchId 覆盖旧引用 |
+| orderNum | int | ❌ | 排序号，≥1（若传入） |
+| entryUrl | string | ❌ | 进入地址，HTTP/HTTPS 协议，≤1000 字符（若传入） |
 | hidden | int | ❌ | 是否隐藏 |
 | routePath | string | ❌ | 路由路径 |
 | aliasName | string | ❌ | 别名 |
@@ -455,6 +490,83 @@ sequenceDiagram
     end
 ```
 
+---
+
+#### #5 通用文件上传
+
+`POST /service/open/v2/ability/admin/upload`
+
+**请求参数**（multipart/form-data）
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|:--:|------|
+| file | file | ✅ | 上传的文件 |
+| bizType | int | ✅ | 业务类型：1=能力图标，2=能力示意图 |
+
+> 💡 Controller 仅做参数绑定 + 权限校验，文件格式/尺寸/大小校验全部在 Service 层实现。Service 预留两个方法：`upload(file, bizType) → {batchId, showUrl}` 和 `getShowUrl(batchId) → showUrl`。开发环境 Service 实现：文件存本地临时目录 + 拼接本地 URL；标准环境替换为 OSS/CDN 实现。
+> 💡 存储模式由配置 `ability.file.storage-mode` 控制（默认 `standard`），`AdminAbilityFileService` 根据此开关选择开发/标准环境实现。
+
+**校验规则**
+
+| bizType | 允许格式 | 尺寸 | 文件大小 |
+|:--:|------|------|:--:|
+| 1（能力图标） | PNG, SVG | 40×40PX | ≤200KB |
+| 2（能力示意图） | PNG, JPG | 520×288PX | ≤500KB |
+
+校验逻辑在 Controller 层完成：读取文件 → 校验扩展名/Content-Type → 读取图片尺寸 → 校验文件大小 → 任一不通过返回 400。
+
+**响应体 `data`**
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| batchId | string | 文件批次ID（用于后续创建/编辑接口提交） |
+| showUrl | string | 文件展示地址 |
+
+**错误响应**
+
+| code | 说明 |
+|------|------|
+| 400 | 文件格式不符 / 尺寸不符 / 文件过大 |
+| 403 | 无权限（非管理员） |
+
+**数据流**：
+
+```mermaid
+sequenceDiagram
+    participant Admin as 平台管理员
+    participant Web as market-web
+    participant Ctrl as AdminAbilityController
+    participant Svc as AdminAbilityFileService
+    participant OSS as OSS/CDN
+    participant Disk as 本地磁盘
+    participant DB as openplatform_common_file_t
+
+    Admin->>Web: 选择图标/示意图文件
+    Web->>Ctrl: POST /ability/admin/upload { file, bizType }
+    Ctrl->>Ctrl: 参数绑定 + 权限校验
+    Ctrl->>Svc: upload(file, bizType)
+    Svc->>Svc: 校验格式/尺寸/大小
+    alt 校验失败
+        Svc-->>Ctrl: 抛出校验异常
+        Ctrl-->>Web: 400 { 格式不符/尺寸不符/文件过大 }
+        Web-->>Admin: 提示具体规则
+    else 校验通过
+        alt storage-mode = standard（默认）
+            Svc->>OSS: 上传文件到 OSS/CDN
+            OSS-->>Svc: 返回 showUrl
+            Svc->>Svc: 生成 batchId
+        else storage-mode = dev
+            Svc->>Disk: 保存到本地临时目录
+            Svc->>DB: 写入 openplatform_common_file_t
+            DB-->>Svc: 成功
+            Svc->>Svc: 本地静态映射拼接 showUrl + 生成 batchId
+        end
+        Svc-->>Ctrl: { batchId, showUrl }
+        Ctrl-->>Web: 200 { batchId, showUrl }
+        Web-->>Admin: 展示预览
+    end
+```
+
 ## 4. 方案对比
 
 ### ~~方案 A：扩展 open-server ability 模块（已废弃：与 spec 矛盾）~~
@@ -517,6 +629,7 @@ sequenceDiagram
 | `market-server/.../ability/vo/admin/AdminAbilityDetailVO.java` | 详情 VO |
 | `market-server/.../ability/mapper/AbilityPropertyMapper.java` | 图标/示意图属性 Mapper（新建） |
 | `open-server/src/main/resources/db/migration/V4__add_ability_admin_fields.sql` | DB 迁移（open-server） |
+| `market-server/.../ability/dto/admin/AdminAbilityUploadRequest.java` | 上传请求参数 DTO（bizType） |
 | `market-web/.../router/routeRedBlue/ability-admin/` | 前端管理页面（列表/创建/编辑/删除，含 index.tsx + components/ + thunk.ts） |
 
 ### 修改文件
