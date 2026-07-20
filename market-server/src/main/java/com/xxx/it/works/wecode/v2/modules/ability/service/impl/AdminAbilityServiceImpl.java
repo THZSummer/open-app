@@ -8,6 +8,7 @@ import com.xxx.it.works.wecode.v2.modules.ability.mapper.AbilityMapper;
 import com.xxx.it.works.wecode.v2.modules.ability.mapper.AbilityPropertyMapper;
 import com.xxx.it.works.wecode.v2.modules.ability.service.AdminAbilityService;
 import com.xxx.it.works.wecode.v2.modules.ability.common.AbilityPropertyEnum;
+import com.xxx.it.works.wecode.v2.modules.file.service.CommonFileService;
 import com.xxx.it.works.wecode.v2.modules.ability.vo.admin.AdminAbilityVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -28,19 +29,18 @@ import java.util.stream.Collectors;
 @Service
 public class AdminAbilityServiceImpl implements AdminAbilityService {
 
-    /**
-     * 图标 URL 前缀
-     */
-    private static final String FILE_URL_PREFIX = "/ability-files/";
-
-
     private final AbilityMapper abilityMapper;
 
     private final AbilityPropertyMapper abilityPropertyMapper;
 
-    public AdminAbilityServiceImpl(AbilityMapper abilityMapper, AbilityPropertyMapper abilityPropertyMapper) {
+    private final CommonFileService commonFileService;
+
+    public AdminAbilityServiceImpl(AbilityMapper abilityMapper,
+                                    AbilityPropertyMapper abilityPropertyMapper,
+                                    CommonFileService commonFileService) {
         this.abilityMapper = abilityMapper;
         this.abilityPropertyMapper = abilityPropertyMapper;
+        this.commonFileService = commonFileService;
     }
 
     @Override
@@ -125,10 +125,10 @@ public class AdminAbilityServiceImpl implements AdminAbilityService {
 
             if (iconPropName.equals(propName)) {
                 iconRawValues.put(parentId, rawValue);
-                iconUrls.put(parentId, rawValue != null ? FILE_URL_PREFIX + rawValue : null);
+                iconUrls.put(parentId, rawValue != null ? commonFileService.getShowUrl(rawValue) : null);
             } else if (diagramPropName.equals(propName)) {
                 diagramRawValues.put(parentId, rawValue);
-                diagramUrls.put(parentId, rawValue != null ? FILE_URL_PREFIX + rawValue : null);
+                diagramUrls.put(parentId, rawValue != null ? commonFileService.getShowUrl(rawValue) : null);
             }
         }
 

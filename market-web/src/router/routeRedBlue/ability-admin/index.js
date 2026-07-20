@@ -1,29 +1,18 @@
 /**
  * 能力目录管理列表页面
  *
- * 提供能力目录的分页列表展示、关键词搜索和排序功能。
+ * 提供能力目录的分页列表展示功能。
  * 对应 FR-001：平台管理员在 market-web 查看所有 ability 类型列表。
  */
 import React, { useState, useEffect } from 'react';
-import { Table, Pagination, Input, Button, message, Tooltip, Select } from 'antd';
-import { SearchOutlined, ReloadOutlined } from '@ant-design/icons';
+import { Table, Pagination, message, Tooltip } from 'antd';
 import { getAbilityList } from './thunk';
 import { PAGE_SIZE_OPTIONS } from '../../../utils/constant';
 import { renderAlwaysWithTooltip } from '../../../utils/common';
 import less from './index.module.less';
 
 /** 默认分页 */
-const DEFAULT_PAGE_SIZE = 20;
-
-/** 排序选项 */
-const SORT_OPTIONS = [
-  { field: 'orderNum', label: '排序号' },
-  { field: 'abilityType', label: '能力编码' },
-  { field: 'nameCn', label: '中文名' },
-  { field: 'nameEn', label: '英文名' },
-  { field: 'createTime', label: '创建时间' },
-  { field: 'updateTime', label: '更新时间' },
-];
+const DEFAULT_PAGE_SIZE = 10;
 
 /**
  * 能力目录管理列表页面
@@ -40,9 +29,6 @@ const AbilityAdminList = () => {
     curPage: 1,
     pageSize: DEFAULT_PAGE_SIZE,
   });
-  const [keyword, setKeyword] = useState('');
-  const [sortField, setSortField] = useState('orderNum');
-  const [sortOrder, setSortOrder] = useState('asc');
 
   /**
    * 获取列表数据
@@ -72,68 +58,27 @@ const AbilityAdminList = () => {
   }, [queryParams]);
 
   /**
-   * 搜索
-   */
-  const handleSearch = () => {
-    const newParams = {
-      curPage: 1,
-      pageSize: pagination.pageSize,
-      sortField,
-      sortOrder,
-    };
-    if (keyword && keyword.trim()) {
-      newParams.keyword = keyword.trim();
-    }
-    setQueryParams(newParams);
-  };
-
-  /**
-   * 重置
-   */
-  const handleReset = () => {
-    setKeyword('');
-    setSortField('orderNum');
-    setSortOrder('asc');
-    setQueryParams({
-      curPage: 1,
-      pageSize: DEFAULT_PAGE_SIZE,
-    });
-  };
-
-  /**
    * 分页改变
    */
   const handlePageChange = (page, pageSize) => {
-    const newParams = {
+    setQueryParams({
       curPage: page,
       pageSize: pageSize || pagination.pageSize,
-      sortField: queryParams.sortField || sortField,
-      sortOrder: queryParams.sortOrder || sortOrder,
-    };
-    if (queryParams.keyword && queryParams.keyword.trim()) {
-      newParams.keyword = queryParams.keyword;
-    }
-    setQueryParams(newParams);
-  };
-
-  /**
-   * 排序字段变更
-   */
-  const handleSortFieldChange = (value) => {
-    setSortField(value);
-  };
-
-  /**
-   * 排序方向切换
-   */
-  const handleSortOrderChange = (value) => {
-    setSortOrder(value);
+    });
   };
 
   /** 表格列定义 */
   const columns = [
     {
-      title: '能力编码',
+      title: '排序号',
+      dataIndex: 'orderNum',
+      key: 'orderNum',
+      width: 70,
+      sorter: false,
+      render: (text) => text ?? '-',
+    },
+    {
+      title: '能力类型',
       dataIndex: 'abilityType',
       key: 'abilityType',
       width: 90,
@@ -214,14 +159,6 @@ const AbilityAdminList = () => {
           </Tooltip>
         );
       },
-    },
-    {
-      title: '排序号',
-      dataIndex: 'orderNum',
-      key: 'orderNum',
-      width: 70,
-      sorter: false,
-      render: (text) => text ?? '-',
     },
     {
       title: '加载类型',
@@ -322,52 +259,6 @@ const AbilityAdminList = () => {
           <div className={less.pageHeadLeft}>
             <span className={less.pageHeadTitle}>能力目录管理</span>
           </div>
-        </div>
-
-        {/* 搜索栏 */}
-        <div className={less.searchBar}>
-          <div className={less.searchWrap}>
-            <span className={less.searchLabel}>关键词：</span>
-            <Input
-              className={less.searchInput}
-              placeholder="搜索中文名/英文名"
-              value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
-              onPressEnter={handleSearch}
-              prefix={<SearchOutlined />}
-              allowClear
-            />
-          </div>
-          <div className={less.searchWrap}>
-            <span className={less.searchLabel}>排序字段：</span>
-            <Select
-              value={sortField}
-              onChange={handleSortFieldChange}
-              style={{ width: 120 }}
-              options={SORT_OPTIONS.map((opt) => ({
-                value: opt.field,
-                label: opt.label,
-              }))}
-            />
-          </div>
-          <div className={less.searchWrap}>
-            <span className={less.searchLabel}>排序方向：</span>
-            <Select
-              value={sortOrder}
-              onChange={handleSortOrderChange}
-              style={{ width: 100 }}
-              options={[
-                { value: 'asc', label: '升序' },
-                { value: 'desc', label: '降序' },
-              ]}
-            />
-          </div>
-          <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch}>
-            搜索
-          </Button>
-          <Button icon={<ReloadOutlined />} onClick={handleReset}>
-            重置
-          </Button>
         </div>
 
         {/* 表格 */}
