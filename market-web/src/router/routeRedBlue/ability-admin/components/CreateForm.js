@@ -148,7 +148,8 @@ const CreateForm = ({ open, onClose, onSuccess }) => {
     const { file, onSuccess: uploadSuccess, onError } = options;
     setDiagramUploading(true);
     try {
-      const result = await uploadFile(file, 2);
+      const resized = await resizeImage(file, 520, 288);
+      const result = await uploadFile(resized, 2);
       if (result && result.code === '200') {
         diagramBatchIdRef.current = result.data?.batchId || result.batchId;
         setDiagramPreview(result.data?.showUrl || result.showUrl);
@@ -361,26 +362,35 @@ const CreateForm = ({ open, onClose, onSuccess }) => {
           label="示意图（非必填）"
         >
           <div className={less.uploadWrapper}>
-            <Upload
-              listType="picture-card"
-              showUploadList={false}
-              customRequest={handleDiagramUpload}
-              beforeUpload={beforeDiagramUpload}
-              accept=".png,.jpeg,.jpg"
+            <ImgCrop
+              rotationSlider
+              aspect={520 / 288}
+              quality={1}
+              modalTitle="裁剪示意图"
+              modalOk="确认"
+              modalCancel="取消"
             >
-              {diagramPreview ? (
-                <img src={diagramPreview} alt="示意图预览" className={less.diagramPreviewImg} />
-              ) : (
-                <div className={less.uploadPlaceholder}>
-                  {diagramUploading ? (
-                    <LoadingOutlined />
-                  ) : (
-                    <PlusOutlined />
-                  )}
-                  <div className={less.uploadPlaceholderText}>点击上传</div>
-                </div>
-              )}
-            </Upload>
+              <Upload
+                listType="picture-card"
+                showUploadList={false}
+                customRequest={handleDiagramUpload}
+                beforeUpload={beforeDiagramUpload}
+                accept=".png,.jpeg,.jpg"
+              >
+                {diagramPreview ? (
+                  <img src={diagramPreview} alt="示意图预览" className={less.diagramPreviewImg} />
+                ) : (
+                  <div className={less.uploadPlaceholder}>
+                    {diagramUploading ? (
+                      <LoadingOutlined />
+                    ) : (
+                      <PlusOutlined />
+                    )}
+                    <div className={less.uploadPlaceholderText}>点击上传</div>
+                  </div>
+                )}
+              </Upload>
+            </ImgCrop>
             <div className={less.uploadHint}>
               <div>尺寸：520 × 288 像素</div>
               <div>大小：不超过 500KB</div>
