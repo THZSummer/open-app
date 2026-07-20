@@ -34,7 +34,7 @@
 | `AdminAbilityCreateRequest` | 创建请求 DTO | `market-server/.../ability/dto/admin/AdminAbilityCreateRequest.java` |
 | `AdminAbilityUpdateRequest` | 编辑请求 DTO | `market-server/.../ability/dto/admin/AdminAbilityUpdateRequest.java` |
 | `AbilityPropertyMapper` | 图标/示意图属性 Mapper（新建） | `market-server/.../ability/mapper/AbilityPropertyMapper.java` |
-| `AdminAbilityController`（upload 方法） | 管理面文件上传入口 | `market-server/.../ability/controller/AdminAbilityController.java` |
+| `CommonFileController` | 通用文件上传入口 | `market-server/.../file/controller/CommonFileController.java` |
 | `AdminAbilityFileService` / `AdminAbilityFileServiceImpl` | 通用文件上传 Service（接口+开发环境实现） | `market-server/.../ability/service/AdminAbilityFileService.java` |
 | V4 迁移脚本 | `openplatform_ability_t` 新增 `entry_url`/`hidden`/`route_path`/`alias_name`/`require_release` 字段及 `ability_type` 类型调整 | `open-server/src/main/resources/db/migration/V4__add_ability_admin_fields.sql` |
 | 前端页面（market-web） | 能力目录管理页面：列表页 + 创建/编辑表单 | market-web |
@@ -247,7 +247,7 @@ CREATE TABLE `openplatform_common_file_t` (
 | 2 | POST | `/ability/admin` | 创建能力 | FR-002 | 创建新的能力类型 |
 | 3 | PUT | `/ability/admin/{id}` | 更新能力 | FR-003 | 更新能力信息，abilityType 不可修改 |
 | 4 | DELETE | `/ability/admin/{id}` | 删除能力 | FR-004 | 删除（含订阅检查） |
-| 5 | POST | `/ability/admin/upload` | 通用文件上传 | FR-005 | 接收文件+bizType，校验格式/尺寸/大小，返回 batchId+showUrl |
+| 5 | POST | `/file/upload` | 通用文件上传 | FR-005 | 接收文件+bizType，校验格式/尺寸/大小，返回 batchId+showUrl |
 
 ### 3.3 接口详细定义
 
@@ -494,7 +494,7 @@ sequenceDiagram
 
 #### #5 通用文件上传
 
-`POST /service/open/v2/ability/admin/upload`
+`POST /service/open/v2/file/upload`
 
 **请求参数**（multipart/form-data）
 
@@ -535,14 +535,14 @@ sequenceDiagram
 sequenceDiagram
     participant Admin as 平台管理员
     participant Web as market-web
-    participant Ctrl as AdminAbilityController
-    participant Svc as AdminAbilityFileService
+    participant Ctrl as CommonFileController
+    participant Svc as CommonFileService
     participant OSS as OSS/CDN
     participant Disk as 本地磁盘
     participant DB as openplatform_common_file_t
 
     Admin->>Web: 选择图标/示意图文件
-    Web->>Ctrl: POST /ability/admin/upload { file, bizType }
+    Web->>Ctrl: POST /file/upload { file, bizType }
     Ctrl->>Ctrl: 参数绑定 + 权限校验
     Ctrl->>Svc: upload(file, bizType)
     Svc->>Svc: 校验格式/尺寸/大小

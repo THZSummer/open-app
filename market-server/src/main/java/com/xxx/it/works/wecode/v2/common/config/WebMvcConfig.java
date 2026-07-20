@@ -2,8 +2,10 @@ package com.xxx.it.works.wecode.v2.common.config;
 
 import com.xxx.it.works.wecode.v2.common.interceptor.UserResolveInterceptor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
@@ -22,8 +24,17 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class WebMvcConfig implements WebMvcConfigurer {
 
+    @Value("${ability.file.local-dir:${java.io.tmpdir}/ability-upload}")
+    private String localFileDir;
+
     @Autowired
     private UserResolveInterceptor userResolveInterceptor;
+
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        registry.addResourceHandler("/ability-files/**")
+                .addResourceLocations("file:" + localFileDir + "/");
+    }
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {

@@ -12,3 +12,10 @@ def check_environment():
     assert result is not None, "DB 连接失败或 openplatform_ability_t 表不存在"
     print(f"  [环境] openplatform_ability_t 表记录数: {result}")
     yield
+
+
+@pytest.fixture(scope="function")
+def api():
+    """API 客户端 fixture — 测试方法中直接调用 api(method, path, ...)"""
+    from common.client import api as _api
+    return _api
