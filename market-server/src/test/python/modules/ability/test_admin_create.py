@@ -20,7 +20,7 @@
     - common.client (API 客户端 + DB 工具)
 
 注意：
-    - ability_type 字段为 TINYINT UNSIGNED，最大值为 255，测试使用 201~210 范围
+    - ability_type 字段为 TINYINT UNSIGNED，最大值为 127，测试使用 50~59 范围
     - nameEn/descEn 为必填字段（@NotBlank），所有期望成功的请求必须包含
 """
 
@@ -56,7 +56,7 @@ class TestAbilityAdminCreateL1:
     @pytest.mark.L1
     def test_create_full_fields(self):
         """L1-1: 完整字段创建应返回 200"""
-        ability_type = 201
+        ability_type = 50
         try:
             body = {
                 "abilityType": ability_type,
@@ -82,7 +82,7 @@ class TestAbilityAdminCreateL1:
     @pytest.mark.L1
     def test_create_minimal_fields(self):
         """L1-2: 最小必填字段创建应返回 200"""
-        ability_type = 202
+        ability_type = 51
         try:
             body = {
                 "abilityType": ability_type,
@@ -107,7 +107,7 @@ class TestAbilityAdminCreateL2:
     @pytest.mark.L2
     def test_duplicate_ability_type(self):
         """L2-1: 编码唯一性校验 — 重复返回 409"""
-        ability_type = 203
+        ability_type = 52
         try:
             # 先创建一条
             body1 = {
@@ -140,7 +140,7 @@ class TestAbilityAdminCreateL2:
     @pytest.mark.L2
     def test_load_type_2_requires_all_three(self):
         """L2-2: loadType=2 缺少三要素应返回 400"""
-        ability_type = 204
+        ability_type = 53
         try:
             body = {
                 "abilityType": ability_type,
@@ -162,7 +162,7 @@ class TestAbilityAdminCreateL2:
     @pytest.mark.L2
     def test_invalid_entry_url_format(self):
         """L2-3: entryUrl 非 http/https 应返回 400"""
-        ability_type = 205
+        ability_type = 54
         try:
             body = {
                 "abilityType": ability_type,
@@ -183,7 +183,7 @@ class TestAbilityAdminCreateL2:
     @pytest.mark.L2
     def test_create_with_diagram(self):
         """L2-4: 含示意图创建应成功"""
-        ability_type = 206
+        ability_type = 55
         try:
             body = {
                 "abilityType": ability_type,
@@ -212,7 +212,7 @@ class TestAbilityAdminCreateL2:
     @pytest.mark.L2
     def test_auto_order_num(self):
         """L2-5: 未传 orderNum 应自动补全（当前最大值+1）"""
-        ability_type = 207
+        ability_type = 56
         try:
             # 先获取当前最大 orderNum
             max_order = db_val("SELECT MAX(order_num) FROM openplatform_ability_t WHERE status=1")
@@ -258,7 +258,7 @@ class TestAbilityAdminCreateL4:
     def test_name_cn_too_short(self):
         """L4-2: nameCn 长度小于2字符应返回 400"""
         body = {
-            "abilityType": 208,
+            "abilityType": 57,
             "nameCn": "测",
             "nameEn": "TestEnForNameCn",
             "descCn": "这是测试nameCn长度校验的描述信息",
@@ -273,7 +273,7 @@ class TestAbilityAdminCreateL4:
     def test_desc_cn_too_short(self):
         """L4-3: descCn 长度小于5字符应返回 400"""
         body = {
-            "abilityType": 209,
+            "abilityType": 58,
             "nameCn": "描述测试",
             "nameEn": "TestEnForDescCn",
             "descCn": "描述",
@@ -287,7 +287,7 @@ class TestAbilityAdminCreateL4:
     @pytest.mark.L4
     def test_missing_icon_batch_id(self):
         """L4-4: 缺少 iconBatchId 应返回 400"""
-        ability_type = 210
+        ability_type = 59
         try:
             body = {
                 "abilityType": ability_type,

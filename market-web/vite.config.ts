@@ -68,6 +68,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/market-web/, ''),
       },
+      '/ability-files': {
+        target: 'http://localhost:18083',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/ability-files/, '/market-server/ability-files'),
+      },
     },
   },
   build: {

@@ -12,6 +12,7 @@
   "dependencies": {
     "@ant-design/icons": "^5.2.6",
     "antd": "^4.24.16",
+    "antd-img-crop": "^4.30.0",
     "axios": "^1.6.2",
     "puppeteer": "^25.0.4",
     "react": "^18.2.0",
