@@ -7,6 +7,7 @@ import com.xxx.it.works.wecode.v2.modules.ability.entity.AbilityProperty;
 import com.xxx.it.works.wecode.v2.modules.ability.mapper.AbilityMapper;
 import com.xxx.it.works.wecode.v2.modules.ability.mapper.AbilityPropertyMapper;
 import com.xxx.it.works.wecode.v2.modules.ability.service.AdminAbilityService;
+import com.xxx.it.works.wecode.v2.modules.ability.common.AbilityPropertyEnum;
 import com.xxx.it.works.wecode.v2.modules.ability.vo.admin.AdminAbilityVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -32,15 +33,6 @@ public class AdminAbilityServiceImpl implements AdminAbilityService {
      */
     private static final String FILE_URL_PREFIX = "/ability-files/";
 
-    /**
-     * 属性表 key：图标
-     */
-    private static final String PROP_ICON = "icon";
-
-    /**
-     * 属性表 key：示意图
-     */
-    private static final String PROP_DIAGRAM = "diagram";
 
     private final AbilityMapper abilityMapper;
 
@@ -116,20 +108,34 @@ public class AdminAbilityServiceImpl implements AdminAbilityService {
         // 批量查询属性表
         List<AbilityProperty> properties = abilityPropertyMapper.selectByParentIds(abilityIds);
 
-        // 按 parentId + propertyName 建立映射
-        Map<Long, Map<String, String>> propertyMap = new HashMap<>();
+        // 用枚举值查询属性名
+        String iconPropName = AbilityPropertyEnum.ICON.getPropertyName();
+        String diagramPropName = AbilityPropertyEnum.EXAMPLE_DIAGRAM.getPropertyName();
+
+        // 分别存储原始值 + 拼接后的 URL
+        Map<Long, String> iconRawValues = new HashMap<>();
+        Map<Long, String> iconUrls = new HashMap<>();
+        Map<Long, String> diagramRawValues = new HashMap<>();
+        Map<Long, String> diagramUrls = new HashMap<>();
+
         for (AbilityProperty prop : properties) {
-            propertyMap.computeIfAbsent(prop.getParentId(), k -> new HashMap<>())
-                    .put(prop.getPropertyName(), prop.getPropertyValue());
+            String propName = prop.getPropertyName();
+            String rawValue = prop.getPropertyValue();
+            Long parentId = prop.getParentId();
+
+            if (iconPropName.equals(propName)) {
+                iconRawValues.put(parentId, rawValue);
+                iconUrls.put(parentId, rawValue != null ? FILE_URL_PREFIX + rawValue : null);
+            } else if (diagramPropName.equals(propName)) {
+                diagramRawValues.put(parentId, rawValue);
+                diagramUrls.put(parentId, rawValue != null ? FILE_URL_PREFIX + rawValue : null);
+            }
         }
 
         // 组装 VO
         List<AdminAbilityVO> voList = new ArrayList<>(entities.size());
         for (AbilityEntity entity : entities) {
-            Map<String, String> props = propertyMap.getOrDefault(entity.getId(), Collections.emptyMap());
-
-            String iconBatchId = props.get(PROP_ICON);
-            String diagramBatchId = props.get(PROP_DIAGRAM);
+            Long abilityId = entity.getId();
 
             AdminAbilityVO vo = AdminAbilityVO.builder()
                     .abilityType(entity.getAbilityType())
@@ -137,8 +143,10 @@ public class AdminAbilityServiceImpl implements AdminAbilityService {
                     .nameEn(entity.getAbilityNameEn())
                     .descCn(entity.getAbilityDescCn())
                     .descEn(entity.getAbilityDescEn())
-                    .iconUrl(iconBatchId != null ? FILE_URL_PREFIX + iconBatchId : null)
-                    .diagramUrl(diagramBatchId != null ? FILE_URL_PREFIX + diagramBatchId : null)
+                    .icon(iconRawValues.get(abilityId))
+                    .iconUrl(iconUrls.get(abilityId))
+                    .exampleDiagram(diagramRawValues.get(abilityId))
+                    .exampleDiagramUrl(diagramUrls.get(abilityId))
                     .orderNum(entity.getOrderNum())
                     .entryUrl(entity.getEntryUrl())
                     .hidden(entity.getHidden())

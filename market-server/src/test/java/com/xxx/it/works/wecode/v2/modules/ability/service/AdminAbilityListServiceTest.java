@@ -78,8 +78,10 @@ class AdminAbilityListServiceTest {
         assertEquals("TestAbility", vo.getNameEn());
         assertEquals("中文描述", vo.getDescCn());
         assertEquals("English Desc", vo.getDescEn());
-        assertEquals("/ability-files/icon-batch-1", vo.getIconUrl());
-        assertEquals("/ability-files/diagram-batch-1", vo.getDiagramUrl());
+        assertEquals("ability_icon_1", vo.getIcon());
+        assertEquals("/ability-files/ability_icon_1", vo.getIconUrl());
+        assertEquals("ability_diagram_1", vo.getExampleDiagram());
+        assertEquals("/ability-files/ability_diagram_1", vo.getExampleDiagramUrl());
         assertEquals(1, vo.getOrderNum());
         assertEquals("http://example.com", vo.getEntryUrl());
         assertEquals(0, vo.getHidden());
@@ -243,14 +245,14 @@ class AdminAbilityListServiceTest {
         iconProp.setId(1L);
         iconProp.setParentId(parentId);
         iconProp.setPropertyName("icon");
-        iconProp.setPropertyValue("icon-batch-1");
+        iconProp.setPropertyValue("ability_icon_1");
         iconProp.setStatus(1);
 
         AbilityProperty diagramProp = new AbilityProperty();
         diagramProp.setId(2L);
         diagramProp.setParentId(parentId);
-        diagramProp.setPropertyName("diagram");
-        diagramProp.setPropertyValue("diagram-batch-1");
+        diagramProp.setPropertyName("example_diagram");
+        diagramProp.setPropertyValue("ability_diagram_1");
         diagramProp.setStatus(1);
 
         return Arrays.asList(iconProp, diagramProp);

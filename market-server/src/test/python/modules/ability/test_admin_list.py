@@ -38,7 +38,8 @@ class TestAbilityAdminListL1:
             item = resp["data"][0]
             required_fields = [
                 "abilityType", "nameCn", "nameEn", "descCn", "descEn",
-                "iconUrl", "diagramUrl", "orderNum", "entryUrl", "hidden",
+                "icon", "iconUrl", "exampleDiagram", "exampleDiagramUrl",
+                "orderNum", "entryUrl", "hidden",
                 "routePath", "aliasName", "requireRelease", "loadType",
                 "createTime", "updateBy", "updateTime"
             ]
@@ -91,14 +92,14 @@ class TestAbilityAdminListL1:
                 f"INSERT INTO openplatform_ability_p_t "
                 f"(id, parent_id, property_name, property_value, status, create_by, create_time, "
                 f"last_update_by, last_update_time) "
-                f"VALUES ({test_prop_icon_id}, {test_id}, 'icon', 'pytest-icon-batch', 1, "
+                f"VALUES ({test_prop_icon_id}, {test_id}, 'icon', 'pytest_icon_batch', 1, " 
                 f"'pytest', NOW(), 'pytest', NOW())"
             )
             db_val(
                 f"INSERT INTO openplatform_ability_p_t "
                 f"(id, parent_id, property_name, property_value, status, create_by, create_time, "
                 f"last_update_by, last_update_time) "
-                f"VALUES ({test_prop_diagram_id}, {test_id}, 'diagram', 'pytest-diagram-batch', 1, "
+                f"VALUES ({test_prop_diagram_id}, {test_id}, 'example_diagram', 'pytest_diagram_batch', 1, "
                 f"'pytest', NOW(), 'pytest', NOW())"
             )
 
@@ -127,11 +128,13 @@ class TestAbilityAdminListL1:
             assert found["aliasName"] == "test-alias"
             assert found["requireRelease"] == 0
             assert found["loadType"] == 1
-            # iconUrl/diagramUrl 应为 /ability-files/ 前缀
+            # 验证属性原始值 + URL 字段
+            assert found["icon"] == "pytest_icon_batch"
             assert found["iconUrl"] is not None
             assert "/ability-files/" in found["iconUrl"]
-            assert found["diagramUrl"] is not None
-            assert "/ability-files/" in found["diagramUrl"]
+            assert found["exampleDiagram"] == "pytest_diagram_batch"
+            assert found["exampleDiagramUrl"] is not None
+            assert "/ability-files/" in found["exampleDiagramUrl"]
 
         finally:
             # 清理测试数据
@@ -226,14 +229,14 @@ class TestAbilityAdminListL2:
         # 至少有一条数据 iconUrl 不为 null（如果有属性表数据）
         icon_not_null = [item for item in resp["data"] if item.get("iconUrl") is not None]
         if len(resp["data"]) > 0:
-            # iconUrl 要么为 null 要么以 /ability-files/ 开头
+            # 属性 URL 要么为 null 要么以 /ability-files/ 开头
             for item in resp["data"]:
                 if item.get("iconUrl") is not None:
                     assert item["iconUrl"].startswith("/ability-files/"), \
                         f"iconUrl 格式异常: {item['iconUrl']}"
-                if item.get("diagramUrl") is not None:
-                    assert item["diagramUrl"].startswith("/ability-files/"), \
-                        f"diagramUrl 格式异常: {item['diagramUrl']}"
+                if item.get("exampleDiagramUrl") is not None:
+                    assert item["exampleDiagramUrl"].startswith("/ability-files/"), \
+                        f"exampleDiagramUrl 格式异常: {item['exampleDiagramUrl']}"
 
 
 # ==================== L4: 边界/反向测试 ====================

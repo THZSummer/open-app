@@ -42,11 +42,17 @@ public class AdminAbilityVO implements Serializable {
     @Schema(description = "英文描述")
     private String descEn;
 
-    @Schema(description = "图标 URL")
+    @Schema(description = "图标原始值（如 ability_icon_1）")
+    private String icon;
+
+    @Schema(description = "图标访问 URL")
     private String iconUrl;
 
-    @Schema(description = "示意图 URL")
-    private String diagramUrl;
+    @Schema(description = "示意图原始值（如 ability_diagram_1）")
+    private String exampleDiagram;
+
+    @Schema(description = "示意图访问 URL")
+    private String exampleDiagramUrl;
 
     @Schema(description = "排序号")
     private Integer orderNum;
