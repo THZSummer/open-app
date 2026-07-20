@@ -5,9 +5,9 @@
  * 对应 FR-001：平台管理员在 market-web 查看所有 ability 类型列表。
  */
 import React, { useState, useEffect, useCallback } from 'react';
-import { Table, Pagination, message } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
-import { getAbilityList } from './thunk';
+import { Table, Pagination, Modal, message } from 'antd';
+import { PlusOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
+import { getAbilityList, deleteAbility } from './thunk';
 import CreateForm from './components/CreateForm';
 import EditForm from './components/EditForm';
 import { PAGE_SIZE_OPTIONS } from '../../../utils/constant';
@@ -68,6 +68,31 @@ const AbilityAdminList = () => {
     setQueryParams({
       curPage: page,
       pageSize: pageSize || pagination.pageSize,
+    });
+  };
+
+  /**
+   * 删除确认并执行
+   */
+  const handleDelete = (record) => {
+    Modal.confirm({
+      title: '确认删除',
+      icon: <ExclamationCircleOutlined />,
+      content: `确定要删除能力「${record.nameCn || record.abilityType}」吗？此操作不可撤销。`,
+      okText: '确认删除',
+      okType: 'danger',
+      cancelText: '取消',
+      onOk: async () => {
+        const result = await deleteAbility(record.abilityType);
+        if (result && result.code === '200') {
+          message.success('删除成功');
+          fetchData();
+        } else if (result && result.code === '400' && result.data?.subscribeCount) {
+          message.error(`该能力已被 ${result.data.subscribeCount} 个应用订阅，无法删除`);
+        } else {
+          message.error(result?.messageZh || result?.messageEn || '删除失败');
+        }
+      },
     });
   };
 
@@ -154,7 +179,7 @@ const AbilityAdminList = () => {
       render: (_, record) => (
         <div style={{ display: 'flex', gap: 8 }}>
           <a style={{ cursor: 'pointer' }} onClick={() => setEditingRecord(record)}>编辑</a>
-          <a style={{ color: '#ff4d4f', cursor: 'pointer' }}>删除</a>
+          <a style={{ color: '#ff4d4f', cursor: 'pointer' }} onClick={() => handleDelete(record)}>删除</a>
         </div>
       ),
     },
