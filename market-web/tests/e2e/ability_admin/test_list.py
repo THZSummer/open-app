@@ -89,6 +89,20 @@ class TestAbilityAdminListPage:
         page.wait_for_load_state("networkidle")
         print("[PASS] 排序字段切换正常")
 
+    def test_search_empty_keyword_does_not_clear_data(self, page: Page):
+        """L2: 空关键词搜索不丢失数据"""
+        page.wait_for_selector(".ant-table-row", timeout=5000)
+        initial_rows = page.locator(".ant-table-row").count()
+        assert initial_rows > 0, f"初始应有数据，实际行数: {initial_rows}"
+
+        page.locator("button:has-text('搜索')").click()
+        page.wait_for_load_state("networkidle")
+
+        rows_after = page.locator(".ant-table-row").count()
+        assert rows_after == initial_rows, \
+            f"空搜索后行数应不变，初始: {initial_rows}, 搜索后: {rows_after}"
+        print(f"[PASS] 空关键词搜索数据未丢失 (rows: {rows_after})")
+
     def test_pagination_controls(self, page: Page):
         """L2: 分页控件存在并可用"""
         # 验证分页组件渲染

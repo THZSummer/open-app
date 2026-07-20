@@ -78,10 +78,12 @@ const AbilityAdminList = () => {
     const newParams = {
       curPage: 1,
       pageSize: pagination.pageSize,
-      keyword: keyword || undefined,
-      sortField: sortField || undefined,
-      sortOrder: sortOrder || undefined,
+      sortField,
+      sortOrder,
     };
+    if (keyword && keyword.trim()) {
+      newParams.keyword = keyword.trim();
+    }
     setQueryParams(newParams);
   };
 
@@ -103,10 +105,14 @@ const AbilityAdminList = () => {
    */
   const handlePageChange = (page, pageSize) => {
     const newParams = {
-      ...queryParams,
       curPage: page,
-      pageSize: pageSize || queryParams.pageSize,
+      pageSize: pageSize || pagination.pageSize,
+      sortField: queryParams.sortField || sortField,
+      sortOrder: queryParams.sortOrder || sortOrder,
     };
+    if (queryParams.keyword && queryParams.keyword.trim()) {
+      newParams.keyword = queryParams.keyword;
+    }
     setQueryParams(newParams);
   };
 
