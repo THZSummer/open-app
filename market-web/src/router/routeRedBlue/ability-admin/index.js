@@ -9,6 +9,7 @@ import { Table, Pagination, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { getAbilityList } from './thunk';
 import CreateForm from './components/CreateForm';
+import EditForm from './components/EditForm';
 import { PAGE_SIZE_OPTIONS } from '../../../utils/constant';
 import less from './index.module.less';
 
@@ -31,6 +32,7 @@ const AbilityAdminList = () => {
     pageSize: DEFAULT_PAGE_SIZE,
   });
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState(null);
 
   /**
    * 获取列表数据
@@ -149,9 +151,9 @@ const AbilityAdminList = () => {
       title: '操作',
       key: 'action',
       width: 120,
-      render: () => (
+      render: (_, record) => (
         <div style={{ display: 'flex', gap: 8 }}>
-          <a style={{ cursor: 'pointer' }}>编辑</a>
+          <a style={{ cursor: 'pointer' }} onClick={() => setEditingRecord(record)}>编辑</a>
           <a style={{ color: '#ff4d4f', cursor: 'pointer' }}>删除</a>
         </div>
       ),
@@ -210,6 +212,17 @@ const AbilityAdminList = () => {
         open={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
         onSuccess={() => {
+          fetchData();
+        }}
+      />
+
+      {/* 编辑能力弹窗 */}
+      <EditForm
+        open={!!editingRecord}
+        record={editingRecord}
+        onClose={() => setEditingRecord(null)}
+        onSuccess={() => {
+          setEditingRecord(null);
           fetchData();
         }}
       />
