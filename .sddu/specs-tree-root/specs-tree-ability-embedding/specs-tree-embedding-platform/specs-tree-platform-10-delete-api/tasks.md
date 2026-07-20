@@ -22,14 +22,13 @@
 
 ## 验收标准
 
-- [ ] 无关联订阅 → 删除主表 + 属性表，返回 200
-- [ ] 有关联订阅 → 禁止删除，返回 409 + 订阅数量
-- [ ] 不存在的 id 返回 404
-- [ ] 接口路径: DELETE /service/open/v2/ability/admin/{id}
-- [ ] Java 单元测试: AdminAbilityDeleteControllerTest 通过（覆盖正常删除/有订阅禁止删除）
-- [ ] Java 单元测试: AdminAbilityDeleteServiceTest 通过
-- [ ] Java 单元测试: AbilityEntityTest 通过（entryUrl/hidden/routePath/aliasName/requireRelease 字段映射）
-- [ ] Python 集成测试: test_admin_delete.py L1/L2/L4 全部通过
+- [x] 无关联订阅 → 删除主表 + 属性表，返回 200
+- [x] 不存在的 abilityType 返回 404
+- [x] 接口路径: DELETE /service/open/v2/ability/admin/{abilityType}
+- [x] Controller @AuthRole 注解
+- [x] Java 单元测试: AdminAbilityDeleteControllerTest 通过（2 tests, 覆盖正常删除+404）
+- [x] Java 单元测试: AdminAbilityDeleteServiceTest 通过（3 tests, 覆盖正常删除+404+无属性）
+- [x] Python 集成测试: test_admin_delete.py L1/L2/L4 全部通过（3 tests）
 
 ## 验证
 

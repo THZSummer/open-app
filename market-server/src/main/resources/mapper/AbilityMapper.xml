@@ -109,6 +109,12 @@
         WHERE id = #{id}
     </select>
 
+    <!-- ==================== deleteByAbilityType ==================== -->
+    <delete id="deleteByAbilityType">
+        DELETE FROM openplatform_ability_t
+        WHERE ability_type = #{abilityType}
+    </delete>
+
     <!-- ==================== updateByPrimaryKeySelective ==================== -->
     <!--
         注意：last_update_time 的 SET 值统一使用 NOW()（MySQL 函数），

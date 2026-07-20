@@ -58,4 +58,12 @@ public class AdminAbilityController {
                                     @Valid @RequestBody AdminAbilityUpdateRequest request) {
         return adminAbilityService.update(id, request);
     }
+
+    @AuthRole
+    @Operation(summary = "删除能力", description = "根据 abilityType 删除能力记录及其关联属性记录。" +
+            "能力不存在时返回 404。")
+    @DeleteMapping("/{abilityType}")
+    public ApiResponse<Void> delete(@PathVariable Integer abilityType) {
+        return adminAbilityService.delete(abilityType);
+    }
 }

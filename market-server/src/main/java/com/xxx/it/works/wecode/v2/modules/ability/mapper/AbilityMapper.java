@@ -72,6 +72,16 @@ public interface AbilityMapper {
     AbilityEntity selectByPrimaryKey(@Param("id") Long id);
 
     /**
+     * 根据能力类型编码删除记录
+     *
+     * <p>物理删除 openplatform_ability_t 中指定 ability_type 的记录。</p>
+     *
+     * @param abilityType 能力类型编码
+     * @return 影响行数
+     */
+    int deleteByAbilityType(@Param("abilityType") Integer abilityType);
+
+    /**
      * 选择性更新能力记录（仅更新非空字段，含乐观锁）
      *
      * <p>以 id + last_update_time 作为更新条件，

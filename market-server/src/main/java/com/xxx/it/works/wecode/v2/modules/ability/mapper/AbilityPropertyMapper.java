@@ -55,4 +55,14 @@ public interface AbilityPropertyMapper {
      * @return 影响行数
      */
     int updateByPrimaryKeySelective(AbilityProperty property);
+
+    /**
+     * 根据父记录 ID 删除属性
+     *
+     * <p>物理删除 openplatform_ability_p_t 中指定 parent_id 的所有属性记录。</p>
+     *
+     * @param parentId 能力 ID
+     * @return 影响行数
+     */
+    int deleteByParentId(@Param("parentId") Long parentId);
 }
