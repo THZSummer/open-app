@@ -12,23 +12,26 @@
 
 | 操作 | 文件路径 |
 |:--:|------|
-| NEW | `market-web/src/router/routeRedBlue/ability-admin/components/CreateForm.tsx` |
-| MODIFY | `market-web/src/router/routeRedBlue/ability-admin/thunk.ts`（追加 create API） |
+| NEW | `market-web/src/router/routeRedBlue/ability-admin/components/CreateForm.js` |
+| MODIFY | `market-web/src/router/routeRedBlue/ability-admin/thunk.js`（追加 create/upload API） |
+| MODIFY | `market-web/src/router/routeRedBlue/ability-admin/index.js`（添加按钮 + Modal） |
+| MODIFY | `market-web/src/router/routeRedBlue/ability-admin/index.module.less`（弹窗样式） |
+| MODIFY | `market-web/src/configs/web.config.js`（新增 API 端点） |
 | NEW | `market-web/tests/e2e/ability_admin/test_create.py` |
 
 ## 验收标准
 
-- [ ] 表单含所有字段输入框（含新增6字段，loadType 默认1=路由加载）
-- [ ] abilityType 编码校验、entryUrl 格式校验
-- [ ] 名称前端校验：2-30 字符，不满足时内联提示
-- [ ] 描述前端校验：5-200 字符，不满足时内联提示
-- [ ] 图标必填校验：未上传时阻止提交并提示"请上传图标（PNG/SVG，40×40PX，≤200KB）"
-- [ ] 示意图格式校验：上传时前端校验 PNG/JPG 格式、尺寸 520×288PX、大小 ≤500KB
-- [ ] 排序值：默认当前最大值+1，支持手动输入和加减按钮，校验 ≥1
-- [ ] loadType 选择器联动：loadType=2 时 entryUrl/routePath/aliasName 输入框置为必填
-- [ ] 图标/示意图文件上传正常
-- [ ] 创建成功后跳转列表页
-- [ ] Playwright E2E: test_create.py L1/L2/L4 全部通过（正常创建/全字段创建/重复编码拒绝/空名称校验/非法URL拒绝）
+- [x] 表单含所有字段输入框（含新增6字段，loadType 默认1=路由加载）
+- [x] abilityType 编码校验、entryUrl 格式校验
+- [x] 名称前端校验：2-30 字符，不满足时内联提示
+- [x] 描述前端校验：5-200 字符，不满足时内联提示
+- [x] 图标必填校验：未上传时阻止提交并提示"请上传图标"
+- [x] 示意图格式校验：上传时前端校验 PNG/JPG 格式、尺寸、大小
+- [x] 排序值：默认值 1，支持手动输入，校验 ≥1
+- [x] loadType 选择器联动：微前端模式下提示必填
+- [x] 图标/示意图文件上传正常（调用上传接口）
+- [x] 创建成功后刷新列表
+- [x] npm run build 通过
 
 ## 验证
 

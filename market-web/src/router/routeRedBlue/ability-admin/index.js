@@ -4,9 +4,11 @@
  * 提供能力目录的分页列表展示功能。
  * 对应 FR-001：平台管理员在 market-web 查看所有 ability 类型列表。
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Table, Pagination, message } from 'antd';
+import { PlusOutlined } from '@ant-design/icons';
 import { getAbilityList } from './thunk';
+import CreateForm from './components/CreateForm';
 import { PAGE_SIZE_OPTIONS } from '../../../utils/constant';
 import less from './index.module.less';
 
@@ -28,11 +30,12 @@ const AbilityAdminList = () => {
     curPage: 1,
     pageSize: DEFAULT_PAGE_SIZE,
   });
+  const [createModalOpen, setCreateModalOpen] = useState(false);
 
   /**
    * 获取列表数据
    */
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     const result = await getAbilityList(queryParams);
     if (result && result.code === '200') {
@@ -49,7 +52,7 @@ const AbilityAdminList = () => {
       setDataSource([]);
     }
     setLoading(false);
-  };
+  }, [queryParams]);
 
   useEffect(() => {
     fetchData();
@@ -163,6 +166,15 @@ const AbilityAdminList = () => {
           <div className={less.pageHeadLeft}>
             <span className={less.pageHeadTitle}>能力目录管理</span>
           </div>
+          <div>
+            <button
+              className={`${less.btn} ${less.btnPrimary}`}
+              onClick={() => setCreateModalOpen(true)}
+            >
+              <PlusOutlined />
+              添加能力
+            </button>
+          </div>
         </div>
 
         {/* 表格 */}
@@ -192,6 +204,15 @@ const AbilityAdminList = () => {
           />
         </div>
       </div>
+
+      {/* 新增能力弹窗 */}
+      <CreateForm
+        open={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+        onSuccess={() => {
+          fetchData();
+        }}
+      />
     </div>
   );
 };
