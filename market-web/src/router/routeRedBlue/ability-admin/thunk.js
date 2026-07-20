@@ -108,3 +108,25 @@ export const updateAbility = async (data) => {
     };
   }
 };
+
+/**
+ * 删除能力
+ *
+ * @param {number|string} abilityType - 能力类型编码（路径参数）
+ * @returns {Promise<Object>} 删除结果
+ */
+export const deleteAbility = async (abilityType) => {
+  try {
+    const url = API_CONFIG.ABILITY_DELETE.replace('{abilityType}', abilityType);
+    const result = await fetchApi(url, {
+      method: 'DELETE',
+    });
+    return result;
+  } catch (err) {
+    return {
+      code: '500',
+      messageZh: '删除失败',
+      messageEn: 'Delete failed',
+    };
+  }
+};
