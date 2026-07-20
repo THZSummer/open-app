@@ -13,7 +13,7 @@
     {"name": "模块重组", "dir": "specs-tree-platform-01-restructure", "description": "ability代码从approval独立为独立模块", "task_ref": "TASK-001"},
     {"name": "数据库变更", "dir": "specs-tree-platform-02-db", "description": "V4 Flyway迁移脚本（open-server）", "task_ref": "TASK-002"},
     {"name": "✅ 通用文件上传（后端）", "dir": "specs-tree-platform-03-upload", "description": "AdminAbilityFileService + V5迁移(openplatform_common_file_t) + upload接口 + 双模式", "task_ref": "TASK-003"},
-    {"name": "列表接口（后端）", "dir": "specs-tree-platform-04-list-api", "description": "AdminAbilityListRequest → VO → Mapper → Service.list() → GET /list", "task_ref": "TASK-004"},
+    {"name": "✅ 列表接口（后端）", "dir": "specs-tree-platform-04-list-api", "description": "AdminAbilityListRequest → VO → Mapper → Service.list() → GET /list", "task_ref": "TASK-004"},
     {"name": "列表页面（前端）", "dir": "specs-tree-platform-05-list-page", "description": "market-web能力目录列表页 + 分页 + 搜索 + 路由", "task_ref": "TASK-005"},
     {"name": "新增接口（后端）", "dir": "specs-tree-platform-06-create-api", "description": "CreateRequest → 校验 → Service.create() → POST", "task_ref": "TASK-006"},
     {"name": "新增表单（前端）", "dir": "specs-tree-platform-07-create-page", "description": "创建能力表单(文件上传+校验)", "task_ref": "TASK-007"},
