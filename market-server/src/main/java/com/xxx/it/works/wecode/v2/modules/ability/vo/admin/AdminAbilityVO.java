@@ -27,7 +27,7 @@ public class AdminAbilityVO implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    @Schema(description = "能力编码")
+    @Schema(description = "能力类型")
     private Integer abilityType;
 
     @Schema(description = "中文名")
