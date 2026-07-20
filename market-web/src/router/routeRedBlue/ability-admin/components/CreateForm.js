@@ -9,6 +9,7 @@ import {
   Modal, Form, Input, InputNumber, Select, Upload, message,
 } from 'antd';
 import { PlusOutlined, LoadingOutlined } from '@ant-design/icons';
+import ImgCrop from 'antd-img-crop';
 import { uploadFile, createAbility } from '../thunk';
 import less from '../index.module.less';
 
@@ -285,26 +286,35 @@ const CreateForm = ({ open, onClose, onSuccess }) => {
           ]}
         >
           <div className={less.uploadWrapper}>
-            <Upload
-              listType="picture-card"
-              showUploadList={false}
-              customRequest={handleIconUpload}
-              beforeUpload={beforeIconUpload}
-              accept=".png,.jpeg,.jpg,.svg"
+            <ImgCrop
+              rotationSlider
+              aspect={1}
+              quality={1}
+              modalTitle="裁剪图标"
+              modalOk="确认"
+              modalCancel="取消"
             >
-              {iconPreview ? (
-                <img src={iconPreview} alt="图标预览" className={less.uploadPreviewImg} />
-              ) : (
-                <div className={less.uploadPlaceholder}>
-                  {iconUploading ? (
-                    <LoadingOutlined />
-                  ) : (
-                    <PlusOutlined />
-                  )}
-                  <div className={less.uploadPlaceholderText}>点击上传</div>
-                </div>
-              )}
-            </Upload>
+              <Upload
+                listType="picture-card"
+                showUploadList={false}
+                customRequest={handleIconUpload}
+                beforeUpload={beforeIconUpload}
+                accept=".png,.jpeg,.jpg,.svg"
+              >
+                {iconPreview ? (
+                  <img src={iconPreview} alt="图标预览" className={less.uploadPreviewImg} />
+                ) : (
+                  <div className={less.uploadPlaceholder}>
+                    {iconUploading ? (
+                      <LoadingOutlined />
+                    ) : (
+                      <PlusOutlined />
+                    )}
+                    <div className={less.uploadPlaceholderText}>点击上传</div>
+                  </div>
+                )}
+              </Upload>
+            </ImgCrop>
             <div className={less.uploadHint}>
               <div>尺寸：40 × 40 像素</div>
               <div>大小：不超过 200KB</div>
