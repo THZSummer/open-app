@@ -232,10 +232,12 @@ const CreateForm = ({ open, onClose, onSuccess }) => {
             label={<span className={less.requiredLabel}>英文名</span>}
             rules={[
               { required: true, message: '请输入英文名' },
+              { min: 2, message: '英文名至少 2 个字符' },
+              { max: 30, message: '英文名不超过 30 个字符' },
             ]}
             className={less.formItemFlex}
           >
-            <Input placeholder="如：assistant-square" />
+            <Input placeholder="如：assistant-square" maxLength={30} />
           </Form.Item>
         </div>
 
@@ -265,10 +267,12 @@ const CreateForm = ({ open, onClose, onSuccess }) => {
             label={<span className={less.requiredLabel}>英文描述</span>}
             rules={[
               { required: true, message: '请输入英文描述' },
+              { min: 5, message: '英文描述至少 5 个字符' },
+              { max: 200, message: '英文描述不超过 200 个字符' },
             ]}
             className={less.formItemFlex}
           >
-            <TextArea rows={3} placeholder="请输入英文描述" />
+            <TextArea rows={3} maxLength={200} placeholder="请输入英文描述" />
           </Form.Item>
         </div>
 
