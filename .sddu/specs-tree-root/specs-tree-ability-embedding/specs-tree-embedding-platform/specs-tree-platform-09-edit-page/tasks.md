@@ -18,16 +18,16 @@
 
 ## 验收标准
 
-- [ ] 表单回填现有数据（含 loadType 回填）
-- [ ] abilityType 字段只读
-- [ ] loadType 选择器联动：loadType=2 时 entryUrl/routePath/aliasName 输入框显示为必填
-- [ ] 名称前端校验：若修改，2-30 字符，不满足时内联提示
-- [ ] 描述前端校验：若修改，5-200 字符，不满足时内联提示
-- [ ] 排序值：≥1，支持手动输入和加减按钮
-- [ ] 示意图替换上传校验：PNG/JPG、520×288PX、≤500KB
-- [ ] 图标/示意图可替换上传
-- [ ] 提交后跳转列表
-- [ ] Playwright E2E: test_edit.py L1/L2 全部通过（编辑提交成功/abilityType只读/取消编辑数据不变）
+- [x] 表单回填现有数据（含 loadType 回填）
+- [x] abilityType 字段只读
+- [x] loadType 选择器联动：loadType=2 时 entryUrl/routePath/aliasName 输入框显示为必填
+- [x] 名称前端校验：若修改，2-30 字符，不满足时内联提示
+- [x] 描述前端校验：若修改，5-200 字符，不满足时内联提示
+- [x] 排序值：≥1，支持手动输入和加减按钮
+- [x] 示意图替换上传校验：PNG/JPG、520×288PX、≤500KB
+- [x] 图标/示意图可替换上传
+- [x] 提交后关闭弹窗 + 刷新列表
+- [x] Playwright E2E: test_edit.py L1/L2 全部通过（编辑提交成功/abilityType只读/取消编辑数据不变）
 
 ## 验证
 
