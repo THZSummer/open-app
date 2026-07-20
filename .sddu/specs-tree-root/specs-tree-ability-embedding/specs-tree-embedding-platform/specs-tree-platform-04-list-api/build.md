@@ -69,7 +69,7 @@
 
 ### 4.2 图标/示意图 URL 解析
 
-从 `ability_p_t` 属性表按 `property_name='iconUrl'/'diagramUrl'` 查询 batchId，拼接 `/ability-files/{batchId}` 作为最终 URL。
+从 `ability_p_t` 属性表按 `property_name='icon'/'diagram'` 查询 batchId（对应 spec.md §5.3 字段约束表的 `icon`/`diagram` 属性），拼接 `/ability-files/{batchId}` 作为最终 URL。
 
 ### 4.3 分页参数保护
 

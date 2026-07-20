@@ -5,9 +5,7 @@ import com.xxx.it.works.wecode.v2.modules.ability.dto.admin.AdminAbilityListRequ
 import com.xxx.it.works.wecode.v2.modules.ability.service.AdminAbilityService;
 import com.xxx.it.works.wecode.v2.modules.ability.vo.admin.AdminAbilityVO;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -28,8 +26,11 @@ import java.util.List;
 @RequestMapping("/service/open/v2/ability/admin")
 public class AdminAbilityController {
 
-    @Autowired
-    private AdminAbilityService adminAbilityService;
+    private final AdminAbilityService adminAbilityService;
+
+    public AdminAbilityController(AdminAbilityService adminAbilityService) {
+        this.adminAbilityService = adminAbilityService;
+    }
 
     @Operation(summary = "查询能力列表", description = "分页查询能力目录列表，支持关键字搜索和动态排序")
     @GetMapping("/list")

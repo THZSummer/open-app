@@ -14,7 +14,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.*;
 
@@ -44,9 +43,7 @@ class AdminAbilityListServiceTest {
 
     @BeforeEach
     void setUp() {
-        adminAbilityService = new AdminAbilityServiceImpl();
-        ReflectionTestUtils.setField(adminAbilityService, "abilityMapper", abilityMapper);
-        ReflectionTestUtils.setField(adminAbilityService, "abilityPropertyMapper", abilityPropertyMapper);
+        adminAbilityService = new AdminAbilityServiceImpl(abilityMapper, abilityPropertyMapper);
     }
 
     @Test
@@ -245,14 +242,14 @@ class AdminAbilityListServiceTest {
         AbilityProperty iconProp = new AbilityProperty();
         iconProp.setId(1L);
         iconProp.setParentId(parentId);
-        iconProp.setPropertyName("iconUrl");
+        iconProp.setPropertyName("icon");
         iconProp.setPropertyValue("icon-batch-1");
         iconProp.setStatus(1);
 
         AbilityProperty diagramProp = new AbilityProperty();
         diagramProp.setId(2L);
         diagramProp.setParentId(parentId);
-        diagramProp.setPropertyName("diagramUrl");
+        diagramProp.setPropertyName("diagram");
         diagramProp.setPropertyValue("diagram-batch-1");
         diagramProp.setStatus(1);
 

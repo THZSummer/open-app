@@ -91,14 +91,14 @@ class TestAbilityAdminListL1:
                 f"INSERT INTO openplatform_ability_p_t "
                 f"(id, parent_id, property_name, property_value, status, create_by, create_time, "
                 f"last_update_by, last_update_time) "
-                f"VALUES ({test_prop_icon_id}, {test_id}, 'iconUrl', 'pytest-icon-batch', 1, "
+                f"VALUES ({test_prop_icon_id}, {test_id}, 'icon', 'pytest-icon-batch', 1, "
                 f"'pytest', NOW(), 'pytest', NOW())"
             )
             db_val(
                 f"INSERT INTO openplatform_ability_p_t "
                 f"(id, parent_id, property_name, property_value, status, create_by, create_time, "
                 f"last_update_by, last_update_time) "
-                f"VALUES ({test_prop_diagram_id}, {test_id}, 'diagramUrl', 'pytest-diagram-batch', 1, "
+                f"VALUES ({test_prop_diagram_id}, {test_id}, 'diagram', 'pytest-diagram-batch', 1, "
                 f"'pytest', NOW(), 'pytest', NOW())"
             )
 

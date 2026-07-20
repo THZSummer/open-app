@@ -9,7 +9,6 @@ import com.xxx.it.works.wecode.v2.modules.ability.mapper.AbilityPropertyMapper;
 import com.xxx.it.works.wecode.v2.modules.ability.service.AdminAbilityService;
 import com.xxx.it.works.wecode.v2.modules.ability.vo.admin.AdminAbilityVO;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -36,18 +35,21 @@ public class AdminAbilityServiceImpl implements AdminAbilityService {
     /**
      * 属性表 key：图标
      */
-    private static final String PROP_ICON_URL = "iconUrl";
+    private static final String PROP_ICON = "icon";
 
     /**
      * 属性表 key：示意图
      */
-    private static final String PROP_DIAGRAM_URL = "diagramUrl";
+    private static final String PROP_DIAGRAM = "diagram";
 
-    @Autowired
-    private AbilityMapper abilityMapper;
+    private final AbilityMapper abilityMapper;
 
-    @Autowired
-    private AbilityPropertyMapper abilityPropertyMapper;
+    private final AbilityPropertyMapper abilityPropertyMapper;
+
+    public AdminAbilityServiceImpl(AbilityMapper abilityMapper, AbilityPropertyMapper abilityPropertyMapper) {
+        this.abilityMapper = abilityMapper;
+        this.abilityPropertyMapper = abilityPropertyMapper;
+    }
 
     @Override
     public ApiResponse<List<AdminAbilityVO>> list(AdminAbilityListRequest request) {
@@ -126,8 +128,8 @@ public class AdminAbilityServiceImpl implements AdminAbilityService {
         for (AbilityEntity entity : entities) {
             Map<String, String> props = propertyMap.getOrDefault(entity.getId(), Collections.emptyMap());
 
-            String iconBatchId = props.get(PROP_ICON_URL);
-            String diagramBatchId = props.get(PROP_DIAGRAM_URL);
+            String iconBatchId = props.get(PROP_ICON);
+            String diagramBatchId = props.get(PROP_DIAGRAM);
 
             AdminAbilityVO vo = AdminAbilityVO.builder()
                     .abilityType(entity.getAbilityType())
