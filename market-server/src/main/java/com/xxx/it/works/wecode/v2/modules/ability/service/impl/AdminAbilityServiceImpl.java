@@ -3,6 +3,7 @@ package com.xxx.it.works.wecode.v2.modules.ability.service.impl;
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.modules.ability.dto.admin.AdminAbilityCreateRequest;
 import com.xxx.it.works.wecode.v2.modules.ability.dto.admin.AdminAbilityListRequest;
+import com.xxx.it.works.wecode.v2.common.id.IdGeneratorStrategy;
 import com.xxx.it.works.wecode.v2.modules.ability.entity.AbilityEntity;
 import com.xxx.it.works.wecode.v2.modules.ability.entity.AbilityProperty;
 import com.xxx.it.works.wecode.v2.modules.ability.mapper.AbilityMapper;
@@ -13,6 +14,7 @@ import com.xxx.it.works.wecode.v2.modules.file.service.CommonFileService;
 import com.xxx.it.works.wecode.v2.modules.ability.vo.admin.AdminAbilityVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.*;
@@ -37,12 +39,16 @@ public class AdminAbilityServiceImpl implements AdminAbilityService {
 
     private final CommonFileService commonFileService;
 
+    private final IdGeneratorStrategy idGenerator;
+
     public AdminAbilityServiceImpl(AbilityMapper abilityMapper,
                                     AbilityPropertyMapper abilityPropertyMapper,
-                                    CommonFileService commonFileService) {
+                                    CommonFileService commonFileService,
+                                    IdGeneratorStrategy idGenerator) {
         this.abilityMapper = abilityMapper;
         this.abilityPropertyMapper = abilityPropertyMapper;
         this.commonFileService = commonFileService;
+        this.idGenerator = idGenerator;
     }
 
     @Override
@@ -95,7 +101,8 @@ public class AdminAbilityServiceImpl implements AdminAbilityService {
     }
 
     @Override
-    public ApiResponse<Void> create(AdminAbilityCreateRequest request) {
+    @Transactional(rollbackFor = Exception.class)
+    public ApiResponse<Map<String, Object>> create(AdminAbilityCreateRequest request) {
         try {
             // 1. 校验能力类型编码唯一性
             AbilityEntity existing = abilityMapper.selectByAbilityType(request.getAbilityType());
@@ -142,7 +149,7 @@ public class AdminAbilityServiceImpl implements AdminAbilityService {
             entity.setAbilityDescEn(request.getDescEn());
             entity.setOrderNum(orderNum);
             entity.setEntryUrl(request.getEntryUrl());
-            entity.setHidden(request.getHidden() != null ? request.getHidden() : 0);
+            entity.setHidden(request.getHidden() != null ? request.getHidden() : 1);
             entity.setRoutePath(request.getRoutePath());
             entity.setAliasName(request.getAliasName());
             entity.setRequireRelease(request.getRequireRelease() != null ? request.getRequireRelease() : 0);
@@ -154,13 +161,15 @@ public class AdminAbilityServiceImpl implements AdminAbilityService {
             entity.setLastUpdateBy("admin");
             entity.setLastUpdateTime(now);
 
-            // 6. 插入主表（useGeneratedKeys 回填 id）
+            // 6. 生成主键 ID 后插入主表（表无 AUTO_INCREMENT，由 IdGenerator 生成）
+            entity.setId(idGenerator.nextId());
             abilityMapper.insert(entity);
             Long abilityId = entity.getId();
 
             // 7. 写属性表 — 图标
             if (StringUtils.hasText(request.getIconBatchId())) {
                 AbilityProperty iconProp = new AbilityProperty();
+                iconProp.setId(idGenerator.nextId());
                 iconProp.setParentId(abilityId);
                 iconProp.setPropertyName(AbilityPropertyEnum.ICON.getPropertyName());
                 iconProp.setPropertyValue(request.getIconBatchId());
@@ -175,6 +184,7 @@ public class AdminAbilityServiceImpl implements AdminAbilityService {
             // 8. 写属性表 — 示意图（可选）
             if (StringUtils.hasText(request.getDiagramBatchId())) {
                 AbilityProperty diagramProp = new AbilityProperty();
+                diagramProp.setId(idGenerator.nextId());
                 diagramProp.setParentId(abilityId);
                 diagramProp.setPropertyName(AbilityPropertyEnum.EXAMPLE_DIAGRAM.getPropertyName());
                 diagramProp.setPropertyValue(request.getDiagramBatchId());
@@ -186,10 +196,16 @@ public class AdminAbilityServiceImpl implements AdminAbilityService {
                 abilityPropertyMapper.insert(diagramProp);
             }
 
+            // 9. 构造响应数据（含创建记录的关键信息）
+            Map<String, Object> resultData = new HashMap<>();
+            resultData.put("abilityType", request.getAbilityType());
+            resultData.put("nameCn", request.getNameCn());
+            resultData.put("createTime", now);
+
             log.info("Ability created successfully: type={}, nameCn={}, id={}",
                     request.getAbilityType(), request.getNameCn(), abilityId);
 
-            return ApiResponse.success();
+            return ApiResponse.success(resultData);
         } catch (Exception e) {
             log.error("Failed to create ability", e);
             return ApiResponse.error("500", "创建能力失败", "Failed to create ability");

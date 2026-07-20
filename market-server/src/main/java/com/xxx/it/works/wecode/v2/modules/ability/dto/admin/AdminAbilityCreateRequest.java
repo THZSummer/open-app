@@ -35,8 +35,9 @@ public class AdminAbilityCreateRequest implements Serializable {
     @Schema(description = "中文名", requiredMode = REQUIRED)
     private String nameCn;
 
+    @NotBlank(message = "英文名不能为空")
     @Size(min = 2, max = 30, message = "英文名长度需在2-30字符之间")
-    @Schema(description = "英文名")
+    @Schema(description = "英文名", requiredMode = REQUIRED)
     private String nameEn;
 
     @NotBlank(message = "中文描述不能为空")
@@ -44,8 +45,9 @@ public class AdminAbilityCreateRequest implements Serializable {
     @Schema(description = "中文描述", requiredMode = REQUIRED)
     private String descCn;
 
+    @NotBlank(message = "英文描述不能为空")
     @Size(min = 5, max = 200, message = "英文描述长度需在5-200字符之间")
-    @Schema(description = "英文描述")
+    @Schema(description = "英文描述", requiredMode = REQUIRED)
     private String descEn;
 
     @Min(value = 1, message = "排序号不能小于1")
@@ -61,8 +63,8 @@ public class AdminAbilityCreateRequest implements Serializable {
     @Schema(description = "别名（子应用唯一标识）")
     private String aliasName;
 
-    @Schema(description = "隐藏：0=展示, 1=隐藏", defaultValue = "0")
-    private Integer hidden = 0;
+    @Schema(description = "隐藏：0=展示, 1=隐藏", defaultValue = "1")
+    private Integer hidden = 1;
 
     @Schema(description = "需版本发布：0=即时生效, 1=需版本发布", defaultValue = "0")
     private Integer requireRelease = 0;

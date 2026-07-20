@@ -14,6 +14,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -50,9 +53,12 @@ class AdminAbilityCreateControllerTest {
     }
 
     @Test
-    @DisplayName("POST /ability/admin - 正常创建应返回 200")
+    @DisplayName("POST /ability/admin - 正常创建应返回 200 含 data")
     void testCreate_Success() throws Exception {
-        when(adminAbilityService.create(any())).thenReturn(ApiResponse.success());
+        Map<String, Object> resultData = new HashMap<>();
+        resultData.put("abilityType", 100);
+        resultData.put("nameCn", "测试能力");
+        when(adminAbilityService.create(any())).thenReturn(ApiResponse.success(resultData));
 
         String body = """
                 {
@@ -70,7 +76,9 @@ class AdminAbilityCreateControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value("200"));
+                .andExpect(jsonPath("$.code").value("200"))
+                .andExpect(jsonPath("$.data.abilityType").value(100))
+                .andExpect(jsonPath("$.data.nameCn").value("测试能力"));
     }
 
     @Test
@@ -97,7 +105,9 @@ class AdminAbilityCreateControllerTest {
                 {
                     "abilityType": 100,
                     "nameCn": "测",
+                    "nameEn": "TestEn",
                     "descCn": "这是一个测试能力的详细描述",
+                    "descEn": "This is a test ability description in English",
                     "iconBatchId": "batch_icon_001"
                 }
                 """;
@@ -116,7 +126,9 @@ class AdminAbilityCreateControllerTest {
                 {
                     "abilityType": 100,
                     "nameCn": "测试能力",
+                    "nameEn": "TestEn",
                     "descCn": "描述",
+                    "descEn": "This is a test ability description in English",
                     "iconBatchId": "batch_icon_001"
                 }
                 """;
@@ -138,7 +150,9 @@ class AdminAbilityCreateControllerTest {
                 {
                     "abilityType": 100,
                     "nameCn": "测试能力",
+                    "nameEn": "TestEn",
                     "descCn": "这是一个测试能力的详细描述",
+                    "descEn": "This is a test ability description in English",
                     "orderNum": 1,
                     "iconBatchId": "batch_icon_001"
                 }
@@ -169,7 +183,9 @@ class AdminAbilityCreateControllerTest {
                 {
                     "abilityType": 100,
                     "nameCn": "测试能力",
+                    "nameEn": "TestEn",
                     "descCn": "这是一个测试能力的详细描述",
+                    "descEn": "This is a test ability description in English",
                     "orderNum": 1
                 }
                 """;

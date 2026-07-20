@@ -12,6 +12,7 @@ import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 管理面能力控制器
@@ -44,7 +45,7 @@ public class AdminAbilityController {
     @Operation(summary = "创建能力", description = "新增能力目录记录，包含编码唯一性校验、" +
             "参数字段校验、loadType 联动校验，图标/示意图 batchId 写属性表")
     @PostMapping
-    public ApiResponse<Void> create(@Valid @RequestBody AdminAbilityCreateRequest request) {
+    public ApiResponse<Map<String, Object>> create(@Valid @RequestBody AdminAbilityCreateRequest request) {
         return adminAbilityService.create(request);
     }
 }

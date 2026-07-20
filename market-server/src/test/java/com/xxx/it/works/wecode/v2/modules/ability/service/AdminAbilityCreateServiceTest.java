@@ -1,5 +1,6 @@
 package com.xxx.it.works.wecode.v2.modules.ability.service;
 
+import com.xxx.it.works.wecode.v2.common.id.IdGeneratorStrategy;
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.modules.ability.dto.admin.AdminAbilityCreateRequest;
 import com.xxx.it.works.wecode.v2.modules.ability.entity.AbilityEntity;
@@ -16,6 +17,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -44,6 +47,9 @@ class AdminAbilityCreateServiceTest {
     @Mock
     private CommonFileService commonFileService;
 
+    @Mock
+    private IdGeneratorStrategy idGenerator;
+
     @Captor
     private ArgumentCaptor<AbilityEntity> entityCaptor;
 
@@ -52,11 +58,13 @@ class AdminAbilityCreateServiceTest {
 
     @BeforeEach
     void setUp() {
-        adminAbilityService = new AdminAbilityServiceImpl(abilityMapper, abilityPropertyMapper, commonFileService);
+        adminAbilityService = new AdminAbilityServiceImpl(
+                abilityMapper, abilityPropertyMapper, commonFileService, idGenerator);
+        lenient().when(idGenerator.nextId()).thenReturn(1L);
     }
 
     @Test
-    @DisplayName("创建能力 — 正常创建应返回 200")
+    @DisplayName("创建能力 — 正常创建应返回 200 含 data")
     void testCreate_Success() {
         // 准备
         AdminAbilityCreateRequest request = buildValidRequest();
@@ -67,10 +75,14 @@ class AdminAbilityCreateServiceTest {
         when(abilityPropertyMapper.insert(any())).thenReturn(1);
 
         // 执行
-        ApiResponse<Void> result = adminAbilityService.create(request);
+        ApiResponse<Map<String, Object>> result = adminAbilityService.create(request);
 
         // 断言
         assertEquals("200", result.getCode());
+        assertNotNull(result.getData());
+        assertEquals(100, result.getData().get("abilityType"));
+        assertEquals("测试能力", result.getData().get("nameCn"));
+        assertNotNull(result.getData().get("createTime"));
 
         verify(abilityMapper).insert(entityCaptor.capture());
         AbilityEntity capturedEntity = entityCaptor.getValue();
@@ -81,7 +93,7 @@ class AdminAbilityCreateServiceTest {
         assertEquals("This is a test ability description", capturedEntity.getAbilityDescEn());
         assertEquals(Integer.valueOf(6), capturedEntity.getOrderNum()); // max(5) + 1
         assertEquals(Integer.valueOf(1), capturedEntity.getStatus());
-        assertEquals(Integer.valueOf(0), capturedEntity.getHidden());
+        assertEquals(Integer.valueOf(1), capturedEntity.getHidden()); // spec: 默认隐藏
         assertEquals(Integer.valueOf(1), capturedEntity.getLoadType());
 
         verify(abilityPropertyMapper, times(1)).insert(propertyCaptor.capture());
@@ -103,7 +115,7 @@ class AdminAbilityCreateServiceTest {
         when(abilityMapper.selectByAbilityType(100)).thenReturn(existing);
 
         // 执行
-        ApiResponse<Void> result = adminAbilityService.create(request);
+        ApiResponse<Map<String, Object>> result = adminAbilityService.create(request);
 
         // 断言
         assertEquals("409", result.getCode());
@@ -119,7 +131,7 @@ class AdminAbilityCreateServiceTest {
         AdminAbilityCreateRequest request = buildValidRequest();
         request.setEntryUrl("ftp://invalid-protocol.com");
 
-        ApiResponse<Void> result = adminAbilityService.create(request);
+        ApiResponse<Map<String, Object>> result = adminAbilityService.create(request);
 
         assertEquals("400", result.getCode());
         assertTrue(result.getMessageZh().contains("访问地址格式不正确"));
@@ -133,7 +145,7 @@ class AdminAbilityCreateServiceTest {
         AdminAbilityCreateRequest request = buildValidRequest();
         request.setEntryUrl("http://" + "a".repeat(1000));
 
-        ApiResponse<Void> result = adminAbilityService.create(request);
+        ApiResponse<Map<String, Object>> result = adminAbilityService.create(request);
 
         assertEquals("400", result.getCode());
         assertTrue(result.getMessageZh().contains("访问地址不能超过1000字符"));
@@ -150,7 +162,7 @@ class AdminAbilityCreateServiceTest {
         request.setRoutePath(null);
         request.setAliasName(null);
 
-        ApiResponse<Void> result = adminAbilityService.create(request);
+        ApiResponse<Map<String, Object>> result = adminAbilityService.create(request);
 
         assertEquals("400", result.getCode());
         assertTrue(result.getMessageZh().contains("三要素必填"));
@@ -173,9 +185,10 @@ class AdminAbilityCreateServiceTest {
         when(abilityMapper.insert(any())).thenReturn(1);
         when(abilityPropertyMapper.insert(any())).thenReturn(1);
 
-        ApiResponse<Void> result = adminAbilityService.create(request);
+        ApiResponse<Map<String, Object>> result = adminAbilityService.create(request);
 
         assertEquals("200", result.getCode());
+        assertNotNull(result.getData());
 
         verify(abilityMapper).insert(entityCaptor.capture());
         assertEquals(Integer.valueOf(2), entityCaptor.getValue().getLoadType());
@@ -199,7 +212,7 @@ class AdminAbilityCreateServiceTest {
         });
         when(abilityPropertyMapper.insert(any())).thenReturn(1);
 
-        ApiResponse<Void> result = adminAbilityService.create(request);
+        ApiResponse<Map<String, Object>> result = adminAbilityService.create(request);
 
         assertEquals("200", result.getCode());
 

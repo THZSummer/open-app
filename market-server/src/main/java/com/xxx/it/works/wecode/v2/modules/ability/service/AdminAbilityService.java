@@ -6,6 +6,7 @@ import com.xxx.it.works.wecode.v2.modules.ability.dto.admin.AdminAbilityListRequ
 import com.xxx.it.works.wecode.v2.modules.ability.vo.admin.AdminAbilityVO;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 管理面能力服务接口
@@ -33,10 +34,11 @@ public interface AdminAbilityService {
      * 创建能力
      *
      * <p>校验能力类型编码唯一性、loadType 联动校验、entryUrl 格式校验，
-     * 写主表 ability_t 和属性表 ability_p_t（图标/示意图）。</p>
+     * 写主表 ability_t 和属性表 ability_p_t（图标/示意图）。
+     * 成功时返回 data 包含 {abilityType, nameCn, createTime}。</p>
      *
      * @param request 创建请求（含所有业务字段和校验注解）
-     * @return 标准响应，成功时 code=200
+     * @return 标准响应，成功时 code=200，data 包含创建记录的关键信息
      */
-    ApiResponse<Void> create(AdminAbilityCreateRequest request);
+    ApiResponse<Map<String, Object>> create(AdminAbilityCreateRequest request);
 }

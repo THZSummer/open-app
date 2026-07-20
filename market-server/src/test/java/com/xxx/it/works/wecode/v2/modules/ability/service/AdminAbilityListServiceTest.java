@@ -1,5 +1,6 @@
 package com.xxx.it.works.wecode.v2.modules.ability.service;
 
+import com.xxx.it.works.wecode.v2.common.id.IdGeneratorStrategy;
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.modules.ability.dto.admin.AdminAbilityListRequest;
 import com.xxx.it.works.wecode.v2.modules.ability.entity.AbilityEntity;
@@ -45,9 +46,14 @@ class AdminAbilityListServiceTest {
     @Mock
     private CommonFileService commonFileService;
 
+    @Mock
+    private IdGeneratorStrategy idGenerator;
+
     @BeforeEach
     void setUp() {
-        adminAbilityService = new AdminAbilityServiceImpl(abilityMapper, abilityPropertyMapper, commonFileService);
+        adminAbilityService = new AdminAbilityServiceImpl(
+                abilityMapper, abilityPropertyMapper, commonFileService, idGenerator);
+        lenient().when(idGenerator.nextId()).thenReturn(1L);
     }
 
     @Test

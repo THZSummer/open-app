@@ -71,14 +71,15 @@
     </select>
 
     <!-- ==================== insert ==================== -->
-    <insert id="insert" useGeneratedKeys="true" keyProperty="id"
+    <!-- 注意：openplatform_ability_t.id 无 AUTO_INCREMENT，需手动设置 ID -->
+    <insert id="insert"
             parameterType="com.xxx.it.works.wecode.v2.modules.ability.entity.AbilityEntity">
         INSERT INTO openplatform_ability_t (
-            ability_name_cn, ability_name_en, ability_desc_cn, ability_desc_en,
+            id, ability_name_cn, ability_name_en, ability_desc_cn, ability_desc_en,
             ability_type, order_num, status, entry_url, hidden, route_path, alias_name,
             require_release, load_type, create_by, create_time, last_update_by, last_update_time
         ) VALUES (
-            #{abilityNameCn}, #{abilityNameEn}, #{abilityDescCn}, #{abilityDescEn},
+            #{id}, #{abilityNameCn}, #{abilityNameEn}, #{abilityDescCn}, #{abilityDescEn},
             #{abilityType}, #{orderNum}, #{status}, #{entryUrl}, #{hidden}, #{routePath}, #{aliasName},
             #{requireRelease}, #{loadType}, #{createBy}, #{createTime}, #{lastUpdateBy}, #{lastUpdateTime}
         )
