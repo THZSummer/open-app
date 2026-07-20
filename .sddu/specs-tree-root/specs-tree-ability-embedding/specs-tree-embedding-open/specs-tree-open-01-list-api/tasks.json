@@ -1,0 +1,18 @@
+[
+  {
+    "id": "TASK-001",
+    "name": "能力列表增强",
+    "complexity": "M",
+    "dependencies": [],
+    "wave": 1,
+    "fr": ["FR-001", "FR-005"],
+    "files": [
+      {"op": "MODIFY", "path": "open-server/.../ability/vo/AbilityVO.java"},
+      {"op": "MODIFY", "path": "open-server/.../ability/service/impl/AbilityServiceImpl.java"},
+      {"op": "NEW", "path": "open-server/src/test/java/.../ability/vo/AbilityVOTest.java"},
+      {"op": "NEW", "path": "open-server/src/test/java/.../ability/service/AbilityListServiceTest.java"},
+      {"op": "NEW", "path": "open-server/src/test/python/modules/ability/test_open_list.py"}
+    ],
+    "verify": "mvn -f open-server/pom.xml test -Dtest=\"AbilityVOTest,AbilityListServiceTest\" && cd open-server/src/test/python && pytest modules/ability/test_open_list.py -v"
+  }
+]

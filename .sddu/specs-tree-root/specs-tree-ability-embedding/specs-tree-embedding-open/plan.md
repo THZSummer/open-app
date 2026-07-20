@@ -444,6 +444,139 @@ sequenceDiagram
 | 已订阅列表 | 新增 entryUrl/routePath/aliasName/requireRelease/loadType 字段 |
 | 配置页 | loadType=1 路由跳转；loadType=2 加载子应用；无 entryUrl 展示占位 |
 
+## 11. 任务分解与分支管理
+
+> 按接口维度将 spec 的 FR-001~005 + ADR-004 映射为 4 个后端任务。前端 FR-101~103 由独立流程负责，不在本文档跟踪。详细定义见 [tasks.md](./tasks.md)。
+
+### 11.1 任务索引
+
+| # | 任务 | 接口/范围 | FR | 复杂度 | 服务 | 依赖 |
+|---|------|----------|:--:|:--:|------|------|
+| 1 | 能力列表增强 | `GET /ability/list` | FR-001, FR-005 | M | open-server | 无 |
+| 2 | 能力订阅增强 + 自动桥接 | `POST /ability` | FR-002, FR-003 | M | open-server | 无 |
+| 3 | 已订阅列表增强 | `GET /ability/subscribed` | FR-004 | S | open-server | 无 |
+| 4 | VersionServiceImpl 改造 | `createVersion()` 过滤逻辑 | ADR-004 | S | open-server | 无 |
+
+> ⚠️ **前端独立实现**：FR-101（动态能力目录）、FR-102（配置页嵌入子应用）、FR-103（场景分组动态化）由前端同事在 wecodesite 独立流程中实现，不在本 Plan 的任务分解和代码管理中跟踪。后端 TASK-001~004 完成后，API 契约即对前端可用。
+
+### 11.2 依赖拓扑
+
+**后端（本 Plan 执行，TASK-001~004）**：四个接口各自独立修改，无代码依赖，可并行开发。
+
+```mermaid
+graph LR
+    T1["TASK-001 [M]<br/>GET /ability/list<br/>列表增强 + hidden控制"] 
+    T2["TASK-002 [M]<br/>POST /ability<br/>订阅增强 + 自动桥接"]
+    T3["TASK-003 [S]<br/>GET /ability/subscribed<br/>已订阅列表增强"]
+    T4["TASK-004 [S]<br/>VersionServiceImpl<br/>硬编码→require_release"]
+```
+
+> 前端 FR-101~103 由独立流程负责，后端 API（TASK-001/003）就绪后即可启动。
+
+### 11.3 拆分说明
+
+**为什么按接口维度？**
+
+开放面是"增量修改现有代码"而非"从零构建 CRUD"。4 个后端接口各自修改 `AbilityServiceImpl` 的不同方法，代码独立、无编译依赖。细拆为 VO字段/桥接/校验等子任务反而增加管理成本，一个接口一个任务更符合实际开发单元。
+
+**与平台面的对比**：
+
+| 维度 | 平台面 | 开放面 |
+|------|--------|--------|
+| 代码模式 | 新建模块 | 增量修改 |
+| 任务粒度 | 细拆（接口+前端各一 Task） | 按接口聚合（含 VO/校验/桥接） |
+| 后端 Task 数 | 6 个（上传/列表/新增/编辑/删除 + 模块重组） | 4 个（3 API + 1 跨模块） |
+| 并行度 | 严格串行 | 4 个后端可并行 |
+| 前端 | 在本 Plan 执行链中 | 独立流程，不在本文档跟踪 |
+
+### 11.4 执行指南
+
+**后端**：TASK-001~004 无相互依赖，可并行开发。推荐顺序：先 ①（列表，含 VO 字段新增，为其他接口打好 VO 基础）→ ②③④ 并行。
+
+**启动命令**：`@sddu-build TASK-001`
+
+**前端**：后端 TASK-001/003 完成后，API 契约就绪，前端同事在独立流程中实现 FR-101~103。
+
+**完成标准**：实现文件 + 测试文件全部通过。后端 Java 单测 + Python 集成测试；前端 Playwright E2E。
+
+---
+
+## 12. 代码管理与原子化合并方案
+
+> 本章解决"4 个后端 Task 如何以原子方式合入主干 main"的问题。前端 FR-101~103 走独立流程，不在本方案覆盖范围。
+
+### 12.1 方案概述
+
+**核心诉求**：每个后端 Task（TASK-001~004）独立分支、独立审查、独立合入、独立回滚。
+
+**并行分支模式**：4 个 Task 各自修改 `AbilityServiceImpl` 的不同方法（或不同模块），无代码依赖。TASK-001 基于 main 创建（含 VO 字段新增，为公共基础）；TASK-002~004 基于 TASK-001 创建，并行开发，串行合入 main（001→002→003→004）。
+
+**核心优势**：开发可并行（4 个分支同时推进）+ 合入原子化（顺序 merge 自动提纯）+ 独立回滚（各 Task 独立 merge commit）。
+
+**与平台面的差异**：开放面 4 个后端 Task 可并行开发（vs 平台面 11 个 Task 严格串行），分支管理从"前驱接力"简化为"公共基础 + 并行分支"。
+
+### 12.2 分支策略
+
+**命名规范**：
+```
+feature/embedding-open-<NN>-<short-desc>
+```
+- `NN`: 01-04，与 Task 编号对齐
+- 全部小写，单词间用连字符 `-` 连接
+
+**4 个后端 Task 分支清单**：
+
+| # | Task | 分支名 | 基于 | 说明 |
+|---|------|--------|------|------|
+| 1 | 能力列表增强 | `feature/embedding-open-01-list-api` | main | 含 VO 字段新增，为公共基础 |
+| 2 | 能力订阅增强 | `feature/embedding-open-02-subscribe-api` | 01 | 含自动桥接 |
+| 3 | 已订阅列表增强 | `feature/embedding-open-03-subscribed-api` | 01 | — |
+| 4 | VersionServiceImpl | `feature/embedding-open-04-version-service` | 01 | version 模块，与 ②③ 无冲突 |
+
+> TASK-002~004 均基于 TASK-001（公共 VO 基础），可并行开发。合入按 001→002→003→004 顺序。
+
+### 12.3 标签策略
+
+**基准标签**：开发开始前在 main HEAD 打 `embed-open-base`（annotated），作为整个开放面所有子Feature 变更的固定基准点。
+
+两层语义：
+
+| 标签 | 时机 | 位置 | 含义 |
+|------|------|------|------|
+| `embed-open-NNN-v1` | 子Feature 验证通过、准备合入 | Feature 分支 HEAD | "可以合了" |
+| `embed-open-NNN-merged` | 合入 main 完成后 | main 上的 merge commit | "已合入主干" |
+
+### 12.4 差异获取
+
+| 场景 | 命令 | 说明 |
+|------|------|------|
+| 单子Feature 增量（审查用） | `git diff embed-open-(N-1)-v1..embed-open-N-v1` | 001 用 `git diff embed-open-base..embed-open-001-v1` |
+| 开放面后端累计差异 | `git diff embed-open-base..embed-open-004-merged` | 后端 4 个 Task 总变更 |
+
+> ⚠️ 接力分支下 `git diff main...feature/embedding-open-NN-xxx` 显示累计变更，**不是**单子Feature 增量。审查时必须用相邻标签 diff。
+
+### 12.5 合入与回滚
+
+**合入方式**：`merge --no-ff`（每个子Feature 有独立 merge commit，revert 可精准定位）。
+
+**顺序合入自动提纯**：合入 002 时，git 以 001 合入点为 merge-base，自动只合入 002 增量。
+
+**回滚**：`git revert -m 1 <merge-commit-hash>` 精准回滚单个子Feature。
+
+### 12.6 命令速查表
+
+| 操作 | 命令 |
+|------|------|
+| 开接力分支 | `git checkout feature/embedding-open-NN-xxx && git checkout -b feature/embedding-open-(N+1)-yyy && git push -u origin feature/embedding-open-(N+1)-yyy` |
+| 打验证标签 | `git tag -a embed-open-NNN-v1 -m "msg" feature/branch && git push origin embed-open-NNN-v1` |
+| 打合入标签 | `git tag -a embed-open-NNN-merged -m "msg" && git push origin embed-open-NNN-merged` |
+| 查看单子Feature 增量 | `git diff embed-open-(N-1)-v1..embed-open-N-v1 --stat` |
+| 查看累计变更 | `git diff embed-open-base..embed-open-004-merged --stat` |
+| 合入 main | `git checkout main && git pull && git merge --no-ff feature/embedding-open-NN-xxx -m "feat(embedding-open): TASK-NNN" && git push origin main` |
+| 回滚子Feature | `git revert -m 1 <merge-commit-hash> && git push origin main` |
+
+---
+
 ## 修订记录
 
 | 版本 | 变更说明 | 日期 | 修订人 |
@@ -452,3 +585,6 @@ sequenceDiagram
 | v1.1 | 对齐平台面格式：独立数据库设计+API设计章节；接口详细定义含设计规范/接口清单/请求响应/数据流 | 2026-07-13 | SDDU Plan Agent |
 | v1.2 | DB 字段更新：新增 route_path/alias_name/require_release 字段；frontendEntryUrl 改为 entryUrl；新增 §3.5 VersionServiceImpl 硬编码改造（按 require_release 过滤）；文件影响分析同步更新 | 2026-07-16 | SDDU Plan Agent |
 | v1.3 | 同步平台面 load_type 字段：§1.1/§1.2 VO 扩展加 loadType；§3.3 接口响应加 loadType；§3.4 FR-102 配置页嵌入增加 loadType 分支（路由跳转 vs QianKun 加载）；§6/§8/§10 同步更新 | 2026-07-17 | SDDU Plan Agent |
+| v1.4 | 新增 §11 任务分解（9 任务/串行主链+TASK-006旁路）+ §12 代码管理与原子化合并方案（前驱分支接力模式、双层标签、差异获取、merge --no-ff 合入/回滚） | 2026-07-20 | SDDU 路由调度专家 |
+| v1.5 | 前后端分离：TASK-007~009（前端）从执行链剥离，标注为独立流程；§11/§12 调整为仅覆盖后端 TASK-001~006 | 2026-07-20 | SDDU 路由调度专家 |
+| v1.6 | §11 重构为按接口维度拆分（4 个后端 Task，可并行）；前端 FR-101~103 移出本文档，标注为独立流程 | 2026-07-20 | SDDU 路由调度专家 |

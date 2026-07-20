@@ -1,0 +1,15 @@
+[
+  {
+    "id": "TASK-004",
+    "name": "VersionServiceImpl 改造",
+    "complexity": "S",
+    "dependencies": [],
+    "wave": 1,
+    "fr": ["ADR-004"],
+    "files": [
+      {"op": "MODIFY", "path": "open-server/.../version/service/impl/VersionServiceImpl.java"},
+      {"op": "NEW", "path": "open-server/src/test/java/.../version/service/VersionServiceRequireReleaseTest.java"}
+    ],
+    "verify": "mvn -f open-server/pom.xml test -Dtest=\"VersionServiceRequireReleaseTest\""
+  }
+]

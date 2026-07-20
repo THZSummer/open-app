@@ -437,9 +437,76 @@ sequenceDiagram
 | Mock 数据 | 返回预设固定结构，确保开发不阻塞 |
 | 边界条件 | 不存在的应用返回 404；用户无角色返回空列表 |
 
+## 11. 任务分解与分支管理
+
+> API 面仅 1 个接口（POST /internal/user/roles），按接口维度拆为 1 个 Task。详细定义见 [tasks.md](./tasks.md)。
+
+### 11.1 任务索引
+
+| # | 任务 | 接口 | FR | 复杂度 | 服务 |
+|---|------|------|:--:|:--:|------|
+| 1 | 用户角色查询 | `POST /internal/user/roles` | FR-001, NFR-001~004 | M | api-server |
+
+### 11.2 变更范围
+
+单个 Task 内包含该接口的全部组件：
+
+| 组件 | 说明 |
+|------|------|
+| DTO | UserRoleQueryRequest / UserRoleQueryResponse / AppIdentifier 枚举 |
+| 解析器 | AppIdentifierResolver（appId ↔ hisAppId 自动识别） |
+| 鉴权 | InternalTokenAuthFilter（X-Internal-Token 校验） |
+| Service | UserRoleService（Mock/Real 策略切换） |
+| Controller | UserRoleController（POST 接口 + ApiResponse 信封） |
+| 配置 | application.yml（Mock/Real 开关 + 内部凭证） |
+
+### 11.3 拆分说明
+
+| 维度 | 平台面 | 开放面 | API 面 |
+|------|--------|--------|--------|
+| 接口数 | 5 个 | 3 个 | **1 个** |
+| Task 数 | 11 | 4 | **1** |
+| 拆分维度 | 按接口 | 按接口 | 按接口 |
+| 代码模式 | 新建模块 | 增量修改 | 新建独立模块 |
+
+> 只有 1 个接口时，内部组件（DTO/解析器/鉴权/Service/Controller/配置）聚合为一个 Task，避免管理 6 个分支的额外开销。
+
+### 11.4 执行指南
+
+**启动命令**：`@sddu-build TASK-001`
+
+**推荐开发顺序**（单分支内）：DTO → 配置 → 鉴权 → 解析器 → Service → Controller（自底向上）
+
+**完成标准**：Maven 编译通过 + Java 单测 + Python 集成测试全部通过。
+
+---
+
+## 12. 代码管理
+
+> API 面仅 1 个 Task，无需分支管理策略。
+
+### 12.1 分支策略
+
+**分支名**：`feature/embedding-api-01-user-roles`，基于 main 创建。
+
+**合入方式**：`merge --no-ff` 合入 main，保留独立 merge commit。
+
+**回滚**：`git revert -m 1 <merge-commit-hash>`
+
+### 12.2 命令速查
+
+| 操作 | 命令 |
+|------|------|
+| 开分支 | `git checkout main && git checkout -b feature/embedding-api-01-user-roles && git push -u origin feature/embedding-api-01-user-roles` |
+| 合入 main | `git checkout main && git pull && git merge --no-ff feature/embedding-api-01-user-roles -m "feat(embedding-api): 用户角色查询接口" && git push origin main` |
+| 回滚 | `git revert -m 1 <merge-commit-hash> && git push origin main` |
+
+---
+
 ## 修订记录
 
 | 版本 | 变更说明 | 日期 | 修订人 |
 |------|---------|------|--------|
 | v1.0 | 初始创建 — API面技术规划 | 2026-07-13 | SDDU Plan Agent |
 | v1.1 | 对齐平台面格式：独立数据库设计+API设计章节；接口含设计规范/请求响应/JSON示例/标识解析流程图 | 2026-07-13 | SDDU Plan Agent |
+| v1.2 | 新增 §11 任务分解（1 Task，按接口维度）+ §12 代码管理（单分支，merge --no-ff） | 2026-07-20 | SDDU 路由调度专家 |
