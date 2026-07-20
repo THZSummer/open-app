@@ -1,6 +1,7 @@
 package com.xxx.it.works.wecode.v2.modules.ability.controller;
 
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
+import com.xxx.it.works.wecode.v2.common.security.AuthRole;
 import com.xxx.it.works.wecode.v2.modules.ability.dto.admin.AdminAbilityListRequest;
 import com.xxx.it.works.wecode.v2.modules.ability.service.AdminAbilityService;
 import com.xxx.it.works.wecode.v2.modules.ability.vo.admin.AdminAbilityVO;
@@ -32,6 +33,7 @@ public class AdminAbilityController {
         this.adminAbilityService = adminAbilityService;
     }
 
+    @AuthRole
     @Operation(summary = "查询能力列表", description = "分页查询能力目录列表，支持关键字搜索和动态排序")
     @GetMapping("/list")
     public ApiResponse<List<AdminAbilityVO>> list(AdminAbilityListRequest request) {
