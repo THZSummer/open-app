@@ -84,3 +84,27 @@ export const createAbility = async (data) => {
     };
   }
 };
+
+/**
+ * 更新能力
+ *
+ * @param {Object} data - 能力数据（需包含 abilityType 作为路径参数）
+ * @returns {Promise<Object>} 更新结果
+ */
+export const updateAbility = async (data) => {
+  const { abilityType, ...body } = data;
+  try {
+    const url = API_CONFIG.ABILITY_UPDATE.replace('{abilityType}', abilityType);
+    const result = await fetchApi(url, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    });
+    return result;
+  } catch (err) {
+    return {
+      code: '500',
+      messageZh: '更新失败',
+      messageEn: 'Update failed',
+    };
+  }
+};
