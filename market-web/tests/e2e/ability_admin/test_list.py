@@ -43,6 +43,7 @@ class TestAbilityAdminListPage:
             "中文描述",
             "英文描述",
             "图标",
+            "示意图",
             "排序号",
             "加载类型",
             "进入地址",

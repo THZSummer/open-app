@@ -65,7 +65,7 @@ const AbilityAdminList: React.FC = () => {
         });
       }
     } else {
-      message.error(result?.message || '获取能力列表失败');
+      message.error(result?.messageZh || result?.messageEn || '获取能力列表失败');
       setDataSource([]);
     }
     setLoading(false);
@@ -185,6 +185,27 @@ const AbilityAdminList: React.FC = () => {
               className={less.iconPreview}
               src={url}
               alt="图标"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
+          </Tooltip>
+        );
+      },
+    },
+    {
+      title: '示意图',
+      dataIndex: 'exampleDiagramUrl',
+      key: 'exampleDiagramUrl',
+      width: 60,
+      render: (url: string) => {
+        if (!url) return <span className={less.noIcon}>-</span>;
+        return (
+          <Tooltip title="点击查看大图">
+            <img
+              className={less.iconPreview}
+              src={url}
+              alt="示意图"
               onError={(e) => {
                 (e.target as HTMLImageElement).style.display = 'none';
               }}

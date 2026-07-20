@@ -54,10 +54,18 @@ export interface PageInfo {
 
 /**
  * 列表查询响应
+ *
+ * 后端返回的 ApiResponse 结构：
+ * code: 响应码（200=成功）
+ * messageZh: 中文消息
+ * messageEn: 英文消息
+ * data: 数据数组
+ * page: 分页信息
  */
 export interface AbilityListResponse {
   code: string;
-  message: string;
+  messageZh?: string;
+  messageEn?: string;
   data: AbilityListItem[];
   page: PageInfo;
 }
@@ -80,7 +88,8 @@ export const getAbilityList = async (
   } catch (err) {
     return {
       code: '500',
-      message: '请求失败',
+      messageZh: '请求失败',
+      messageEn: 'Request failed',
       data: [],
       page: { curPage: 1, pageSize: 20, total: 0 },
     };
