@@ -33,4 +33,17 @@
         AND status = 1
     </select>
 
+    <!-- ==================== insert ==================== -->
+    <!-- 注意：openplatform_ability_p_t.id 无 AUTO_INCREMENT，需手动设置 ID -->
+    <insert id="insert"
+            parameterType="com.xxx.it.works.wecode.v2.modules.ability.entity.AbilityProperty">
+        INSERT INTO openplatform_ability_p_t (
+            id, parent_id, property_name, property_value, status,
+            create_by, create_time, last_update_by, last_update_time
+        ) VALUES (
+            #{id}, #{parentId}, #{propertyName}, #{propertyValue}, #{status},
+            #{createBy}, #{createTime}, #{lastUpdateBy}, #{lastUpdateTime}
+        )
+    </insert>
+
 </mapper>

@@ -1,5 +1,6 @@
 package com.xxx.it.works.wecode.v2.modules.ability.service;
 
+import com.xxx.it.works.wecode.v2.common.id.IdGeneratorStrategy;
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.modules.ability.dto.admin.AdminAbilityListRequest;
 import com.xxx.it.works.wecode.v2.modules.ability.entity.AbilityEntity;
@@ -8,6 +9,7 @@ import com.xxx.it.works.wecode.v2.modules.ability.mapper.AbilityMapper;
 import com.xxx.it.works.wecode.v2.modules.ability.mapper.AbilityPropertyMapper;
 import com.xxx.it.works.wecode.v2.modules.ability.service.impl.AdminAbilityServiceImpl;
 import com.xxx.it.works.wecode.v2.modules.ability.vo.admin.AdminAbilityVO;
+import com.xxx.it.works.wecode.v2.modules.file.service.CommonFileService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -41,9 +43,17 @@ class AdminAbilityListServiceTest {
     @Mock
     private AbilityPropertyMapper abilityPropertyMapper;
 
+    @Mock
+    private CommonFileService commonFileService;
+
+    @Mock
+    private IdGeneratorStrategy idGenerator;
+
     @BeforeEach
     void setUp() {
-        adminAbilityService = new AdminAbilityServiceImpl(abilityMapper, abilityPropertyMapper);
+        adminAbilityService = new AdminAbilityServiceImpl(
+                abilityMapper, abilityPropertyMapper, commonFileService, idGenerator);
+        lenient().when(idGenerator.nextId()).thenReturn(1L);
     }
 
     @Test
@@ -60,6 +70,9 @@ class AdminAbilityListServiceTest {
                 .thenReturn(entities);
 
         // 模拟属性表返回
+        when(commonFileService.getShowUrl("ability_icon_1")).thenReturn("/ability-files/ability_icon_1");
+        when(commonFileService.getShowUrl("ability_diagram_1")).thenReturn("/ability-files/ability_diagram_1");
+
         List<AbilityProperty> properties = createMockProperties(1L);
         when(abilityPropertyMapper.selectByParentIds(anyList()))
                 .thenReturn(properties);

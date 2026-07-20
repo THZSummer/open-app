@@ -2,16 +2,17 @@ package com.xxx.it.works.wecode.v2.modules.ability.controller;
 
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.common.security.AuthRole;
+import com.xxx.it.works.wecode.v2.modules.ability.dto.admin.AdminAbilityCreateRequest;
 import com.xxx.it.works.wecode.v2.modules.ability.dto.admin.AdminAbilityListRequest;
 import com.xxx.it.works.wecode.v2.modules.ability.service.AdminAbilityService;
 import com.xxx.it.works.wecode.v2.modules.ability.vo.admin.AdminAbilityVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import jakarta.validation.Valid;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 管理面能力控制器
@@ -38,5 +39,13 @@ public class AdminAbilityController {
     @GetMapping("/list")
     public ApiResponse<List<AdminAbilityVO>> list(AdminAbilityListRequest request) {
         return adminAbilityService.list(request);
+    }
+
+    @AuthRole
+    @Operation(summary = "创建能力", description = "新增能力目录记录，包含编码唯一性校验、" +
+            "参数字段校验、loadType 联动校验，图标/示意图 batchId 写属性表")
+    @PostMapping
+    public ApiResponse<Map<String, Object>> create(@Valid @RequestBody AdminAbilityCreateRequest request) {
+        return adminAbilityService.create(request);
     }
 }

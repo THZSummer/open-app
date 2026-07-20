@@ -37,4 +37,29 @@ public interface AbilityMapper {
      * @return 总记录数
      */
     long countByKeyword(@Param("keyword") String keyword);
+
+    /**
+     * 插入能力记录（主表）
+     *
+     * <p>使用 useGeneratedKeys 自动回填自增主键 ID。</p>
+     *
+     * @param entity 能力实体
+     * @return 影响行数
+     */
+    int insert(AbilityEntity entity);
+
+    /**
+     * 根据能力类型编码查询
+     *
+     * @param abilityType 能力类型编码
+     * @return 能力实体，不存在返回 null
+     */
+    AbilityEntity selectByAbilityType(@Param("abilityType") Integer abilityType);
+
+    /**
+     * 查询当前最大排序号
+     *
+     * @return 最大 orderNum，无记录时返回 null
+     */
+    Integer selectMaxOrderNum();
 }
