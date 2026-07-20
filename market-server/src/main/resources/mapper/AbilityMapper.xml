@@ -110,6 +110,12 @@
     </select>
 
     <!-- ==================== updateByPrimaryKeySelective ==================== -->
+    <!--
+        注意：last_update_time 的 SET 值统一使用 NOW()（MySQL 函数），
+        确保每次更新都记录当前时间。
+        实体中的 lastUpdateTime 仅用于 WHERE 乐观锁条件（当客户端传入时），
+        不参与 SET 赋值，以避免将 last_update_time 设置为旧值。
+    -->
     <update id="updateByPrimaryKeySelective"
             parameterType="com.xxx.it.works.wecode.v2.modules.ability.entity.AbilityEntity">
         UPDATE openplatform_ability_t
@@ -126,7 +132,7 @@
             <if test="requireRelease != null">require_release = #{requireRelease},</if>
             <if test="loadType != null">load_type = #{loadType},</if>
             <if test="lastUpdateBy != null">last_update_by = #{lastUpdateBy},</if>
-            <if test="lastUpdateTime != null">last_update_time = #{lastUpdateTime},</if>
+            last_update_time = NOW(),
         </set>
         WHERE id = #{id}
         <if test="lastUpdateTime != null">

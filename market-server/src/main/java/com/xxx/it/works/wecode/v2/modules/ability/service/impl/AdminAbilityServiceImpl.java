@@ -274,13 +274,14 @@ public class AdminAbilityServiceImpl implements AdminAbilityService {
 
             Date now = new Date();
             entity.setLastUpdateBy("admin");
-            entity.setLastUpdateTime(now);
 
-            // 乐观锁：使用客户端传入的 lastUpdateTime 作为更新条件
-            Long clientLastUpdateTime = request.getLastUpdateTime() != null ? request.getLastUpdateTime().getTime() : null;
+            // 乐观锁：仅当客户端传入 lastUpdateTime 时设置，用于 Mapper WHERE 条件
+            Date clientLastUpdateTime = request.getLastUpdateTime();
             if (clientLastUpdateTime != null) {
-                entity.setLastUpdateTime(request.getLastUpdateTime());
+                entity.setLastUpdateTime(clientLastUpdateTime);
             }
+            // 注：last_update_time 的 SET 值由 Mapper XML 统一使用 NOW()，
+            // 实体中的 lastUpdateTime 仅用于 WHERE 乐观锁条件
 
             // 7. 执行主表更新
             int affected = abilityMapper.updateByPrimaryKeySelective(entity);
