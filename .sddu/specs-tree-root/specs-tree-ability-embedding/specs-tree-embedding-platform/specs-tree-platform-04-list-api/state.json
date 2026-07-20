@@ -2,11 +2,11 @@
   "feature": "platform-04-list-api",
   "feature_id": "EMBED-PLATFORM-LIST-API-001",
   "feature_name": "列表接口（后端）",
-  "phase": "reviewed",
-  "status": "tracked",
+  "phase": "validated",
+  "status": "completed",
   "parent": "EMBED-PLATFORM-001",
   "created_at": "2026-07-16T00:00:00+08:00",
-  "updated_at": "2026-07-20T11:30:00+08:00",
+  "updated_at": "2026-07-20T11:45:00+08:00",
   "description": "AdminAbilityListRequest → VO → Mapper分页查询 → Service.list() → Controller GET /admin/list",
   "task_ref": "TASK-004",
   "complexity": "M",
@@ -16,6 +16,6 @@
     "source_files": 9,
     "java_tests": 13,
     "python_tests": 18,
-    "commit_hash": "57dcd0cf"
+    "commit_hash": "82d11d08"
   }
 }
