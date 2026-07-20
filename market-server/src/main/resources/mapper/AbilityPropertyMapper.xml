@@ -64,6 +64,12 @@
         LIMIT 1
     </select>
 
+    <!-- ==================== deleteByParentId ==================== -->
+    <delete id="deleteByParentId">
+        DELETE FROM openplatform_ability_p_t
+        WHERE parent_id = #{parentId}
+    </delete>
+
     <!-- ==================== updateByPrimaryKeySelective ==================== -->
     <update id="updateByPrimaryKeySelective"
             parameterType="com.xxx.it.works.wecode.v2.modules.ability.entity.AbilityProperty">

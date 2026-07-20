@@ -327,6 +327,34 @@ public class AdminAbilityServiceImpl implements AdminAbilityService {
         }
     }
 
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public ApiResponse<Void> delete(Integer abilityType) {
+        try {
+            // 1. 检查能力是否存在
+            AbilityEntity existing = abilityMapper.selectByAbilityType(abilityType);
+            if (existing == null) {
+                return ApiResponse.error("404", "能力记录不存在", "Ability record not found");
+            }
+
+            Long abilityId = existing.getId();
+
+            // 2. 删除属性表记录
+            abilityPropertyMapper.deleteByParentId(abilityId);
+
+            // 3. 删除主表记录
+            abilityMapper.deleteByAbilityType(abilityType);
+
+            log.info("Ability deleted successfully: type={}, nameCn={}, id={}",
+                    abilityType, existing.getAbilityNameCn(), abilityId);
+
+            return ApiResponse.success();
+        } catch (Exception e) {
+            log.error("Failed to delete ability, type={}", abilityType, e);
+            return ApiResponse.error("500", "删除能力失败", "Failed to delete ability");
+        }
+    }
+
     /**
      * 更新或插入属性记录
      *

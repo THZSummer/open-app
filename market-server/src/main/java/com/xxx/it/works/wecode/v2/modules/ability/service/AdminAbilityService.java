@@ -57,4 +57,15 @@ public interface AdminAbilityService {
      * @return 标准响应，成功时 code=200，messageZh="更新成功"
      */
     ApiResponse<Void> update(Long id, AdminAbilityUpdateRequest request);
+
+    /**
+     * 删除能力
+     *
+     * <p>根据 abilityType 删除能力记录及其关联属性记录。
+     * 删除前检查能力是否存在，不存在返回 404。</p>
+     *
+     * @param abilityType 能力类型编码
+     * @return 标准响应，成功时 code=200，messageZh="删除成功"
+     */
+    ApiResponse<Void> delete(Integer abilityType);
 }
