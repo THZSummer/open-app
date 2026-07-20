@@ -1,0 +1,16 @@
+[
+  {
+    "id": "TASK-002",
+    "name": "能力订阅增强 + 自动桥接",
+    "complexity": "M",
+    "dependencies": [],
+    "wave": 1,
+    "fr": ["FR-002", "FR-003"],
+    "files": [
+      {"op": "MODIFY", "path": "open-server/.../ability/service/impl/AbilityServiceImpl.java"},
+      {"op": "NEW", "path": "open-server/src/test/java/.../ability/service/AbilitySubscribeServiceTest.java"},
+      {"op": "NEW", "path": "open-server/src/test/python/modules/ability/test_open_subscribe.py"}
+    ],
+    "verify": "mvn -f open-server/pom.xml test -Dtest=\"AbilitySubscribeServiceTest\" && cd open-server/src/test/python && pytest modules/ability/test_open_subscribe.py -v"
+  }
+]

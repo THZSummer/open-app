@@ -1,0 +1,18 @@
+[
+  {
+    "id": "TASK-003",
+    "name": "已订阅列表增强",
+    "complexity": "S",
+    "dependencies": [],
+    "wave": 1,
+    "fr": ["FR-004"],
+    "files": [
+      {"op": "MODIFY", "path": "open-server/.../ability/vo/AppAbilityDetailVO.java"},
+      {"op": "MODIFY", "path": "open-server/.../ability/service/impl/AbilityServiceImpl.java"},
+      {"op": "NEW", "path": "open-server/src/test/java/.../ability/vo/AppAbilityDetailVOTest.java"},
+      {"op": "NEW", "path": "open-server/src/test/java/.../ability/service/AbilitySubscribedServiceTest.java"},
+      {"op": "NEW", "path": "open-server/src/test/python/modules/ability/test_open_subscribed.py"}
+    ],
+    "verify": "mvn -f open-server/pom.xml test -Dtest=\"AppAbilityDetailVOTest,AbilitySubscribedServiceTest\" && cd open-server/src/test/python && pytest modules/ability/test_open_subscribed.py -v"
+  }
+]

@@ -1,0 +1,29 @@
+[
+  {
+    "id": "TASK-001",
+    "name": "用户角色查询",
+    "complexity": "M",
+    "dependencies": [],
+    "wave": 1,
+    "fr": ["FR-001"],
+    "files": [
+      {"op": "NEW", "path": "api-server/.../internal/dto/UserRoleQueryRequest.java"},
+      {"op": "NEW", "path": "api-server/.../internal/dto/UserRoleQueryResponse.java"},
+      {"op": "NEW", "path": "api-server/.../internal/resolver/AppIdentifier.java"},
+      {"op": "NEW", "path": "api-server/.../internal/resolver/AppIdentifierResolver.java"},
+      {"op": "NEW", "path": "api-server/.../internal/auth/InternalTokenAuthFilter.java"},
+      {"op": "NEW", "path": "api-server/.../internal/config/InternalAuthConfig.java"},
+      {"op": "NEW", "path": "api-server/.../internal/service/UserRoleService.java"},
+      {"op": "NEW", "path": "api-server/.../internal/service/impl/UserRoleServiceMockImpl.java"},
+      {"op": "NEW", "path": "api-server/.../internal/service/impl/UserRoleServiceRealImpl.java"},
+      {"op": "NEW", "path": "api-server/.../internal/controller/UserRoleController.java"},
+      {"op": "MODIFY", "path": "api-server/src/main/resources/application.yml"},
+      {"op": "MODIFY", "path": "api-server/src/main/resources/application-dev.yml"},
+      {"op": "MODIFY", "path": "api-server/src/main/resources/application-prod.yml"},
+      {"op": "NEW", "path": "api-server/src/test/java/.../internal/controller/UserRoleControllerTest.java"},
+      {"op": "NEW", "path": "api-server/src/test/java/.../internal/service/UserRoleServiceTest.java"},
+      {"op": "NEW", "path": "api-server/src/test/python/modules/internal/test_user_roles.py"}
+    ],
+    "verify": "mvn -f api-server/pom.xml test -Dtest=\"UserRoleControllerTest,UserRoleServiceTest\" && cd api-server/src/test/python && pytest modules/internal/test_user_roles.py -v"
+  }
+]

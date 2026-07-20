@@ -2,16 +2,24 @@
   "feature": "embedding-api",
   "feature_id": "EMBED-API-001",
   "feature_name": "嵌入能力API面",
-  "phase": "planned",
+  "phase": "tasked",
   "status": "tracked",
   "parent": "EMBED-001",
   "created_at": "2026-07-13T10:11:00+08:00",
-  "updated_at": "2026-07-13T12:00:00+08:00",
+  "updated_at": "2026-07-20T00:00:00+08:00",
   "spec_version": "v1.2",
-  "plan_version": "v1.0",
+  "plan_version": "v1.2",
+  "childrens": [
+    {
+      "name": "用户角色查询",
+      "dir": "specs-tree-api-01-user-roles",
+      "description": "POST /internal/user/roles：DTO + 标识解析 + 鉴权 + Service + Controller"
+    }
+  ],
   "artifacts": {
     "spec": "./spec.md",
     "plan": "./plan.md",
+    "tasks": "./tasks.md",
     "adr": [
       "./ADR-001.md",
       "./ADR-002.md",

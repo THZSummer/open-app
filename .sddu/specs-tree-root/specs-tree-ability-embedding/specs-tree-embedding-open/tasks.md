@@ -1,253 +1,189 @@
 # 任务分解：嵌入能力开放面
 
-> **文档定位**: SDDU 任务清单 - 将技术方案分解为可并行执行的原子任务，作为 build 阶段的输入  
-> **前置依赖**: plan.md（技术方案）、spec.md（需求规范）  
-> **创建人**: SDDU Tasks Agent  
-> **创建时间**: 2026-07-13  
-> **版本**: v1.1  
-> **更新人**: SDDU Plan Agent  
-> **更新时间**: 2026-07-17  
-> **更新说明**: 同步平台面字段变更：frontendEntryUrl → entryUrl/routePath/aliasName/requireRelease/loadType；所有接口返回字段加 loadType；TASK-005 配置页嵌入增加 loadType 分支
+> **文档定位**: SDDU 任务清单 — 按接口维度分解 4 个后端任务，作为 build 阶段的入口。前端 FR-101~103 由独立流程负责，不在本文档跟踪。
+> **前置依赖**: plan.md（技术方案）、spec.md（需求规范）
+> **创建人**: SDDU 路由调度专家
+> **创建时间**: 2026-07-20
+> **版本**: v1.0
 
-## 1. 依赖拓扑总览
-> 任务依赖关系和执行顺序
+---
 
+## 1. 拆分原则
+
+开放面为**增量修改**现有 open-server ability 模块，与平台面"从零构建 CRUD"不同，采用**按接口维度**拆分：
+
+| 原则 | 说明 |
+|------|------|
+| 接口聚合 | 每个 API 端点为一个 Task，VO 字段/校验逻辑/桥接点等子变更聚合到对应接口的 Task 内 |
+| 后端可并行 | 4 个后端接口各自修改 `AbilityServiceImpl` 的不同方法，无编译依赖 |
+
+---
+
+## 2. 依赖拓扑总览
+
+4 个后端接口各自修改 `AbilityServiceImpl` 的不同方法，无代码依赖，**可并行开发**。推荐先 ①（含 VO 字段新增）→ ②③④ 并行。
+
+```mermaid
+graph LR
+    T1["TASK-001 [M]<br/>GET /ability/list<br/>列表增强 + hidden控制"]
+    T2["TASK-002 [M]<br/>POST /ability<br/>订阅增强 + 自动桥接"]
+    T3["TASK-003 [S]<br/>GET /ability/subscribed<br/>已订阅列表增强"]
+    T4["TASK-004 [S]<br/>VersionServiceImpl<br/>硬编码→require_release"]
 ```
-Wave 1 ─── (无依赖，全部并行)
-  TASK-001 [S]  VO 扩展（entryUrl/routePath/aliasName/requireRelease/loadType 字段）
 
-Wave 2 ─── (依赖 Wave 1 + 平台面 TASK-001 DB 迁移)
-  TASK-002 [M]  AbilityServiceImpl 列表/已订阅增强
-  TASK-003 [M]  AbilityServiceImpl 订阅/自动桥接增强
+> ⚠️ 前端 FR-101~103（动态目录、嵌入子应用、场景分组）由独立流程实现，不在本文档跟踪。后端 TASK-001/003 完成后 API 契约即对前端可用。
 
-Wave 3 ─── (依赖 Wave 2，前端）
-  TASK-004 [M]  前端 Capabilities 列表渲染改造
-  TASK-005 [L]  前端配置页嵌入子应用
-  TASK-006 [S]  constants 场景分组扩展
-```
+---
 
-> ⚠️ **跨 Feature 依赖**：本面后端任务（TASK-002/003）依赖平台面 `specs-tree-embedding-platform` 的 TASK-002（DB 迁移新增 `hidden`、`entry_url`、`route_path`、`alias_name`、`require_release`、`load_type` 字段）。执行前需确认平台面 TASK-002 已完成。
+## 3. 任务索引
 
-## 2. 任务列表
-> 每个任务的详细定义
+| # | 任务 | 子Feature 目录 | 接口/范围 | FR | 复杂度 | 服务 | 依赖 | 测试 |
+|---|------|--------------|----------|:--:|:--:|------|------|------|
+| 1 | 能力列表增强 | `specs-tree-open-01-list-api/` | `GET /ability/list` | FR-001, FR-005 | M | open-server | 无 | Java: Service 单测 + Python: 列表集成测试 |
+| 2 | 能力订阅增强 + 自动桥接 | `specs-tree-open-02-subscribe-api/` | `POST /ability` | FR-002, FR-003 | M | open-server | 无 | Java: Service 单测 + Python: 订阅集成测试 |
+| 3 | 已订阅列表增强 | `specs-tree-open-03-subscribed-api/` | `GET /ability/subscribed` | FR-004 | S | open-server | 无 | Java: Service 单测 + Python: 已订阅集成测试 |
+| 4 | VersionServiceImpl 改造 | `specs-tree-open-04-version-service/` | `createVersion()` | ADR-004 | S | open-server | 无 | Java: 过滤逻辑单测 |
 
-### TASK-001: VO 扩展新增 entryUrl/routePath/aliasName/requireRelease/loadType 字段
-> 开放面响应结构扩展（同步平台面字段变更）
+---
 
-| 属性 | 值 |
-|------|-----|
-| **复杂度** | S |
-| **前置依赖** | 无 |
-| **执行波次** | 1 |
-| **对应 FR** | FR-001、FR-004 |
+## 4. 任务详细定义
 
-**描述**: 在 `AbilityVO` 和 `AppAbilityDetailVO` 中新增 `entryUrl`/`routePath`/`aliasName`/`requireRelease`/`loadType` 字段（可选，无值返回 null），移除已废弃的 `frontendEntryUrl`，保持向后兼容。
+---
 
-**涉及文件**:
+### TASK-001 [M] — 能力列表增强 + hidden 控制
 
-| 操作 | 文件路径 |
-|:--:|------|
-| MODIFY | `open-server/src/main/java/com/xxx/it/works/wecode/v2/modules/ability/vo/AbilityVO.java` |
-| MODIFY | `open-server/src/main/java/com/xxx/it/works/wecode/v2/modules/ability/vo/AppAbilityDetailVO.java` |
+**接口**: `GET /service/open/v2/ability/list`
+**对应 FR**: FR-001（能力列表增强）、FR-005（hidden 控制）
+**服务**: open-server
+**复杂度**: M — 涉及过滤逻辑变更 + 5 个新字段 + VO 扩展
+
+**变更文件**:
+
+| 文件 | 变更类型 | 说明 |
+|------|---------|------|
+| `open-server/.../ability/vo/AbilityVO.java` | 修改 | 新增 `entryUrl`、`routePath`、`aliasName`、`requireRelease`、`loadType` 字段 |
+| `open-server/.../ability/service/impl/AbilityServiceImpl.java` | 修改 | `getAbilityList()` 方法 |
+
+**变更点**:
+1. **VO 扩展**（共享基础）：AbilityVO 新增 5 字段，为所有接口统一数据结构
+2. **过滤逻辑**：`abilityType != 6` 硬编码排除 → `WHERE hidden = 0` 过滤
+3. **返回字段**：VO 映射增加 5 新字段（有则返回，无则 null）
+4. **自定义类型**：不再受 `AbilityTypeEnum` 限制，DB 中所有 `status=1` 的能力均返回
+
+**不变量**: 接口路径、请求参数（appId）、已订阅标记逻辑均不变。
+
+**测试**:
+- Java 单测：Mock Mapper，验证 hidden=1 被过滤、新字段非空、自定义类型返回
+- Python 集成测试：真实 DB，验证列表含自定义类型、hidden 过滤生效、向后兼容
+
+**验收标准** (来自 spec.md):
+- 返回数据库中的所有启用能力（不再硬编码排除特定 type）
+- 根据 hidden 字段决定是否在列表中展示（hidden=1 不出现）
+- 新增返回 entryUrl/routePath/aliasName/requireRelease/loadType
+- 已订阅标记逻辑不变
+
+---
+
+### TASK-002 [M] — 能力订阅增强 + 自动桥接
+
+**接口**: `POST /service/open/v2/ability`
+**对应 FR**: FR-002（订阅校验增强）、FR-003（自动桥接扩展点）
+**服务**: open-server
+**复杂度**: M — 校验逻辑变更 + 扩展点实现
+
+**变更文件**:
+
+| 文件 | 变更类型 | 说明 |
+|------|---------|------|
+| `open-server/.../ability/service/impl/AbilityServiceImpl.java` | 修改 | `addAbility()` + `autoSubscribeAfterAbility()` 方法 |
+
+**变更点**:
+1. **校验逻辑**：`AbilityTypeEnum.isValidCode(abilityType)` → 查询 DB 校验 `ability_t` 中存在且 `status=1`
+2. **错误提示**：不存在或已失效返回 400 "能力不存在或已失效"
+3. **自动桥接**：`autoSubscribeAfterAbility()` 空实现 → 打日志 + 预留钩子
+
+**不变量**: 重复订阅检查、关联记录插入逻辑均不变。
+
+**测试**:
+- Java 单测：Mock Mapper，验证自定义类型可通过、失效类型被拒绝、订阅后日志含 appId+abilityType
+- Python 集成测试：自定义类型订阅成功、预置类型行为不变、重复订阅拒绝
+
+**验收标准** (来自 spec.md):
+- 移除硬编码类型枚举校验
+- 改为查询数据库校验能力存在且为启用状态
+- 重复订阅检查、插入关联记录等其余逻辑不变
+- 订阅后触发扩展点，当前阶段输出日志
+
+---
+
+### TASK-003 [S] — 已订阅列表增强
+
+**接口**: `GET /service/open/v2/ability/subscribed`
+**对应 FR**: FR-004（已订阅列表增强）
+**服务**: open-server
+**复杂度**: S — 仅新增返回字段
+
+**变更文件**:
+
+| 文件 | 变更类型 | 说明 |
+|------|---------|------|
+| `open-server/.../ability/vo/AppAbilityDetailVO.java` | 修改 | 新增 `entryUrl`、`routePath`、`aliasName`、`requireRelease`、`loadType` 字段 |
+| `open-server/.../ability/service/impl/AbilityServiceImpl.java` | 修改 | `getSubscribedAbilities()` 方法 |
+
+**变更点**:
+1. **VO 扩展**：AppAbilityDetailVO 新增 5 字段
+2. **返回字段**：VO 映射增加 5 新字段
+3. **过滤逻辑**：移除硬编码排除 type=6（已订阅的不受 hidden 影响）
+
+**不变量**: 接口路径、请求参数、关联查询逻辑均不变。
+
+**测试**:
+- Java 单测：验证新字段返回值、null 安全
+- Python 集成测试：验证已订阅列表含 entryUrl/loadType 等字段
+
+**验收标准** (来自 spec.md):
+- 新增返回 entryUrl/routePath/aliasName/requireRelease/loadType
+- 确保能力名称等完整返回
+- 其余逻辑不变
+
+---
+
+### TASK-004 [S] — VersionServiceImpl 改造
+
+**接口**: 无独立接口，修改 `createVersion()` 内部逻辑
+**对应 ADR**: ADR-004（require_release 替代硬编码）
+**服务**: open-server（version 模块）
+**复杂度**: S — 单行过滤逻辑变更
+
+**变更文件**:
+
+| 文件 | 变更类型 | 说明 |
+|------|---------|------|
+| `open-server/.../version/service/impl/VersionServiceImpl.java` | 修改 | `createVersion()` 方法 |
+
+**变更点**:
+- `filter(r -> !Objects.equals(r.getAbilityType(), AbilityTypeEnum.GROUP_JOIN_NOTIFICATION.getCode()))`
+- → `filter(r -> Boolean.TRUE.equals(r.getRequireRelease()))`
+
+**设计考量**: 此变更属于 `version` 模块，与 `ability` 模块无代码依赖，可并行开发。
+
+**测试**:
+- Java 单测：Mock 数据，验证 `requireRelease=1` 纳入版本发布检查，`requireRelease=0` 跳过
 
 **验收标准**:
-- [ ] `AbilityVO` 移除 `frontendEntryUrl`，新增 `entryUrl`(String)、`routePath`(String)、`aliasName`(String)、`requireRelease`(Integer)、`loadType`(Integer) 字段及 getter/setter
-- [ ] `AppAbilityDetailVO` 移除 `frontendEntryUrl`，新增以上 5 个字段
-- [ ] 所有字段为可选，序列化时无值返回 null，不破坏现有前端
-- [ ] Maven 编译通过
+- type=6 的 `require_release` 默认为 0，行为与改造前一致
+- 自定义能力通过平台面设置 `require_release` 控制版本发布行为
 
-**验证命令**:
-```bash
-mvn -f open-server/pom.xml compile -q
-```
+---
 
-### TASK-002: AbilityServiceImpl 列表/已订阅查询增强
-> 能力列表与已订阅列表逻辑改造
+## 5. 执行指南
 
-| 属性 | 值 |
-|------|-----|
-| **复杂度** | M |
-| **前置依赖** | TASK-001、平台面 TASK-002 |
-| **执行波次** | 2 |
-| **对应 FR** | FR-001、FR-004、FR-005 |
+**后端执行顺序**：TASK-001~004 无相互依赖，可并行开发。推荐先 ①（VO 字段新增为其他接口打好基础）→ ②③④ 并行。
 
-**描述**: 修改 `AbilityServiceImpl` 的 `getAbilityList()` 和 `getSubscribedAbilities()` 方法：移除 type=6 硬编码排除逻辑，改为按 `hidden` 字段过滤（列表查询）；新增返回 `entryUrl`/`routePath`/`aliasName`/`requireRelease`/`loadType`。
+**启动命令**：`@sddu-build TASK-001`（或指定子 Feature 目录名）
 
-**涉及文件**:
+**完成标准**：实现文件 + 测试文件全部通过。Java 单测 + Python 集成测试。
 
-| 操作 | 文件路径 |
-|:--:|------|
-| MODIFY | `open-server/src/main/java/com/xxx/it/works/wecode/v2/modules/ability/service/impl/AbilityServiceImpl.java` |
+---
 
-**验收标准**:
-- [ ] `getAbilityList()`：移除 `abilityType != 6` 硬编码，改为按 `hidden=0` 过滤
-- [ ] `getAbilityList()`：返回结果含 `entryUrl`/`routePath`/`aliasName`/`requireRelease`/`loadType`
-- [ ] `getSubscribedAbilities()`：移除 type=6 硬编码排除
-- [ ] `getSubscribedAbilities()`：返回结果含 `entryUrl`/`routePath`/`aliasName`/`requireRelease`/`loadType`
-- [ ] 自定义类型（≥100）正常出现在列表中
-- [ ] 已订阅标记逻辑不变
-- [ ] Maven 编译通过
-
-**验证命令**:
-```bash
-mvn -f open-server/pom.xml compile -q
-```
-
-### TASK-003: AbilityServiceImpl 订阅校验与自动桥接增强
-> 订阅逻辑改造
-
-| 属性 | 值 |
-|------|-----|
-| **复杂度** | M |
-| **前置依赖** | TASK-001、平台面 TASK-001 |
-| **执行波次** | 2 |
-| **对应 FR** | FR-002、FR-003 |
-
-**描述**: 修改 `AbilityServiceImpl` 的 `addAbility()`（订阅）和 `autoSubscribeAfterAbility()`（自动桥接）方法：订阅校验从枚举校验改为 DB 校验；自动桥接扩展点由空实现改为打日志。
-
-**涉及文件**:
-
-| 操作 | 文件路径 |
-|:--:|------|
-| MODIFY | `open-server/src/main/java/com/xxx/it/works/wecode/v2/modules/ability/service/impl/AbilityServiceImpl.java` |
-
-**验收标准**:
-- [ ] `addAbility()`：移除 `AbilityTypeEnum.isValidCode()` 枚举校验
-- [ ] `addAbility()`：改为查询 DB 校验能力存在且 status=1
-- [ ] `addAbility()`：重复订阅检查、关联插入逻辑不变
-- [ ] `autoSubscribeAfterAbility()`：由空实现改为输出日志（记录 appId、abilityType）
-- [ ] 自定义类型（≥100）可通过校验正常订阅
-- [ ] Maven 编译通过
-
-**验证命令**:
-```bash
-mvn -f open-server/pom.xml compile -q
-```
-
-> ⚠️ TASK-002 与 TASK-003 均修改 `AbilityServiceImpl.java`，需串行执行避免冲突。
-
-### TASK-004: 前端 Capabilities 列表渲染改造
-> 动态能力目录
-
-| 属性 | 值 |
-|------|-----|
-| **复杂度** | M |
-| **前置依赖** | TASK-002 |
-| **执行波次** | 3 |
-| **对应 FR** | FR-101 |
-
-**描述**: 修改 `Capabilities.jsx` 列表渲染逻辑：移除前端 type=6 硬编码过滤；自定义类型直接使用后端返回的 nameCn/descCn/iconUrl 渲染；预设类型可回退到 `ABILITY_TYPE_MAP` 常量作为兜底。
-
-**涉及文件**:
-
-| 操作 | 文件路径 |
-|:--:|------|
-| MODIFY | `wecodesite/src/pages/Capabilities/Capabilities.jsx` |
-
-**验收标准**:
-- [ ] 移除前端 `abilityType !== 6` 硬编码过滤
-- [ ] 自定义类型（≥100）使用后端返回的 nameCn/descCn/iconUrl 渲染
-- [ ] 预设类型（1-7）可回退 `ABILITY_TYPE_MAP` 常量获取中文名/图标
-- [ ] 卡片按钮逻辑不变（未订阅->添加，已订阅->配置）
-- [ ] 前端构建通过
-
-**验证命令**:
-```bash
-cd wecodesite && npm run build
-```
-
-### TASK-005: 前端配置页嵌入子应用
-> 配置页根据 loadType 分支加载
-
-| 属性 | 值 |
-|------|-----|
-| **复杂度** | L |
-| **前置依赖** | TASK-002 |
-| **执行波次** | 3 |
-| **对应 FR** | FR-102 |
-
-**描述**: 在配置页视图根据 `loadType` 分支处理：
-- loadType=1（路由加载）：根据 `routePath` 做内部路由跳转，不加载子应用
-- loadType=2（微前端加载）：通过 QianKun `loadMicroApp` API 运行时动态加载子应用（入口来自 `entryUrl`），传递上下文 {appId, abilityType, nameCn}；无 entryUrl 时展示占位文本；切换/退出时卸载子应用。
-
-同时新增 `EmbeddedSubApp.jsx` 组件封装微前端加载逻辑（loadType=2 场景）。
-
-**涉及文件**:
-
-| 操作 | 文件路径 |
-|:--:|------|
-| NEW | `wecodesite/src/pages/Capabilities/EmbeddedSubApp.jsx` |
-| MODIFY | `wecodesite/src/pages/Capabilities/Capabilities.jsx` |
-
-**验收标准**:
-- [ ] `Capabilities.jsx` 配置视图根据 `loadType` 分支：1=路由跳转，2=微前端加载
-- [ ] loadType=1 时根据 `routePath` 做内部路由跳转
-- [ ] loadType=2 时新增 `EmbeddedSubApp.jsx` 组件，使用 `loadMicroApp` 动态加载子应用
-- [ ] 从 `entryUrl` 获取子应用入口地址（非 `frontendEntryUrl`）
-- [ ] 向子应用传递上下文：appId、abilityType、nameCn
-- [ ] 无 `entryUrl` 的能力展示占位文本"配置页面由能力方提供"
-- [ ] 切换能力或退出配置时自动卸载子应用（unload）
-- [ ] `microApps.js` 静态注册列表不变
-- [ ] 前端构建通过
-
-**验证命令**:
-```bash
-cd wecodesite && npm run build
-```
-
-### TASK-006: constants 场景分组扩展
-> 自定义类型场景分组兜底
-
-| 属性 | 值 |
-|------|-----|
-| **复杂度** | S |
-| **前置依赖** | TASK-004 |
-| **执行波次** | 3 |
-| **对应 FR** | FR-103 |
-
-**描述**: 在 `constants.js` 的 `ABILITY_SCENE_MAP` 中新增"其他"默认场景，自定义类型（≥100）归入该场景；保留现有预设类型场景分组作为兜底。
-
-**涉及文件**:
-
-| 操作 | 文件路径 |
-|:--:|------|
-| MODIFY | `wecodesite/src/utils/constants.js` |
-
-**验收标准**:
-- [ ] `ABILITY_SCENE_MAP` 新增"其他"场景分组
-- [ ] 自定义类型（≥100）默认归入"其他"场景
-- [ ] 预设类型场景分组保持不变
-- [ ] 前端构建通过
-
-**验证命令**:
-```bash
-cd wecodesite && npm run build
-```
-
-## 3. 任务汇总
-> 任务数量、复杂度和波次的统计总览
-
-| 统计项 | 数值 |
-|--------|:--:|
-| 总任务数 | 6 |
-| S 级 (简单) | 2 |
-| M 级 (中等) | 3 |
-| L 级 (复杂) | 1 |
-| 执行波次 | 3 |
-
-## 4. 执行策略
-> 各波次的执行说明
-
-| 波次 | 任务 | 策略 |
-|:--:|------|------|
-| 1 | TASK-001 | 并行执行（数据结构扩展） |
-| 2 | TASK-002, TASK-003 | **串行执行**（均修改 AbilityServiceImpl，避免冲突） |
-| 3 | TASK-004, TASK-005, TASK-006 | TASK-004 与 TASK-005 **串行执行**（均改 Capabilities.jsx）；TASK-006 可并行 |
-
-## 修订记录
-> 记录本文档的版本变更历史
-
-| 版本 | 变更说明 | 日期 | 修订人 |
-|------|---------|------|--------|
-| v1.0 | 初始创建 - 开放面任务分解（6 任务 / 3 波次） | 2026-07-13 | SDDU Tasks Agent |
-| v1.1 | 同步平台面字段变更：TASK-001 重写（frontendEntryUrl → entryUrl/routePath/aliasName/requireRelease/loadType）；TASK-002 返回字段增加 loadType；TASK-005 配置页嵌入增加 loadType 分支 | 2026-07-17 | SDDU Plan Agent |
+*最后更新: 2026-07-20*
