@@ -1,6 +1,7 @@
 package com.xxx.it.works.wecode.v2.modules.ability.service;
 
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
+import com.xxx.it.works.wecode.v2.modules.ability.dto.admin.AdminAbilityCreateRequest;
 import com.xxx.it.works.wecode.v2.modules.ability.dto.admin.AdminAbilityListRequest;
 import com.xxx.it.works.wecode.v2.modules.ability.vo.admin.AdminAbilityVO;
 
@@ -27,4 +28,15 @@ public interface AdminAbilityService {
      * @return 分页响应，data 为能力列表，page 为分页信息
      */
     ApiResponse<List<AdminAbilityVO>> list(AdminAbilityListRequest request);
+
+    /**
+     * 创建能力
+     *
+     * <p>校验能力类型编码唯一性、loadType 联动校验、entryUrl 格式校验，
+     * 写主表 ability_t 和属性表 ability_p_t（图标/示意图）。</p>
+     *
+     * @param request 创建请求（含所有业务字段和校验注解）
+     * @return 标准响应，成功时 code=200
+     */
+    ApiResponse<Void> create(AdminAbilityCreateRequest request);
 }

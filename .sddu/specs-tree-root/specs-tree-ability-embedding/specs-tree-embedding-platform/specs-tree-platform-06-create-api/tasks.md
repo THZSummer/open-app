@@ -23,19 +23,19 @@
 
 ## 验收标准
 
-- [ ] abilityType 编码唯一性校验，冲突返回 409 "编码已被占用"
-- [ ] entryUrl 格式校验（http/https 协议），不合法返回 400
-- [ ] 名称校验：nameCn/nameEn 必填，2-30 字符，不满足返回 400
-- [ ] 描述校验：descCn/descEn 必填，5-200 字符，不满足返回 400
-- [ ] 图标必填校验：iconBatchId 必填，缺失返回 400 "图标为必填项"
-- [ ] 示意图格式校验（若提供）：diagramUrl 非必填，提供时校验文件格式/尺寸/大小
-- [ ] 排序号校验：orderNum 必填，正整数 ≥1，默认当前最大值+1
-- [ ] loadType=2 时 entryUrl/routePath/aliasName 三要素必填校验，缺失返回 400 "微前端加载模式下三要素必填"
-- [ ] 创建成功写入 ability_t（主表）+ ability_p_t（图标/示意图属性）
-- [ ] 接口路径: POST /service/open/v2/ability/admin
-- [ ] Java 单元测试: AdminAbilityCreateControllerTest 通过（覆盖正常创建/编码唯一性/URL校验/名称长度/描述长度/图标必填/排序号）
-- [ ] Java 单元测试: AdminAbilityCreateServiceTest 通过
-- [ ] Python 集成测试: test_admin_create.py L1/L2/L4 全部通过
+- [x] abilityType 编码唯一性校验，冲突返回 409 "编码已被占用"
+- [x] entryUrl 格式校验（http/https 协议），不合法返回 400
+- [x] 名称校验：nameCn/nameEn 必填，2-30 字符，不满足返回 400
+- [x] 描述校验：descCn/descEn 必填，5-200 字符，不满足返回 400
+- [x] 图标必填校验：iconBatchId 必填，缺失返回 400 "图标为必填项"
+- [x] 示意图格式校验（若提供）：diagramUrl 非必填，提供时校验文件格式/尺寸/大小
+- [x] 排序号校验：orderNum 必填，正整数 ≥1，默认当前最大值+1
+- [x] loadType=2 时 entryUrl/routePath/aliasName 三要素必填校验，缺失返回 400 "微前端加载模式下三要素必填"
+- [x] 创建成功写入 ability_t（主表）+ ability_p_t（图标/示意图属性）
+- [x] 接口路径: POST /service/open/v2/ability/admin
+- [x] Java 单元测试: AdminAbilityCreateControllerTest 通过（覆盖正常创建/编码唯一性/URL校验/名称长度/描述长度/图标必填/排序号）
+- [x] Java 单元测试: AdminAbilityCreateServiceTest 通过
+- [x] Python 集成测试: test_admin_create.py L1/L2/L4 全部通过
 
 ## 验证
 

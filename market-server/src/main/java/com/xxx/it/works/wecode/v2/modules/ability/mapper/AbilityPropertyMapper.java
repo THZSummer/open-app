@@ -25,4 +25,14 @@ public interface AbilityPropertyMapper {
      * @return 属性列表
      */
     List<AbilityProperty> selectByParentIds(@Param("parentIds") List<Long> parentIds);
+
+    /**
+     * 插入属性记录（属性表）
+     *
+     * <p>使用 useGeneratedKeys 自动回填自增主键 ID。</p>
+     *
+     * @param property 属性实体
+     * @return 影响行数
+     */
+    int insert(AbilityProperty property);
 }

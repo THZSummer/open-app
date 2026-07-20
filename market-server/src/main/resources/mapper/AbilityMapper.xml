@@ -70,4 +70,34 @@
         </where>
     </select>
 
+    <!-- ==================== insert ==================== -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id"
+            parameterType="com.xxx.it.works.wecode.v2.modules.ability.entity.AbilityEntity">
+        INSERT INTO openplatform_ability_t (
+            ability_name_cn, ability_name_en, ability_desc_cn, ability_desc_en,
+            ability_type, order_num, status, entry_url, hidden, route_path, alias_name,
+            require_release, load_type, create_by, create_time, last_update_by, last_update_time
+        ) VALUES (
+            #{abilityNameCn}, #{abilityNameEn}, #{abilityDescCn}, #{abilityDescEn},
+            #{abilityType}, #{orderNum}, #{status}, #{entryUrl}, #{hidden}, #{routePath}, #{aliasName},
+            #{requireRelease}, #{loadType}, #{createBy}, #{createTime}, #{lastUpdateBy}, #{lastUpdateTime}
+        )
+    </insert>
+
+    <!-- ==================== selectByAbilityType ==================== -->
+    <select id="selectByAbilityType" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM openplatform_ability_t
+        WHERE ability_type = #{abilityType}
+        LIMIT 1
+    </select>
+
+    <!-- ==================== selectMaxOrderNum ==================== -->
+    <select id="selectMaxOrderNum" resultType="java.lang.Integer">
+        SELECT MAX(order_num)
+        FROM openplatform_ability_t
+        WHERE status = 1
+    </select>
+
 </mapper>

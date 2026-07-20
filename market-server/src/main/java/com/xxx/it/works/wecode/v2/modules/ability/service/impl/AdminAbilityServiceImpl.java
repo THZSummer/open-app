@@ -1,6 +1,7 @@
 package com.xxx.it.works.wecode.v2.modules.ability.service.impl;
 
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
+import com.xxx.it.works.wecode.v2.modules.ability.dto.admin.AdminAbilityCreateRequest;
 import com.xxx.it.works.wecode.v2.modules.ability.dto.admin.AdminAbilityListRequest;
 import com.xxx.it.works.wecode.v2.modules.ability.entity.AbilityEntity;
 import com.xxx.it.works.wecode.v2.modules.ability.entity.AbilityProperty;
@@ -12,6 +13,7 @@ import com.xxx.it.works.wecode.v2.modules.file.service.CommonFileService;
 import com.xxx.it.works.wecode.v2.modules.ability.vo.admin.AdminAbilityVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -89,6 +91,108 @@ public class AdminAbilityServiceImpl implements AdminAbilityService {
         } catch (Exception e) {
             log.error("Failed to query ability list", e);
             return ApiResponse.error("500", "查询能力列表失败", "Failed to query ability list");
+        }
+    }
+
+    @Override
+    public ApiResponse<Void> create(AdminAbilityCreateRequest request) {
+        try {
+            // 1. 校验能力类型编码唯一性
+            AbilityEntity existing = abilityMapper.selectByAbilityType(request.getAbilityType());
+            if (existing != null) {
+                return ApiResponse.error("409", "编码已被占用", "Ability type already exists");
+            }
+
+            // 2. entryUrl 格式校验
+            if (StringUtils.hasText(request.getEntryUrl())) {
+                if (!request.getEntryUrl().matches("^https?://.*$")) {
+                    return ApiResponse.error("400", "访问地址格式不正确，需以http/https开头",
+                            "Invalid entry URL format, must start with http:// or https://");
+                }
+                if (request.getEntryUrl().length() > 1000) {
+                    return ApiResponse.error("400", "访问地址不能超过1000字符",
+                            "Entry URL must not exceed 1000 characters");
+                }
+            }
+
+            // 3. loadType=2 时三要素必填校验
+            Integer loadType = request.getLoadType() != null ? request.getLoadType() : 1;
+            if (loadType == 2) {
+                if (!StringUtils.hasText(request.getEntryUrl())
+                        || !StringUtils.hasText(request.getRoutePath())
+                        || !StringUtils.hasText(request.getAliasName())) {
+                    return ApiResponse.error("400", "微前端加载模式下 entryUrl/routePath/aliasName 三要素必填",
+                            "entryUrl/routePath/aliasName are required when loadType=2");
+                }
+            }
+
+            // 4. orderNum 默认值：若未传则查询当前最大值 + 1
+            Integer orderNum = request.getOrderNum();
+            if (orderNum == null) {
+                Integer maxOrderNum = abilityMapper.selectMaxOrderNum();
+                orderNum = maxOrderNum != null ? maxOrderNum + 1 : 1;
+            }
+
+            // 5. 构建主表实体
+            AbilityEntity entity = new AbilityEntity();
+            entity.setAbilityType(request.getAbilityType());
+            entity.setAbilityNameCn(request.getNameCn());
+            entity.setAbilityNameEn(request.getNameEn());
+            entity.setAbilityDescCn(request.getDescCn());
+            entity.setAbilityDescEn(request.getDescEn());
+            entity.setOrderNum(orderNum);
+            entity.setEntryUrl(request.getEntryUrl());
+            entity.setHidden(request.getHidden() != null ? request.getHidden() : 0);
+            entity.setRoutePath(request.getRoutePath());
+            entity.setAliasName(request.getAliasName());
+            entity.setRequireRelease(request.getRequireRelease() != null ? request.getRequireRelease() : 0);
+            entity.setLoadType(loadType);
+            entity.setStatus(1);
+            Date now = new Date();
+            entity.setCreateBy("admin");
+            entity.setCreateTime(now);
+            entity.setLastUpdateBy("admin");
+            entity.setLastUpdateTime(now);
+
+            // 6. 插入主表（useGeneratedKeys 回填 id）
+            abilityMapper.insert(entity);
+            Long abilityId = entity.getId();
+
+            // 7. 写属性表 — 图标
+            if (StringUtils.hasText(request.getIconBatchId())) {
+                AbilityProperty iconProp = new AbilityProperty();
+                iconProp.setParentId(abilityId);
+                iconProp.setPropertyName(AbilityPropertyEnum.ICON.getPropertyName());
+                iconProp.setPropertyValue(request.getIconBatchId());
+                iconProp.setStatus(1);
+                iconProp.setCreateBy("admin");
+                iconProp.setCreateTime(now);
+                iconProp.setLastUpdateBy("admin");
+                iconProp.setLastUpdateTime(now);
+                abilityPropertyMapper.insert(iconProp);
+            }
+
+            // 8. 写属性表 — 示意图（可选）
+            if (StringUtils.hasText(request.getDiagramBatchId())) {
+                AbilityProperty diagramProp = new AbilityProperty();
+                diagramProp.setParentId(abilityId);
+                diagramProp.setPropertyName(AbilityPropertyEnum.EXAMPLE_DIAGRAM.getPropertyName());
+                diagramProp.setPropertyValue(request.getDiagramBatchId());
+                diagramProp.setStatus(1);
+                diagramProp.setCreateBy("admin");
+                diagramProp.setCreateTime(now);
+                diagramProp.setLastUpdateBy("admin");
+                diagramProp.setLastUpdateTime(now);
+                abilityPropertyMapper.insert(diagramProp);
+            }
+
+            log.info("Ability created successfully: type={}, nameCn={}, id={}",
+                    request.getAbilityType(), request.getNameCn(), abilityId);
+
+            return ApiResponse.success();
+        } catch (Exception e) {
+            log.error("Failed to create ability", e);
+            return ApiResponse.error("500", "创建能力失败", "Failed to create ability");
         }
     }
 
