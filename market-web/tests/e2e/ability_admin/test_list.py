@@ -45,10 +45,8 @@ class TestAbilityAdminListPage:
 
     def test_all_table_columns_present(self, page: Page):
         expected = [
-            "排序号", "能力类型", "中文名", "英文名", "中文描述", "英文描述",
-            "图标", "示意图", "加载类型", "进入地址",
-            "路由路径", "别名", "隐藏", "需版本发布", "创建时间",
-            "更新人", "更新时间",
+            "排序", "能力名称", "访问地址", "示意图",
+            "更新时间", "操作账号", "操作",
         ]
         texts = page.locator(".ant-table-thead th").all_inner_texts()
         for col in expected:
@@ -98,26 +96,13 @@ class TestAbilityAdminListPage:
         rows = _get_rows(page)
         found = False
         for i in range(rows.count()):
-            cell_img = rows.nth(i).locator("td").nth(6).locator("img")
+            cell_img = rows.nth(i).locator("td").nth(1).locator("img")
             if cell_img.count() > 0:
                 src = cell_img.get_attribute("src")
                 assert src and src.strip(), f"第 {i} 行图标 src 为空"
                 found = True
                 break
         assert found, "未找到有图标渲染的行"
-
-    def test_load_type_displays_correct_text(self, page: Page):
-        rows = _get_rows(page)
-        for i in range(rows.count()):
-            text = _cell_text(page, i, 8)
-            assert text in ("路由加载", "微前端加载", "-"), \
-                f"第 {i} 行加载类型异常: {text}"
-
-    def test_hidden_column_shows_yes_or_no(self, page: Page):
-        rows = _get_rows(page)
-        for i in range(rows.count()):
-            text = _cell_text(page, i, 12)
-            assert text in ("是", "否"), f"第 {i} 行 hidden 列异常: {text}"
 
     # ══════════════════════════════════════════════════════
     # 兼容性

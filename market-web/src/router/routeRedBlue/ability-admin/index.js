@@ -5,10 +5,9 @@
  * 对应 FR-001：平台管理员在 market-web 查看所有 ability 类型列表。
  */
 import React, { useState, useEffect } from 'react';
-import { Table, Pagination, message, Tooltip } from 'antd';
+import { Table, Pagination, message } from 'antd';
 import { getAbilityList } from './thunk';
 import { PAGE_SIZE_OPTIONS } from '../../../utils/constant';
-import { renderAlwaysWithTooltip } from '../../../utils/common';
 import less from './index.module.less';
 
 /** 默认分页 */
@@ -70,177 +69,63 @@ const AbilityAdminList = () => {
   /** 表格列定义 */
   const columns = [
     {
-      title: '排序号',
+      title: '排序',
       dataIndex: 'orderNum',
       key: 'orderNum',
-      width: 70,
-      sorter: false,
+      width: 60,
       render: (text) => text ?? '-',
     },
     {
-      title: '能力类型',
-      dataIndex: 'abilityType',
-      key: 'abilityType',
-      width: 90,
-      render: (text) => (
-        <span>{text ?? '-'}</span>
+      title: '能力名称',
+      key: 'capabilityName',
+      width: 280,
+      render: (_, record) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {record.iconUrl ? (
+            <img
+              src={record.iconUrl}
+              alt=""
+              style={{ width: 32, height: 32, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }}
+            />
+          ) : (
+            <div style={{
+              width: 32, height: 32, borderRadius: 6, background: '#e6f7ff',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: '#1890ff', fontSize: 16, flexShrink: 0,
+            }}>
+              ⚡
+            </div>
+          )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, overflow: 'hidden' }}>
+            <span style={{ fontWeight: 500, lineHeight: '20px' }}>
+              {record.nameCn || '-'}
+            </span>
+            <span style={{
+              fontSize: 12, color: '#999', lineHeight: '18px',
+              maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }} title={record.descCn}>
+              {record.descCn || '-'}
+            </span>
+          </div>
+        </div>
       ),
     },
     {
-      title: '中文名',
-      dataIndex: 'nameCn',
-      key: 'nameCn',
-      width: 150,
-      ellipsis: true,
-      render: (text) => renderAlwaysWithTooltip(text),
-    },
-    {
-      title: '英文名',
-      dataIndex: 'nameEn',
-      key: 'nameEn',
-      width: 150,
-      ellipsis: true,
-      render: (text) => renderAlwaysWithTooltip(text),
-    },
-    {
-      title: '中文描述',
-      dataIndex: 'descCn',
-      key: 'descCn',
+      title: '访问地址',
+      dataIndex: 'entryUrl',
+      key: 'entryUrl',
       width: 200,
       ellipsis: true,
-      render: (text) => renderAlwaysWithTooltip(text),
-    },
-    {
-      title: '英文描述',
-      dataIndex: 'descEn',
-      key: 'descEn',
-      width: 200,
-      ellipsis: true,
-      render: (text) => renderAlwaysWithTooltip(text),
-    },
-    {
-      title: '图标',
-      dataIndex: 'iconUrl',
-      key: 'iconUrl',
-      width: 60,
-      render: (url) => {
-        if (!url) return <span className={less.noIcon}>-</span>;
-        return (
-          <Tooltip title="点击查看大图">
-            <img
-              className={less.iconPreview}
-              src={url}
-              alt="图标"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-              }}
-            />
-          </Tooltip>
-        );
-      },
+      render: (text) => text ? <a href={text} target="_blank" rel="noopener noreferrer">{text}</a> : '-',
     },
     {
       title: '示意图',
       dataIndex: 'exampleDiagramUrl',
       key: 'exampleDiagramUrl',
-      width: 60,
-      render: (url) => {
-        if (!url) return <span className={less.noIcon}>-</span>;
-        return (
-          <Tooltip title="点击查看大图">
-            <img
-              className={less.iconPreview}
-              src={url}
-              alt="示意图"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-              }}
-            />
-          </Tooltip>
-        );
-      },
-    },
-    {
-      title: '加载类型',
-      dataIndex: 'loadType',
-      key: 'loadType',
       width: 100,
-      render: (type) => {
-        switch (type) {
-          case 1:
-            return <span className={less.loadTypeTag}>路由加载</span>;
-          case 2:
-            return <span className={`${less.loadTypeTag} ${less.loadTypeMicro}`}>微前端加载</span>;
-          default:
-            return <span>{type ?? '-'}</span>;
-        }
-      },
-    },
-    {
-      title: '进入地址',
-      dataIndex: 'entryUrl',
-      key: 'entryUrl',
-      width: 180,
-      ellipsis: true,
-      render: (text) => {
-        if (!text) return '-';
-        return (
-          <Tooltip title={text}>
-            <a href={text} target="_blank" rel="noopener noreferrer">
-              {text}
-            </a>
-          </Tooltip>
-        );
-      },
-    },
-    {
-      title: '路由路径',
-      dataIndex: 'routePath',
-      key: 'routePath',
-      width: 120,
-      ellipsis: true,
-      render: (text) => renderAlwaysWithTooltip(text || '-'),
-    },
-    {
-      title: '别名',
-      dataIndex: 'aliasName',
-      key: 'aliasName',
-      width: 120,
-      ellipsis: true,
-      render: (text) => renderAlwaysWithTooltip(text || '-'),
-    },
-    {
-      title: '隐藏',
-      dataIndex: 'hidden',
-      key: 'hidden',
-      width: 60,
-      render: (val) => (
-        <span className={val === 1 ? less.hiddenYes : less.hiddenNo}>
-          {val === 1 ? '是' : '否'}
-        </span>
-      ),
-    },
-    {
-      title: '需版本发布',
-      dataIndex: 'requireRelease',
-      key: 'requireRelease',
-      width: 90,
-      render: (val) => (val === 1 ? '是' : '否'),
-    },
-    {
-      title: '创建时间',
-      dataIndex: 'createTime',
-      key: 'createTime',
-      width: 160,
-      render: (text) => text || '-',
-    },
-    {
-      title: '更新人',
-      dataIndex: 'updateBy',
-      key: 'updateBy',
-      width: 120,
-      ellipsis: true,
-      render: (text) => text || '-',
+      render: (url) => url
+        ? <img src={url} alt="示意图" style={{ width: 65, height: 36, borderRadius: 4, objectFit: 'cover', border: '1px solid #e8e8e8' }} />
+        : <div style={{ width: 65, height: 36, borderRadius: 4, background: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ccc', fontSize: 12, border: '1px dashed #d9d9d9' }}>无</div>,
     },
     {
       title: '更新时间',
@@ -248,6 +133,25 @@ const AbilityAdminList = () => {
       key: 'updateTime',
       width: 160,
       render: (text) => text || '-',
+    },
+    {
+      title: '操作账号',
+      dataIndex: 'updateBy',
+      key: 'updateBy',
+      width: 120,
+      ellipsis: true,
+      render: (text) => text || '-',
+    },
+    {
+      title: '操作',
+      key: 'action',
+      width: 120,
+      render: () => (
+        <div style={{ display: 'flex', gap: 8 }}>
+          <a style={{ cursor: 'pointer' }}>编辑</a>
+          <a style={{ color: '#ff4d4f', cursor: 'pointer' }}>删除</a>
+        </div>
+      ),
     },
   ];
 
@@ -269,7 +173,7 @@ const AbilityAdminList = () => {
             rowKey="abilityType"
             loading={loading}
             pagination={false}
-            scroll={{ x: 2200 }}
+            scroll={{ x: 1200 }}
             size="middle"
           />
         </div>
