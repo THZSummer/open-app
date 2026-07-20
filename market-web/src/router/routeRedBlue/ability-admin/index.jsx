@@ -7,12 +7,7 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Pagination, Input, Button, message, Tooltip, Select } from 'antd';
 import { SearchOutlined, ReloadOutlined } from '@ant-design/icons';
-import {
-  getAbilityList,
-  AbilityListItem,
-  AbilityListParams,
-  PageInfo,
-} from './thunk';
+import { getAbilityList } from './thunk';
 import { PAGE_SIZE_OPTIONS } from '../../../utils/constant';
 import { renderAlwaysWithTooltip } from '../../../utils/common';
 import less from './index.module.less';
@@ -33,21 +28,21 @@ const SORT_OPTIONS = [
 /**
  * 能力目录管理列表页面
  */
-const AbilityAdminList: React.FC = () => {
+const AbilityAdminList = () => {
   const [loading, setLoading] = useState(false);
-  const [dataSource, setDataSource] = useState<AbilityListItem[]>([]);
-  const [pagination, setPagination] = useState<PageInfo>({
+  const [dataSource, setDataSource] = useState([]);
+  const [pagination, setPagination] = useState({
     curPage: 1,
     pageSize: DEFAULT_PAGE_SIZE,
     total: 0,
   });
-  const [queryParams, setQueryParams] = useState<AbilityListParams>({
+  const [queryParams, setQueryParams] = useState({
     curPage: 1,
     pageSize: DEFAULT_PAGE_SIZE,
   });
   const [keyword, setKeyword] = useState('');
   const [sortField, setSortField] = useState('orderNum');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [sortOrder, setSortOrder] = useState('asc');
 
   /**
    * 获取列表数据
@@ -80,7 +75,7 @@ const AbilityAdminList: React.FC = () => {
    * 搜索
    */
   const handleSearch = () => {
-    const newParams: AbilityListParams = {
+    const newParams = {
       curPage: 1,
       pageSize: pagination.pageSize,
       keyword: keyword || undefined,
@@ -106,8 +101,8 @@ const AbilityAdminList: React.FC = () => {
   /**
    * 分页改变
    */
-  const handlePageChange = (page: number, pageSize: number) => {
-    const newParams: AbilityListParams = {
+  const handlePageChange = (page, pageSize) => {
+    const newParams = {
       ...queryParams,
       curPage: page,
       pageSize: pageSize || queryParams.pageSize,
@@ -118,14 +113,14 @@ const AbilityAdminList: React.FC = () => {
   /**
    * 排序字段变更
    */
-  const handleSortFieldChange = (value: string) => {
+  const handleSortFieldChange = (value) => {
     setSortField(value);
   };
 
   /**
    * 排序方向切换
    */
-  const handleSortOrderChange = (value: 'asc' | 'desc') => {
+  const handleSortOrderChange = (value) => {
     setSortOrder(value);
   };
 
@@ -136,7 +131,7 @@ const AbilityAdminList: React.FC = () => {
       dataIndex: 'abilityType',
       key: 'abilityType',
       width: 90,
-      render: (text: number) => (
+      render: (text) => (
         <span>{text ?? '-'}</span>
       ),
     },
@@ -146,7 +141,7 @@ const AbilityAdminList: React.FC = () => {
       key: 'nameCn',
       width: 150,
       ellipsis: true,
-      render: (text: string) => renderAlwaysWithTooltip(text),
+      render: (text) => renderAlwaysWithTooltip(text),
     },
     {
       title: '英文名',
@@ -154,7 +149,7 @@ const AbilityAdminList: React.FC = () => {
       key: 'nameEn',
       width: 150,
       ellipsis: true,
-      render: (text: string) => renderAlwaysWithTooltip(text),
+      render: (text) => renderAlwaysWithTooltip(text),
     },
     {
       title: '中文描述',
@@ -162,7 +157,7 @@ const AbilityAdminList: React.FC = () => {
       key: 'descCn',
       width: 200,
       ellipsis: true,
-      render: (text: string) => renderAlwaysWithTooltip(text),
+      render: (text) => renderAlwaysWithTooltip(text),
     },
     {
       title: '英文描述',
@@ -170,14 +165,14 @@ const AbilityAdminList: React.FC = () => {
       key: 'descEn',
       width: 200,
       ellipsis: true,
-      render: (text: string) => renderAlwaysWithTooltip(text),
+      render: (text) => renderAlwaysWithTooltip(text),
     },
     {
       title: '图标',
       dataIndex: 'iconUrl',
       key: 'iconUrl',
       width: 60,
-      render: (url: string) => {
+      render: (url) => {
         if (!url) return <span className={less.noIcon}>-</span>;
         return (
           <Tooltip title="点击查看大图">
@@ -186,7 +181,7 @@ const AbilityAdminList: React.FC = () => {
               src={url}
               alt="图标"
               onError={(e) => {
-                (e.target as HTMLImageElement).style.display = 'none';
+                e.currentTarget.style.display = 'none';
               }}
             />
           </Tooltip>
@@ -198,7 +193,7 @@ const AbilityAdminList: React.FC = () => {
       dataIndex: 'exampleDiagramUrl',
       key: 'exampleDiagramUrl',
       width: 60,
-      render: (url: string) => {
+      render: (url) => {
         if (!url) return <span className={less.noIcon}>-</span>;
         return (
           <Tooltip title="点击查看大图">
@@ -207,7 +202,7 @@ const AbilityAdminList: React.FC = () => {
               src={url}
               alt="示意图"
               onError={(e) => {
-                (e.target as HTMLImageElement).style.display = 'none';
+                e.currentTarget.style.display = 'none';
               }}
             />
           </Tooltip>
@@ -220,14 +215,14 @@ const AbilityAdminList: React.FC = () => {
       key: 'orderNum',
       width: 70,
       sorter: false,
-      render: (text: number) => text ?? '-',
+      render: (text) => text ?? '-',
     },
     {
       title: '加载类型',
       dataIndex: 'loadType',
       key: 'loadType',
       width: 100,
-      render: (type: number) => {
+      render: (type) => {
         switch (type) {
           case 1:
             return <span className={less.loadTypeTag}>路由加载</span>;
@@ -244,7 +239,7 @@ const AbilityAdminList: React.FC = () => {
       key: 'entryUrl',
       width: 180,
       ellipsis: true,
-      render: (text: string) => {
+      render: (text) => {
         if (!text) return '-';
         return (
           <Tooltip title={text}>
@@ -261,7 +256,7 @@ const AbilityAdminList: React.FC = () => {
       key: 'routePath',
       width: 120,
       ellipsis: true,
-      render: (text: string) => renderAlwaysWithTooltip(text || '-'),
+      render: (text) => renderAlwaysWithTooltip(text || '-'),
     },
     {
       title: '别名',
@@ -269,14 +264,14 @@ const AbilityAdminList: React.FC = () => {
       key: 'aliasName',
       width: 120,
       ellipsis: true,
-      render: (text: string) => renderAlwaysWithTooltip(text || '-'),
+      render: (text) => renderAlwaysWithTooltip(text || '-'),
     },
     {
       title: '隐藏',
       dataIndex: 'hidden',
       key: 'hidden',
       width: 60,
-      render: (val: number) => (
+      render: (val) => (
         <span className={val === 1 ? less.hiddenYes : less.hiddenNo}>
           {val === 1 ? '是' : '否'}
         </span>
@@ -287,14 +282,14 @@ const AbilityAdminList: React.FC = () => {
       dataIndex: 'requireRelease',
       key: 'requireRelease',
       width: 90,
-      render: (val: number) => (val === 1 ? '是' : '否'),
+      render: (val) => (val === 1 ? '是' : '否'),
     },
     {
       title: '创建时间',
       dataIndex: 'createTime',
       key: 'createTime',
       width: 160,
-      render: (text: string) => text || '-',
+      render: (text) => text || '-',
     },
     {
       title: '更新人',
@@ -302,14 +297,14 @@ const AbilityAdminList: React.FC = () => {
       key: 'updateBy',
       width: 120,
       ellipsis: true,
-      render: (text: string) => text || '-',
+      render: (text) => text || '-',
     },
     {
       title: '更新时间',
       dataIndex: 'updateTime',
       key: 'updateTime',
       width: 160,
-      render: (text: string) => text || '-',
+      render: (text) => text || '-',
     },
   ];
 
