@@ -22,21 +22,21 @@
 
 ## 验收标准
 
-- [ ] 所有字段可选，仅更新传入字段
-- [ ] abilityType 不可修改
-- [ ] 名称校验（若传入）：2-30 字符，不满足返回 400
-- [ ] 描述校验（若传入）：5-200 字符，不满足返回 400
-- [ ] 图标格式校验（若传入新图标）：校验文件格式/尺寸/大小
-- [ ] 示意图格式校验（若传入）：校验文件格式/尺寸/大小
-- [ ] 排序号校验（若传入）：≥1
-- [ ] 访问地址校验（若传入）：HTTP/HTTPS 协议，≤1000 字符
-- [ ] loadType 改为 2 时校验 entryUrl/routePath/aliasName 三要素必填
-- [ ] 乐观锁处理（基于 last_update_time），冲突提示"数据已被修改，请刷新后重试"
-- [ ] 不存在的 id 返回 404
-- [ ] 接口路径: PUT /service/open/v2/ability/admin/{id}
-- [ ] Java 单元测试: AdminAbilityUpdateControllerTest 通过（覆盖部分更新/abilityType不可改/乐观锁冲突）
-- [ ] Java 单元测试: AdminAbilityUpdateServiceTest 通过
-- [ ] Python 集成测试: test_admin_update.py L1/L2/L4 全部通过
+- [x] 所有字段可选，仅更新传入字段
+- [x] abilityType 不可修改
+- [x] 名称校验（若传入）：2-30 字符，不满足返回 400
+- [x] 描述校验（若传入）：5-200 字符，不满足返回 400
+- [ ] 图标格式校验（若传入新图标）：校验文件格式/尺寸/大小（需文件系统支持，当前仅存储 batchId）
+- [ ] 示意图格式校验（若传入）：校验文件格式/尺寸/大小（需文件系统支持，当前仅存储 batchId）
+- [x] 排序号校验（若传入）：≥1
+- [x] 访问地址校验（若传入）：HTTP/HTTPS 协议，≤1000 字符
+- [x] loadType 改为 2 时校验 entryUrl/routePath/aliasName 三要素必填
+- [x] 乐观锁处理（基于 last_update_time），冲突提示"数据已被修改，请刷新后重试"
+- [x] 不存在的 id 返回 404
+- [x] 接口路径: PUT /service/open/v2/ability/admin/{id}
+- [x] Java 单元测试: AdminAbilityUpdateControllerTest 通过（覆盖部分更新/abilityType不可改/乐观锁冲突）
+- [x] Java 单元测试: AdminAbilityUpdateServiceTest 通过
+- [x] Python 集成测试: test_admin_update.py L1/L2/L4 全部通过
 
 ## 验证
 

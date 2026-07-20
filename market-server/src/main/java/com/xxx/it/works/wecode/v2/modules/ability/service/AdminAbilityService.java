@@ -3,6 +3,7 @@ package com.xxx.it.works.wecode.v2.modules.ability.service;
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.modules.ability.dto.admin.AdminAbilityCreateRequest;
 import com.xxx.it.works.wecode.v2.modules.ability.dto.admin.AdminAbilityListRequest;
+import com.xxx.it.works.wecode.v2.modules.ability.dto.admin.AdminAbilityUpdateRequest;
 import com.xxx.it.works.wecode.v2.modules.ability.vo.admin.AdminAbilityVO;
 
 import java.util.List;
@@ -41,4 +42,19 @@ public interface AdminAbilityService {
      * @return 标准响应，成功时 code=200，data 包含创建记录的关键信息
      */
     ApiResponse<Map<String, Object>> create(AdminAbilityCreateRequest request);
+
+    /**
+     * 更新能力
+     *
+     * <p>部分更新（仅更新传入字段），abilityType 不可修改。
+     * 通过 id 查找记录，不存在返回 404。
+     * loadType=2 时校验 entryUrl/routePath/aliasName 三要素必填。
+     * 若传入 iconBatchId/diagramBatchId，更新属性表。
+     * 乐观锁基于 lastUpdateTime，冲突时返回 409。</p>
+     *
+     * @param id      能力记录 ID
+     * @param request 更新请求（所有字段可选）
+     * @return 标准响应，成功时 code=200，messageZh="更新成功"
+     */
+    ApiResponse<Void> update(Long id, AdminAbilityUpdateRequest request);
 }

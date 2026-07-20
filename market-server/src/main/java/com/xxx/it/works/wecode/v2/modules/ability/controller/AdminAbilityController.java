@@ -4,6 +4,7 @@ import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.common.security.AuthRole;
 import com.xxx.it.works.wecode.v2.modules.ability.dto.admin.AdminAbilityCreateRequest;
 import com.xxx.it.works.wecode.v2.modules.ability.dto.admin.AdminAbilityListRequest;
+import com.xxx.it.works.wecode.v2.modules.ability.dto.admin.AdminAbilityUpdateRequest;
 import com.xxx.it.works.wecode.v2.modules.ability.service.AdminAbilityService;
 import com.xxx.it.works.wecode.v2.modules.ability.vo.admin.AdminAbilityVO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -47,5 +48,14 @@ public class AdminAbilityController {
     @PostMapping
     public ApiResponse<Map<String, Object>> create(@Valid @RequestBody AdminAbilityCreateRequest request) {
         return adminAbilityService.create(request);
+    }
+
+    @AuthRole
+    @Operation(summary = "编辑能力", description = "部分更新能力记录，仅更新传入字段，abilityType 不可修改。" +
+            "loadType=2 时校验三要素必填，乐观锁基于 lastUpdateTime")
+    @PutMapping("/{id}")
+    public ApiResponse<Void> update(@PathVariable Long id,
+                                    @Valid @RequestBody AdminAbilityUpdateRequest request) {
+        return adminAbilityService.update(id, request);
     }
 }

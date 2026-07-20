@@ -62,4 +62,23 @@ public interface AbilityMapper {
      * @return 最大 orderNum，无记录时返回 null
      */
     Integer selectMaxOrderNum();
+
+    /**
+     * 根据主键查询能力
+     *
+     * @param id 能力ID
+     * @return 能力实体，不存在返回 null
+     */
+    AbilityEntity selectByPrimaryKey(@Param("id") Long id);
+
+    /**
+     * 选择性更新能力记录（仅更新非空字段，含乐观锁）
+     *
+     * <p>以 id + last_update_time 作为更新条件，
+     * 若 last_update_time 不匹配则更新 0 行。</p>
+     *
+     * @param entity 能力实体（含 id 和 lastUpdateTime）
+     * @return 影响行数
+     */
+    int updateByPrimaryKeySelective(AbilityEntity entity);
 }

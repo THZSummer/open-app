@@ -101,4 +101,43 @@
         WHERE status = 1
     </select>
 
+    <!-- ==================== selectByPrimaryKey ==================== -->
+    <select id="selectByPrimaryKey" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM openplatform_ability_t
+        WHERE id = #{id}
+    </select>
+
+    <!-- ==================== updateByPrimaryKeySelective ==================== -->
+    <!--
+        注意：last_update_time 的 SET 值统一使用 NOW()（MySQL 函数），
+        确保每次更新都记录当前时间。
+        实体中的 lastUpdateTime 仅用于 WHERE 乐观锁条件（当客户端传入时），
+        不参与 SET 赋值，以避免将 last_update_time 设置为旧值。
+    -->
+    <update id="updateByPrimaryKeySelective"
+            parameterType="com.xxx.it.works.wecode.v2.modules.ability.entity.AbilityEntity">
+        UPDATE openplatform_ability_t
+        <set>
+            <if test="abilityNameCn != null">ability_name_cn = #{abilityNameCn},</if>
+            <if test="abilityNameEn != null">ability_name_en = #{abilityNameEn},</if>
+            <if test="abilityDescCn != null">ability_desc_cn = #{abilityDescCn},</if>
+            <if test="abilityDescEn != null">ability_desc_en = #{abilityDescEn},</if>
+            <if test="orderNum != null">order_num = #{orderNum},</if>
+            <if test="entryUrl != null">entry_url = #{entryUrl},</if>
+            <if test="hidden != null">hidden = #{hidden},</if>
+            <if test="routePath != null">route_path = #{routePath},</if>
+            <if test="aliasName != null">alias_name = #{aliasName},</if>
+            <if test="requireRelease != null">require_release = #{requireRelease},</if>
+            <if test="loadType != null">load_type = #{loadType},</if>
+            <if test="lastUpdateBy != null">last_update_by = #{lastUpdateBy},</if>
+            last_update_time = NOW(),
+        </set>
+        WHERE id = #{id}
+        <if test="lastUpdateTime != null">
+            AND last_update_time = #{lastUpdateTime}
+        </if>
+    </update>
+
 </mapper>

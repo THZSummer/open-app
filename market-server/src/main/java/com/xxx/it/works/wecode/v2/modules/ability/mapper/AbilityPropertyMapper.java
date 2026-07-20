@@ -35,4 +35,24 @@ public interface AbilityPropertyMapper {
      * @return 影响行数
      */
     int insert(AbilityProperty property);
+
+    /**
+     * 根据父ID和属性名查询属性
+     *
+     * @param parentId     能力ID
+     * @param propertyName 属性名
+     * @return 属性实体，不存在返回 null
+     */
+    AbilityProperty selectByParentIdAndPropertyName(@Param("parentId") Long parentId,
+                                                    @Param("propertyName") String propertyName);
+
+    /**
+     * 根据主键更新属性（选择性更新）
+     *
+     * <p>更新 property_value、last_update_by、last_update_time。</p>
+     *
+     * @param property 属性实体（含 id）
+     * @return 影响行数
+     */
+    int updateByPrimaryKeySelective(AbilityProperty property);
 }
