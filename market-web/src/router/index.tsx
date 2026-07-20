@@ -16,6 +16,9 @@ import Approval from './routeRedBlue/approval';
 // 机器人绑定
 import ApprovalDetail from './routeRedBlue/approveDetail';
 
+// 能力目录管理
+import AbilityAdminList from './routeRedBlue/ability-admin';
+
 /**
  * 路由配置
  *
@@ -26,6 +29,7 @@ import ApprovalDetail from './routeRedBlue/approveDetail';
  * - /dictionary: 数据字典管理
  * - /approval: 审批管理
  * - /approveDetail: 机器人绑定页面
+ * - /ability-admin: 能力目录管理
  * - /404: 404 页面
  */
 const Router = () => {
@@ -38,6 +42,7 @@ const Router = () => {
         <Route path="dictionary" element={<DictionaryList />} />
         <Route path="approval" element={<Approval />} />
         <Route path="approveDetail" element={<ApprovalDetail />} />
+        <Route path="ability-admin" element={<AbilityAdminList />} />
         <Route path="404" element={<NotFound />} />
         <Route path="*" element={<Navigate to="/404" replace />} />
       </Route>

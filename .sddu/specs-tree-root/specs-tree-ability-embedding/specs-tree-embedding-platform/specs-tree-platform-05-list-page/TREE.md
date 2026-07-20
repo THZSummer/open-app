@@ -2,7 +2,7 @@
 
 **Feature ID**: EMBED-PLATFORM-LIST-PAGE-001
 **父 Feature**: EMBED-PLATFORM-001（嵌入能力平台面）
-**阶段**: tasked | 复杂度: L | 顺序: 04/10
+**阶段**: reviewed | 复杂度: L | 顺序: 04/10
 
 ## 对应任务
 

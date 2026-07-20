@@ -21,10 +21,10 @@
 
 ## 验收标准
 
-- [ ] 列表展示所有字段（编码/中英文名/描述/图标/排序号/加载类型/entryUrl/routePath/aliasName/hidden/requireRelease/时间）
-- [ ] 分页正常，搜索可用
-- [ ] 路由已注册
-- [ ] Playwright E2E: test_list.py L1/L2 全部通过（页面加载/列字段完整/分页控件/关键词搜索）
+- [x] 列表展示所有字段（编码/中英文名/描述/图标/排序号/加载类型/entryUrl/routePath/aliasName/hidden/requireRelease/时间）
+- [x] 分页正常，搜索可用
+- [x] 路由已注册
+- [x] Playwright E2E: test_list.py L1/L2 全部通过（页面加载/列字段完整/分页控件/关键词搜索）
 
 ## 验证
 

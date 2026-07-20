@@ -32,4 +32,7 @@ export default {
 
   // 机器人绑定 API 配置（GET/POST/DELETE 共用同一 URL）
   APP_CHATBOT_ACCOUNTS: '/market-web/service/open/v2/apps/single-chatbot-accounts',
+
+  // 能力目录管理 API 配置
+  ABILITY_LIST: '/market-web/service/open/v2/ability/admin/list',
 };
