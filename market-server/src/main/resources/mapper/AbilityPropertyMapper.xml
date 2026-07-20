@@ -46,4 +46,34 @@
         )
     </insert>
 
+    <!-- ==================== selectByParentIdAndPropertyName ==================== -->
+    <select id="selectByParentIdAndPropertyName" resultMap="BaseResultMap">
+        SELECT id,
+               parent_id,
+               property_name,
+               property_value,
+               status,
+               create_by,
+               create_time,
+               last_update_by,
+               last_update_time
+        FROM openplatform_ability_p_t
+        WHERE parent_id = #{parentId}
+          AND property_name = #{propertyName}
+          AND status = 1
+        LIMIT 1
+    </select>
+
+    <!-- ==================== updateByPrimaryKeySelective ==================== -->
+    <update id="updateByPrimaryKeySelective"
+            parameterType="com.xxx.it.works.wecode.v2.modules.ability.entity.AbilityProperty">
+        UPDATE openplatform_ability_p_t
+        <set>
+            <if test="propertyValue != null">property_value = #{propertyValue},</if>
+            <if test="lastUpdateBy != null">last_update_by = #{lastUpdateBy},</if>
+            <if test="lastUpdateTime != null">last_update_time = #{lastUpdateTime},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
 </mapper>

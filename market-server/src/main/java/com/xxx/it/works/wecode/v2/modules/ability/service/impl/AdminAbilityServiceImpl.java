@@ -3,6 +3,7 @@ package com.xxx.it.works.wecode.v2.modules.ability.service.impl;
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
 import com.xxx.it.works.wecode.v2.modules.ability.dto.admin.AdminAbilityCreateRequest;
 import com.xxx.it.works.wecode.v2.modules.ability.dto.admin.AdminAbilityListRequest;
+import com.xxx.it.works.wecode.v2.modules.ability.dto.admin.AdminAbilityUpdateRequest;
 import com.xxx.it.works.wecode.v2.common.id.IdGeneratorStrategy;
 import com.xxx.it.works.wecode.v2.modules.ability.entity.AbilityEntity;
 import com.xxx.it.works.wecode.v2.modules.ability.entity.AbilityProperty;
@@ -209,6 +210,155 @@ public class AdminAbilityServiceImpl implements AdminAbilityService {
         } catch (Exception e) {
             log.error("Failed to create ability", e);
             return ApiResponse.error("500", "创建能力失败", "Failed to create ability");
+        }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public ApiResponse<Void> update(Long id, AdminAbilityUpdateRequest request) {
+        try {
+            // 1. 查找已有记录
+            AbilityEntity existing = abilityMapper.selectByPrimaryKey(id);
+            if (existing == null) {
+                return ApiResponse.error("404", "能力记录不存在", "Ability record not found");
+            }
+
+            // 2. abilityType 不可修改 — 忽略请求中的 abilityType
+            // （AdminAbilityUpdateRequest 无 abilityType 字段，无需处理）
+
+            // 3. 字段校验（仅校验传入的字段）
+            // nameCn/nameEn/descCn/descEn 的 @Size 校验已在 Request DTO 上由 @Valid 处理
+
+            // 4. entryUrl 格式校验（若传入新值）
+            if (request.getEntryUrl() != null) {
+                if (!request.getEntryUrl().matches("^https?://.*$")) {
+                    return ApiResponse.error("400", "访问地址格式不正确，需以http/https开头",
+                            "Invalid entry URL format, must start with http:// or https://");
+                }
+                if (request.getEntryUrl().length() > 1000) {
+                    return ApiResponse.error("400", "访问地址不能超过1000字符",
+                            "Entry URL must not exceed 1000 characters");
+                }
+            }
+
+            // 5. loadType 联动校验
+            // 如果请求中传了 loadType，用请求值；否则用数据库现有值
+            Integer effectiveLoadType = request.getLoadType() != null ? request.getLoadType() : existing.getLoadType();
+            String effectiveEntryUrl = request.getEntryUrl() != null ? request.getEntryUrl() : existing.getEntryUrl();
+            String effectiveRoutePath = request.getRoutePath() != null ? request.getRoutePath() : existing.getRoutePath();
+            String effectiveAliasName = request.getAliasName() != null ? request.getAliasName() : existing.getAliasName();
+
+            if (effectiveLoadType == 2) {
+                if (!StringUtils.hasText(effectiveEntryUrl)
+                        || !StringUtils.hasText(effectiveRoutePath)
+                        || !StringUtils.hasText(effectiveAliasName)) {
+                    return ApiResponse.error("400", "微前端加载模式下 entryUrl/routePath/aliasName 三要素必填",
+                            "entryUrl/routePath/aliasName are required when loadType=2");
+                }
+            }
+
+            // 6. 构建主表更新实体（仅更新传入的字段）
+            AbilityEntity entity = new AbilityEntity();
+            entity.setId(id);
+            entity.setAbilityNameCn(request.getNameCn());
+            entity.setAbilityNameEn(request.getNameEn());
+            entity.setAbilityDescCn(request.getDescCn());
+            entity.setAbilityDescEn(request.getDescEn());
+            entity.setOrderNum(request.getOrderNum());
+            entity.setEntryUrl(request.getEntryUrl());
+            entity.setHidden(request.getHidden());
+            entity.setRoutePath(request.getRoutePath());
+            entity.setAliasName(request.getAliasName());
+            entity.setRequireRelease(request.getRequireRelease());
+            entity.setLoadType(request.getLoadType());
+
+            Date now = new Date();
+            entity.setLastUpdateBy("admin");
+            entity.setLastUpdateTime(now);
+
+            // 乐观锁：使用客户端传入的 lastUpdateTime 作为更新条件
+            Long clientLastUpdateTime = request.getLastUpdateTime() != null ? request.getLastUpdateTime().getTime() : null;
+            if (clientLastUpdateTime != null) {
+                entity.setLastUpdateTime(request.getLastUpdateTime());
+            }
+
+            // 7. 执行主表更新
+            int affected = abilityMapper.updateByPrimaryKeySelective(entity);
+
+            // 乐观锁冲突检测
+            if (clientLastUpdateTime != null && affected == 0) {
+                // 二次确认：如果 affected == 0 是因为没有字段要更新（部分更新全不传），这不是冲突
+                boolean hasUpdateFields = request.getNameCn() != null
+                        || request.getNameEn() != null
+                        || request.getDescCn() != null
+                        || request.getDescEn() != null
+                        || request.getOrderNum() != null
+                        || request.getEntryUrl() != null
+                        || request.getHidden() != null
+                        || request.getRoutePath() != null
+                        || request.getAliasName() != null
+                        || request.getRequireRelease() != null
+                        || request.getLoadType() != null;
+                if (hasUpdateFields) {
+                    return ApiResponse.error("409", "数据已被修改，请刷新后重试",
+                            "Data has been modified, please refresh and try again");
+                }
+            }
+
+            // 8. 更新属性表 — 图标（若传入新值）
+            if (request.getIconBatchId() != null) {
+                upsertProperty(id, AbilityPropertyEnum.ICON.getPropertyName(),
+                        request.getIconBatchId(), now);
+            }
+
+            // 9. 更新属性表 — 示意图（若传入新值）
+            if (request.getDiagramBatchId() != null) {
+                upsertProperty(id, AbilityPropertyEnum.EXAMPLE_DIAGRAM.getPropertyName(),
+                        request.getDiagramBatchId(), now);
+            }
+
+            log.info("Ability updated successfully: id={}", id);
+
+            return ApiResponse.success();
+        } catch (Exception e) {
+            log.error("Failed to update ability, id={}", id, e);
+            return ApiResponse.error("500", "更新能力失败", "Failed to update ability");
+        }
+    }
+
+    /**
+     * 更新或插入属性记录
+     *
+     * <p>如果指定属性已存在则更新，不存在则插入。</p>
+     *
+     * @param parentId     能力ID
+     * @param propertyName 属性名
+     * @param propertyValue 属性值
+     * @param now          当前时间
+     */
+    private void upsertProperty(Long parentId, String propertyName, String propertyValue, Date now) {
+        AbilityProperty existingProp = abilityPropertyMapper.selectByParentIdAndPropertyName(parentId, propertyName);
+        if (existingProp != null) {
+            // 更新已有属性
+            AbilityProperty updateProp = new AbilityProperty();
+            updateProp.setId(existingProp.getId());
+            updateProp.setPropertyValue(propertyValue);
+            updateProp.setLastUpdateBy("admin");
+            updateProp.setLastUpdateTime(now);
+            abilityPropertyMapper.updateByPrimaryKeySelective(updateProp);
+        } else {
+            // 插入新属性
+            AbilityProperty newProp = new AbilityProperty();
+            newProp.setId(idGenerator.nextId());
+            newProp.setParentId(parentId);
+            newProp.setPropertyName(propertyName);
+            newProp.setPropertyValue(propertyValue);
+            newProp.setStatus(1);
+            newProp.setCreateBy("admin");
+            newProp.setCreateTime(now);
+            newProp.setLastUpdateBy("admin");
+            newProp.setLastUpdateTime(now);
+            abilityPropertyMapper.insert(newProp);
         }
     }
 
