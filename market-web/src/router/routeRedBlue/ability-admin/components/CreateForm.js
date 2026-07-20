@@ -15,6 +15,36 @@ import less from '../index.module.less';
 
 const { TextArea } = Input;
 
+/**
+ * 将图片文件缩放至指定尺寸
+ * @param {File} file - 原始图片文件
+ * @param {number} width - 目标宽度
+ * @param {number} height - 目标高度
+ * @returns {Promise<File>} 缩放后的文件
+ */
+const resizeImage = (file, width, height) => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          reject(new Error('Canvas toBlob failed'));
+          return;
+        }
+        const resizedFile = new File([blob], file.name, { type: file.type });
+        resolve(resizedFile);
+      }, file.type);
+    };
+    img.onerror = () => reject(new Error('Image load failed'));
+    img.src = URL.createObjectURL(file);
+  });
+};
+
 /** 图片格式校验 */
 const ACCEPTED_ICON_TYPES = ['image/png', 'image/jpeg', 'image/svg+xml'];
 const ACCEPTED_DIAGRAM_TYPES = ['image/png', 'image/jpeg'];
@@ -94,7 +124,9 @@ const CreateForm = ({ open, onClose, onSuccess }) => {
     const { file, onSuccess: uploadSuccess, onError } = options;
     setIconUploading(true);
     try {
-      const result = await uploadFile(file, 1);
+      // 缩放至 40×40PX 以满足后端要求
+      const resized = await resizeImage(file, 40, 40);
+      const result = await uploadFile(resized, 1);
       if (result && result.code === '200') {
         iconBatchIdRef.current = result.data?.batchId || result.batchId;
         setIconPreview(result.data?.showUrl || result.showUrl);
