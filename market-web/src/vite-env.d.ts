@@ -7,3 +7,10 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+// antd locale type declaration
+declare module 'antd/es/locale/zh_CN' {
+  import type { Locale } from 'antd/es/locale';
+  const locale: Locale;
+  export default locale;
+}
