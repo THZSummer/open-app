@@ -200,3 +200,187 @@ class TestAbilityAdminCreatePage:
             if not any(p in err for p in known_patterns):
                 real_errors.append(err)
         assert len(real_errors) == 0, f"页面存在未预期的 console error: {real_errors}"
+
+    # ══════════════════════════════════════════════════════
+    # L2: 补充创建表单场景
+    # ══════════════════════════════════════════════════════
+
+    @staticmethod
+    def _make_test_png(width, height):
+        """生成测试用 PNG 图片字节"""
+        import struct, zlib
+        raw = b''
+        for _ in range(height):
+            raw += b'\x00'
+            for _ in range(width):
+                raw += struct.pack('BBB', 255, 0, 0)
+        def chunk(ctype, data):
+            c = ctype + data
+            return struct.pack('>I', len(data)) + c + struct.pack('>I', zlib.crc32(c) & 0xffffffff)
+        ihdr = struct.pack('>IIBBBBB', width, height, 8, 2, 0, 0, 0)
+        return b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', ihdr) + chunk(b'IDAT', zlib.compress(raw)) + chunk(b'IEND', b'')
+
+    @staticmethod
+    def _upload_icon(page, png_path):
+        """通过 ImgCrop 流程上传图标"""
+        icon_item = page.locator(".ant-form-item").filter(has_text="能力图标")
+        with page.expect_file_chooser() as fc_info:
+            icon_item.locator(".ant-upload-select").click()
+        fc_info.value.set_files(png_path)
+        crop_modal = page.locator(".ant-modal").filter(has_text="裁剪图标")
+        crop_modal.locator("button", has_text=re.compile(r"确\s*认")).wait_for(timeout=5000)
+        crop_modal.locator("button", has_text=re.compile(r"确\s*认")).click()
+
+    @staticmethod
+    def _fill_required_fields(page, **overrides):
+        """填写表单所有必填字段（图标除外）"""
+        fields = {
+            "能力标题": "测试能力",
+            "英文名": "test-ability",
+            "能力描述": "这是一个测试能力描述",
+            "英文描述": "This is a test ability description",
+            "排序号": "1",
+            "访问地址": "https://example.com",
+            "路由路径": "/test",
+        }
+        fields.update(overrides)
+        for label, value in fields.items():
+            inp = _get_field(page, label).first
+            inp.fill(value)
+        # 能力类型编码（InputNumber，必须单独处理）
+        type_input = page.locator(".ant-form-item").filter(has_text="能力类型编码").locator("input").first
+        type_input.fill("1")
+
+    def test_icon_size_resize(self, page: Page, tmp_path):
+        """上传非 40×40 图片，验证前端 resize 到 40×40 后上传成功"""
+        png = self._make_test_png(100, 100)
+        png_path = tmp_path / "icon_100x100.png"
+        png_path.write_bytes(png)
+        page.route("**/file/upload", lambda route: route.fulfill(
+            status=200, content_type="application/json",
+            body='{"code":"200","data":{"batchId":"batch-001","showUrl":"/ability-files/test.png"}}'
+        ))
+        _open_create_modal(page)
+        self._upload_icon(page, str(png_path))
+        preview = page.locator('img[alt="图标预览"]')
+        expect(preview).to_be_visible(timeout=8000)
+
+    def test_complete_submit_flow(self, page: Page, tmp_path):
+        """完整提交流程：填字段→上传图标→提交→列表刷新→新数据显示"""
+        png = self._make_test_png(40, 40)
+        png_path = tmp_path / "icon_40x40.png"
+        png_path.write_bytes(png)
+        # mock 上传
+        page.route(re.compile(r"/file/upload"), lambda route: route.fulfill(
+            status=200, content_type="application/json",
+            body='{"code":"200","data":{"batchId":"batch-002","showUrl":"/ability-files/test.png"}}'
+        ))
+        # mock 创建（仅拦截 POST /ability/admin 精确路径）
+        page.route(re.compile(r"/ability/admin$"), lambda route: route.fulfill(
+            status=200, content_type="application/json",
+            body='{"code":"200","messageZh":"能力添加成功"}'
+        ) if route.request.method == "POST" else route.continue_())
+        # mock 列表刷新
+        page.route(re.compile(r"/ability/admin/list"), lambda route: route.fulfill(
+            status=200, content_type="application/json",
+            body='{"code":"200","data":[{"nameCn":"测试能力","nameEn":"test-ability"}],"page":{"total":1}}'
+        ))
+        _open_create_modal(page)
+        self._fill_required_fields(page)
+        self._upload_icon(page, str(png_path))
+        page.wait_for_timeout(500)
+        save_btn = page.locator(".ant-modal-footer .ant-btn-primary").first
+        save_btn.click()
+        # 验证成功提示出现后再检查弹窗
+        msg = page.locator(".ant-message-notice").filter(has_text="能力添加成功")
+        expect(msg).to_be_visible(timeout=15000)
+        # 弹窗应关闭
+        expect(page.locator(".ant-modal-title").filter(has_text="添加能力")).not_to_be_visible(timeout=5000)
+
+    def test_icon_required_on_submit(self, page: Page):
+        """不传图标直接提交，验证提示「图标为必填项」"""
+        _open_create_modal(page)
+        self._fill_required_fields(page)
+        save_btn = page.locator(".ant-modal-footer .ant-btn-primary").first
+        save_btn.click()
+        err = page.locator(".ant-form-item").filter(has_text="能力图标").locator(".ant-form-item-explain-error")
+        expect(err).to_be_visible(timeout=5000)
+
+    def test_chinese_title_min_length(self, page: Page):
+        """中文名输入 1 字符提交，验证提示至少 2 字符"""
+        _open_create_modal(page)
+        title_input = _get_field(page, "能力标题").first
+        title_input.fill("能")
+        save_btn = page.locator(".ant-modal-footer .ant-btn-primary").first
+        save_btn.click()
+        err = page.locator(".ant-form-item").filter(has_text="能力标题").locator(".ant-form-item-explain-error")
+        expect(err).to_be_visible()
+        expect(err).to_contain_text("至少")
+
+    def test_chinese_desc_min_length(self, page: Page):
+        """中文描述输入 4 字符提交，验证提示至少 5 字符"""
+        _open_create_modal(page)
+        desc_input = page.locator(".ant-form-item").filter(has_text="能力描述").locator("textarea").first
+        desc_input.fill("测试描述")
+        save_btn = page.locator(".ant-modal-footer .ant-btn-primary").first
+        save_btn.click()
+        err = page.locator(".ant-form-item").filter(has_text="能力描述").locator(".ant-form-item-explain-error")
+        expect(err).to_be_visible()
+
+    def test_entry_url_invalid_format(self, page: Page):
+        """访问地址不合法，验证提示须以 http/https 开头"""
+        _open_create_modal(page)
+        url_input = _get_field(page, "访问地址").first
+        url_input.fill("ftp://bad.com")
+        save_btn = page.locator(".ant-modal-footer .ant-btn-primary").first
+        save_btn.click()
+        err = page.locator(".ant-form-item").filter(has_text="访问地址").locator(".ant-form-item-explain-error")
+        expect(err).to_be_visible()
+
+    def test_route_path_no_slash(self, page: Page):
+        """路由路径不以 / 开头，验证提示须以 / 开头"""
+        _open_create_modal(page)
+        path_input = _get_field(page, "路由路径").first
+        path_input.fill("no-slash")
+        save_btn = page.locator(".ant-modal-footer .ant-btn-primary").first
+        save_btn.click()
+        err = page.locator(".ant-form-item").filter(has_text="路由路径").locator(".ant-form-item-explain-error")
+        expect(err).to_be_visible()
+
+    def test_order_num_min_value(self, page: Page):
+        """排序号输入 0，验证提示 ≥ 1"""
+        _open_create_modal(page)
+        self._fill_required_fields(page)
+        order_input = page.locator(".ant-form-item").filter(has_text="排序号").locator("input").first
+        order_input.click()
+        order_input.fill("0")
+        page.keyboard.press("Tab")
+        save_btn = page.locator(".ant-modal-footer .ant-btn-primary").first
+        save_btn.click()
+        err = page.locator(".ant-form-item").filter(has_text="排序号").locator(".ant-form-item-explain-error")
+        expect(err).to_be_visible(timeout=5000)
+        expect(err).to_contain_text("≥")
+
+    def test_english_name_empty_submit(self, page: Page):
+        """不填英文名直接提交，验证提示"""
+        page.route("**/ability/admin", lambda route: route.fulfill(
+            status=200, content_type="application/json",
+            body='{"code":"200"}'
+        ) if route.request.method == "POST" else route.continue_())
+        _open_create_modal(page)
+        self._fill_required_fields(page, 英文名="")
+        save_btn = page.locator(".ant-modal-footer .ant-btn-primary").first
+        save_btn.click()
+        err = page.locator(".ant-form-item").filter(has_text="英文名").locator(".ant-form-item-explain-error")
+        expect(err).to_be_visible()
+
+    def test_cancel_keeps_list_data(self, page: Page):
+        """打开弹窗点取消，验证弹窗关闭且列表数据不变"""
+        rows_before = page.locator(".ant-table-row").count()
+        _open_create_modal(page)
+        cancel_btn = page.get_by_role("button", name=re.compile(r"取\s*消"))
+        cancel_btn.click()
+        expect(page.locator(".ant-modal")).not_to_be_visible()
+        page.wait_for_timeout(500)
+        rows_after = page.locator(".ant-table-row").count()
+        assert rows_after == rows_before, f"取消后列表行数变化：{rows_before} → {rows_after}"

@@ -401,7 +401,6 @@ const CreateForm = ({ open, onClose, onSuccess }) => {
             className={less.formItemFlex}
           >
             <InputNumber
-              min={1}
               precision={0}
               style={{ width: '100%' }}
               placeholder="正整数，越小越靠前"
