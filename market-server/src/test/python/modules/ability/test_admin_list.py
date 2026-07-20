@@ -148,7 +148,7 @@ class TestAbilityAdminListL2:
     def test_sort_name_cn_asc(self, api):
         """L2-6: 排序 — 按 nameCn 升序"""
         resp = api("GET", "/service/open/v2/ability/admin/list",
-                    params={"sortField": "nameCn", "sortOrder": "asc", "pageSize": 50})
+                    params={"sortField": "abilityNameCn", "sortOrder": "asc", "pageSize": 50})
         assert resp is not None
         assert resp["code"] == "200"
         data = resp["data"]

@@ -22,4 +22,4 @@ def browser_context_args():
 @pytest.fixture(scope="function")
 def ability_admin_url(base_url: str) -> str:
     """能力管理页面地址"""
-    return f"{base_url}/#/ability-admin"
+    return f"{base_url}/ability-admin"
