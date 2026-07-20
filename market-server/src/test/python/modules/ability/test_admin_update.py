@@ -169,8 +169,7 @@ class TestAbilityAdminUpdateL2:
                 "entryUrl": "https://example.com",
                 # 缺少 routePath 和 aliasName
             }
-            resp = update_ability(ability_id, body)
-            assert resp["code"] == "400"
+            resp = update_ability(ability_id, body, "400")
             assert "三要素必填" in resp["messageZh"]
         finally:
             cleanup_ability(ability_type)
@@ -184,8 +183,7 @@ class TestAbilityAdminUpdateL2:
             body = {
                 "entryUrl": "ftp://invalid-protocol.com",
             }
-            resp = update_ability(ability_id, body)
-            assert resp["code"] == "400"
+            resp = update_ability(ability_id, body, "400")
             assert "访问地址格式不正确" in resp["messageZh"]
         finally:
             cleanup_ability(ability_type)
@@ -246,8 +244,6 @@ class TestAbilityAdminUpdateL4:
             body = {
                 "nameCn": "超长中文名测试" * 8,  # 56 chars
             }
-            resp = update_ability(ability_id, body)
-            assert resp is not None
-            assert resp["code"] == "400"
+            resp = update_ability(ability_id, body, "400")
         finally:
             cleanup_ability(ability_type)
