@@ -9,8 +9,10 @@ from .helpers import (
     get_rows,
     make_test_png,
     delete_ability,
+    delete_ability_via_api,
     create_ability,
     upload_icon,
+    get_next_ability_type,
 )
 
 
@@ -86,7 +88,7 @@ class TestAbilityAdminCreatePage:
         for label, value in fields.items():
             _get_field(page, label).first.fill(value)
         type_input = page.locator(".ant-form-item").filter(has_text="能力类型编码").locator("input").first
-        type_input.fill("201")
+        at = str(get_next_ability_type()); type_input.fill(at)
         png_path = tmp_path / "icon_40x40.png"
         png_path.write_bytes(make_test_png(40, 40))
         icon_item = page.locator(".ant-form-item").filter(has_text="能力图标")
@@ -102,7 +104,7 @@ class TestAbilityAdminCreatePage:
         msg = page.locator(".ant-message-notice").filter(has_text="能力添加成功")
         expect(msg).to_be_visible(timeout=15000)
         expect(page.locator(".ant-modal-title").filter(has_text="添加能力")).not_to_be_visible(timeout=5000)
-        delete_ability(201)
+        delete_ability_via_api(int(at))
 
     def test_icon_required(self, page: Page):
         _open_create_modal(page)
@@ -118,7 +120,7 @@ class TestAbilityAdminCreatePage:
         for label, value in fields.items():
             _get_field(page, label).first.fill(value)
         type_input = page.locator(".ant-form-item").filter(has_text="能力类型编码").locator("input").first
-        type_input.fill("203")
+        at2 = str(get_next_ability_type()); type_input.fill(at2)
         save_btn = page.locator(".ant-modal-footer .ant-btn-primary").first
         save_btn.click()
         err = page.locator(".ant-form-item").filter(has_text="能力图标").locator(".ant-form-item-explain-error")
@@ -135,7 +137,7 @@ class TestAbilityAdminCreatePage:
         assert rows_after == rows_before, f"取消后列表行数变化：{rows_before} → {rows_after}"
 
     def test_create_duplicate_ability_type(self, page: Page, tmp_path):
-        dup_at = 208
+        dup_at = get_next_ability_type()
         delete_ability(dup_at)
         result = create_ability(dup_at, nameCn="E2E重复测试", nameEn="e2e-duplicate", iconBatchId=upload_icon()[0])
         assert result.get("code") == "200", f"前置创建失败: {result}"
