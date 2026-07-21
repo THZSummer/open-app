@@ -276,7 +276,7 @@ public class FlowInvokeService {
 
                     return executionMono.flatMap(result -> {
                         // ★ 执行成功 - 更新记录
-                        Integer finalStatus = "success".equals(result.getStatus()) ? 0 : 1;
+                        int finalStatus = ExecStatus.fromLabel(result.getStatus()).code;
                         long totalMs = result.getTotalDurationMs();
                         Integer duration = totalMs > 0 ? (int) totalMs
                                 : (int) (System.currentTimeMillis() - invokeStartTime);
@@ -299,7 +299,7 @@ public class FlowInvokeService {
 
                     // ★ 执行失败 - 更新记录 (补耗时: 从触发到失败的时间差)
                     int errorDuration = (int) (System.currentTimeMillis() - invokeStartTime);
-                    return finalizeExecutionRecord(recordId, flowId, 1, errorDuration, errorCode, errorMsg, logEnabled)
+                    return finalizeExecutionRecord(recordId, flowId, ExecStatus.FAILED.code, errorDuration, errorCode, errorMsg, logEnabled)
                             .thenReturn(response);
                 }));
     }
@@ -309,6 +309,36 @@ public class FlowInvokeService {
      */
     private static class TriggerParseResult {
         String triggerNodeId;
+    }
+
+    /**
+     * 执行状态枚举: 统一管理字符串标签与数字码的映射
+     */
+    enum ExecStatus {
+        SUCCESS("success", 0),
+        FAILED("failed", 1),
+        TIMEOUT("timeout", 2);
+
+        final String label;
+        final int code;
+
+        ExecStatus(String label, int code) {
+            this.label = label;
+            this.code = code;
+        }
+
+        static ExecStatus fromLabel(String label) {
+            if (label == null) return FAILED;
+            return switch (label) {
+                case "success" -> SUCCESS;
+                case "timeout" -> TIMEOUT;
+                default -> FAILED;
+            };
+        }
+
+        boolean isTerminal() {
+            return this == FAILED || this == TIMEOUT;
+        }
     }
 
     /**
@@ -478,7 +508,7 @@ public class FlowInvokeService {
             step.setDurationMs(nodeCtx.getDurationMs());
             step.setErrorInfo(nodeCtx.getErrorInfo());
 
-            if ("failed".equals(nodeCtx.getStatus()) || "timeout".equals(nodeCtx.getStatus())) {
+            if (ExecStatus.fromLabel(nodeCtx.getStatus()).isTerminal()) {
                 anyFailed = true;
                 if (result.getErrorInfo() == null && nodeCtx.getErrorInfo() != null
                         && !nodeCtx.getErrorInfo().isEmpty()) {
@@ -546,7 +576,7 @@ public class FlowInvokeService {
                 sl.nodeId = nodeCtx.getNodeId();
                 sl.nodeType = mapNodeType(nodeCtx.getNodeType());
                 sl.nodeName = nodeCtx.getNodeId();
-                sl.status = "success".equals(nodeCtx.getStatus()) ? 0 : 1;
+                sl.status = ExecStatus.fromLabel(nodeCtx.getStatus()).code;
                 sl.input = nodeCtx.getInput();
                 sl.output = nodeCtx.getOutput();
                 sl.error = nodeCtx.getErrorInfo() != null ? String.valueOf(nodeCtx.getErrorInfo()) : null;
@@ -595,8 +625,9 @@ public class FlowInvokeService {
         Map<String, Object> resultData = result.getResultData();
         Map<String, String> userHeaders = extractUserHeaders(resultData);
         Object responseBody = extractResponseBody(resultData);
-        int execStatus = determineExecStatus(result.getStatus());
-        Object effectiveBody = execStatus == 0 ? responseBody : null;
+        ExecStatus st = ExecStatus.fromLabel(result.getStatus());
+        int execStatus = st.code;
+        Object effectiveBody = st == ExecStatus.SUCCESS ? responseBody : null;
 
         TransparentFlowResponse r = TransparentFlowResponse.success(
                 flowId, result.getExecutionId(), execStatus, result.getTotalDurationMs(),
@@ -649,19 +680,6 @@ public class FlowInvokeService {
     }
 
     /**
-     * 将执行状态字符串映射为 HTTP 状态码：0=success, 2=timeout, 1=other failure
-     */
-    private int determineExecStatus(String status) {
-        if ("success".equals(status)) {
-            return 0;
-        }
-        if ("timeout".equals(status)) {
-            return 2;
-        }
-        return 1;
-    }
-
-    /**
      * 执行失败/超时时通过 X- 头传递错误信息
      */
     private void populateErrorHeaders(TransparentFlowResponse r, Map<String, Object> errorInfo) {
@@ -687,7 +705,7 @@ public class FlowInvokeService {
             return;
         }
         for (ExecutionResult.StepDetail step : steps) {
-            if ("failed".equals(step.getStatus()) || "timeout".equals(step.getStatus())) {
+            if (ExecStatus.fromLabel(step.getStatus()).isTerminal()) {
                 r.getPlatformHeaders().put("X-Error-Node", step.getNodeId());
                 r.getPlatformHeaders().put("X-Error-Node-Type", step.getNodeType());
                 break;
