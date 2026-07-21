@@ -1857,7 +1857,7 @@ git push -u origin feature/embedding-platform-02-db
 | `embed-platform-NNN-v1` | 子Feature 验证通过、准备合入 | Feature 分支 HEAD | "可以合了" |
 | `embed-platform-NNN-merged` | 合入 main 完成后 | main 上的 merge commit | "已合入主干" |
 
-每次重新验证递增版本号（v1, v2...）。标签不重复列举 10 个——命名固定为 `embed-platform-{001..010}-v1` 和 `embed-platform-{001..010}-merged`。标签用于差异获取和回滚定位。
+每次重新验证递增版本号（v1, v2...）。标签不重复列举 10 个——命名固定为 `embed-platform-{001..011}-v1` 和 `embed-platform-{001..011}-merged`。标签用于差异获取和回滚定位。
 
 ### 11.4 差异获取
 
