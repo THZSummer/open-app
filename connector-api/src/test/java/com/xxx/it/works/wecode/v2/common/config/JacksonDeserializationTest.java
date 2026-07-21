@@ -59,7 +59,7 @@ class JacksonDeserializationTest {
                     "status": "failed",
                     "durationMs": 5000,
                     "errorInfo": {
-                        "code": "6001",
+                        "code": "60000",
                         "messageZh": "连接超时",
                         "messageEn": "Connection timeout",
                         "cause": "Read timed out"
@@ -69,7 +69,7 @@ class JacksonDeserializationTest {
 
         Map<String, Object> parsed = mapper.readValue(json, Map.class);
         Map<String, Object> errorInfo = (Map<String, Object>) parsed.get("errorInfo");
-        assertEquals("6001", errorInfo.get("code"));
+        assertEquals("60000", errorInfo.get("code"));
         assertEquals("连接超时", errorInfo.get("messageZh"));
         assertTrue(errorInfo.containsKey("cause"));
     }

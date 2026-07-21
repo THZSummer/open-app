@@ -347,8 +347,8 @@ def verify_flow_response(resp, test_label):
         # 下游不可达时 flow 标记 failed，但 auth config 解析不应报错
         ei = body.get("errorInfo", {})
         code = ei.get("code", "")
-        check(f"[{test_label}] 失败非 authConfig 解析错误 (code != 6002)",
-              code != "6002",
+        check(f"[{test_label}] 失败非 authConfig 解析错误 (code != 60002)",
+              code != "60002",
               f"errorInfo.code={code}, cause={ei.get('cause', '')}")
     else:
         check(f"[{test_label}] 流程执行成功 (status={status_val})",

@@ -23,7 +23,7 @@ import java.util.Map;
  * <p>
  * v5.5: 错误信息使用结构化 {@code errorInfo} Map 格式:
  * <ul>
- *   <li>{@code code}: 数字字符串 (如 "6001")</li>
+ *   <li>{@code code}: 数字字符串 (如 "60000")</li>
  *   <li>{@code messageZh}/{@code messageEn}: 替代旧 {@code message}</li>
  *   <li>内部错误 (6xxxx): 额外 {@code cause} 字段 (异常消息)</li>
  *   <li>下游错误 (4xx/5xx): 额外 {@code downstreamStatus} (int) + {@code downstreamBody} (String, 截断至 512 字符)</li>
@@ -43,7 +43,7 @@ public class DefaultErrorHandler {
     /**
      * 构建内部错误 errorInfo (code 6xxxx, 携带 cause)
      *
-     * @param code      数字错误码字符串 (如 "6001")
+     * @param code      数字错误码字符串 (如 "60000")
      * @param messageZh 中文错误消息
      * @param messageEn 英文错误消息
      * @param cause     异常原因消息

@@ -236,7 +236,7 @@ class FlowRuntimeEngineTest {
                     nc.setNodeType("connector");
                     nc.setStatus("failed");
                     nc.setDurationMs(5000);
-                    nc.setErrorInfo(Map.of("code", "6001", "messageZh", "下游服务返回 500"));
+                    nc.setErrorInfo(Map.of("code", "60000", "messageZh", "下游服务返回 500"));
                     c.setNodeContext(nc);
                     return Mono.just(c);
                 });
@@ -276,7 +276,7 @@ class FlowRuntimeEngineTest {
                     nc.setNodeType("connector");
                     nc.setStatus("timeout");
                     nc.setDurationMs(30000);
-                    nc.setErrorInfo(Map.of("code", "6002", "messageZh", "节点执行超时"));
+                    nc.setErrorInfo(Map.of("code", "60002", "messageZh", "节点执行超时"));
                     c.setNodeContext(nc);
                     return Mono.just(c);
                 });

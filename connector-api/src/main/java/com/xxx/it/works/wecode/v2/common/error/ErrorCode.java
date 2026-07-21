@@ -29,10 +29,9 @@ public final class ErrorCode {
     public static final String ORCH_EDGE_MISSING = "61004";
 
     // ===== 编排运行时通用 (60xxx) =====
-    public static final String ORCH_EXECUTION_FAILED = "6001";
+    public static final String ORCH_EXECUTION_FAILED = "60000";
     public static final String ORCH_NODE_EXECUTION_FAILED = "60001";
-    public static final String ORCH_NODE_TIMEOUT_OR_ERROR = "6002";
-    public static final String ORCH_NODE_TIMEOUT = "64000";
+    public static final String ORCH_NODE_TIMEOUT_OR_ERROR = "60002";
 
     // ===== 触发器节点 (610xx) =====
     public static final String TRIGGER_TYPE_MISSING = "61010";
@@ -68,6 +67,9 @@ public final class ErrorCode {
     public static final String SCRIPT_STATEMENT_LIMIT = "63003";
     public static final String SCRIPT_RETURN_NOT_OBJECT = "63004";
     public static final String SCRIPT_FIELD_NOT_FOUND = "63005";
+
+    // ===== 超时 (64xxx) =====
+    public static final String ORCH_NODE_TIMEOUT = "64000";
 
     // ===== 并行节点 — 配置 (6104x) =====
     public static final String PARALLEL_TOO_FEW_BRANCHES = "61040";
@@ -120,6 +122,15 @@ public final class ErrorCode {
         PARALLEL_TOO_FEW_BRANCHES, PARALLEL_TOO_MANY_BRANCHES, PARALLEL_BRANCH_EMPTY,
         PARALLEL_BRANCH_FAILED, PARALLEL_BRANCH_TIMEOUT, PARALLEL_ALL_FAILED,
         EXIT_FIELD_MISSING, EXIT_MAPPING_FORMAT_ERROR, EXIT_SERIALIZE_FAILED, EXIT_HEADER_FAILED,
+        PRECHECK_VERSION_NOT_FOUND, PRECHECK_FLOW_NOT_FOUND,
+        PRECHECK_CONNECTOR_NOT_FOUND, PRECHECK_CONNECTOR_VERSION_NOT_FOUND,
+        PRECHECK_FLOW_NOT_RUNNING,
+        PRECHECK_VERSION_INVALIDATED, PRECHECK_VERSION_STATUS_NOT_DEBUGGABLE,
+        PRECHECK_ORCHESTRATION_EMPTY,
+        PRECHECK_DEPLOYED_VERSION_UNAVAILABLE,
+        PRECHECK_CONNECTOR_VERSION_INVALIDATED, PRECHECK_CONNECTOR_INVALIDATED,
+        PRECHECK_AUTH_FAILED, PRECHECK_AUTH_EXPIRED,
+        PRECHECK_BAD_REQUEST, PRECHECK_URL_WHITELIST_DENIED,
         PRECHECK_INTERNAL_ERROR
     );
 
