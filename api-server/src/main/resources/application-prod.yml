@@ -44,3 +44,14 @@ logging:
   level:
     root: INFO
     com.xxx.api: INFO
+
+# --- 生产环境：正式凭证校验 + Real 实现 ---
+internal:
+  auth:
+    tokens:
+      - ${INTERNAL_TOKEN_PLACEHOLDER:change-me-in-production}
+    bypass: false
+
+user-role:
+  service:
+    impl: real

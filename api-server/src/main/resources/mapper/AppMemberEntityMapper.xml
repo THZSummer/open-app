@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xxx.api.internal.mapper.AppMemberEntityMapper">
+
+    <resultMap id="BaseResultMap" type="com.xxx.api.internal.entity.AppMemberEntity">
+        <id column="id" property="id"/>
+        <result column="tenant_id" property="tenantId"/>
+        <result column="app_id" property="appId"/>
+        <result column="member_name_cn" property="memberNameCn"/>
+        <result column="member_name_en" property="memberNameEn"/>
+        <result column="account_id" property="accountId"/>
+        <result column="member_type" property="memberType"/>
+        <result column="status" property="status"/>
+        <result column="create_by" property="createBy"/>
+        <result column="create_time" property="createTime"/>
+        <result column="last_update_by" property="lastUpdateBy"/>
+        <result column="last_update_time" property="lastUpdateTime"/>
+    </resultMap>
+
+    <select id="selectByAppIdAndAccountId" resultMap="BaseResultMap">
+        SELECT id, tenant_id, app_id, member_name_cn, member_name_en,
+               account_id, member_type, status,
+               create_by, create_time, last_update_by, last_update_time
+        FROM openplatform_app_member_t
+        WHERE app_id = #{appId}
+          AND account_id = #{accountId}
+          AND status = 1
+    </select>
+
+</mapper>

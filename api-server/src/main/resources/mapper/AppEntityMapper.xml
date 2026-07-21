@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xxx.api.internal.mapper.AppEntityMapper">
+
+    <resultMap id="BaseResultMap" type="com.xxx.api.internal.entity.AppEntity">
+        <id column="id" property="id"/>
+        <result column="app_id" property="appId"/>
+        <result column="tenant_id" property="tenantId"/>
+        <result column="icon_id" property="iconId"/>
+        <result column="app_name_cn" property="appNameCn"/>
+        <result column="app_name_en" property="appNameEn"/>
+        <result column="app_desc_cn" property="appDescCn"/>
+        <result column="app_desc_en" property="appDescEn"/>
+        <result column="app_type" property="appType"/>
+        <result column="app_sub_type" property="appSubType"/>
+        <result column="status" property="status"/>
+        <result column="create_by" property="createBy"/>
+        <result column="create_time" property="createTime"/>
+        <result column="last_update_by" property="lastUpdateBy"/>
+        <result column="last_update_time" property="lastUpdateTime"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, app_id, tenant_id, icon_id, app_name_cn, app_name_en,
+        app_desc_cn, app_desc_en, app_type, app_sub_type, status,
+        create_by, create_time, last_update_by, last_update_time
+    </sql>
+
+    <select id="selectByAppId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_app_t
+        WHERE app_id = #{appId}
+        LIMIT 1
+    </select>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_app_t
+        WHERE id = #{id}
+    </select>
+
+</mapper>
