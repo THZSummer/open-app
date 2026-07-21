@@ -173,6 +173,20 @@
   align-items: flex-start;
 }
 
+// 示意图上传区域（覆盖 picture-card 默认 104×104 以容纳 130×72 预览）
+.diagramUploadWrapper {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+
+  :global {
+    .ant-upload.ant-upload-select-picture-card {
+      width: 148px;
+      height: 90px;
+    }
+  }
+}
+
 // 上传占位区
 .uploadPlaceholder {
   display: flex;
