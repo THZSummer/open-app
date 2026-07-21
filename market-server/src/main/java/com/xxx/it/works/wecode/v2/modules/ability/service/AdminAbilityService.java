@@ -52,11 +52,11 @@ public interface AdminAbilityService {
      * 若传入 iconBatchId/diagramBatchId，更新属性表。
      * 乐观锁基于 lastUpdateTime，冲突时返回 409。</p>
      *
-     * @param id      能力记录 ID
+     * @param abilityType 能力类型编码
      * @param request 更新请求（所有字段可选）
      * @return 标准响应，成功时 code=200，messageZh="更新成功"
      */
-    ApiResponse<Void> update(Long id, AdminAbilityUpdateRequest request);
+    ApiResponse<Void> update(Integer abilityType, AdminAbilityUpdateRequest request);
 
     /**
      * 删除能力

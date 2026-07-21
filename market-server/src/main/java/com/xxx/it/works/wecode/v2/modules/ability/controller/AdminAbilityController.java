@@ -53,10 +53,10 @@ public class AdminAbilityController {
     @AuthRole
     @Operation(summary = "编辑能力", description = "部分更新能力记录，仅更新传入字段，abilityType 不可修改。" +
             "loadType=2 时校验三要素必填，乐观锁基于 lastUpdateTime")
-    @PutMapping("/{id}")
-    public ApiResponse<Void> update(@PathVariable Long id,
+    @PutMapping("/{abilityType}")
+    public ApiResponse<Void> update(@PathVariable Integer abilityType,
                                     @Valid @RequestBody AdminAbilityUpdateRequest request) {
-        return adminAbilityService.update(id, request);
+        return adminAbilityService.update(abilityType, request);
     }
 
     @AuthRole

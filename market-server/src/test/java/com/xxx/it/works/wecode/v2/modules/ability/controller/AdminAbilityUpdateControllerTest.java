@@ -14,7 +14,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -52,7 +53,7 @@ class AdminAbilityUpdateControllerTest {
     @Test
     @DisplayName("PUT /ability/admin/{id} - 正常更新应返回 200")
     void testUpdate_Success() throws Exception {
-        when(adminAbilityService.update(anyLong(), any())).thenReturn(ApiResponse.success());
+        when(adminAbilityService.update(anyInt(), any())).thenReturn(ApiResponse.success());
 
         String body = """
                 {
@@ -153,7 +154,7 @@ class AdminAbilityUpdateControllerTest {
     @Test
     @DisplayName("PUT /ability/admin/{id} - id 不存在返回 404")
     void testUpdate_NotFound() throws Exception {
-        when(adminAbilityService.update(anyLong(), any()))
+        when(adminAbilityService.update(anyInt(), any()))
                 .thenReturn(ApiResponse.error("404", "能力记录不存在", "Ability record not found"));
 
         String body = """
@@ -173,7 +174,7 @@ class AdminAbilityUpdateControllerTest {
     @Test
     @DisplayName("PUT /ability/admin/{id} - 乐观锁冲突返回 409")
     void testUpdate_OptimisticLockConflict() throws Exception {
-        when(adminAbilityService.update(anyLong(), any()))
+        when(adminAbilityService.update(anyInt(), any()))
                 .thenReturn(ApiResponse.error("409", "数据已被修改，请刷新后重试",
                         "Data has been modified, please refresh and try again"));
 
@@ -195,7 +196,7 @@ class AdminAbilityUpdateControllerTest {
     @Test
     @DisplayName("PUT /ability/admin/{id} - 空请求体可接受（无字段更新）")
     void testUpdate_EmptyBody() throws Exception {
-        when(adminAbilityService.update(anyLong(), any())).thenReturn(ApiResponse.success());
+        when(adminAbilityService.update(anyInt(), any())).thenReturn(ApiResponse.success());
 
         mockMvc.perform(put("/service/open/v2/ability/admin/1")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -207,7 +208,7 @@ class AdminAbilityUpdateControllerTest {
     @Test
     @DisplayName("PUT /ability/admin/{id} - loadType=2 缺少三要素时应触发业务校验")
     void testUpdate_LoadType2MissingFields_ServiceLevel() throws Exception {
-        when(adminAbilityService.update(anyLong(), any()))
+        when(adminAbilityService.update(anyInt(), any()))
                 .thenReturn(ApiResponse.error("400",
                         "微前端加载模式下 entryUrl/routePath/aliasName 三要素必填",
                         "entryUrl/routePath/aliasName are required when loadType=2"));
