@@ -201,6 +201,7 @@ public class AdminAbilityServiceImpl implements AdminAbilityService {
             Map<String, Object> resultData = new HashMap<>();
             resultData.put("abilityType", request.getAbilityType());
             resultData.put("nameCn", request.getNameCn());
+            resultData.put("id", String.valueOf(abilityId));
             resultData.put("createTime", now);
 
             log.info("Ability created successfully: type={}, nameCn={}, id={}",
@@ -329,28 +330,28 @@ public class AdminAbilityServiceImpl implements AdminAbilityService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public ApiResponse<Void> delete(Integer abilityType) {
+    public ApiResponse<Void> delete(Long id) {
         try {
             // 1. 检查能力是否存在
-            AbilityEntity existing = abilityMapper.selectByAbilityType(abilityType);
+            AbilityEntity existing = abilityMapper.selectByPrimaryKey(id);
             if (existing == null) {
                 return ApiResponse.error("404", "能力记录不存在", "Ability record not found");
             }
 
-            Long abilityId = existing.getId();
+            Integer abilityType = existing.getAbilityType();
 
             // 2. 删除属性表记录
-            abilityPropertyMapper.deleteByParentId(abilityId);
+            abilityPropertyMapper.deleteByParentId(id);
 
             // 3. 删除主表记录
             abilityMapper.deleteByAbilityType(abilityType);
 
             log.info("Ability deleted successfully: type={}, nameCn={}, id={}",
-                    abilityType, existing.getAbilityNameCn(), abilityId);
+                    abilityType, existing.getAbilityNameCn(), id);
 
             return ApiResponse.success();
         } catch (Exception e) {
-            log.error("Failed to delete ability, type={}", abilityType, e);
+            log.error("Failed to delete ability, id={}", id, e);
             return ApiResponse.error("500", "删除能力失败", "Failed to delete ability");
         }
     }
@@ -437,6 +438,7 @@ public class AdminAbilityServiceImpl implements AdminAbilityService {
             Long abilityId = entity.getId();
 
             AdminAbilityVO vo = AdminAbilityVO.builder()
+                    .id(abilityId)
                     .abilityType(entity.getAbilityType())
                     .nameCn(entity.getAbilityNameCn())
                     .nameEn(entity.getAbilityNameEn())

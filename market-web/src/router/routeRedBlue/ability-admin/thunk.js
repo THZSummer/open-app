@@ -88,13 +88,13 @@ export const createAbility = async (data) => {
 /**
  * 更新能力
  *
- * @param {Object} data - 能力数据（需包含 abilityType 作为路径参数）
+ * @param {Object} data - 能力数据（需包含 id 作为路径参数）
  * @returns {Promise<Object>} 更新结果
  */
 export const updateAbility = async (data) => {
-  const { abilityType, ...body } = data;
+  const { id, ...body } = data;
   try {
-    const url = API_CONFIG.ABILITY_UPDATE.replace('{abilityType}', abilityType);
+    const url = API_CONFIG.ABILITY_UPDATE.replace('{id}', id);
     const result = await fetchApi(url, {
       method: 'PUT',
       body: JSON.stringify(body),
@@ -112,12 +112,12 @@ export const updateAbility = async (data) => {
 /**
  * 删除能力
  *
- * @param {number|string} abilityType - 能力类型编码（路径参数）
+ * @param {number|string} id - 能力主键 ID（路径参数）
  * @returns {Promise<Object>} 删除结果
  */
-export const deleteAbility = async (abilityType) => {
+export const deleteAbility = async (id) => {
   try {
-    const url = API_CONFIG.ABILITY_DELETE.replace('{abilityType}', abilityType);
+    const url = API_CONFIG.ABILITY_DELETE.replace('{id}', id);
     const result = await fetchApi(url, {
       method: 'DELETE',
     });

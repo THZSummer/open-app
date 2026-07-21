@@ -52,7 +52,7 @@ public interface AdminAbilityService {
      * 若传入 iconBatchId/diagramBatchId，更新属性表。
      * 乐观锁基于 lastUpdateTime，冲突时返回 409。</p>
      *
-     * @param id      能力记录 ID
+     * @param id 能力主键 ID
      * @param request 更新请求（所有字段可选）
      * @return 标准响应，成功时 code=200，messageZh="更新成功"
      */
@@ -61,11 +61,11 @@ public interface AdminAbilityService {
     /**
      * 删除能力
      *
-     * <p>根据 abilityType 删除能力记录及其关联属性记录。
+     * <p>根据 id 删除能力记录及其关联属性记录。
      * 删除前检查能力是否存在，不存在返回 404。</p>
      *
-     * @param abilityType 能力类型编码
+     * @param id 能力主键 ID
      * @return 标准响应，成功时 code=200，messageZh="删除成功"
      */
-    ApiResponse<Void> delete(Integer abilityType);
+    ApiResponse<Void> delete(Long id);
 }

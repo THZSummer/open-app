@@ -83,7 +83,7 @@ const AbilityAdminList = () => {
       okType: 'danger',
       cancelText: '取消',
       onOk: async () => {
-        const result = await deleteAbility(record.abilityType);
+        const result = await deleteAbility(record.id);
         if (result && result.code === '200') {
           message.success('删除成功');
           fetchData();

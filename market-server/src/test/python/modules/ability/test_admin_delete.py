@@ -4,7 +4,7 @@
 覆盖场景：
     L1 - 正常流程（1 个）：正常删除能力及其属性
     L2 - 业务规则（1 个）：含属性表的删除，验证属性表同时被清理
-    L4 - 边界/反向（1 个）：abilityType 不存在返回 404
+    L4 - 边界/反向（1 个）：id 不存在返回 404
 
 运行：
     cd market-server/src/test/python
@@ -18,8 +18,7 @@
     - common.client (API 客户端 + DB 工具)
 
 注意：
-    - ability_type 字段为 TINYINT UNSIGNED，最大值为 127，测试使用 70~79 范围
-    - 删除接口按 abilityType 删除，先创建再删除
+    - 删除接口使用数据库主键 id 作为路径参数，先创建再删除
 """
 
 import pytest
@@ -31,12 +30,11 @@ from common.client import api, db_val
 _seed_id_counter = 70
 
 
-def seed_ability(ability_type=None, with_properties=False):
-    """预创建一条能力记录用于删除测试，返回 ability_type"""
+def seed_ability(with_properties=False):
+    """预创建一条能力记录用于删除测试，返回 (ability_type, ability_id)"""
     global _seed_id_counter
-    if ability_type is None:
-        _seed_id_counter += 1
-        ability_type = _seed_id_counter
+    _seed_id_counter += 1
+    ability_type = _seed_id_counter
     body = {
         "abilityType": ability_type,
         "nameCn": f"删除测试{ability_type}",
@@ -49,24 +47,19 @@ def seed_ability(ability_type=None, with_properties=False):
         body["diagramBatchId"] = "test_batch_diagram_delete"
     resp = api("POST", "/service/open/v2/ability/admin", body=body)
     assert resp is not None and resp["code"] == "200", f"种子创建失败: {resp}"
-    return ability_type
+    ability_id = int(db_val(
+        f"SELECT id FROM openplatform_ability_t WHERE ability_type={ability_type}"))
+    return ability_type, ability_id
 
 
-def delete_ability(ability_type, expected_code="200"):
-    """删除能力并返回响应"""
-    resp = api("DELETE", f"/service/open/v2/ability/admin/{ability_type}")
+def delete_ability_id(ability_id, expected_code="200"):
+    """根据 id 删除能力并返回响应"""
+    resp = api("DELETE", f"/service/open/v2/ability/admin/{ability_id}")
     assert resp is not None, "API 返回 None（服务未运行）"
     if expected_code:
         assert resp["code"] == expected_code, \
             f"期望 code={expected_code}, 实际: {resp}"
     return resp
-
-
-def get_ability_id(ability_type):
-    """根据 ability_type 查询能力 ID"""
-    ability_id = db_val(
-        f"SELECT id FROM openplatform_ability_t WHERE ability_type={ability_type}")
-    return int(ability_id) if ability_id else None
 
 
 def get_property_count(parent_id):
@@ -85,20 +78,21 @@ class TestAbilityAdminDeleteL1:
     @pytest.mark.L1
     def test_delete_normal(self):
         """L1-1: 正常删除能力应返回 200，主表记录被删除"""
-        ability_type = seed_ability()
-        ability_id = get_ability_id(ability_type)
+        ability_type, ability_id = seed_ability()
         assert ability_id is not None, "种子创建后记录应在主表中"
 
         try:
-            resp = delete_ability(ability_type)
+            resp = delete_ability_id(ability_id)
             assert resp["code"] == "200"
 
             # 验证主表记录已删除
-            deleted_id = get_ability_id(ability_type)
+            deleted_id = db_val(
+                f"SELECT id FROM openplatform_ability_t WHERE ability_type={ability_type}")
             assert deleted_id is None, f"ability_type={ability_type} 应已被删除"
         finally:
             # 清理：如果删除失败了，还得手动清理
-            remaining_id = get_ability_id(ability_type)
+            remaining_id = db_val(
+                f"SELECT id FROM openplatform_ability_t WHERE ability_type={ability_type}")
             if remaining_id:
                 db_val(f"DELETE FROM openplatform_ability_p_t WHERE parent_id={remaining_id}")
                 db_val(f"DELETE FROM openplatform_ability_t WHERE ability_type={ability_type}")
@@ -113,8 +107,7 @@ class TestAbilityAdminDeleteL2:
     @pytest.mark.L2
     def test_delete_with_properties(self):
         """L2-1: 含属性记录的能力删除后，属性表也应被清理"""
-        ability_type = seed_ability(with_properties=True)
-        ability_id = get_ability_id(ability_type)
+        ability_type, ability_id = seed_ability(with_properties=True)
         assert ability_id is not None
 
         # 确认创建了属性
@@ -122,18 +115,20 @@ class TestAbilityAdminDeleteL2:
         assert prop_count_before > 0, "应该至少有一条属性记录（图标）"
 
         try:
-            resp = delete_ability(ability_type)
+            resp = delete_ability_id(ability_id)
             assert resp["code"] == "200"
 
             # 验证主表已删
-            deleted_id = get_ability_id(ability_type)
+            deleted_id = db_val(
+                f"SELECT id FROM openplatform_ability_t WHERE ability_type={ability_type}")
             assert deleted_id is None, f"ability_type={ability_type} 应已被删除"
 
             # 验证属性表也已清理
             prop_count_after = get_property_count(ability_id)
             assert prop_count_after == 0, f"属性表应被清空，还剩 {prop_count_after} 条"
         finally:
-            remaining_id = get_ability_id(ability_type)
+            remaining_id = db_val(
+                f"SELECT id FROM openplatform_ability_t WHERE ability_type={ability_type}")
             if remaining_id:
                 db_val(f"DELETE FROM openplatform_ability_p_t WHERE parent_id={remaining_id}")
                 db_val(f"DELETE FROM openplatform_ability_t WHERE ability_type={ability_type}")
@@ -147,9 +142,9 @@ class TestAbilityAdminDeleteL4:
 
     @pytest.mark.L4
     def test_delete_not_found(self):
-        """L4-1: 不存在的 abilityType 应返回 404"""
-        # 使用一个肯定不会存在的 abilityType
-        resp = api("DELETE", "/service/open/v2/ability/admin/255")
+        """L4-1: 不存在的 id 应返回 404"""
+        # 使用一个肯定不会存在的 id
+        resp = api("DELETE", "/service/open/v2/ability/admin/99999")
         assert resp is not None
         assert resp["code"] == "404"
         assert "不存在" in resp["messageZh"]

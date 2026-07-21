@@ -21,6 +21,10 @@ def make_test_png(width=40, height=40):
     return b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', ihdr) + chunk(b'IDAT', zlib.compress(raw)) + chunk(b'IEND', b'')
 
 
+def generate_png(filepath, width=40, height=40):
+    Path(filepath).write_bytes(make_test_png(width, height))
+
+
 def upload_icon(png_bytes=None):
     if png_bytes is None:
         png_bytes = make_test_png(40, 40)
@@ -59,9 +63,9 @@ def create_ability(ability_type, **overrides):
     return r.json()
 
 
-def update_ability(ability_type, **fields):
+def update_ability(ability_id, **fields):
     r = requests.put(
-        f"{API_BASE}/ability/admin/{ability_type}",
+        f"{API_BASE}/ability/admin/{ability_id}",
         json=fields,
         headers={"Content-Type": "application/json"},
         timeout=10,
@@ -69,9 +73,9 @@ def update_ability(ability_type, **fields):
     return r.json()
 
 
-def delete_ability(ability_type):
+def delete_ability(ability_id):
     r = requests.delete(
-        f"{API_BASE}/ability/admin/{ability_type}",
+        f"{API_BASE}/ability/admin/{ability_id}",
         timeout=10,
     )
     return r.json()
@@ -95,3 +99,46 @@ def wait_for_table_ready(page):
 
 def get_rows(page):
     return page.locator(".ant-table-row")
+
+
+def get_next_ability_type():
+    """生成唯一的能力类型编码（自增整数，能力ID由服务端自动生成大snowflake ID）"""
+    data = list_abilities({"pageSize": 200})
+    records = data.get("data", [])
+    max_at = 0
+    for r in records:
+        at = r.get("abilityType", 0)
+        if isinstance(at, int) and at > max_at:
+            max_at = at
+    return max_at + 1
+
+
+def create_ability_via_api(ability_type, name_cn, name_en="e2e-via-api",
+                            desc_cn="这是E2E测试描述文字", desc_en="E2E test description here",
+                            icon_batch_id=None, order_num=1,
+                            entry_url="http://example.com", route_path="/test",
+                            alias_name="test", load_type=1):
+    """通过 API 创建能力记录（绕过前端表单）"""
+    kwargs = dict(
+        nameCn=name_cn,
+        nameEn=name_en,
+        descCn=desc_cn,
+        descEn=desc_en,
+        orderNum=order_num,
+        entryUrl=entry_url,
+        routePath=route_path,
+        aliasName=alias_name,
+        loadType=load_type,
+    )
+    if icon_batch_id:
+        kwargs["iconBatchId"] = icon_batch_id
+    return create_ability(ability_type, **kwargs)
+
+
+def delete_ability_via_api(ability_type):
+    """通过 API 按 ability_type 查找并删除（清理新建记录）"""
+    data = list_abilities({"pageSize": 100})
+    for r in data.get("data", []):
+        if r.get("abilityType") == ability_type:
+            return delete_ability(r["id"])
+    return None

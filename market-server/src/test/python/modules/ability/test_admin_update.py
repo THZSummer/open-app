@@ -18,8 +18,7 @@
     - common.client (API 客户端 + DB 工具)
 
 注意：
-    - ability_type 字段为 TINYINT UNSIGNED，最大值为 127，测试使用 60~69 范围
-    - 编辑接口所有字段均可选，abilityType 不可修改
+    - 编辑接口使用数据库主键 id 作为路径参数，所有字段均可选
 """
 
 import pytest
@@ -31,8 +30,8 @@ from common.client import api, db_val
 _seed_id_counter = 60
 
 
-def seed_ability(body=None):
-    """预创建一条能力记录用于编辑测试，返回 ability_type"""
+def seed_ability():
+    """预创建一条能力记录用于编辑测试，返回 (ability_type, ability_id)"""
     global _seed_id_counter
     _seed_id_counter += 1
     ability_type = _seed_id_counter
@@ -44,11 +43,11 @@ def seed_ability(body=None):
         "descEn": f"This is edit test ability {ability_type} description",
         "iconBatchId": "test_batch_icon_seed",
     }
-    if body:
-        default.update(body)
     resp = api("POST", "/service/open/v2/ability/admin", body=default)
     assert resp is not None and resp["code"] == "200", f"种子创建失败: {resp}"
-    return ability_type
+    ability_id = int(db_val(
+        f"SELECT id FROM openplatform_ability_t WHERE ability_type={ability_type}"))
+    return ability_type, ability_id
 
 
 def update_ability(ability_id, body, expected_code="200"):
@@ -59,14 +58,6 @@ def update_ability(ability_id, body, expected_code="200"):
         assert resp["code"] == expected_code, \
             f"期望 code={expected_code}, 实际: {resp}"
     return resp
-
-
-def get_ability_id(ability_type):
-    """根据 ability_type 查询能力 ID"""
-    ability_id = db_val(
-        f"SELECT id FROM openplatform_ability_t WHERE ability_type={ability_type}")
-    assert ability_id is not None, f"ability_type={ability_type} 记录不存在"
-    return int(ability_id)
 
 
 def cleanup_ability(ability_type):
@@ -85,8 +76,7 @@ class TestAbilityAdminUpdateL1:
     @pytest.mark.L1
     def test_update_partial_fields(self):
         """L1-1: 部分字段更新应返回 200 且仅更新传入字段"""
-        ability_type = seed_ability()
-        ability_id = get_ability_id(ability_type)
+        ability_type, ability_id = seed_ability()
         try:
             body = {
                 "nameCn": "新中文名",
@@ -114,8 +104,7 @@ class TestAbilityAdminUpdateL1:
     @pytest.mark.L1
     def test_update_all_fields(self):
         """L1-2: 全字段更新应返回 200"""
-        ability_type = seed_ability()
-        ability_id = get_ability_id(ability_type)
+        ability_type, ability_id = seed_ability()
         try:
             body = {
                 "nameCn": "全字段更新",
@@ -161,8 +150,7 @@ class TestAbilityAdminUpdateL2:
     @pytest.mark.L2
     def test_load_type_2_requires_all_three(self):
         """L2-1: loadType=2 且三要素不全应返回 400"""
-        ability_type = seed_ability()
-        ability_id = get_ability_id(ability_type)
+        ability_type, ability_id = seed_ability()
         try:
             body = {
                 "loadType": 2,
@@ -177,13 +165,12 @@ class TestAbilityAdminUpdateL2:
     @pytest.mark.L2
     def test_invalid_entry_url_format(self):
         """L2-2: entryUrl 非 http/https 应返回 400"""
-        ability_type = seed_ability()
-        ability_id = get_ability_id(ability_type)
+        ability_type, ability_id = seed_ability()
         try:
             body = {
                 "entryUrl": "ftp://invalid-protocol.com",
             }
-            resp = update_ability(ability_id, body, "400")
+            resp =update_ability(ability_id, body, "400")
             assert "访问地址格式不正确" in resp["messageZh"]
         finally:
             cleanup_ability(ability_type)
@@ -191,8 +178,7 @@ class TestAbilityAdminUpdateL2:
     @pytest.mark.L2
     def test_update_icon_property(self):
         """L2-3: 仅更新图标 batchId 应成功"""
-        ability_type = seed_ability()
-        ability_id = get_ability_id(ability_type)
+        ability_type, ability_id = seed_ability()
         try:
             body = {
                 "iconBatchId": "updated_icon_batch_001",
@@ -226,8 +212,7 @@ class TestAbilityAdminUpdateL4:
     @pytest.mark.L4
     def test_empty_body(self):
         """L4-2: 空请求体应返回 200（无字段更新也成功）"""
-        ability_type = seed_ability()
-        ability_id = get_ability_id(ability_type)
+        ability_type, ability_id = seed_ability()
         try:
             body = {}
             resp = update_ability(ability_id, body)
@@ -238,8 +223,7 @@ class TestAbilityAdminUpdateL4:
     @pytest.mark.L4
     def test_name_cn_too_long(self):
         """L4-3: nameCn 超过30字符应返回 400"""
-        ability_type = seed_ability()
-        ability_id = get_ability_id(ability_type)
+        ability_type, ability_id = seed_ability()
         try:
             body = {
                 "nameCn": "超长中文名测试" * 8,  # 56 chars
