@@ -687,14 +687,20 @@ public class FlowInvokeService {
             return;
         }
         if (errorInfo.containsKey("code")) {
-            r.getPlatformHeaders().put("X-Code", String.valueOf(errorInfo.get("code")));
+            r.getPlatformHeaders().put("X-Code", sanitizeHeaderValue(String.valueOf(errorInfo.get("code"))));
         }
         if (errorInfo.containsKey("messageZh")) {
-            r.getPlatformHeaders().put("X-Message-Zh", String.valueOf(errorInfo.get("messageZh")));
+            r.getPlatformHeaders().put("X-Message-Zh", sanitizeHeaderValue(String.valueOf(errorInfo.get("messageZh"))));
         }
         if (errorInfo.containsKey("messageEn")) {
-            r.getPlatformHeaders().put("X-Message-En", String.valueOf(errorInfo.get("messageEn")));
+            r.getPlatformHeaders().put("X-Message-En", sanitizeHeaderValue(String.valueOf(errorInfo.get("messageEn"))));
         }
+    }
+
+    /** 移除 header 值中的 CR/LF，防止 HTTP 头注入 */
+    private static String sanitizeHeaderValue(String value) {
+        if (value == null) return null;
+        return value.replace("\r", "").replace("\n", "");
     }
 
     /**
