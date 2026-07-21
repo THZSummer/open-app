@@ -8,7 +8,7 @@
   "sub_features": {
     "EMBED-PLATFORM-001": {
       "name": "嵌入能力平台面",
-      "phase": "builded",
+      "phase": "validated",
       "spec_path": ".sddu/specs-tree-root/specs-tree-ability-embedding/specs-tree-embedding-platform/spec.md",
       "plan_path": ".sddu/specs-tree-root/specs-tree-ability-embedding/specs-tree-embedding-platform/plan.md",
       "tasks_path": ".sddu/specs-tree-root/specs-tree-ability-embedding/specs-tree-embedding-platform/tasks.md",
@@ -39,15 +39,13 @@
   },
   "progress": {
     "total_tasks": 19,
-    "completed_tasks": 2,
-    "pending_tasks": 17,
-    "percentage": 10.5
+    "completed_tasks": 11,
+    "pending_tasks": 8,
+    "percentage": 58.0
   },
   "next_steps": [
-    "运行 @sddu-review TASK-009 开始审查编辑表单（前端）实现",
-    "构建报告待 review 后补充",
-    "继续 TASK-010/TASK-011（删除接口/删除操作）",
-    "平台面先行（开放面后端依赖平台面 DB 迁移）",
-    "API面可与平台面并行启动（无跨 Feature 依赖）"
+    "平台面（EMBED-PLATFORM-001）全部 11 项 TASK 已完成并验证",
+    "开放面（EMBED-OPEN-001）已 tasked，待执行: @sddu-build 开放面查询订阅",
+    "API面（EMBED-API-001）已 tasked，待执行: @sddu-build API面用户角色"
   ]
 }
