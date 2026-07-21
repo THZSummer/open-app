@@ -10,6 +10,7 @@ import com.xxx.it.works.wecode.v2.modules.runtime.model.NodeOutput;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.util.HtmlUtils;
 import reactor.core.publisher.Mono;
 
 import java.net.URI;
@@ -439,10 +440,10 @@ public class ConnectorNodeExecutor implements NodeExecutor {
 
         if (e instanceof java.util.concurrent.TimeoutException || errMsg.contains("timeout")) {
             code = ErrorCode.CONNECTOR_READ_TIMEOUT;
-            msgZh = "连接器调用超时（超过" + timeoutMs + "ms），目标地址 [" + url + "] 未在规定时间内响应";
+            msgZh = "连接器调用超时（超过" + timeoutMs + "ms），目标地址 [" + HtmlUtils.htmlEscape(url) + "] 未在规定时间内响应";
         } else if (errMsg.contains("connection refused")) {
             code = ErrorCode.CONNECTOR_CONNECT_TIMEOUT;
-            msgZh = "连接器连接超时，目标地址 [" + url + "] 不可达";
+            msgZh = "连接器连接超时，目标地址 [" + HtmlUtils.htmlEscape(url) + "] 不可达";
         } else if (errMsg.contains("unknown host") || errMsg.contains("dns")) {
             code = ErrorCode.CONNECTOR_DNS_FAILED;
             msgZh = "连接器目标地址 DNS 解析失败，请检查 URL 配置";
@@ -451,13 +452,13 @@ public class ConnectorNodeExecutor implements NodeExecutor {
             msgZh = "连接器 SSL 证书校验失败，目标地址可能使用了不受信任的证书";
         } else {
             code = ErrorCode.CONNECTOR_HTTP_FAILED;
-            msgZh = "连接器调用失败: " + e.getMessage();
+            msgZh = "连接器调用失败: " + HtmlUtils.htmlEscape(e.getMessage());
         }
 
         Map<String, Object> errorInfo = new HashMap<>();
         errorInfo.put("code", code);
         errorInfo.put("messageZh", msgZh);
-        errorInfo.put("messageEn", "Connector call failed: " + e.getMessage());
+        errorInfo.put("messageEn", "Connector call failed: " + HtmlUtils.htmlEscape(e.getMessage()));
 
         Map<String, Object> outputData = new HashMap<>();
         outputData.put("__status", "failed");
@@ -481,7 +482,7 @@ public class ConnectorNodeExecutor implements NodeExecutor {
 
         Map<String, Object> errorInfo = new HashMap<>();
         errorInfo.put("code", String.valueOf(downstreamStatus));
-        errorInfo.put("messageZh", "下游服务返回错误 [" + downstreamStatus + "]，地址 [" + url + "]");
+        errorInfo.put("messageZh", "下游服务返回错误 [" + downstreamStatus + "]，地址 [" + HtmlUtils.htmlEscape(url) + "]");
         errorInfo.put("messageEn", "Downstream returned " + downstreamStatus);
 
         Map<String, Object> outputData = new HashMap<>();
