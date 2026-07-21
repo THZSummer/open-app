@@ -226,6 +226,22 @@ const CreateForm = ({ open, onClose, onSuccess }) => {
     }
   };
 
+  const isMicroFrontend = loadType === 2;
+
+  const entryUrlRules = [
+    ...(isMicroFrontend ? [{ required: true, message: '微前端模式下访问地址为必填' }] : []),
+    { pattern: /^https?:\/\/.+/, message: '请输入合法的 http 或 https 地址' },
+  ];
+
+  const routePathRules = [
+    ...(isMicroFrontend ? [{ required: true, message: '微前端模式下路由路径为必填' }] : []),
+    { pattern: /^\//, message: '路由路径需以 / 开头' },
+  ];
+
+  const aliasNameRules = [
+    ...(isMicroFrontend ? [{ required: true, message: '微前端模式下别名为必填' }] : []),
+  ];
+
   return (
     <Modal
       title="添加能力"
@@ -437,14 +453,8 @@ const CreateForm = ({ open, onClose, onSuccess }) => {
         {/* 访问地址 */}
         <Form.Item
           name="entryUrl"
-          label={<span className={less.requiredLabel}>访问地址</span>}
-          rules={[
-            { required: true, message: '请输入访问地址' },
-            {
-              pattern: /^https?:\/\//,
-              message: '地址需以 http:// 或 https:// 开头',
-            },
-          ]}
+          label={isMicroFrontend ? <span className={less.requiredLabel}>访问地址</span> : "访问地址"}
+          rules={entryUrlRules}
         >
           <Input placeholder="如：https://assistant.example.com" />
         </Form.Item>
@@ -452,14 +462,8 @@ const CreateForm = ({ open, onClose, onSuccess }) => {
         {/* 路由路径 */}
         <Form.Item
           name="routePath"
-          label={<span className={less.requiredLabel}>路由路径</span>}
-          rules={[
-            { required: true, message: '请输入路由路径' },
-            {
-              pattern: /^\//,
-              message: '路由路径需以 / 开头',
-            },
-          ]}
+          label={isMicroFrontend ? <span className={less.requiredLabel}>路由路径</span> : "路由路径"}
+          rules={routePathRules}
         >
           <Input placeholder="如：/assistant-square" />
         </Form.Item>
@@ -468,7 +472,8 @@ const CreateForm = ({ open, onClose, onSuccess }) => {
         <div className={less.formRow}>
           <Form.Item
             name="aliasName"
-            label="别名"
+            label={isMicroFrontend ? <span className={less.requiredLabel}>别名</span> : "别名"}
+            rules={aliasNameRules}
             className={less.formItemFlex}
           >
             <Input placeholder="可选别名" />
