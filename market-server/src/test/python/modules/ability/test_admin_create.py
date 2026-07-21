@@ -3,7 +3,7 @@
 
 覆盖场景：
     L1 - 正常流程（2 个）：完整字段创建、最小必填字段创建
-    L2 - 业务规则（5 个）：编码唯一性校验、loadType=2 三要素必填、
+    L2 - 业务规则（7 个）：编码唯一性校验、loadType=2 三要素必填、
          entryUrl 格式校验、含示意图创建、排序号自动补全
     L4 - 边界/反向（4 个）：缺少必填字段、nameCn 长度不足、descCn 长度不足、
          缺少 iconBatchId
@@ -102,7 +102,7 @@ class TestAbilityAdminCreateL1:
 
 
 class TestAbilityAdminCreateL2:
-    """创建接口 — 业务规则 (5)"""
+    """创建接口 — 业务规则 (7)"""
 
     @pytest.mark.L2
     def test_duplicate_ability_type(self):
@@ -236,6 +236,48 @@ class TestAbilityAdminCreateL2:
             assert actual_order is not None
             assert int(actual_order) == current_max + 1, \
                 f"期望 orderNum={current_max + 1}, 实际={actual_order}"
+        finally:
+            cleanup_ability(ability_type)
+
+    @pytest.mark.L2
+    def test_load_type_2_with_all_three_ok(self):
+        """L2-6: loadType=2 三要素齐全应返回 200"""
+        ability_type = 60
+        try:
+            body = {
+                "abilityType": ability_type,
+                "nameCn": "微前端完整测试",
+                "nameEn": "MFeFullTest",
+                "descCn": "这是微前端加载模式完整三要素的测试描述",
+                "descEn": "This is a micro frontend full fields test",
+                "iconBatchId": "test_batch_icon_010",
+                "loadType": 2,
+                "entryUrl": "https://mfe.example.com",
+                "routePath": "/mfe-full-test",
+                "aliasName": "mfe-full-test-app",
+            }
+            resp = create_ability(body)
+            assert resp["code"] == "200"
+        finally:
+            cleanup_ability(ability_type)
+
+    @pytest.mark.L2
+    def test_load_type_1_entry_url_optional(self):
+        """L2-7: loadType=1 不传 entryUrl 应返回 200（entryUrl 可选）"""
+        ability_type = 61
+        try:
+            body = {
+                "abilityType": ability_type,
+                "nameCn": "路由加载无地址测试",
+                "nameEn": "NoEntryUrlTest",
+                "descCn": "这是路由加载模式不传访问地址的测试描述",
+                "descEn": "This is a loadType=1 without entryUrl test",
+                "iconBatchId": "test_batch_icon_011",
+                "loadType": 1,
+                # 不传 entryUrl/routePath/aliasName
+            }
+            resp = create_ability(body)
+            assert resp["code"] == "200"
         finally:
             cleanup_ability(ability_type)
 
