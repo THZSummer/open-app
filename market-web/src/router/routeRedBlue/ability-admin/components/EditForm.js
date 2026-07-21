@@ -416,7 +416,7 @@ const EditForm = ({ open, record, onClose, onSuccess }) => {
           name="diagramBatchId"
           label="示意图（非必填）"
         >
-          <div className={less.uploadWrapper}>
+          <div className={less.diagramUploadWrapper}>
             <ImgCrop
               rotationSlider
               aspect={520 / 288}
