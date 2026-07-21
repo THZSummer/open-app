@@ -78,7 +78,19 @@ public class DevFileStorageStrategy implements FileStorageStrategy {
                 log.warn("Failed to query file path for batchId={}: {}", batchId, e.getMessage());
             }
         }
-        return localUrlPrefix + batchId;
+        Path localPath = Paths.get(localDir);
+        if (Files.exists(localPath)) {
+            try (java.nio.file.DirectoryStream<Path> ds = Files.newDirectoryStream(localPath, batchId + ".*")) {
+                for (Path p : ds) {
+                    return localUrlPrefix + p.getFileName().toString();
+                }
+            } catch (IOException ignored) {
+                log.warn("Failed to scan directory for batchId={}: {}", batchId, ignored.getMessage());
+            }
+        }
+
+        log.warn("getShowUrl: file not found for batchId={}", batchId);
+        return localUrlPrefix + batchId + ".png";
     }
 
     private void saveFileRecord(String batchId, String originalFilename,

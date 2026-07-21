@@ -24,6 +24,6 @@ public class StandardFileStorageStrategy implements FileStorageStrategy {
     @Override
     @StandardTodo("对接 CDN 返回展示地址，替换占位实现")
     public String getShowUrl(String batchId) {
-        return "/ability-files/" + batchId;
+        return "/ability-files/" + batchId + ".png";
     }
 }
