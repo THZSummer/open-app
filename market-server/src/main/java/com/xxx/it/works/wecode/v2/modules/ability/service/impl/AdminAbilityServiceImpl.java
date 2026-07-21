@@ -201,6 +201,7 @@ public class AdminAbilityServiceImpl implements AdminAbilityService {
             Map<String, Object> resultData = new HashMap<>();
             resultData.put("abilityType", request.getAbilityType());
             resultData.put("nameCn", request.getNameCn());
+            resultData.put("id", String.valueOf(abilityId));
             resultData.put("createTime", now);
 
             log.info("Ability created successfully: type={}, nameCn={}, id={}",
@@ -437,6 +438,7 @@ public class AdminAbilityServiceImpl implements AdminAbilityService {
             Long abilityId = entity.getId();
 
             AdminAbilityVO vo = AdminAbilityVO.builder()
+                    .id(abilityId)
                     .abilityType(entity.getAbilityType())
                     .nameCn(entity.getAbilityNameCn())
                     .nameEn(entity.getAbilityNameEn())

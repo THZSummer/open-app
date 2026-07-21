@@ -1,6 +1,8 @@
 package com.xxx.it.works.wecode.v2.modules.ability.vo.admin;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -26,6 +28,10 @@ import java.util.Date;
 public class AdminAbilityVO implements Serializable {
 
     private static final long serialVersionUID = 1L;
+
+    @JsonSerialize(using = ToStringSerializer.class)
+    @Schema(description = "能力ID")
+    private Long id;
 
     @Schema(description = "能力类型")
     private Integer abilityType;
