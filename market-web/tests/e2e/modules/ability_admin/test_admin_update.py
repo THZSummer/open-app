@@ -19,10 +19,6 @@ from .helpers import (
 )
 
 
-PRESEEDED_AT = 1
-PRESEEDED_ID = None  # 延迟从列表接口获取
-
-
 def _wait_for_modal_ready(page):
     page.wait_for_selector(".ant-modal", timeout=10000)
     page.wait_for_selector(".ant-modal .ant-form", timeout=5000)
@@ -101,14 +97,15 @@ class TestAbilityAdminEditPage:
             delete_ability_via_api(ability_type)
 
     def test_edit_non_existent(self, page: Page):
+        edit_nonexist_at = get_next_ability_type()
         batch_id, _ = upload_icon()
-        resp = create_ability(205, nameCn="E2E编辑不存在", nameEn="e2e-edit-nonexist",
+        resp = create_ability(edit_nonexist_at, nameCn="E2E编辑不存在", nameEn="e2e-edit-nonexist",
                               iconBatchId=batch_id)
         assert resp.get("code") == "200", f"创建失败: {resp}"
         records = list_abilities().get("data", [])
         record_id = None
         for r in records:
-            if r["abilityType"] == 205:
+            if r["abilityType"] == edit_nonexist_at:
                 record_id = r.get("id")
                 break
         assert record_id is not None, "创建后未找到记录 id"
