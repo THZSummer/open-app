@@ -231,7 +231,7 @@ public class AdminAbilityServiceImpl implements AdminAbilityService {
             // nameCn/nameEn/descCn/descEn 的 @Size 校验已在 Request DTO 上由 @Valid 处理
 
             // 4. entryUrl 格式校验（若传入新值）
-            if (request.getEntryUrl() != null) {
+            if (StringUtils.hasText(request.getEntryUrl())) {
                 if (!request.getEntryUrl().matches("^https?://.*$")) {
                     return ApiResponse.error("400", "访问地址格式不正确，需以http/https开头",
                             "Invalid entry URL format, must start with http:// or https://");
