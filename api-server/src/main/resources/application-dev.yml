@@ -43,11 +43,11 @@ logging:
     com.xxx.api: DEBUG
     org.springframework.web: DEBUG
 
-# --- 开发环境：内部凭证 bypass + Mock 实现 ---
+# --- 开发环境：内部凭证 bypass + Token 解析 + 白名单 ---
 internal:
   auth:
-    tokens:
+    bypass: false
+    allowed-accounts:
       - dev-token-001
       - dev-token-002
-    bypass: false
 

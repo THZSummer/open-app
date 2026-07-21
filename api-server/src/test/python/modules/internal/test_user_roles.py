@@ -6,15 +6,13 @@
 测试层级：
   L1 - 正常流程（appId 查询、hisAppId 查询）
   L2 - 异常流程（参数缺失、应用不存在）
-  L4 - 凭证校验（无凭证、无效凭证）
+  L4 - 凭证校验（无凭证 → 401、不在白名单 → 403）
 
 运行方式：
   pytest test_user_roles.py -v
-  pytest test_user_roles.py -v -k "L1"  # 仅运行 L1 测试
 """
 
 import requests
-import json
 import os
 
 BASE_URL = os.environ.get("API_SERVER_URL", "http://localhost:18081/api-server")
@@ -36,7 +34,6 @@ class TestUserRolesL1:
     """L1 - 正常流程"""
 
     def test_query_by_app_id(self):
-        """PA个人应用 - admin 用户应有 owner 角色"""
         payload = {
             "appId": "202606140029550001",
             "userAccount": "admin"
@@ -52,7 +49,6 @@ class TestUserRolesL1:
         print(f"[L1] test_query_by_app_id PASS: roles={body['data']['roles']}")
 
     def test_query_by_his_app_id(self):
-        """LA存量应用 - user_001 用户应有多个角色"""
         payload = {
             "hisAppId": "eamap_expense_006",
             "userAccount": "user_001"
@@ -69,7 +65,6 @@ class TestUserRolesL1:
         print(f"[L1] test_query_by_his_app_id PASS: appId={body['data']['appId']}, roles={body['data']['roles']}")
 
     def test_query_user_no_roles(self):
-        """存在应用但用户不存在 - 返回空角色列表"""
         payload = {
             "appId": "202606140029550001",
             "userAccount": "noone@xxx.com"
@@ -137,9 +132,10 @@ class TestUserRolesL2:
 
 
 class TestUserRolesL4:
-    """L4 - 凭证校验"""
+    """L4 - 凭证校验（对齐 connector SysToken 三阶段）"""
 
     def test_no_token(self):
+        """无凭证 → 401"""
         payload = {
             "appId": "202606140029550001",
             "userAccount": "admin"
@@ -148,10 +144,11 @@ class TestUserRolesL4:
         assert resp.status_code == 200
         body = resp.json()
         assert body["code"] == "401"
-        assert "凭证" in body["messageZh"] or "token" in body["messageZh"]
-        print("[L4] test_no_token PASS")
+        assert "凭证" in body["messageZh"]
+        print("[L4] test_no_token PASS: 401")
 
     def test_invalid_token(self):
+        """不在白名单 → 403（token 可解析但不允许）"""
         payload = {
             "appId": "202606140029550001",
             "userAccount": "admin"
@@ -159,6 +156,6 @@ class TestUserRolesL4:
         resp = requests.post(URL, json=payload, headers=_headers(INVALID_TOKEN))
         assert resp.status_code == 200
         body = resp.json()
-        assert body["code"] == "401"
-        assert "凭证" in body["messageZh"] or "token" in body["messageZh"]
-        print("[L4] test_invalid_token PASS")
+        assert body["code"] == "403"
+        assert "权限" in body["messageZh"] or "白名单" in body["messageZh"] or "Access denied" in body["messageEn"]
+        print("[L4] test_invalid_token PASS: 403")

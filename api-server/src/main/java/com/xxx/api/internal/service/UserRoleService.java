@@ -4,22 +4,21 @@ import com.xxx.api.internal.dto.UserRoleQueryRequest;
 import com.xxx.api.internal.dto.UserRoleQueryResponse;
 
 /**
- * 用户角色查询业务接口
+ * 用户角色查询服务接口
  *
- * <p>根据应用标识 + 用户账号查询用户在应用中的角色列表。
- * 支持 Mock/Real 两种实现策略，通过 {@code user-role.service.impl} 配置切换。</p>
+ * <p>承载完整业务流程：凭证校验 → 参数校验 → 应用标识解析 → 角色查询</p>
  *
  * @author SDDU Build Agent
- * @version 1.0.0
  */
 public interface UserRoleService {
 
     /**
-     * 查询用户在指定应用中的角色
+     * 查询用户在应用中的角色
      *
-     * @param request 查询请求（包含应用标识和用户账号）
-     * @param resolvedAppId 解析后的内部应用ID
-     * @return 用户角色查询响应
+     * @param request 请求参数（appId/hisAppId + userAccount）
+     * @param token   请求头 X-Internal-Token（可为 null）
+     * @return 角色查询结果
+     * @throws com.xxx.api.common.exception.BusinessException 凭证校验失败、参数错误、应用不存在
      */
-    UserRoleQueryResponse queryUserRoles(UserRoleQueryRequest request, String resolvedAppId);
+    UserRoleQueryResponse queryUserRoles(UserRoleQueryRequest request, String token);
 }
