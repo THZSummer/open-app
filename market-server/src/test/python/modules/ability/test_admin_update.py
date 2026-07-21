@@ -3,7 +3,7 @@
 
 覆盖场景：
     L1 - 正常流程（2 个）：部分字段更新、全字段更新
-    L2 - 业务规则（3 个）：loadType=2 三要素校验、entryUrl 格式校验、乐观锁冲突
+    L2 - 业务规则（6 个）：loadType=2 三要素校验、entryUrl 格式校验、乐观锁冲突
     L4 - 边界/反向（3 个）：id不存在 404、字段长度校验、空请求体
 
 运行：
@@ -145,7 +145,7 @@ class TestAbilityAdminUpdateL1:
 
 
 class TestAbilityAdminUpdateL2:
-    """编辑接口 — 业务规则 (3)"""
+    """编辑接口 — 业务规则 (6)"""
 
     @pytest.mark.L2
     def test_load_type_2_requires_all_three(self):
@@ -190,6 +190,55 @@ class TestAbilityAdminUpdateL2:
                 f"SELECT property_value FROM openplatform_ability_p_t "
                 f"WHERE parent_id={ability_id} AND property_name='icon'")
             assert icon_value == "updated_icon_batch_001"
+        finally:
+            cleanup_ability(ability_type)
+
+    @pytest.mark.L2
+    def test_load_type_2_with_all_three_ok(self):
+        """L2-4: loadType=2 三要素齐全应返回 200"""
+        ability_type, ability_id = seed_ability()
+        try:
+            body = {
+                "loadType": 2,
+                "entryUrl": "https://mfe-update.example.com",
+                "routePath": "/mfe-update",
+                "aliasName": "mfe-update-app",
+            }
+            resp = update_ability(ability_id, body)
+            assert resp["code"] == "200"
+
+            load_type = db_val(
+                f"SELECT load_type FROM openplatform_ability_t WHERE id={ability_id}")
+            assert load_type == "2"
+        finally:
+            cleanup_ability(ability_type)
+
+    @pytest.mark.L2
+    def test_load_type_1_empty_entry_url_ok(self):
+        """L2-5: loadType=1 + entryUrl="" 应返回 200（回归：空字符串不触发格式校验）"""
+        ability_type, ability_id = seed_ability()
+        try:
+            body = {
+                "loadType": 1,
+                "entryUrl": "",
+                "nameCn": "空地址更新测试",
+            }
+            resp = update_ability(ability_id, body)
+            assert resp["code"] == "200"
+        finally:
+            cleanup_ability(ability_type)
+
+    @pytest.mark.L2
+    def test_load_type_1_entry_url_optional(self):
+        """L2-6: loadType=1 不传 entryUrl 应返回 200"""
+        ability_type, ability_id = seed_ability()
+        try:
+            body = {
+                "loadType": 1,
+                "nameCn": "无地址更新测试",
+            }
+            resp = update_ability(ability_id, body)
+            assert resp["code"] == "200"
         finally:
             cleanup_ability(ability_type)
 
