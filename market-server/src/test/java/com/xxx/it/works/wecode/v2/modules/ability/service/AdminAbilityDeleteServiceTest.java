@@ -15,7 +15,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
 /**
@@ -54,36 +55,37 @@ class AdminAbilityDeleteServiceTest {
     @DisplayName("删除能力 — 成功应删除主表和属性表")
     void testDelete_Success() {
         // 准备
+        Long id = 1L;
         Integer abilityType = 100;
         AbilityEntity existingEntity = new AbilityEntity();
-        existingEntity.setId(1L);
+        existingEntity.setId(id);
         existingEntity.setAbilityType(abilityType);
         existingEntity.setAbilityNameCn("待删除能力");
 
-        when(abilityMapper.selectByAbilityType(abilityType)).thenReturn(existingEntity);
-        when(abilityPropertyMapper.deleteByParentId(1L)).thenReturn(2);
+        when(abilityMapper.selectByPrimaryKey(id)).thenReturn(existingEntity);
+        when(abilityPropertyMapper.deleteByParentId(id)).thenReturn(2);
         when(abilityMapper.deleteByAbilityType(abilityType)).thenReturn(1);
 
         // 执行
-        ApiResponse<Void> result = adminAbilityService.delete(abilityType);
+        ApiResponse<Void> result = adminAbilityService.delete(id);
 
         // 断言
         assertEquals("200", result.getCode());
 
-        verify(abilityMapper).selectByAbilityType(abilityType);
-        verify(abilityPropertyMapper).deleteByParentId(1L);
+        verify(abilityMapper).selectByPrimaryKey(id);
+        verify(abilityPropertyMapper).deleteByParentId(id);
         verify(abilityMapper).deleteByAbilityType(abilityType);
     }
 
     @Test
-    @DisplayName("删除能力 — abilityType 不存在应返回 404")
+    @DisplayName("删除能力 — id 不存在应返回 404")
     void testDelete_NotFound() {
         // 准备
-        Integer abilityType = 999;
-        when(abilityMapper.selectByAbilityType(abilityType)).thenReturn(null);
+        Long id = 999L;
+        when(abilityMapper.selectByPrimaryKey(id)).thenReturn(null);
 
         // 执行
-        ApiResponse<Void> result = adminAbilityService.delete(abilityType);
+        ApiResponse<Void> result = adminAbilityService.delete(id);
 
         // 断言
         assertEquals("404", result.getCode());
@@ -91,29 +93,30 @@ class AdminAbilityDeleteServiceTest {
 
         // 不应执行任何删除操作
         verify(abilityPropertyMapper, never()).deleteByParentId(anyLong());
-        verify(abilityMapper, never()).deleteByAbilityType(anyInt());
+        verify(abilityMapper, never()).deleteByAbilityType(any());
     }
 
     @Test
     @DisplayName("删除能力 — 无属性记录的删除也应成功")
     void testDelete_NoProperties() {
         // 准备
+        Long id = 2L;
         Integer abilityType = 101;
         AbilityEntity existingEntity = new AbilityEntity();
-        existingEntity.setId(2L);
+        existingEntity.setId(id);
         existingEntity.setAbilityType(abilityType);
         existingEntity.setAbilityNameCn("无属性能力");
 
-        when(abilityMapper.selectByAbilityType(abilityType)).thenReturn(existingEntity);
-        when(abilityPropertyMapper.deleteByParentId(2L)).thenReturn(0);
+        when(abilityMapper.selectByPrimaryKey(id)).thenReturn(existingEntity);
+        when(abilityPropertyMapper.deleteByParentId(id)).thenReturn(0);
         when(abilityMapper.deleteByAbilityType(abilityType)).thenReturn(1);
 
         // 执行
-        ApiResponse<Void> result = adminAbilityService.delete(abilityType);
+        ApiResponse<Void> result = adminAbilityService.delete(id);
 
         // 断言
         assertEquals("200", result.getCode());
-        verify(abilityPropertyMapper).deleteByParentId(2L);
+        verify(abilityPropertyMapper).deleteByParentId(id);
         verify(abilityMapper).deleteByAbilityType(abilityType);
     }
 }

@@ -59,9 +59,9 @@ def create_ability(ability_type, **overrides):
     return r.json()
 
 
-def update_ability(ability_type, **fields):
+def update_ability(ability_id, **fields):
     r = requests.put(
-        f"{API_BASE}/ability/admin/{ability_type}",
+        f"{API_BASE}/ability/admin/{ability_id}",
         json=fields,
         headers={"Content-Type": "application/json"},
         timeout=10,
@@ -69,9 +69,9 @@ def update_ability(ability_type, **fields):
     return r.json()
 
 
-def delete_ability(ability_type):
+def delete_ability(ability_id):
     r = requests.delete(
-        f"{API_BASE}/ability/admin/{ability_type}",
+        f"{API_BASE}/ability/admin/{ability_id}",
         timeout=10,
     )
     return r.json()

@@ -12,7 +12,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -44,9 +44,9 @@ class AdminAbilityDeleteControllerTest {
     }
 
     @Test
-    @DisplayName("DELETE /ability/admin/{abilityType} - 正常删除应返回 200")
+    @DisplayName("DELETE /ability/admin/{id} - 正常删除应返回 200")
     void testDelete_Success() throws Exception {
-        when(adminAbilityService.delete(anyInt())).thenReturn(ApiResponse.success());
+        when(adminAbilityService.delete(anyLong())).thenReturn(ApiResponse.success());
 
         mockMvc.perform(delete("/service/open/v2/ability/admin/100"))
                 .andExpect(status().isOk())
@@ -54,9 +54,9 @@ class AdminAbilityDeleteControllerTest {
     }
 
     @Test
-    @DisplayName("DELETE /ability/admin/{abilityType} - abilityType 不存在返回 404")
+    @DisplayName("DELETE /ability/admin/{id} - id 不存在返回 404")
     void testDelete_NotFound() throws Exception {
-        when(adminAbilityService.delete(anyInt()))
+        when(adminAbilityService.delete(anyLong()))
                 .thenReturn(ApiResponse.error("404", "能力记录不存在", "Ability record not found"));
 
         mockMvc.perform(delete("/service/open/v2/ability/admin/999"))

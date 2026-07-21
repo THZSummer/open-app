@@ -215,10 +215,10 @@ public class AdminAbilityServiceImpl implements AdminAbilityService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public ApiResponse<Void> update(Integer abilityType, AdminAbilityUpdateRequest request) {
+    public ApiResponse<Void> update(Long id, AdminAbilityUpdateRequest request) {
         try {
             // 1. 查找已有记录
-            AbilityEntity existing = abilityMapper.selectByAbilityType(abilityType);
+            AbilityEntity existing = abilityMapper.selectByPrimaryKey(id);
             if (existing == null) {
                 return ApiResponse.error("404", "能力记录不存在", "Ability record not found");
             }
@@ -258,7 +258,6 @@ public class AdminAbilityServiceImpl implements AdminAbilityService {
             }
 
             // 6. 构建主表更新实体（仅更新传入的字段）
-            Long id = existing.getId();
             AbilityEntity entity = new AbilityEntity();
             entity.setId(id);
             entity.setAbilityNameCn(request.getNameCn());
@@ -319,39 +318,39 @@ public class AdminAbilityServiceImpl implements AdminAbilityService {
                         request.getDiagramBatchId(), now);
             }
 
-            log.info("Ability updated successfully: abilityType={}, id={}", abilityType, id);
+            log.info("Ability updated successfully: id={}", id);
 
             return ApiResponse.success();
         } catch (Exception e) {
-            log.error("Failed to update ability, abilityType={}", abilityType, e);
+            log.error("Failed to update ability, id={}", id, e);
             return ApiResponse.error("500", "更新能力失败", "Failed to update ability");
         }
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public ApiResponse<Void> delete(Integer abilityType) {
+    public ApiResponse<Void> delete(Long id) {
         try {
             // 1. 检查能力是否存在
-            AbilityEntity existing = abilityMapper.selectByAbilityType(abilityType);
+            AbilityEntity existing = abilityMapper.selectByPrimaryKey(id);
             if (existing == null) {
                 return ApiResponse.error("404", "能力记录不存在", "Ability record not found");
             }
 
-            Long abilityId = existing.getId();
+            Integer abilityType = existing.getAbilityType();
 
             // 2. 删除属性表记录
-            abilityPropertyMapper.deleteByParentId(abilityId);
+            abilityPropertyMapper.deleteByParentId(id);
 
             // 3. 删除主表记录
             abilityMapper.deleteByAbilityType(abilityType);
 
             log.info("Ability deleted successfully: type={}, nameCn={}, id={}",
-                    abilityType, existing.getAbilityNameCn(), abilityId);
+                    abilityType, existing.getAbilityNameCn(), id);
 
             return ApiResponse.success();
         } catch (Exception e) {
-            log.error("Failed to delete ability, type={}", abilityType, e);
+            log.error("Failed to delete ability, id={}", id, e);
             return ApiResponse.error("500", "删除能力失败", "Failed to delete ability");
         }
     }

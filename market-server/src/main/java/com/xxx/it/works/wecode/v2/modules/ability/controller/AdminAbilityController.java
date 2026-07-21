@@ -53,17 +53,17 @@ public class AdminAbilityController {
     @AuthRole
     @Operation(summary = "编辑能力", description = "部分更新能力记录，仅更新传入字段，abilityType 不可修改。" +
             "loadType=2 时校验三要素必填，乐观锁基于 lastUpdateTime")
-    @PutMapping("/{abilityType}")
-    public ApiResponse<Void> update(@PathVariable Integer abilityType,
+    @PutMapping("/{id}")
+    public ApiResponse<Void> update(@PathVariable Long id,
                                     @Valid @RequestBody AdminAbilityUpdateRequest request) {
-        return adminAbilityService.update(abilityType, request);
+        return adminAbilityService.update(id, request);
     }
 
     @AuthRole
-    @Operation(summary = "删除能力", description = "根据 abilityType 删除能力记录及其关联属性记录。" +
+    @Operation(summary = "删除能力", description = "根据 id 删除能力记录及其关联属性记录。" +
             "能力不存在时返回 404。")
-    @DeleteMapping("/{abilityType}")
-    public ApiResponse<Void> delete(@PathVariable Integer abilityType) {
-        return adminAbilityService.delete(abilityType);
+    @DeleteMapping("/{id}")
+    public ApiResponse<Void> delete(@PathVariable Long id) {
+        return adminAbilityService.delete(id);
     }
 }

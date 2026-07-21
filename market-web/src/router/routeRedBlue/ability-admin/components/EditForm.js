@@ -225,16 +225,15 @@ const EditForm = ({ open, record, onClose, onSuccess }) => {
     try {
       const values = await form.validateFields();
 
-      // abilityType 从 record 获取（不可修改）
-      if (!record || !record.abilityType) {
-        message.error('缺少能力类型编码，无法更新');
+      if (!record || !record.id) {
+        message.error('缺少能力 ID，无法更新');
         return;
       }
 
       // 如果用户没有重新上传图标，则不传 batchId（后端保持原值）
       // 如果用户重新上传了，则传新的 batchId
       const payload = {
-        abilityType: record.abilityType,
+        id: record.id,
         nameCn: values.nameCn,
         nameEn: values.nameEn,
         descCn: values.descCn,

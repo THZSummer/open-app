@@ -9,6 +9,7 @@ from .helpers import (
     delete_ability,
     create_ability,
     upload_icon,
+    list_abilities,
 )
 
 
@@ -41,8 +42,16 @@ class TestAbilityAdminDeletePage:
 
     def test_delete_confirm(self, page: Page):
         batch_id, _ = upload_icon()
-        create_ability(TEST_AT_DELETE, nameCn="E2E删除测试", nameEn="e2e-delete-test",
-                       iconBatchId=batch_id)
+        resp = create_ability(TEST_AT_DELETE, nameCn="E2E删除测试", nameEn="e2e-delete-test",
+                              iconBatchId=batch_id)
+        assert resp.get("code") == "200", f"创建失败: {resp}"
+        records = list_abilities().get("data", [])
+        record_id = None
+        for r in records:
+            if r["abilityType"] == TEST_AT_DELETE:
+                record_id = r.get("id")
+                break
+        assert record_id is not None, "创建后未找到记录 id"
         page.reload()
         wait_for_table_ready(page)
         page.locator(".ant-pagination-options .ant-select-selector").click()
@@ -60,15 +69,23 @@ class TestAbilityAdminDeletePage:
 
     def test_delete_non_existent(self, page: Page):
         batch_id, _ = upload_icon()
-        create_ability(207, nameCn="E2E删除不存在", nameEn="e2e-delete-nonexist",
-                       iconBatchId=batch_id)
+        resp = create_ability(207, nameCn="E2E删除不存在", nameEn="e2e-delete-nonexist",
+                              iconBatchId=batch_id)
+        assert resp.get("code") == "200", f"创建失败: {resp}"
+        records = list_abilities().get("data", [])
+        record_id = None
+        for r in records:
+            if r["abilityType"] == 207:
+                record_id = r.get("id")
+                break
+        assert record_id is not None, "创建后未找到记录 id"
         page.reload()
         wait_for_table_ready(page)
         page.locator(".ant-pagination-options .ant-select-selector").click()
         page.wait_for_selector(".ant-select-dropdown", timeout=3000)
         page.locator(".ant-select-dropdown .ant-select-item-option").filter(has_text="50").click()
         wait_for_table_ready(page)
-        delete_ability(207)
+        delete_ability(record_id)
         row = page.locator("tr").filter(has_text="E2E删除不存在")
         delete_btn = row.locator("a", has_text="删除")
         delete_btn.click()

@@ -36,7 +36,7 @@ export default {
   // 能力目录管理 API 配置
   ABILITY_LIST: '/market-web/service/open/v2/ability/admin/list',
   ABILITY_CREATE: '/market-web/service/open/v2/ability/admin',
-  ABILITY_UPDATE: '/market-web/service/open/v2/ability/admin/{abilityType}',
-  ABILITY_DELETE: '/market-web/service/open/v2/ability/admin/{abilityType}',
+  ABILITY_UPDATE: '/market-web/service/open/v2/ability/admin/{id}',
+  ABILITY_DELETE: '/market-web/service/open/v2/ability/admin/{id}',
   FILE_UPLOAD: '/market-web/service/open/v2/file/upload',
 };

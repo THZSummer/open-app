@@ -16,6 +16,7 @@ from .helpers import (
 
 
 PRESEEDED_AT = 1
+PRESEEDED_ID = None  # 延迟从列表接口获取
 
 
 def _wait_for_modal_ready(page):
@@ -63,14 +64,17 @@ class TestAbilityAdminEditPage:
         original_name = None
         original_entry_url = None
         original_route_path = None
+        record_id = None
         for r in records:
             if r["abilityType"] == PRESEEDED_AT:
                 original_name = r["nameCn"]
                 original_entry_url = r.get("entryUrl") or ""
                 original_route_path = r.get("routePath") or ""
+                record_id = r.get("id")
                 break
         assert original_name is not None, f"未找到预置记录 abilityType={PRESEEDED_AT}"
-        update_ability(PRESEEDED_AT, nameCn=original_name,
+        assert record_id is not None, f"预置记录缺少 id"
+        update_ability(record_id, nameCn=original_name,
                        entryUrl="https://e2e-edit.example.com", routePath="/e2e-edit")
         try:
             page.reload()
@@ -95,21 +99,29 @@ class TestAbilityAdminEditPage:
                     break
             assert updated_name == new_name, f"列表未更新: 期望 {new_name}, 实际 {updated_name}"
         finally:
-            update_ability(PRESEEDED_AT, nameCn=original_name,
+            update_ability(record_id, nameCn=original_name,
                            entryUrl=original_entry_url or None,
                            routePath=original_route_path or None)
 
     def test_edit_non_existent(self, page: Page):
         batch_id, _ = upload_icon()
-        create_ability(205, nameCn="E2E编辑不存在", nameEn="e2e-edit-nonexist",
-                       iconBatchId=batch_id)
+        resp = create_ability(205, nameCn="E2E编辑不存在", nameEn="e2e-edit-nonexist",
+                              iconBatchId=batch_id)
+        assert resp.get("code") == "200", f"创建失败: {resp}"
+        records = list_abilities().get("data", [])
+        record_id = None
+        for r in records:
+            if r["abilityType"] == 205:
+                record_id = r.get("id")
+                break
+        assert record_id is not None, "创建后未找到记录 id"
         page.reload()
         wait_for_table_ready(page)
         page.locator(".ant-pagination-options .ant-select-selector").click()
         page.wait_for_selector(".ant-select-dropdown", timeout=3000)
         page.locator(".ant-select-dropdown .ant-select-item-option").filter(has_text="50").click()
         wait_for_table_ready(page)
-        delete_ability(205)
+        delete_ability(record_id)
         row = page.locator("tr").filter(has_text="E2E编辑不存在")
         edit_btn = row.locator("a", has_text="编辑")
         edit_btn.click()

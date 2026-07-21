@@ -23,7 +23,7 @@ import java.util.Date;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
 /**
@@ -76,11 +76,11 @@ class AdminAbilityUpdateServiceTest {
         request.setNameCn("新中文名");
         request.setLastUpdateTime(lastUpdateTime);
 
-        when(abilityMapper.selectByAbilityType(100)).thenReturn(existingEntity);
+        when(abilityMapper.selectByPrimaryKey(1L)).thenReturn(existingEntity);
         when(abilityMapper.updateByPrimaryKeySelective(any())).thenReturn(1);
 
         // 执行
-        ApiResponse<Void> result = adminAbilityService.update(100, request);
+        ApiResponse<Void> result = adminAbilityService.update(1L, request);
 
         // 断言
         assertEquals("200", result.getCode());
@@ -102,10 +102,10 @@ class AdminAbilityUpdateServiceTest {
         AdminAbilityUpdateRequest request = new AdminAbilityUpdateRequest();
         request.setNameCn("新名称");
 
-        when(abilityMapper.selectByAbilityType(999)).thenReturn(null);
+        when(abilityMapper.selectByPrimaryKey(999L)).thenReturn(null);
 
         // 执行
-        ApiResponse<Void> result = adminAbilityService.update(999, request);
+        ApiResponse<Void> result = adminAbilityService.update(999L, request);
 
         // 断言
         assertEquals("404", result.getCode());
@@ -124,10 +124,10 @@ class AdminAbilityUpdateServiceTest {
         request.setEntryUrl("ftp://invalid-protocol.com");
         request.setLastUpdateTime(lastUpdateTime);
 
-        when(abilityMapper.selectByAbilityType(100)).thenReturn(existingEntity);
+        when(abilityMapper.selectByPrimaryKey(1L)).thenReturn(existingEntity);
 
         // 执行
-        ApiResponse<Void> result = adminAbilityService.update(100, request);
+        ApiResponse<Void> result = adminAbilityService.update(1L, request);
 
         // 断言
         assertEquals("400", result.getCode());
@@ -143,9 +143,9 @@ class AdminAbilityUpdateServiceTest {
         request.setEntryUrl("http://" + "a".repeat(1000));
         request.setLastUpdateTime(lastUpdateTime);
 
-        when(abilityMapper.selectByAbilityType(100)).thenReturn(existingEntity);
+        when(abilityMapper.selectByPrimaryKey(1L)).thenReturn(existingEntity);
 
-        ApiResponse<Void> result = adminAbilityService.update(100, request);
+        ApiResponse<Void> result = adminAbilityService.update(1L, request);
 
         assertEquals("400", result.getCode());
         assertTrue(result.getMessageZh().contains("不能超过1000字符"));
@@ -162,10 +162,10 @@ class AdminAbilityUpdateServiceTest {
         // 不传 entryUrl/routePath/aliasName
         request.setLastUpdateTime(lastUpdateTime);
 
-        when(abilityMapper.selectByAbilityType(100)).thenReturn(existingEntity);
+        when(abilityMapper.selectByPrimaryKey(1L)).thenReturn(existingEntity);
 
         // 执行（数据库原有数据不满足 loadType=2 三要素）
-        ApiResponse<Void> result = adminAbilityService.update(100, request);
+        ApiResponse<Void> result = adminAbilityService.update(1L, request);
 
         // 断言
         assertEquals("400", result.getCode());
@@ -184,10 +184,10 @@ class AdminAbilityUpdateServiceTest {
         request.setAliasName("my-sub-app");
         request.setLastUpdateTime(lastUpdateTime);
 
-        when(abilityMapper.selectByAbilityType(100)).thenReturn(existingEntity);
+        when(abilityMapper.selectByPrimaryKey(1L)).thenReturn(existingEntity);
         when(abilityMapper.updateByPrimaryKeySelective(any())).thenReturn(1);
 
-        ApiResponse<Void> result = adminAbilityService.update(100, request);
+        ApiResponse<Void> result = adminAbilityService.update(1L, request);
 
         assertEquals("200", result.getCode());
 
@@ -211,12 +211,12 @@ class AdminAbilityUpdateServiceTest {
         existingIcon.setPropertyName(AbilityPropertyEnum.ICON.getPropertyName());
         existingIcon.setPropertyValue("old_icon_batch");
 
-        when(abilityMapper.selectByAbilityType(100)).thenReturn(existingEntity);
+        when(abilityMapper.selectByPrimaryKey(1L)).thenReturn(existingEntity);
         when(abilityMapper.updateByPrimaryKeySelective(any())).thenReturn(1);
         when(abilityPropertyMapper.selectByParentIdAndPropertyName(1L,
                 AbilityPropertyEnum.ICON.getPropertyName())).thenReturn(existingIcon);
 
-        ApiResponse<Void> result = adminAbilityService.update(100, request);
+        ApiResponse<Void> result = adminAbilityService.update(1L, request);
 
         assertEquals("200", result.getCode());
 
@@ -233,12 +233,12 @@ class AdminAbilityUpdateServiceTest {
         request.setLastUpdateTime(lastUpdateTime);
 
         // 无已有示意图 → 应 insert
-        when(abilityMapper.selectByAbilityType(100)).thenReturn(existingEntity);
+        when(abilityMapper.selectByPrimaryKey(1L)).thenReturn(existingEntity);
         when(abilityMapper.updateByPrimaryKeySelective(any())).thenReturn(1);
         when(abilityPropertyMapper.selectByParentIdAndPropertyName(1L,
                 AbilityPropertyEnum.EXAMPLE_DIAGRAM.getPropertyName())).thenReturn(null);
 
-        ApiResponse<Void> result = adminAbilityService.update(100, request);
+        ApiResponse<Void> result = adminAbilityService.update(1L, request);
 
         assertEquals("200", result.getCode());
 
@@ -253,11 +253,11 @@ class AdminAbilityUpdateServiceTest {
         request.setNameCn("新名称");
         request.setLastUpdateTime(lastUpdateTime);
 
-        when(abilityMapper.selectByAbilityType(100)).thenReturn(existingEntity);
+        when(abilityMapper.selectByPrimaryKey(1L)).thenReturn(existingEntity);
         // 模拟更新 0 行（last_update_time 不匹配）
         when(abilityMapper.updateByPrimaryKeySelective(any())).thenReturn(0);
 
-        ApiResponse<Void> result = adminAbilityService.update(100, request);
+        ApiResponse<Void> result = adminAbilityService.update(1L, request);
 
         assertEquals("409", result.getCode());
         assertTrue(result.getMessageZh().contains("数据已被修改"));
@@ -270,10 +270,10 @@ class AdminAbilityUpdateServiceTest {
         request.setNameCn("新名称");
         // 不传 lastUpdateTime
 
-        when(abilityMapper.selectByAbilityType(100)).thenReturn(existingEntity);
+        when(abilityMapper.selectByPrimaryKey(1L)).thenReturn(existingEntity);
         when(abilityMapper.updateByPrimaryKeySelective(any())).thenReturn(1);
 
-        ApiResponse<Void> result = adminAbilityService.update(100, request);
+        ApiResponse<Void> result = adminAbilityService.update(1L, request);
 
         assertEquals("200", result.getCode());
     }
@@ -284,11 +284,11 @@ class AdminAbilityUpdateServiceTest {
         AdminAbilityUpdateRequest request = new AdminAbilityUpdateRequest();
         request.setLastUpdateTime(lastUpdateTime);
 
-        when(abilityMapper.selectByAbilityType(100)).thenReturn(existingEntity);
+        when(abilityMapper.selectByPrimaryKey(1L)).thenReturn(existingEntity);
         // update 返回值 0 但因无字段要更新，不应报 409
         when(abilityMapper.updateByPrimaryKeySelective(any())).thenReturn(0);
 
-        ApiResponse<Void> result = adminAbilityService.update(100, request);
+        ApiResponse<Void> result = adminAbilityService.update(1L, request);
 
         assertEquals("200", result.getCode());
     }
