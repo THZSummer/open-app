@@ -182,41 +182,6 @@ public class FlowVersionDebugService {
         if ("http".equals(triggerType) && (authConfigs == null || authConfigs.isEmpty())) {
             log.warn("Debug: HTTP 触发器未配置 authConfigs (invoke 接口会拒绝执行)");
         }
-
-        // inputContract 校验: 检查 mockTriggerData 是否满足 required 字段
-        Map<String, Object> inputContract = (Map<String, Object>) triggerNode.get("input");
-        if (inputContract != null && mockTriggerData != null) {
-            warnInputContractGap(inputContract, mockTriggerData);
-        }
-    }
-
-    /**
-     * 检查 mockTriggerData 是否满足 inputContract 的 required 字段
-     */
-    @SuppressWarnings("unchecked")
-    private void warnInputContractGap(Map<String, Object> inputContract, Map<String, Object> mockTriggerData) {
-        for (String section : new String[]{"header", "query", "body"}) {
-            Map<String, Object> schema = (Map<String, Object>) inputContract.get(section);
-            if (schema == null) {
-                continue;
-            }
-            List<String> required = (List<String>) schema.get("required");
-            if (required == null || required.isEmpty()) {
-                continue;
-            }
-            Map<String, Object> sectionData;
-            if ("body".equals(section)) {
-                sectionData = mockTriggerData;
-            } else {
-                Object sectionObj = mockTriggerData.get(section);
-                sectionData = sectionObj instanceof Map ? (Map<String, Object>) sectionObj : new HashMap<>();
-            }
-            for (String field : required) {
-                if (!sectionData.containsKey(field) || sectionData.get(field) == null) {
-                    log.warn("Debug: mockTriggerData {} 缺少必填字段 '{}' (invoke 接口会拒绝执行)", section, field);
-                }
-            }
-        }
     }
 
     /**
