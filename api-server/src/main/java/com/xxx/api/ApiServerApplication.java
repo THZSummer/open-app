@@ -14,7 +14,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * @version 1.0.0
  */
 @SpringBootApplication
-@MapperScan("com.xxx.api.*.mapper")
+@MapperScan("com.xxx.api.**.mapper")
 public class ApiServerApplication {
 
     public static void main(String[] args) {

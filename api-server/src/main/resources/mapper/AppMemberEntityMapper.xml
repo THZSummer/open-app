@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.xxx.api.internal.mapper.AppMemberEntityMapper">
+<mapper namespace="com.xxx.api.modules.appmember.mapper.AppMemberEntityMapper">
 
-    <resultMap id="BaseResultMap" type="com.xxx.api.internal.entity.AppMemberEntity">
+    <resultMap id="BaseResultMap" type="com.xxx.api.modules.appmember.entity.AppMemberEntity">
         <id column="id" property="id"/>
         <result column="tenant_id" property="tenantId"/>
         <result column="app_id" property="appId"/>
