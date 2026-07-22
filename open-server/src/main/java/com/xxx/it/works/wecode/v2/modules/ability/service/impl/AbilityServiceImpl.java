@@ -12,7 +12,6 @@ import com.xxx.it.works.wecode.v2.modules.ability.dto.AddAbilityRequest;
 import com.xxx.it.works.wecode.v2.modules.ability.entity.Ability;
 import com.xxx.it.works.wecode.v2.modules.ability.entity.AbilityProperty;
 import com.xxx.it.works.wecode.v2.modules.ability.entity.AppAbilityRelation;
-import com.xxx.it.works.wecode.v2.modules.ability.enums.AbilityTypeEnum;
 import com.xxx.it.works.wecode.v2.modules.ability.mapper.AbilityMapper;
 import com.xxx.it.works.wecode.v2.modules.ability.mapper.AbilityPropertyMapper;
 import com.xxx.it.works.wecode.v2.modules.ability.mapper.AppAbilityRelationMapper;
@@ -171,9 +170,9 @@ public class AbilityServiceImpl implements AbilityService {
         AppContext ctx = appContextResolver.resolveAndValidate(appId);
         Long internalAppId = ctx.getInternalId();
 
-        // 查询已订阅的关联关系（过滤掉应用入群通知，不在列表展示）
+        // 查询已订阅的关联关系
         List<AppAbilityRelation> relations = appAbilityRelationMapper.selectByAppId(internalAppId).stream()
-                .filter(r -> Objects.nonNull(r.getAbilityType()) && !Objects.equals(r.getAbilityType(), AbilityTypeEnum.GROUP_JOIN_NOTIFICATION.getCode()))
+                .filter(r -> Objects.nonNull(r.getAbilityType()))
                 .collect(Collectors.toList());
 
         // 从能力主表查所有能力，构建 type -> Ability 映射
@@ -199,6 +198,11 @@ public class AbilityServiceImpl implements AbilityService {
             vo.setNameCn(ability.getAbilityNameCn());
             vo.setNameEn(ability.getAbilityNameEn());
             vo.setOrderNum(ability.getOrderNum());
+            vo.setEntryUrl(ability.getEntryUrl());
+            vo.setRoutePath(ability.getRoutePath());
+            vo.setAliasName(ability.getAliasName());
+            vo.setRequireRelease(ability.getRequireRelease());
+            vo.setLoadType(ability.getLoadType());
 
             List<AbilityProperty> props = propsMap.getOrDefault(ability.getId(), Collections.emptyList());
             for (AbilityProperty p : props) {
