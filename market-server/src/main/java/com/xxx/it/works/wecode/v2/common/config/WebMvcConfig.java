@@ -24,7 +24,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class WebMvcConfig implements WebMvcConfigurer {
 
-    @Value("${ability.file.local-dir:${java.io.tmpdir}/ability-upload}")
+    @Value("${common.file.local-dir:${java.io.tmpdir}/ability-upload}")
     private String localFileDir;
 
     @Autowired
@@ -32,7 +32,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        registry.addResourceHandler("/ability-files/**")
+        registry.addResourceHandler("/common/files/**")
                 .addResourceLocations("file:" + localFileDir + "/");
     }
 

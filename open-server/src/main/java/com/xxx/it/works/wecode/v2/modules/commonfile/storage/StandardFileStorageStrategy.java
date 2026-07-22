@@ -8,18 +8,18 @@ import org.springframework.web.multipart.MultipartFile;
 
 @Slf4j
 @Component
-@ConditionalOnProperty(name = "ability.file.storage-mode", havingValue = "standard", matchIfMissing = true)
+@ConditionalOnProperty(name = "common.file.storage-mode", havingValue = "standard", matchIfMissing = true)
 public class StandardFileStorageStrategy implements FileStorageStrategy {
 
     @Override
     public UploadResult store(MultipartFile file, Integer bizType, String batchId, String extension) {
-        String showUrl = "/ability-files/" + batchId + "/" + extension;
+        String showUrl = "/common/files/" + batchId + "/" + extension;
         log.info("Standard mode upload (placeholder): batchId={}, showUrl={}", batchId, showUrl);
         return new UploadResult(batchId, showUrl);
     }
 
     @Override
     public String getShowUrl(String batchId) {
-        return "/ability-files/" + batchId + ".png";
+        return "/common/files/" + batchId + ".png";
     }
 }

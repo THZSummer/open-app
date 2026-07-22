@@ -18,13 +18,13 @@ import java.nio.file.StandardCopyOption;
 
 @Slf4j
 @Component
-@ConditionalOnProperty(name = "ability.file.storage-mode", havingValue = "dev")
+@ConditionalOnProperty(name = "common.file.storage-mode", havingValue = "dev")
 public class DevFileStorageStrategy implements FileStorageStrategy {
 
-    @Value("${ability.file.local-dir:${java.io.tmpdir}/ability-upload}")
+    @Value("${common.file.local-dir:${java.io.tmpdir}/ability-upload}")
     private String localDir;
 
-    @Value("${ability.file.local-url-prefix:/ability-files/}")
+    @Value("${common.file.local-url-prefix:/common/files/}")
     private String localUrlPrefix;
 
     @Autowired(required = false)
