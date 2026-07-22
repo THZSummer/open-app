@@ -591,7 +591,7 @@ redisTemplate.delete("OPENPLATFORM:MEMBER:LIST:" + appId);
 | NEW | `api-server/.../internal/cache/InternalCacheManager.java` | 缓存管理类，注入 `RedisTemplate`，封装 get/set（仅只读，evict 由 open-server 侧直接 delete Key） |
 | MODIFY | `api-server/.../internal/service/impl/UserRoleServiceImpl.java` | `resolveAppIdentifier` / `queryUserRoles` 各加 cache-aside 逻辑 |
 
-> **设计完成，待独立 Task 实施。**
+> **已实施**（commit `981ed06`）：`InternalCacheManager` 已创建，`UserRoleServiceImpl` 已接入 cache-aside 逻辑。
 
 ## 修订记录
 
