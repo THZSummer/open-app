@@ -529,13 +529,13 @@ sequenceDiagram
 
 ### 13.3 Key 格式
 
-对齐 `cp:entity:*` 风格，前缀 `api:entity:`：
+对齐 `cp:entity:*` 风格，前缀 `OPENPLATFORM:`：
 
 | 缓存对象 | Key | 序列化 | TTL | 说明 |
 |----------|-----|:--:|:--:|------|
-| AppEntity (by appId) | `api:entity:app:id:{appId}` | JSON | 30min | varchar app_id 索引 |
-| AppEntity (by hisAppId) | `api:entity:app:his:{hisAppId}` | JSON | 30min | eamap_app_code 索引 |
-| 成员列表 (by appId) | `api:entity:members:{appId}` | JSON | 10min | app_t.id 索引，全量数组 |
+| AppEntity (by appId) | `OPENPLATFORM:APP:ID:{appId}` | JSON | 30min | varchar app_id 索引 |
+| AppEntity (by hisAppId) | `OPENPLATFORM:APP:HIS:{hisAppId}` | JSON | 30min | eamap_app_code 索引 |
+| 成员列表 (by appId) | `OPENPLATFORM:MEMBER:LIST:{appId}` | JSON | 10min | app_t.id 索引，全量数组 |
 
 **TTL 依据**：
 - 应用信息（名称/状态等）极少变更，30min 足够保守；
@@ -546,17 +546,17 @@ sequenceDiagram
 ```
 resolveAppIdentifier(appId, hisAppId)
   ├─ appId 有值:
-  │   ├─ redisTemplate.opsForValue().get("api:entity:app:id:{appId}")
+  │   ├─ redisTemplate.opsForValue().get("OPENPLATFORM:APP:ID:{appId}")
   │   ├─ 命中 → 返回 AppEntity
   │   └─ 未命中 → selectByAppId → opsForValue().set(key, json, 30min)
   │
   └─ hisAppId 有值:
-      ├─ redisTemplate.opsForValue().get("api:entity:app:his:{hisAppId}")
+      ├─ redisTemplate.opsForValue().get("OPENPLATFORM:APP:HIS:{hisAppId}")
       ├─ 命中 → 返回 AppEntity
       └─ 未命中 → selectByEamapAppCode + selectById → set(key, json, 30min)
 
 queryUserRoles(appEntity, userAccount)
-  ├─ redisTemplate.opsForValue().get("api:entity:members:{appEntity.id}")
+  ├─ redisTemplate.opsForValue().get("OPENPLATFORM:MEMBER:LIST:{appEntity.id}")
   ├─ 命中 → 返回 List<AppMemberEntity>
   └─ 未命中 → selectByAppId(all) → set(key, json, 10min)
       → stream filter by accountId（内存过滤，不受缓存 TTL 影响）
@@ -570,11 +570,11 @@ queryUserRoles(appEntity, userAccount)
 
 ```java
 // 应用信息变更时 — market-server 侧
-redisTemplate.delete("api:entity:app:id:" + appId);
-redisTemplate.delete("api:entity:app:his:" + hisAppId);
+redisTemplate.delete("OPENPLATFORM:APP:ID:" + appId);
+redisTemplate.delete("OPENPLATFORM:APP:HIS:" + hisAppId);
 
 // 成员变更时 — open-server 侧
-redisTemplate.delete("api:entity:members:" + appId);
+redisTemplate.delete("OPENPLATFORM:MEMBER:LIST:" + appId);
 ```
 
 **触发方**（后续在对应模块中实施）：
