@@ -3,7 +3,6 @@ package com.xxx.api;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration;
 
 /**
  * API 认证鉴权服务
@@ -14,9 +13,7 @@ import org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration;
  * @author SDDU Build Agent
  * @version 1.0.0
  */
-@SpringBootApplication(exclude = {
-    RedisAutoConfiguration.class
-})
+@SpringBootApplication
 @MapperScan("com.xxx.api.*.mapper")
 public class ApiServerApplication {
 
