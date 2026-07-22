@@ -15,7 +15,7 @@ import com.xxx.it.works.wecode.v2.modules.ability.entity.Ability;
 import com.xxx.it.works.wecode.v2.modules.ability.entity.AbilityProperty;
 import com.xxx.it.works.wecode.v2.modules.ability.entity.AppAbilityRelation;
 import com.xxx.it.works.wecode.v2.modules.ability.mapper.AbilityMapper;
-import com.xxx.it.works.wecode.v2.modules.ability.enums.AbilityTypeEnum;
+
 import com.xxx.it.works.wecode.v2.modules.ability.mapper.AbilityPropertyMapper;
 import com.xxx.it.works.wecode.v2.modules.ability.mapper.AppAbilityRelationMapper;
 import com.xxx.it.works.wecode.v2.modules.app.resolver.AppContext;
@@ -167,12 +167,17 @@ public class VersionServiceImpl implements VersionService {
         version.setLastUpdateBy(currentUser);
         appVersionMapper.insert(version);
 
-        // 自动带出当前应用已订阅的能力 ID 列表，写入版本属性表
+        // 自动带出当前应用已订阅的能力 ID 列表（仅 require_release=1 的能力），写入版本属性表
         List<AppAbilityRelation> relations = appAbilityRelationMapper.selectByAppId(internalAppId);
+        Map<Long, Ability> abilityMap = abilityMapper.selectAll().stream()
+                .collect(Collectors.toMap(Ability::getId, a -> a));
         String abilityIds = relations.stream()
-                .filter(r -> Objects.nonNull(r.getAbilityType()) && !Objects.equals(r.getAbilityType(), AbilityTypeEnum.GROUP_JOIN_NOTIFICATION.getCode()))
+                .filter(r -> {
+                    Ability ability = abilityMap.get(r.getAbilityId());
+                    return ability != null && Integer.valueOf(1).equals(ability.getRequireRelease());
+                })
                 .map(r -> String.valueOf(r.getAbilityId()))
-                .collect(java.util.stream.Collectors.joining(","));
+                .collect(Collectors.joining(","));
         appVersionMapper.insertProperty(createVersionProperty(version.getId(), VersionPropertyConstants.PROP_ABILITY_IDS, abilityIds));
 
         return String.valueOf(version.getId());
