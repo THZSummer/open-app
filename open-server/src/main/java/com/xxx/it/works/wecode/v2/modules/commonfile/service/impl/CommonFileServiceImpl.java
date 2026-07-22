@@ -5,7 +5,7 @@ import com.xxx.it.works.wecode.v2.modules.commonfile.dto.UploadResult;
 import com.xxx.it.works.wecode.v2.modules.commonfile.service.CommonFileService;
 import com.xxx.it.works.wecode.v2.modules.commonfile.validator.FileValidator;
 import com.xxx.it.works.wecode.v2.modules.commonfile.validator.ImageValidationUtils;
-import com.xxx.it.works.wecode.v2.modules.commonfile.FileStorageStrategy;
+import com.xxx.it.works.wecode.v2.modules.commonfile.storage.FileStorageStrategy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;

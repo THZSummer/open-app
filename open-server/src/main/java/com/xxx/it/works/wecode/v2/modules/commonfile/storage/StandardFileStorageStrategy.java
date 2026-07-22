@@ -1,4 +1,4 @@
-package com.xxx.it.works.wecode.v2.modules.commonfile;
+package com.xxx.it.works.wecode.v2.modules.commonfile.storage;
 
 import com.xxx.it.works.wecode.v2.modules.commonfile.dto.UploadResult;
 import lombok.extern.slf4j.Slf4j;
