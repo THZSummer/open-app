@@ -122,7 +122,7 @@ public class UserRoleServiceImpl implements UserRoleService {
     /**
      * 解析应用标识，返回 AppEntity（含 id + appId，供后续复用）。
      *
-     * <p>appId 字段：先查 app_t.app_id → 不匹配，且 hisAppId 为空时，尝试当 hisAppId 查 app_p_t</p>
+     * <p>appId 字段：查 app_t.app_id</p>
      * <p>hisAppId 字段：查 app_p_t.eamap_app_code → app_t.id → AppEntity</p>
      *
      * @return AppEntity，含 id (bigint) 和 appId (varchar)
@@ -138,17 +138,6 @@ public class UserRoleServiceImpl implements UserRoleService {
             }
             log.debug("App not found by appId: {}", appId);
 
-            // appId 查不到，且没有单独的 hisAppId 时，把 appId 值当做 hisAppId 再试一次
-            if (hisAppId == null || hisAppId.isBlank()) {
-                AppPropertyEntity prop = appPropertyEntityMapper.selectByEamapAppCode(appId);
-                if (prop != null) {
-                    AppEntity app2 = appEntityMapper.selectById(prop.getParentId());
-                    if (app2 != null) {
-                        log.debug("App resolved by appId-as-hisAppId: {} -> id={}", appId, app2.getId());
-                        return app2;
-                    }
-                }
-            }
         }
 
         // 2. hisAppId 字段：查 app_p_t → app_t
