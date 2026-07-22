@@ -4,6 +4,7 @@ import com.xxx.it.works.wecode.v2.common.constants.CommonConstants;
 import com.xxx.it.works.wecode.v2.common.context.UserContextHolder;
 import com.xxx.it.works.wecode.v2.common.enums.ResponseCodeEnum;
 import com.xxx.it.works.wecode.v2.common.enums.StatusEnum;
+import com.xxx.it.works.wecode.v2.common.cache.OpenPlatformCacheEvictor;
 import com.xxx.it.works.wecode.v2.common.exception.BusinessException;
 import com.xxx.it.works.wecode.v2.common.file.entity.FileEntity;
 import com.xxx.it.works.wecode.v2.common.file.mapper.FileMapper;
@@ -110,6 +111,9 @@ public class AppServiceImpl implements AppService {
     @Autowired
     private AppIdentityMapper appIdentityMapper;
 
+    @Autowired
+    private OpenPlatformCacheEvictor cacheEvictor;
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public String saveApp(CreateAppRequest request) {
@@ -165,6 +169,8 @@ public class AppServiceImpl implements AppService {
         }
 
         appCommonService.notifyCardService(appId, CommonConstants.EVENT_UPDATE);
+        // 清理 API 面 AppEntity 缓存
+        cacheEvictor.evictApp(appId, getHisAppId(app.getId()));
     }
 
     @Override
@@ -389,6 +395,8 @@ public class AppServiceImpl implements AppService {
         }
 
         appCommonService.notifyCardService(appId, CommonConstants.EVENT_UPDATE_VERIFY_TYPE);
+        // 清理 API 面 AppEntity 缓存
+        cacheEvictor.evictApp(appId, getHisAppId(app.getId()));
     }
 
     private void validateVerifyType(App app, UpdateVerifyTypeRequest request) {
@@ -494,6 +502,8 @@ public class AppServiceImpl implements AppService {
         appMapper.insertProperty(createProperty(app.getId(), AppPropertyConstants.PROP_EAMAP_CODE, request.getEamapAppCode()));
 
         appCommonService.notifyCardService(appId, CommonConstants.EVENT_BIND_EAMAP);
+        // 清理 API 面 AppEntity 缓存（包含新绑定的 hisAppId）
+        cacheEvictor.evictApp(appId, request.getEamapAppCode());
     }
 
     @Override
@@ -671,6 +681,23 @@ public class AppServiceImpl implements AppService {
      */
     private String decryptSk(String cipherText) {
         return cipherText;
+    }
+
+    /**
+     * 查询应用的 hisAppId (eamap_app_code 属性值)
+     *
+     * @param internalAppId 应用内部 Long id
+     * @return eamap_app_code 属性值，未绑定时返回 null
+     */
+    private String getHisAppId(Long internalAppId) {
+        List<AppProperty> props = appMapper.selectPropertiesByParentId(internalAppId);
+        if (CollectionUtils.isEmpty(props)) return null;
+        return props.stream()
+                .filter(p -> AppPropertyConstants.PROP_EAMAP_CODE.equals(p.getPropertyName()))
+                .map(AppProperty::getPropertyValue)
+                .filter(StringUtils::hasText)
+                .findFirst()
+                .orElse(null);
     }
 
 }
