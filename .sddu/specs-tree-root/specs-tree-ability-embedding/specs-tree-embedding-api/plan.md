@@ -533,7 +533,7 @@ sequenceDiagram
 
 | 缓存对象 | Key | 序列化 | TTL | 说明 |
 |----------|-----|:--:|:--:|------|
-| AppEntity (by appId) | `OPENPLATFORM:APP:ID:{appId}` | JSON | 30min | varchar app_id 索引 |
+| AppEntity (by appId) | `OPENPLATFORM:APP:{appId}` | JSON | 30min | varchar app_id 索引 |
 | AppEntity (by hisAppId) | `OPENPLATFORM:APP:HIS:{hisAppId}` | JSON | 30min | eamap_app_code 索引 |
 | 成员列表 (by appId) | `OPENPLATFORM:MEMBER:LIST:{appId}` | JSON | 10min | app_t.id 索引，全量数组 |
 
@@ -546,7 +546,7 @@ sequenceDiagram
 ```
 resolveAppIdentifier(appId, hisAppId)
   ├─ appId 有值:
-  │   ├─ redisTemplate.opsForValue().get("OPENPLATFORM:APP:ID:{appId}")
+  │   ├─ redisTemplate.opsForValue().get("OPENPLATFORM:APP:{appId}")
   │   ├─ 命中 → 返回 AppEntity
   │   └─ 未命中 → selectByAppId → opsForValue().set(key, json, 30min)
   │
@@ -570,7 +570,7 @@ queryUserRoles(appEntity, userAccount)
 
 ```java
 // 应用信息变更时 — market-server 侧
-redisTemplate.delete("OPENPLATFORM:APP:ID:" + appId);
+redisTemplate.delete("OPENPLATFORM:APP:" + appId);
 redisTemplate.delete("OPENPLATFORM:APP:HIS:" + hisAppId);
 
 // 成员变更时 — open-server 侧
