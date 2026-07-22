@@ -5,7 +5,7 @@
   "phase": "planned",
   "status": "tracked",
   "created_at": "2026-07-13T10:00:00+08:00",
-  "updated_at": "2026-07-20T00:00:00+08:00",
+  "updated_at": "2026-07-22T00:00:00+08:00",
   "childrens": [
     {
       "name": "嵌入能力平台面",
@@ -48,5 +48,6 @@
     "平台面: @sddu-tasks 嵌入能力平台面",
     "开放面: @sddu-tasks 嵌入能力开放面",
     "API面: @sddu-tasks 嵌入能力API面"
-  ]
+  ],
+  "progress": "16/19"
 }

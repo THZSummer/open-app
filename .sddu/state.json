@@ -4,7 +4,7 @@
   "current_phase": "validated",
   "status": "tracked",
   "created_at": "2026-07-13T10:00:00+08:00",
-  "updated_at": "2026-07-20T23:00:00+08:00",
+  "updated_at": "2026-07-22T00:00:00+08:00",
   "sub_features": {
     "EMBED-PLATFORM-001": {
       "name": "嵌入能力平台面",
@@ -14,17 +14,26 @@
       "tasks_path": ".sddu/specs-tree-root/specs-tree-ability-embedding/specs-tree-embedding-platform/tasks.md",
       "task_count": 7,
       "wave_count": 5,
-      "complexity": {"S": 3, "M": 2, "L": 2}
+      "complexity": {
+        "S": 3,
+        "M": 2,
+        "L": 2
+      }
     },
     "EMBED-OPEN-001": {
       "name": "嵌入能力开放面",
-      "phase": "tasked",
+      "phase": "builded",
       "spec_path": ".sddu/specs-tree-root/specs-tree-ability-embedding/specs-tree-embedding-open/spec.md",
       "plan_path": ".sddu/specs-tree-root/specs-tree-ability-embedding/specs-tree-embedding-open/plan.md",
       "tasks_path": ".sddu/specs-tree-root/specs-tree-ability-embedding/specs-tree-embedding-open/tasks.md",
       "task_count": 6,
       "wave_count": 3,
-      "complexity": {"S": 2, "M": 3, "L": 1}
+      "complexity": {
+        "S": 2,
+        "M": 3,
+        "L": 1
+      },
+      "updated_at": "2026-07-22T00:00:00+08:00"
     },
     "EMBED-API-001": {
       "name": "嵌入能力API面",
@@ -34,7 +43,11 @@
       "tasks_path": ".sddu/specs-tree-root/specs-tree-ability-embedding/specs-tree-embedding-api/tasks.md",
       "task_count": 6,
       "wave_count": 4,
-      "complexity": {"S": 2, "M": 4, "L": 0}
+      "complexity": {
+        "S": 2,
+        "M": 4,
+        "L": 0
+      }
     }
   },
   "progress": {
