@@ -35,6 +35,9 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Value("${platform.file.url-prefix:/service/open/v2/uploads}")
     private String urlPrefix;
 
+    @Value("${ability.file.local-dir:${java.io.tmpdir}/ability-upload}")
+    private String abilityFileLocalDir;
+
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
 
@@ -60,5 +63,9 @@ public class WebMvcConfig implements WebMvcConfigurer {
         // 磁盘（用户上传）+ classpath（预设图标，打包进 JAR）
         registry.addResourceHandler(urlPrefix + "/**")
                 .addResourceLocations("file:" + uploadDir + "/", "classpath:/static/uploads/");
+
+        // 能力图标/示意图文件（对齐 market-server /ability-files/** 映射）
+        registry.addResourceHandler("/ability-files/**")
+                .addResourceLocations("file:" + abilityFileLocalDir + "/");
     }
 }
