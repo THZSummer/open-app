@@ -1,6 +1,6 @@
 package com.xxx.it.works.wecode.v2.modules.ability.service;
 
-import com.xxx.it.works.wecode.v2.common.file.service.FileV2Service;
+import com.xxx.it.works.wecode.v2.modules.commonfile.FileStorageStrategy;
 import com.xxx.it.works.wecode.v2.modules.ability.entity.Ability;
 import com.xxx.it.works.wecode.v2.modules.ability.entity.AbilityProperty;
 import com.xxx.it.works.wecode.v2.modules.ability.entity.AppAbilityRelation;
@@ -56,7 +56,7 @@ class AbilityListServiceTest {
     private AppContextResolver appContextResolver;
 
     @Mock
-    private FileV2Service fileV2Service;
+    private FileStorageStrategy fileStorageStrategy;
 
     @InjectMocks
     private AbilityServiceImpl abilityService;
@@ -248,7 +248,7 @@ class AbilityListServiceTest {
 
         when(abilityPropertyMapper.selectByParentIds(anyList()))
                 .thenReturn(Arrays.asList(iconProp, diagramProp));
-        when(fileV2Service.queryFileUrl(anyString()))
+        when(fileStorageStrategy.getShowUrl(anyString()))
                 .thenAnswer(invocation -> "http://file.example.com/" + invocation.getArgument(0));
 
         // When
