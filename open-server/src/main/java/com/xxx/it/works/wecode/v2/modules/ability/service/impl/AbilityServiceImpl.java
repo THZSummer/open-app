@@ -122,22 +122,18 @@ public class AbilityServiceImpl implements AbilityService {
         Long internalAppId = ctx.getInternalId();
 
         Integer abilityType = request.getAbilityType();
-        if (!AbilityTypeEnum.isValidCode(abilityType)) {
-            throw BusinessException.of(ResponseCodeEnum.ABILITY_TYPE_INVALID);
+
+        // 校验能力存在且启用（DB 查询替代硬编码枚举校验）
+        Ability ability = abilityMapper.selectByAbilityType(abilityType);
+        if (ability == null) {
+            throw BusinessException.badRequest("能力不存在或已失效", "Ability does not exist or is disabled");
         }
 
-        // 校验是否已订阅
+        // 校验是否已订阅（不变）
         if (Objects.nonNull(appAbilityRelationMapper.selectByAppIdAndAbilityType(internalAppId, abilityType))) {
             throw BusinessException.of(ResponseCodeEnum.ABILITY_ALREADY_SUBSCRIBED);
         }
 
-        // 从能力主表查询 abilityId
-        Ability ability = abilityMapper.selectAll().stream()
-                .filter(a -> a.getAbilityType().equals(abilityType))
-                .findFirst().orElse(null);
-        if (ability == null) {
-            throw BusinessException.of(ResponseCodeEnum.ABILITY_TYPE_INVALID);
-        }
         Long abilityId = ability.getId();
 
         AppAbilityRelation relation = new AppAbilityRelation();
@@ -153,19 +149,20 @@ public class AbilityServiceImpl implements AbilityService {
         appAbilityRelationMapper.insert(relation);
         log.info("Ability subscribed successfully: appId={}, abilityType={}", appId, abilityType);
 
-        // 订阅能力后自动订阅 API/事件权限（预留扩展点）
+        // 订阅能力后自动订阅 API/事件权限（扩展点）
         autoSubscribeAfterAbility(appId, abilityType);
     }
 
     /**
      * 订阅能力后自动订阅 API/事件权限
      *
-     * <p>预留扩展点，当前为空实现，后续根据能力类型自动订阅对应的 API/事件权限</p>
+     * <p>预留扩展点，当前阶段输出日志记录即可，后续根据能力类型自动订阅对应的 API/事件权限</p>
      *
      * @param appId       外部应用 ID
-     * @param abilityType 能力类型（见 {@link AbilityTypeEnum}）
+     * @param abilityType 能力类型
      */
     private void autoSubscribeAfterAbility(String appId, Integer abilityType) {
+        log.info("Auto-subscribe bridge triggered, appId={}, abilityType={}", appId, abilityType);
         // TODO 后续实现：根据 abilityType 自动订阅 API/事件权限
     }
 

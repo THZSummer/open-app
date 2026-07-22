@@ -45,4 +45,11 @@
           AND status = 1
     </select>
 
+    <select id="selectByAbilityType" resultMap="AbilityResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM openplatform_ability_t
+        WHERE ability_type = #{abilityType,jdbcType=INTEGER}
+          AND status = 1
+    </select>
+
 </mapper>
