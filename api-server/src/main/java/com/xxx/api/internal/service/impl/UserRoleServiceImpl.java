@@ -2,15 +2,16 @@ package com.xxx.api.internal.service.impl;
 
 import com.xxx.api.common.exception.BusinessException;
 import com.xxx.api.internal.auth.SysTokenResolver;
+import com.xxx.api.internal.cache.InternalCacheManager;
 import com.xxx.api.internal.config.InternalAuthProperties;
 import com.xxx.api.internal.dto.UserRoleQueryRequest;
 import com.xxx.api.internal.dto.UserRoleQueryResponse;
 import com.xxx.api.internal.entity.AppEntity;
 import com.xxx.api.internal.entity.AppMemberEntity;
+import com.xxx.api.internal.entity.AppPropertyEntity;
 import com.xxx.api.internal.mapper.AppEntityMapper;
 import com.xxx.api.internal.mapper.AppMemberEntityMapper;
 import com.xxx.api.internal.mapper.AppPropertyEntityMapper;
-import com.xxx.api.internal.entity.AppPropertyEntity;
 import com.xxx.api.internal.service.UserRoleService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,11 +19,12 @@ import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * 用户角色查询服务实现
  *
- * <p>完整业务流程：凭证校验 → 参数校验 → 应用标识解析 → 角色查询</p>
+ * <p>完整业务流程：凭证校验 → 参数校验 → 应用标识解析（缓存） → 角色查询（缓存）</p>
  *
  * @author SDDU Build Agent
  */
@@ -36,6 +38,7 @@ public class UserRoleServiceImpl implements UserRoleService {
     private final AppPropertyEntityMapper appPropertyEntityMapper;
     private final SysTokenResolver sysTokenResolver;
     private final InternalAuthProperties authProperties;
+    private final InternalCacheManager cacheManager;
 
     @Override
     public UserRoleQueryResponse queryUserRoles(UserRoleQueryRequest request, String token) {
@@ -48,19 +51,19 @@ public class UserRoleServiceImpl implements UserRoleService {
         // ---- 2. 参数校验 ----
         validateParams(request);
 
-        // ---- 3. 解析应用标识 ----
+        // ---- 3. 解析应用标识（带缓存） ----
         AppEntity app = resolveAppIdentifier(request.getAppId(), request.getHisAppId());
 
-        // ---- 4. 查全量成员 + 内存过滤 ----
-        List<AppMemberEntity> allMembers = appMemberEntityMapper.selectByAppId(app.getId());
-        Integer[] roles = allMembers.stream()
-                .filter(m -> m.getStatus() != null && m.getStatus() == 1)
-                .filter(m -> request.getUserAccount().equals(m.getAccountId()))
+        // ---- 4. 查全量成员（带缓存）+ 内存过滤 ----
+        List<AppMemberEntity> members = getCachedMembers(app.getId());
+        Integer[] roles = members.stream()
+                .filter(m -> request.getUserAccount().equals(m.getAccountId())
+                        && isActive(m.getStatus()))
                 .map(AppMemberEntity::getMemberType)
                 .toArray(Integer[]::new);
 
         log.info("Query result: appId={}, userAccount={}, totalMembers={}, matchedRoles={}",
-                app.getAppId(), request.getUserAccount(), allMembers.size(), Arrays.toString(roles));
+                app.getAppId(), request.getUserAccount(), members.size(), Arrays.toString(roles));
 
         return UserRoleQueryResponse.builder()
                 .appId(app.getAppId())
@@ -117,35 +120,39 @@ public class UserRoleServiceImpl implements UserRoleService {
         }
     }
 
-    // ──────────────────── 应用标识解析 ────────────────────
+    // ──────────────────── 应用标识解析（带缓存） ────────────────────
 
-    /**
-     * 解析应用标识，返回 AppEntity（含 id + appId，供后续复用）。
-     *
-     * <p>appId 字段：查 app_t.app_id</p>
-     * <p>hisAppId 字段：查 app_p_t.eamap_app_code → app_t.id → AppEntity</p>
-     *
-     * @return AppEntity，含 id (bigint) 和 appId (varchar)
-     * @throws BusinessException(404) 应用不存在
-     */
     private AppEntity resolveAppIdentifier(String appId, String hisAppId) {
-        // 1. appId 字段：查 app_t
+        // 1. appId 字段：先查缓存 → miss 则查 DB → 写缓存
         if (appId != null && !appId.isBlank()) {
+            Optional<AppEntity> cached = cacheManager.getAppByAppId(appId);
+            if (cached.isPresent()) {
+                log.debug("App resolved from cache by appId: {}", appId);
+                return cached.get();
+            }
+
             AppEntity app = appEntityMapper.selectByAppId(appId);
             if (app != null && isActive(app.getStatus())) {
+                cacheManager.setAppByAppId(appId, app);
                 log.debug("App resolved by appId: {} -> id={}", appId, app.getId());
                 return app;
             }
             log.debug("App not found or inactive by appId: {}", appId);
-
         }
 
-        // 2. hisAppId 字段：查 app_p_t → app_t
+        // 2. hisAppId 字段：先查缓存 → miss 则查 DB → 写缓存
         if (hisAppId != null && !hisAppId.isBlank()) {
+            Optional<AppEntity> cached = cacheManager.getAppByHisAppId(hisAppId);
+            if (cached.isPresent()) {
+                log.debug("App resolved from cache by hisAppId: {}", hisAppId);
+                return cached.get();
+            }
+
             AppPropertyEntity prop = appPropertyEntityMapper.selectByEamapAppCode(hisAppId);
             if (prop != null && isActive(prop.getStatus())) {
                 AppEntity app = appEntityMapper.selectById(prop.getParentId());
                 if (app != null && isActive(app.getStatus())) {
+                    cacheManager.setAppByHisAppId(hisAppId, app);
                     log.debug("App resolved by hisAppId: {} -> appId={}", hisAppId, app.getAppId());
                     return app;
                 }
@@ -157,7 +164,23 @@ public class UserRoleServiceImpl implements UserRoleService {
         throw BusinessException.notFound("应用不存在", "Application not found");
     }
 
-    /** 启用状态：status=1。null 视为无效，防御性处理。 */
+    // ──────────────────── 成员查询（带缓存） ────────────────────
+
+    private List<AppMemberEntity> getCachedMembers(Long appId) {
+        Optional<List<AppMemberEntity>> cached = cacheManager.getMembers(appId);
+        if (cached.isPresent()) {
+            log.debug("Members resolved from cache: appId={}, count={}", appId, cached.get().size());
+            return cached.get();
+        }
+
+        List<AppMemberEntity> members = appMemberEntityMapper.selectByAppId(appId);
+        cacheManager.setMembers(appId, members);
+        log.debug("Members resolved from DB: appId={}, count={}", appId, members.size());
+        return members;
+    }
+
+    // ──────────────────── 工具方法 ────────────────────
+
     private static boolean isActive(Integer status) {
         return status != null && status == 1;
     }

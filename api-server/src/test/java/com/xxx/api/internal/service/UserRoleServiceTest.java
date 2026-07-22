@@ -2,6 +2,7 @@ package com.xxx.api.internal.service;
 
 import com.xxx.api.common.exception.BusinessException;
 import com.xxx.api.internal.auth.SysTokenResolver;
+import com.xxx.api.internal.cache.InternalCacheManager;
 import com.xxx.api.internal.config.InternalAuthProperties;
 import com.xxx.api.internal.dto.UserRoleQueryRequest;
 import com.xxx.api.internal.dto.UserRoleQueryResponse;
@@ -23,6 +24,7 @@ import org.mockito.MockitoAnnotations;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -46,6 +48,9 @@ class UserRoleServiceTest {
     @Mock
     private InternalAuthProperties authProperties;
 
+    @Mock
+    private InternalCacheManager cacheManager;
+
     @InjectMocks
     private UserRoleServiceImpl userRoleService;
 
@@ -58,6 +63,10 @@ class UserRoleServiceTest {
         when(authProperties.getAllowedAccounts()).thenReturn(List.of("dev-token-001"));
         when(sysTokenResolver.resolveAccount(VALID_TOKEN)).thenReturn("dev-token-001");
         when(sysTokenResolver.isTokenValid(VALID_TOKEN)).thenReturn(true);
+        // 默认缓存 miss，保证回源
+        when(cacheManager.getAppByAppId(anyString())).thenReturn(Optional.empty());
+        when(cacheManager.getAppByHisAppId(anyString())).thenReturn(Optional.empty());
+        when(cacheManager.getMembers(anyLong())).thenReturn(Optional.empty());
     }
 
     private AppMemberEntity member(String accountId, int memberType) {
