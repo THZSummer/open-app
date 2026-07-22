@@ -71,10 +71,8 @@ public class AbilityServiceImpl implements AbilityService {
         AppContext ctx = appContextResolver.resolveAndValidate(appId);
         Long internalAppId = ctx.getInternalId();
 
-        // 从能力主表查询所有能力（过滤掉应用入群通知，不在列表展示）
-        List<Ability> abilities = abilityMapper.selectAll().stream()
-                .filter(a -> Objects.nonNull(a.getAbilityType()) && !Objects.equals(a.getAbilityType(), AbilityTypeEnum.GROUP_JOIN_NOTIFICATION.getCode()))
-                .toList();
+        // 从能力主表查询所有启用且未隐藏的能力（hidden=0 由 Mapper XML 过滤）
+        List<Ability> abilities = abilityMapper.selectAll();
 
         // 批量查询所有能力的属性（icon 等）
         List<Long> abilityIds = abilities.stream().map(Ability::getId).collect(Collectors.toList());
@@ -97,6 +95,11 @@ public class AbilityServiceImpl implements AbilityService {
             vo.setDescEn(ability.getAbilityDescEn());
             vo.setSubscribed(subscribedTypes.contains(ability.getAbilityType()));
             vo.setOrderNum(ability.getOrderNum());
+            vo.setEntryUrl(ability.getEntryUrl());
+            vo.setRoutePath(ability.getRoutePath());
+            vo.setAliasName(ability.getAliasName());
+            vo.setRequireRelease(ability.getRequireRelease());
+            vo.setLoadType(ability.getLoadType());
 
             List<AbilityProperty> props = propsMap.getOrDefault(ability.getId(), Collections.emptyList());
             for (AbilityProperty p : props) {

@@ -1,15 +1,30 @@
 {
   "feature": "open-01-list-api",
   "feature_id": "EMBED-OPEN-001",
-  "feature_name": "能力列表增强",
-  "phase": "tasked",
+  "feature_name": "\u80fd\u529b\u5217\u8868\u589e\u5f3a",
+  "phase": "builded",
   "status": "tracked",
   "parent": "EMBED-OPEN-001",
   "created_at": "2026-07-20T00:00:00+08:00",
-  "updated_at": "2026-07-20T00:00:00+08:00",
-  "description": "修改 GET /ability/list：hidden过滤 + 新增5字段返回 + 去硬编码排除 + AbilityVO扩展",
+  "updated_at": "2026-07-22T00:00:00+08:00",
+  "description": "\u4fee\u6539 GET /ability/list\uff1ahidden\u8fc7\u6ee4 + \u65b0\u589e5\u5b57\u6bb5\u8fd4\u56de + \u53bb\u786c\u7f16\u7801\u6392\u9664 + AbilityVO\u6269\u5c55",
   "task_ref": "TASK-001",
   "complexity": "M",
-  "fr": ["FR-001", "FR-005"],
-  "artifacts": {}
+  "fr": [
+    "FR-001",
+    "FR-005"
+  ],
+  "artifacts": {
+    "source_files": [
+      "open-server/src/main/java/.../ability/entity/Ability.java",
+      "open-server/src/main/java/.../ability/vo/AbilityVO.java",
+      "open-server/src/main/resources/mapper/AbilityMapper.xml",
+      "open-server/src/main/java/.../ability/service/impl/AbilityServiceImpl.java"
+    ],
+    "test_files": [
+      "open-server/src/test/java/.../ability/vo/AbilityVOTest.java",
+      "open-server/src/test/java/.../ability/service/AbilityListServiceTest.java",
+      "open-server/src/test/python/modules/ability/test_open_list.py"
+    ]
+  }
 }
