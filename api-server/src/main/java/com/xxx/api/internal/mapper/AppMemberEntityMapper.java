@@ -8,7 +8,6 @@ import java.util.List;
 
 @Mapper
 public interface AppMemberEntityMapper {
-    List<AppMemberEntity> selectByAppIdAndAccountId(
-            @Param("appId") Long appId,
-            @Param("accountId") String accountId);
+
+    List<AppMemberEntity> selectByAppId(@Param("appId") Long appId);
 }

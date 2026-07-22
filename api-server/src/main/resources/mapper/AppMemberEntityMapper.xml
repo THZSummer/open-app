@@ -17,13 +17,12 @@
         <result column="last_update_time" property="lastUpdateTime"/>
     </resultMap>
 
-    <select id="selectByAppIdAndAccountId" resultMap="BaseResultMap">
+    <select id="selectByAppId" resultMap="BaseResultMap">
         SELECT id, tenant_id, app_id, member_name_cn, member_name_en,
                account_id, member_type, status,
                create_by, create_time, last_update_by, last_update_time
         FROM openplatform_app_member_t
         WHERE app_id = #{appId}
-          AND account_id = #{accountId}
           AND status = 1
     </select>
 

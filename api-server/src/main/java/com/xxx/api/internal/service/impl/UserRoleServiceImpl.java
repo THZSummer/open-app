@@ -48,19 +48,18 @@ public class UserRoleServiceImpl implements UserRoleService {
         // ---- 2. 参数校验 ----
         validateParams(request);
 
-        // ---- 3. 解析应用标识（查出 AppEntity，含 id + appId） ----
+        // ---- 3. 解析应用标识 ----
         AppEntity app = resolveAppIdentifier(request.getAppId(), request.getHisAppId());
 
-        // ---- 4. 查询用户角色（复用 AppEntity.id，无冗余查询） ----
-        List<AppMemberEntity> members = appMemberEntityMapper.selectByAppIdAndAccountId(
-                app.getId(), request.getUserAccount());
-
-        Integer[] roles = members.stream()
+        // ---- 4. 查全量成员 + 内存过滤 ----
+        List<AppMemberEntity> allMembers = appMemberEntityMapper.selectByAppId(app.getId());
+        Integer[] roles = allMembers.stream()
+                .filter(m -> request.getUserAccount().equals(m.getAccountId()))
                 .map(AppMemberEntity::getMemberType)
                 .toArray(Integer[]::new);
 
-        log.info("Query result: appId={}, userAccount={}, roles={}",
-                app.getAppId(), request.getUserAccount(), Arrays.toString(roles));
+        log.info("Query result: appId={}, userAccount={}, totalMembers={}, matchedRoles={}",
+                app.getAppId(), request.getUserAccount(), allMembers.size(), Arrays.toString(roles));
 
         return UserRoleQueryResponse.builder()
                 .appId(app.getAppId())

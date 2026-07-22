@@ -60,32 +60,36 @@ class UserRoleServiceTest {
         when(sysTokenResolver.isTokenValid(VALID_TOKEN)).thenReturn(true);
     }
 
+    private AppMemberEntity member(String accountId, int memberType) {
+        AppMemberEntity m = new AppMemberEntity();
+        m.setAccountId(accountId);
+        m.setMemberType(memberType);
+        return m;
+    }
+
     @Nested
     @DisplayName("正常流程")
     class SuccessTests {
 
         @Test
-        @DisplayName("按 appId 查询 - 多角色")
-        void testByAppId_MultipleRoles() {
+        @DisplayName("按 appId 查询 — 全量查 + 内存过滤")
+        void testByAppId() {
             UserRoleQueryRequest request = new UserRoleQueryRequest();
             request.setAppId("test-app-001");
             request.setUserAccount("admin");
 
-            AppEntity app = new AppEntity();
-            app.setId(1001L);
-            app.setAppId("test-app-001");
+            AppEntity app = mockApp(1001L, "test-app-001");
             when(appEntityMapper.selectByAppId("test-app-001")).thenReturn(app);
 
-            AppMemberEntity m1 = new AppMemberEntity();
-            m1.setMemberType(1);
-            AppMemberEntity m2 = new AppMemberEntity();
-            m2.setMemberType(2);
-            when(appMemberEntityMapper.selectByAppIdAndAccountId(1001L, "admin"))
-                    .thenReturn(Arrays.asList(m1, m2));
+            // 3 个成员，只有 admin 匹配
+            when(appMemberEntityMapper.selectByAppId(1001L)).thenReturn(Arrays.asList(
+                    member("admin", 1),
+                    member("admin", 2),
+                    member("user_001", 0)
+            ));
 
             UserRoleQueryResponse response = userRoleService.queryUserRoles(request, VALID_TOKEN);
 
-            assertNotNull(response);
             assertEquals("test-app-001", response.getAppId());
             assertArrayEquals(new Integer[]{1, 2}, response.getRoles());
         }
@@ -101,16 +105,13 @@ class UserRoleServiceTest {
             prop.setParentId(2001L);
             when(appPropertyEntityMapper.selectByEamapAppCode("eamap_001")).thenReturn(prop);
 
-            AppEntity app = new AppEntity();
-            app.setId(2001L);
-            app.setAppId("resolved-app-001");
+            AppEntity app = mockApp(2001L, "resolved-app-001");
             when(appEntityMapper.selectById(2001L)).thenReturn(app);
             when(appEntityMapper.selectByAppId("resolved-app-001")).thenReturn(app);
 
-            AppMemberEntity member = new AppMemberEntity();
-            member.setMemberType(0);
-            when(appMemberEntityMapper.selectByAppIdAndAccountId(2001L, "user_001"))
-                    .thenReturn(Collections.singletonList(member));
+            when(appMemberEntityMapper.selectByAppId(2001L)).thenReturn(Collections.singletonList(
+                    member("user_001", 0)
+            ));
 
             UserRoleQueryResponse response = userRoleService.queryUserRoles(request, VALID_TOKEN);
 
@@ -120,18 +121,18 @@ class UserRoleServiceTest {
         }
 
         @Test
-        @DisplayName("用户无角色 → 空列表")
-        void testNoRoles() {
+        @DisplayName("用户不在成员列表中 → 空角色")
+        void testNoMatch() {
             UserRoleQueryRequest request = new UserRoleQueryRequest();
             request.setAppId("test-app-001");
             request.setUserAccount("unknown");
 
-            AppEntity app = new AppEntity();
-            app.setId(1001L);
-            app.setAppId("test-app-001");
+            AppEntity app = mockApp(1001L, "test-app-001");
             when(appEntityMapper.selectByAppId("test-app-001")).thenReturn(app);
-            when(appMemberEntityMapper.selectByAppIdAndAccountId(1001L, "unknown"))
-                    .thenReturn(Collections.emptyList());
+            when(appMemberEntityMapper.selectByAppId(1001L)).thenReturn(Arrays.asList(
+                    member("admin", 1),
+                    member("user_001", 0)
+            ));
 
             UserRoleQueryResponse response = userRoleService.queryUserRoles(request, VALID_TOKEN);
 
@@ -140,7 +141,7 @@ class UserRoleServiceTest {
         }
 
         @Test
-        @DisplayName("bypass 模式 → 跳过校验")
+        @DisplayName("bypass 模式 → 跳过凭证校验")
         void testBypass() {
             when(authProperties.isBypass()).thenReturn(true);
 
@@ -148,16 +149,11 @@ class UserRoleServiceTest {
             request.setAppId("test-app-001");
             request.setUserAccount("admin");
 
-            AppEntity app = new AppEntity();
-            app.setId(1001L);
-            app.setAppId("test-app-001");
+            AppEntity app = mockApp(1001L, "test-app-001");
             when(appEntityMapper.selectByAppId("test-app-001")).thenReturn(app);
-            when(appMemberEntityMapper.selectByAppIdAndAccountId(1001L, "admin"))
-                    .thenReturn(Collections.emptyList());
+            when(appMemberEntityMapper.selectByAppId(1001L)).thenReturn(Collections.emptyList());
 
-            UserRoleQueryResponse response = userRoleService.queryUserRoles(request, null);
-
-            assertEquals("200", "200"); // no exception
+            userRoleService.queryUserRoles(request, null);
             verify(sysTokenResolver, never()).resolveAccount(any());
         }
     }
@@ -238,5 +234,12 @@ class UserRoleServiceTest {
                     () -> userRoleService.queryUserRoles(request, VALID_TOKEN));
             assertEquals("404", ex.getCode());
         }
+    }
+
+    private AppEntity mockApp(Long id, String appId) {
+        AppEntity app = new AppEntity();
+        app.setId(id);
+        app.setAppId(appId);
+        return app;
     }
 }
