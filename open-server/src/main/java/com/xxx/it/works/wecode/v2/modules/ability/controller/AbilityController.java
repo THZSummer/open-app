@@ -7,7 +7,7 @@ import com.xxx.it.works.wecode.v2.modules.ability.dto.AddAbilityRequest;
 import com.xxx.it.works.wecode.v2.modules.ability.service.AbilityService;
 import com.xxx.it.works.wecode.v2.modules.ability.vo.AbilityVO;
 import com.xxx.it.works.wecode.v2.modules.ability.vo.AppAbilityDetailVO;
-import jakarta.validation.constraints.NotBlank;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
@@ -15,7 +15,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -39,8 +38,8 @@ public class AbilityController {
      * 3.1 能力列表
      */
     @GetMapping("/list")
-    public ApiResponse<List<AbilityVO>> getAbilityList(
-            @RequestParam @NotBlank String appId) {
+    public ApiResponse<List<AbilityVO>> getAbilityList(HttpServletRequest request) {
+        String appId = request.getHeader("X-App-Id");
         List<AbilityVO> list = abilityService.getAbilityList(appId);
         return ApiResponse.success(list);
     }
@@ -51,9 +50,10 @@ public class AbilityController {
     @AuditLog(value = OperateEnum.ADD_APP_ABILITY)
     @PostMapping("")
     public ApiResponse<Void> addAbility(
-            @RequestParam @NotBlank String appId,
-            @RequestBody @Validated AddAbilityRequest request) {
-        abilityService.addAbility(appId, request);
+            HttpServletRequest request,
+            @RequestBody @Validated AddAbilityRequest body) {
+        String appId = request.getHeader("X-App-Id");
+        abilityService.addAbility(appId, body);
         return ApiResponse.success();
     }
 
@@ -61,8 +61,8 @@ public class AbilityController {
      * 3.3 已订阅能力列表
      */
     @GetMapping("/subscribed")
-    public ApiResponse<List<AppAbilityDetailVO>> getSubscribedAbilities(
-            @RequestParam @NotBlank String appId) {
+    public ApiResponse<List<AppAbilityDetailVO>> getSubscribedAbilities(HttpServletRequest request) {
+        String appId = request.getHeader("X-App-Id");
         List<AppAbilityDetailVO> list = abilityService.getSubscribedAbilities(appId);
         return ApiResponse.success(list);
     }
