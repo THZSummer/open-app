@@ -46,6 +46,11 @@ public class AppAbilityDetailVO implements Serializable {
     private String iconUrl;
 
     /**
+     * 示意图URL
+     */
+    private String diagramUrl;
+
+    /**
      * 排序号
      */
     private Integer orderNum;

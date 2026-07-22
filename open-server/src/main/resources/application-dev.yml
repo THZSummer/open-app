@@ -56,5 +56,10 @@ logging:
 platform:
   approval-url-prefix: http://localhost:3000/approval/
 
+# 文件存储配置（开发环境：本地存储）
+ability:
+  file:
+    storage-mode: dev
+
 card-service:
   default-tenant-id: openapp-tenandId

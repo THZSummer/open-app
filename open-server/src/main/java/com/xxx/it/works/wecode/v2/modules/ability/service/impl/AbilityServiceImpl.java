@@ -208,6 +208,8 @@ public class AbilityServiceImpl implements AbilityService {
             for (AbilityProperty p : props) {
                 if (AbilityPropertyConstants.PROP_ICON.equals(p.getPropertyName()) && StringUtils.hasText(p.getPropertyValue())) {
                     vo.setIconUrl(commonFileService.getShowUrl(p.getPropertyValue()));
+                } else if (AbilityPropertyConstants.PROP_ILLUSTRATION.equals(p.getPropertyName()) && StringUtils.hasText(p.getPropertyValue())) {
+                    vo.setDiagramUrl(commonFileService.getShowUrl(p.getPropertyValue()));
                 }
             }
 
