@@ -564,35 +564,31 @@ queryUserRoles(appEntity, userAccount)
 
 ### 13.5 缓存清理
 
-> ⚠️ 本期不实施。清理逻辑需修改 open-server / market-server 侧代码，由平台面在应用信息变更或成员变更时主动触发。
+> ⚠️ 本期不实施。api-server 为只读缓存，**不写 evict 代码**。清理逻辑由 open-server 侧全权负责，在应用信息或成员变更时主动 `delete` 对应 Key。
 
-**预留清理入口**（`InternalCacheManager`）：
+**open-server 侧参考示例**（后续在 open-server 中实施，非 api-server）：
 
 ```java
-// 应用信息变更时调（平台面修改/禁用应用）
-public void evictApp(String appId, String hisAppId) {
-    redisTemplate.delete("api:entity:app:id:" + appId);
-    if (hisAppId != null) redisTemplate.delete("api:entity:app:his:" + hisAppId);
-}
+// 应用信息变更时 — market-server 侧
+redisTemplate.delete("api:entity:app:id:" + appId);
+redisTemplate.delete("api:entity:app:his:" + hisAppId);
 
-// 成员变更时调（添加/移除/修改角色）
-public void evictMembers(Long appId) {
-    redisTemplate.delete("api:entity:members:" + appId);
-}
+// 成员变更时 — open-server 侧
+redisTemplate.delete("api:entity:members:" + appId);
 ```
 
-**触发方**（后续实施）：
+**触发方**（后续在对应模块中实施）：
 
-| 触发场景 | 调用模块 | 调用方法 |
-|---------|---------|---------|
-| 平台面修改应用信息 | market-server | `AdminAbilityController` → `cacheManager.evictApp(...)` |
-| 成员添加/移除/角色变更 | open-server | `MemberController` → `cacheManager.evictMembers(...)` |
+| 触发场景 | 模块 | 位置 |
+|---------|------|------|
+| 应用信息变更 | market-server | AdminAbility 更新/删除/禁用 |
+| 成员变更 | open-server | Member 添加/移除/角色变更 |
 
 ### 13.6 实施文件
 
 | 操作 | 文件 | 说明 |
 |:--:|------|------|
-| NEW | `api-server/.../internal/cache/InternalCacheManager.java` | 缓存管理类，注入 `RedisTemplate`，封装 get/set/evict |
+| NEW | `api-server/.../internal/cache/InternalCacheManager.java` | 缓存管理类，注入 `RedisTemplate`，封装 get/set（仅只读，evict 由 open-server 侧直接 delete Key） |
 | MODIFY | `api-server/.../internal/service/impl/UserRoleServiceImpl.java` | `resolveAppIdentifier` / `queryUserRoles` 各加 cache-aside 逻辑 |
 
 > **设计完成，待独立 Task 实施。**
@@ -604,3 +600,4 @@ public void evictMembers(Long appId) {
 | v1.0 | 初始创建 — API面技术规划 | 2026-07-13 | SDDU Plan Agent |
 | v1.1 | 对齐平台面格式：独立数据库设计+API设计章节；接口含设计规范/请求响应/JSON示例/标识解析流程图 | 2026-07-13 | SDDU Plan Agent |
 | v1.3 | 新增 §13 缓存设计（1 Task，按接口维度）+ §12 代码管理（单分支，merge --no-ff） | 2026-07-20 | SDDU 路由调度专家 |
+| v1.4 | §13.5 修正：api-server 只读缓存，evict 由 open-server 直接 delete Key，不在 api-server 写 evict 代码 | 2026-07-22 | SDDU Plan Agent |
