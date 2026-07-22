@@ -48,17 +48,22 @@ public class UserRoleServiceImpl implements UserRoleService {
         // ---- 2. 参数校验 ----
         validateParams(request);
 
-        // ---- 3. 解析应用标识 ----
-        String resolvedAppId = resolveAppIdentifier(request.getAppId(), request.getHisAppId());
+        // ---- 3. 解析应用标识（查出 AppEntity，含 id + appId） ----
+        AppEntity app = resolveAppIdentifier(request.getAppId(), request.getHisAppId());
 
-        // ---- 4. 查询用户角色 ----
-        Integer[] roles = queryRoles(resolvedAppId, request.getUserAccount());
+        // ---- 4. 查询用户角色（复用 AppEntity.id，无冗余查询） ----
+        List<AppMemberEntity> members = appMemberEntityMapper.selectByAppIdAndAccountId(
+                app.getId(), request.getUserAccount());
+
+        Integer[] roles = members.stream()
+                .map(AppMemberEntity::getMemberType)
+                .toArray(Integer[]::new);
 
         log.info("Query result: appId={}, userAccount={}, roles={}",
-                resolvedAppId, request.getUserAccount(), Arrays.toString(roles));
+                app.getAppId(), request.getUserAccount(), Arrays.toString(roles));
 
         return UserRoleQueryResponse.builder()
-                .appId(resolvedAppId)
+                .appId(app.getAppId())
                 .roles(roles)
                 .build();
     }
@@ -114,23 +119,46 @@ public class UserRoleServiceImpl implements UserRoleService {
 
     // ──────────────────── 应用标识解析 ────────────────────
 
-    private String resolveAppIdentifier(String appId, String hisAppId) {
+    /**
+     * 解析应用标识，返回 AppEntity（含 id + appId，供后续复用）。
+     *
+     * <p>appId 字段：先查 app_t.app_id → 不匹配，且 hisAppId 为空时，尝试当 hisAppId 查 app_p_t</p>
+     * <p>hisAppId 字段：查 app_p_t.eamap_app_code → app_t.id → AppEntity</p>
+     *
+     * @return AppEntity，含 id (bigint) 和 appId (varchar)
+     * @throws BusinessException(404) 应用不存在
+     */
+    private AppEntity resolveAppIdentifier(String appId, String hisAppId) {
+        // 1. appId 字段：查 app_t
         if (appId != null && !appId.isBlank()) {
             AppEntity app = appEntityMapper.selectByAppId(appId);
             if (app != null) {
                 log.debug("App resolved by appId: {} -> id={}", appId, app.getId());
-                return app.getAppId();
+                return app;
             }
-            log.debug("App not found by appId: {}, trying hisAppId", appId);
+            log.debug("App not found by appId: {}", appId);
+
+            // appId 查不到，且没有单独的 hisAppId 时，把 appId 值当做 hisAppId 再试一次
+            if (hisAppId == null || hisAppId.isBlank()) {
+                AppPropertyEntity prop = appPropertyEntityMapper.selectByEamapAppCode(appId);
+                if (prop != null) {
+                    AppEntity app2 = appEntityMapper.selectById(prop.getParentId());
+                    if (app2 != null) {
+                        log.debug("App resolved by appId-as-hisAppId: {} -> id={}", appId, app2.getId());
+                        return app2;
+                    }
+                }
+            }
         }
 
+        // 2. hisAppId 字段：查 app_p_t → app_t
         if (hisAppId != null && !hisAppId.isBlank()) {
             AppPropertyEntity prop = appPropertyEntityMapper.selectByEamapAppCode(hisAppId);
             if (prop != null) {
                 AppEntity app = appEntityMapper.selectById(prop.getParentId());
                 if (app != null) {
                     log.debug("App resolved by hisAppId: {} -> appId={}", hisAppId, app.getAppId());
-                    return app.getAppId();
+                    return app;
                 }
             }
             log.debug("App not found by hisAppId: {}", hisAppId);
@@ -138,22 +166,5 @@ public class UserRoleServiceImpl implements UserRoleService {
 
         log.warn("No matching application: appId={}, hisAppId={}", appId, hisAppId);
         throw BusinessException.notFound("应用不存在", "Application not found");
-    }
-
-    // ──────────────────── 角色查询 ────────────────────
-
-    private Integer[] queryRoles(String appId, String userAccount) {
-        AppEntity app = appEntityMapper.selectByAppId(appId);
-        if (app == null) {
-            log.warn("App not found for resolved appId={}", appId);
-            return new Integer[0];
-        }
-
-        List<AppMemberEntity> members = appMemberEntityMapper.selectByAppIdAndAccountId(
-                app.getId(), userAccount);
-
-        return members.stream()
-                .map(AppMemberEntity::getMemberType)
-                .toArray(Integer[]::new);
     }
 }
