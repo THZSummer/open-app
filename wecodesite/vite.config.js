@@ -29,6 +29,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path,
       },
+      '/common/files': {
+        target: 'http://localhost:18080/open-server',
+        changeOrigin: true,
+        rewrite: (path) => path,
+      },
     },
   },
 });
