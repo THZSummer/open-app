@@ -6,7 +6,7 @@ import com.xxx.it.works.wecode.v2.common.enums.ResponseCodeEnum;
 import com.xxx.it.works.wecode.v2.common.enums.StatusEnum;
 import com.xxx.it.works.wecode.v2.common.exception.BusinessException;
 import com.xxx.it.works.wecode.v2.common.id.IdGeneratorStrategy;
-import com.xxx.it.works.wecode.v2.modules.commonfile.FileStorageStrategy;
+import com.xxx.it.works.wecode.v2.modules.commonfile.service.CommonFileService;
 import com.xxx.it.works.wecode.v2.modules.ability.constants.AbilityPropertyConstants;
 import com.xxx.it.works.wecode.v2.modules.ability.dto.AddAbilityRequest;
 import com.xxx.it.works.wecode.v2.modules.ability.entity.Ability;
@@ -59,7 +59,7 @@ public class AbilityServiceImpl implements AbilityService {
     private AppContextResolver appContextResolver;
 
     @Autowired
-    private FileStorageStrategy fileStorageStrategy;
+    private CommonFileService commonFileService;
 
     @Autowired
     private IdGeneratorStrategy idGenerator;
@@ -103,9 +103,9 @@ public class AbilityServiceImpl implements AbilityService {
             List<AbilityProperty> props = propsMap.getOrDefault(ability.getId(), Collections.emptyList());
             for (AbilityProperty p : props) {
                 if (AbilityPropertyConstants.PROP_ICON.equals(p.getPropertyName()) && StringUtils.hasText(p.getPropertyValue())) {
-                    vo.setIconUrl(fileStorageStrategy.getShowUrl(p.getPropertyValue()));
+                    vo.setIconUrl(commonFileService.getShowUrl(p.getPropertyValue()));
                 } else if (AbilityPropertyConstants.PROP_ILLUSTRATION.equals(p.getPropertyName()) && StringUtils.hasText(p.getPropertyValue())) {
-                    vo.setDiagramUrl(fileStorageStrategy.getShowUrl(p.getPropertyValue()));
+                    vo.setDiagramUrl(commonFileService.getShowUrl(p.getPropertyValue()));
                 }
             }
 
@@ -207,7 +207,7 @@ public class AbilityServiceImpl implements AbilityService {
             List<AbilityProperty> props = propsMap.getOrDefault(ability.getId(), Collections.emptyList());
             for (AbilityProperty p : props) {
                 if (AbilityPropertyConstants.PROP_ICON.equals(p.getPropertyName()) && StringUtils.hasText(p.getPropertyValue())) {
-                    vo.setIconUrl(fileStorageStrategy.getShowUrl(p.getPropertyValue()));
+                    vo.setIconUrl(commonFileService.getShowUrl(p.getPropertyValue()));
                 }
             }
 

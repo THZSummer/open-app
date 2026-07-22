@@ -1,4 +1,4 @@
-package com.xxx.it.works.wecode.v2.modules.commonfile;
+package com.xxx.it.works.wecode.v2.modules.commonfile.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

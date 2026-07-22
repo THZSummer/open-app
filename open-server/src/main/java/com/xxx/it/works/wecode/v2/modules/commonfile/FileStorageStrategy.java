@@ -1,5 +1,6 @@
 package com.xxx.it.works.wecode.v2.modules.commonfile;
 
+import com.xxx.it.works.wecode.v2.modules.commonfile.dto.UploadResult;
 import org.springframework.web.multipart.MultipartFile;
 
 public interface FileStorageStrategy {

@@ -1,5 +1,6 @@
 package com.xxx.it.works.wecode.v2.modules.commonfile;
 
+import com.xxx.it.works.wecode.v2.modules.commonfile.dto.UploadResult;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
