@@ -70,8 +70,10 @@ function Capabilities() {
         setSubscribedAbilities(subscribedRes.data || []);
       }
       if (listRes?.code === '200') {
-        const filtered = (listRes.data || []).filter(a => a.abilityType !== 6);
-        setAbilities(filtered);
+        const mapped = (listRes.data || [])
+          .filter(a => a.abilityType !== 6)
+          .map(a => ({ ...a, illustration: a.diagramUrl }));
+        setAbilities(mapped);
       }
     } catch (error) {
       message.error('加载能力列表失败');
