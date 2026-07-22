@@ -28,7 +28,7 @@ graph LR
     T1["TASK-001 [M]<br/>GET /ability/list<br/>列表增强 + hidden控制"]
     T2["TASK-002 [M]<br/>POST /ability<br/>订阅增强 + 自动桥接"]
     T3["TASK-003 [S]<br/>GET /ability/subscribed<br/>已订阅列表增强"]
-    T4["TASK-004 [S]<br/>VersionServiceImpl<br/>硬编码→require_release"]
+    T4["TASK-004 [S]<br/>VersionServiceImpl<br/>硬编码→require_release ✅"]
 ```
 
 > ⚠️ 前端 FR-101~103（动态目录、嵌入子应用、场景分组）由独立流程实现，不在本文档跟踪。后端 TASK-001/003 完成后 API 契约即对前端可用。
@@ -42,7 +42,7 @@ graph LR
 | 1 | 能力列表增强 | `specs-tree-open-01-list-api/` | `GET /ability/list` | FR-001, FR-005 | M | open-server | 无 | Java: Service 单测 + Python: 列表集成测试 |
 | 2 | 能力订阅增强 + 自动桥接 | `specs-tree-open-02-subscribe-api/` | `POST /ability` | FR-002, FR-003 | M | open-server | 无 | Java: Service 单测 + Python: 订阅集成测试 |
 | 3 | 已订阅列表增强 | `specs-tree-open-03-subscribed-api/` | `GET /ability/subscribed` | FR-004 | S | open-server | 无 | Java: Service 单测 + Python: 已订阅集成测试 |
-| 4 | VersionServiceImpl 改造 | `specs-tree-open-04-version-service/` | `createVersion()` | ADR-004 | S | open-server | 无 | Java: 过滤逻辑单测 |
+| 4 | VersionServiceImpl 改造 ✅ | `specs-tree-open-04-version-service/` | `createVersion()` | ADR-004 | S | open-server | 无 | Java: 过滤逻辑单测 |
 
 ---
 
@@ -148,7 +148,7 @@ graph LR
 
 ---
 
-### TASK-004 [S] — VersionServiceImpl 改造
+### TASK-004 [S] — VersionServiceImpl 改造 ✅
 
 **接口**: 无独立接口，修改 `createVersion()` 内部逻辑
 **对应 ADR**: ADR-004（require_release 替代硬编码）
