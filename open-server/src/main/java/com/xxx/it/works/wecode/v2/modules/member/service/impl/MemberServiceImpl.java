@@ -4,6 +4,7 @@ import com.xxx.it.works.wecode.v2.common.constants.CommonConstants;
 import com.xxx.it.works.wecode.v2.common.context.UserContextHolder;
 import com.xxx.it.works.wecode.v2.common.enums.ResponseCodeEnum;
 import com.xxx.it.works.wecode.v2.common.enums.StatusEnum;
+import com.xxx.it.works.wecode.v2.common.cache.OpenPlatformCacheEvictor;
 import com.xxx.it.works.wecode.v2.common.exception.BusinessException;
 import com.xxx.it.works.wecode.v2.common.id.IdGeneratorStrategy;
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
@@ -58,6 +59,9 @@ public class MemberServiceImpl implements MemberService {
 
     @Autowired
     private IdGeneratorStrategy idGenerator;
+
+    @Autowired
+    private OpenPlatformCacheEvictor cacheEvictor;
 
     @Override
     public ApiResponse<List<MemberVO>> getMemberList(String appId, Integer curPage, Integer pageSize) {
@@ -148,6 +152,8 @@ public class MemberServiceImpl implements MemberService {
         appMemberMapper.insertBatch(members);
 
         log.info("Members added successfully: appId={}, count={}", appId, request.getAccountIds().size());
+        // 清理 API 面成员列表缓存
+        cacheEvictor.evictMembers(internalAppId);
     }
 
     @Override
@@ -174,6 +180,8 @@ public class MemberServiceImpl implements MemberService {
         // 按主键删除单条记录
         appMemberMapper.deleteById(memberId);
         log.info("Member deleted successfully: appId={}, memberId={}, memberType={}", appId, memberId, member.getMemberType());
+        // 清理 API 面成员列表缓存
+        cacheEvictor.evictMembers(delInternalAppId);
     }
 
     @Override
@@ -200,6 +208,8 @@ public class MemberServiceImpl implements MemberService {
         // 通知卡片服务
         appCommonService.notifyCardService(appId, CommonConstants.EVENT_TRANSFER_OWNER);
         log.info("Owner transferred successfully: appId={}, from={}, to={}", appId, fromAccountId, toAccountId);
+        // 清理 API 面成员列表缓存
+        cacheEvictor.evictMembers(internalAppId);
     }
 
     @Override
