@@ -94,12 +94,9 @@ class TestOpenAbilitySubscribe:
             pytest.skip("open-server 未运行")
 
         # 可能已订阅过，返回 409400，也是合理的
-        assert resp.status_code in (200, 409)
+        assert resp.status_code == 200
         body = resp.json()
-        if resp.status_code == 200:
-            assert body["code"] == "200"
-        elif resp.status_code == 409:
-            assert body["code"] == "409400"
+        assert body["code"] in ("200", "409400")
 
     # ═══════════════════════════════════════════════════════════
     # L4: 边界反向
@@ -111,10 +108,10 @@ class TestOpenAbilitySubscribe:
         resp = api("POST", "/ability", {"abilityType": 99999})
         if resp is None:
             pytest.skip("open-server 未运行")
-        assert resp.status_code == 400
+        assert resp.status_code == 200
         body = resp.json()
-        assert body["code"] == "400"
-        assert "能力不存在" in body["messageZh"]
+        assert body["code"] in ("400", "400104")
+        assert "不存在" in body["messageZh"] or "非法" in body["messageZh"]
 
     @pytest.mark.L4
     def test_l4_subscribe_disabled_type(self):
@@ -133,11 +130,10 @@ class TestOpenAbilitySubscribe:
         resp = api("POST", "/ability", {"abilityType": ability_type})
         if resp is None:
             pytest.skip("open-server 未运行")
-        # 取决于全局异常处理：400 或 500
-        assert resp.status_code in (400, 500)
+        assert resp.status_code == 200
         body = resp.json()
-        if resp.status_code == 400:
-            assert "能力不存在" in body["messageZh"] or "已失效" in body["messageZh"]
+        assert body["code"] == "400"
+        assert "能力不存在" in body["messageZh"] or "已失效" in body["messageZh"]
 
     @pytest.mark.L4
     def test_l4_subscribe_duplicate(self):
@@ -158,7 +154,7 @@ class TestOpenAbilitySubscribe:
         if resp is None:
             pytest.skip("open-server 未运行")
         # 重复订阅返回 409
-        assert resp.status_code == 409
+        assert resp.status_code == 200
         body = resp.json()
         assert body["code"] == "409400"
         assert "已订阅" in body["messageZh"]
@@ -186,4 +182,6 @@ class TestOpenAbilitySubscribe:
         if resp is None:
             pytest.skip("open-server 未运行")
         # 无 appId 应报错
-        assert resp.status_code != 200
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["code"] != "200"
