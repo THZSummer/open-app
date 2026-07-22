@@ -50,7 +50,7 @@ graph LR
 
 ---
 
-### TASK-001 [M] — 能力列表增强 + hidden 控制
+### TASK-001 [M] — 能力列表增强 + hidden 控制 ✅
 
 **接口**: `GET /service/open/v2/ability/list`
 **对应 FR**: FR-001（能力列表增强）、FR-005（hidden 控制）

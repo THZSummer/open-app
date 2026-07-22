@@ -11,6 +11,12 @@
         <result column="ability_type" property="abilityType"/>
         <result column="order_num" property="orderNum"/>
         <result column="status" property="status"/>
+        <result column="hidden" property="hidden"/>
+        <result column="entry_url" property="entryUrl"/>
+        <result column="route_path" property="routePath"/>
+        <result column="alias_name" property="aliasName"/>
+        <result column="require_release" property="requireRelease"/>
+        <result column="load_type" property="loadType"/>
         <result column="create_by" property="createBy"/>
         <result column="create_time" property="createTime"/>
         <result column="last_update_by" property="lastUpdateBy"/>
@@ -19,13 +25,16 @@
 
     <sql id="Base_Column_List">
         id, ability_name_cn, ability_name_en, ability_desc_cn, ability_desc_en,
-        ability_type, order_num, status, create_by, create_time, last_update_by, last_update_time
+        ability_type, order_num, status, hidden,
+        entry_url, route_path, alias_name, require_release, load_type,
+        create_by, create_time, last_update_by, last_update_time
     </sql>
 
     <select id="selectAll" resultMap="AbilityResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM openplatform_ability_t
         WHERE status = 1
+          AND hidden = 0
         ORDER BY order_num, id
     </select>
 

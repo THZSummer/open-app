@@ -77,4 +77,34 @@ public class Ability implements Serializable {
      */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime lastUpdateTime;
+
+    /**
+     * 是否隐藏（0=展示, 1=隐藏）
+     */
+    private Integer hidden;
+
+    /**
+     * 进入地址（微前端子应用入口）
+     */
+    private String entryUrl;
+
+    /**
+     * 路由路径（QianKun activeRule）
+     */
+    private String routePath;
+
+    /**
+     * 别名（QianKun name）
+     */
+    private String aliasName;
+
+    /**
+     * 是否需要版本发布才生效（0=即时, 1=需发布）
+     */
+    private Integer requireRelease;
+
+    /**
+     * 加载类型（1=路由加载, 2=微前端加载）
+     */
+    private Integer loadType;
 }

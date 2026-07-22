@@ -64,4 +64,29 @@ public class AbilityVO implements Serializable {
      * 排序号
      */
     private Integer orderNum;
+
+    /**
+     * 进入地址（微前端子应用入口，QianKun entry）
+     */
+    private String entryUrl;
+
+    /**
+     * 路由路径（QianKun activeRule）
+     */
+    private String routePath;
+
+    /**
+     * 别名（QianKun name）
+     */
+    private String aliasName;
+
+    /**
+     * 是否需要版本发布才生效（0=即时生效，1=需版本发布）
+     */
+    private Integer requireRelease;
+
+    /**
+     * 加载类型（1=路由加载，2=微前端加载）
+     */
+    private Integer loadType;
 }
