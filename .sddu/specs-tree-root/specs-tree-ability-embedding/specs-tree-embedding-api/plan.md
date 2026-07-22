@@ -503,10 +503,104 @@ sequenceDiagram
 
 ---
 
+
+## 13. 缓存设计
+
+> **设计原则**：对齐现有项目体系 — 纯手动 `RedisTemplate` Cache-Aside，无 Spring `@Cacheable` 注解。
+
+### 13.1 现有体系参照
+
+| 模块 | 缓存角色 | 实现方式 |
+|------|---------|---------|
+| **market-server** | 写方删 | `CacheServiceV2` — CRUD 后 `StringRedisTemplate.delete(key)` |
+| **open-server** | 写方删 | `FlowCacheEvictor` — 部署/失效后 `StringRedisTemplate.delete(key)` |
+| **connector-api** | 读方读写 | `EntityCacheManager` / `FlowCacheManager` — get → miss → DB → set |
+| **api-server** | **待接入** | Redis 基建就绪（`RedisConfig` 已定义 `RedisTemplate`），业务缓存为零 |
+
+> 整个体系模式：**写操作方负责 delete 清理，读操作方负责 get/set 读写**。
+
+### 13.2 缓存目标
+
+| 方法 | 当前 DB 查询 | 缓存后 |
+|------|:--:|:--:|
+| `resolveAppIdentifier` (appId 路径) | `selectByAppId` | get → miss → DB → set |
+| `resolveAppIdentifier` (hisAppId 路径) | `selectByEamapAppCode` + `selectById` | get → miss → DB → set |
+| `queryUserRoles` (成员查询) | `selectByAppId` (全量) | get → miss → DB → set |
+
+### 13.3 Key 格式
+
+对齐 `cp:entity:*` 风格，前缀 `api:entity:`：
+
+| 缓存对象 | Key | 序列化 | TTL | 说明 |
+|----------|-----|:--:|:--:|------|
+| AppEntity (by appId) | `api:entity:app:id:{appId}` | JSON | 30min | varchar app_id 索引 |
+| AppEntity (by hisAppId) | `api:entity:app:his:{hisAppId}` | JSON | 30min | eamap_app_code 索引 |
+| 成员列表 (by appId) | `api:entity:members:{appId}` | JSON | 10min | app_t.id 索引，全量数组 |
+
+**TTL 依据**：
+- 应用信息（名称/状态等）极少变更，30min 足够保守；
+- 成员列表偶有变更（添加/移除成员），10min 兜底，内存过滤保证实时性（accountId 过滤在 get 之后执行，不受缓存影响）。
+
+### 13.4 Cache-Aside 读写链路
+
+```
+resolveAppIdentifier(appId, hisAppId)
+  ├─ appId 有值:
+  │   ├─ redisTemplate.opsForValue().get("api:entity:app:id:{appId}")
+  │   ├─ 命中 → 返回 AppEntity
+  │   └─ 未命中 → selectByAppId → opsForValue().set(key, json, 30min)
+  │
+  └─ hisAppId 有值:
+      ├─ redisTemplate.opsForValue().get("api:entity:app:his:{hisAppId}")
+      ├─ 命中 → 返回 AppEntity
+      └─ 未命中 → selectByEamapAppCode + selectById → set(key, json, 30min)
+
+queryUserRoles(appEntity, userAccount)
+  ├─ redisTemplate.opsForValue().get("api:entity:members:{appEntity.id}")
+  ├─ 命中 → 返回 List<AppMemberEntity>
+  └─ 未命中 → selectByAppId(all) → set(key, json, 10min)
+      → stream filter by accountId（内存过滤，不受缓存 TTL 影响）
+```
+
+### 13.5 缓存清理
+
+> ⚠️ 本期不实施。清理逻辑需修改 open-server / market-server 侧代码，由平台面在应用信息变更或成员变更时主动触发。
+
+**预留清理入口**（`InternalCacheManager`）：
+
+```java
+// 应用信息变更时调（平台面修改/禁用应用）
+public void evictApp(String appId, String hisAppId) {
+    redisTemplate.delete("api:entity:app:id:" + appId);
+    if (hisAppId != null) redisTemplate.delete("api:entity:app:his:" + hisAppId);
+}
+
+// 成员变更时调（添加/移除/修改角色）
+public void evictMembers(Long appId) {
+    redisTemplate.delete("api:entity:members:" + appId);
+}
+```
+
+**触发方**（后续实施）：
+
+| 触发场景 | 调用模块 | 调用方法 |
+|---------|---------|---------|
+| 平台面修改应用信息 | market-server | `AdminAbilityController` → `cacheManager.evictApp(...)` |
+| 成员添加/移除/角色变更 | open-server | `MemberController` → `cacheManager.evictMembers(...)` |
+
+### 13.6 实施文件
+
+| 操作 | 文件 | 说明 |
+|:--:|------|------|
+| NEW | `api-server/.../internal/cache/InternalCacheManager.java` | 缓存管理类，注入 `RedisTemplate`，封装 get/set/evict |
+| MODIFY | `api-server/.../internal/service/impl/UserRoleServiceImpl.java` | `resolveAppIdentifier` / `queryUserRoles` 各加 cache-aside 逻辑 |
+
+> **设计完成，待独立 Task 实施。**
+
 ## 修订记录
 
 | 版本 | 变更说明 | 日期 | 修订人 |
 |------|---------|------|--------|
 | v1.0 | 初始创建 — API面技术规划 | 2026-07-13 | SDDU Plan Agent |
 | v1.1 | 对齐平台面格式：独立数据库设计+API设计章节；接口含设计规范/请求响应/JSON示例/标识解析流程图 | 2026-07-13 | SDDU Plan Agent |
-| v1.2 | 新增 §11 任务分解（1 Task，按接口维度）+ §12 代码管理（单分支，merge --no-ff） | 2026-07-20 | SDDU 路由调度专家 |
+| v1.3 | 新增 §13 缓存设计（1 Task，按接口维度）+ §12 代码管理（单分支，merge --no-ff） | 2026-07-20 | SDDU 路由调度专家 |
