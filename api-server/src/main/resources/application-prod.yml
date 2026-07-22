@@ -44,3 +44,10 @@ logging:
   level:
     root: INFO
     com.xxx.api: INFO
+
+# --- 生产环境：正式凭证校验 + Token 解析 + 白名单 ---
+internal:
+  auth:
+    bypass: false
+    allowed-accounts:
+      - ${INTERNAL_ACCOUNT_PLACEHOLDER:change-me-in-production}
