@@ -23,7 +23,6 @@
                create_by, create_time, last_update_by, last_update_time
         FROM openplatform_app_member_t
         WHERE app_id = #{appId}
-          AND status = 1
     </select>
 
 </mapper>

@@ -54,6 +54,7 @@ public class UserRoleServiceImpl implements UserRoleService {
         // ---- 4. 查全量成员 + 内存过滤 ----
         List<AppMemberEntity> allMembers = appMemberEntityMapper.selectByAppId(app.getId());
         Integer[] roles = allMembers.stream()
+                .filter(m -> m.getStatus() != null && m.getStatus() == 1)
                 .filter(m -> request.getUserAccount().equals(m.getAccountId()))
                 .map(AppMemberEntity::getMemberType)
                 .toArray(Integer[]::new);
@@ -131,28 +132,33 @@ public class UserRoleServiceImpl implements UserRoleService {
         // 1. appId 字段：查 app_t
         if (appId != null && !appId.isBlank()) {
             AppEntity app = appEntityMapper.selectByAppId(appId);
-            if (app != null) {
+            if (app != null && isActive(app.getStatus())) {
                 log.debug("App resolved by appId: {} -> id={}", appId, app.getId());
                 return app;
             }
-            log.debug("App not found by appId: {}", appId);
+            log.debug("App not found or inactive by appId: {}", appId);
 
         }
 
         // 2. hisAppId 字段：查 app_p_t → app_t
         if (hisAppId != null && !hisAppId.isBlank()) {
             AppPropertyEntity prop = appPropertyEntityMapper.selectByEamapAppCode(hisAppId);
-            if (prop != null) {
+            if (prop != null && isActive(prop.getStatus())) {
                 AppEntity app = appEntityMapper.selectById(prop.getParentId());
-                if (app != null) {
+                if (app != null && isActive(app.getStatus())) {
                     log.debug("App resolved by hisAppId: {} -> appId={}", hisAppId, app.getAppId());
                     return app;
                 }
             }
-            log.debug("App not found by hisAppId: {}", hisAppId);
+            log.debug("App not found or inactive by hisAppId: {}", hisAppId);
         }
 
         log.warn("No matching application: appId={}, hisAppId={}", appId, hisAppId);
         throw BusinessException.notFound("应用不存在", "Application not found");
+    }
+
+    /** 启用状态：status=1。null 视为无效，防御性处理。 */
+    private static boolean isActive(Integer status) {
+        return status != null && status == 1;
     }
 }

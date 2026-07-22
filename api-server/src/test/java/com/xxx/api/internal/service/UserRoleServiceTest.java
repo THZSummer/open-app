@@ -64,6 +64,7 @@ class UserRoleServiceTest {
         AppMemberEntity m = new AppMemberEntity();
         m.setAccountId(accountId);
         m.setMemberType(memberType);
+        m.setStatus(1);
         return m;
     }
 
@@ -103,6 +104,7 @@ class UserRoleServiceTest {
 
             AppPropertyEntity prop = new AppPropertyEntity();
             prop.setParentId(2001L);
+            prop.setStatus(1);
             when(appPropertyEntityMapper.selectByEamapAppCode("eamap_001")).thenReturn(prop);
 
             AppEntity app = mockApp(2001L, "resolved-app-001");
@@ -240,6 +242,7 @@ class UserRoleServiceTest {
         AppEntity app = new AppEntity();
         app.setId(id);
         app.setAppId(appId);
+        app.setStatus(1);
         return app;
     }
 }
