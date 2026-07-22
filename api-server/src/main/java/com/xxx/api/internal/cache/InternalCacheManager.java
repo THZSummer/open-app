@@ -1,15 +1,13 @@
 package com.xxx.api.internal.cache;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.api.internal.entity.AppEntity;
 import com.xxx.api.internal.entity.AppMemberEntity;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -25,6 +23,7 @@ import java.util.Optional;
  */
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class InternalCacheManager {
 
     private static final String KEY_APP_BY_APPID = "OPENPLATFORM:APP:APPID:";
@@ -35,19 +34,11 @@ public class InternalCacheManager {
     private static final Duration TTL_MEMBER = Duration.ofMinutes(10);
 
     private final RedisTemplate<String, Object> redisTemplate;
-    private final ObjectMapper objectMapper;
-    private final boolean cacheAvailable;
-
-    public InternalCacheManager(Optional<RedisTemplate<String, Object>> redisTemplate, ObjectMapper objectMapper) {
-        this.redisTemplate = redisTemplate.orElse(null);
-        this.objectMapper = objectMapper;
-        this.cacheAvailable = this.redisTemplate != null;
-    }
 
     // ──────────────────── AppEntity ────────────────────
 
     public Optional<AppEntity> getAppByAppId(String appId) {
-        return get(KEY_APP_BY_APPID + appId, AppEntity.class);
+        return get(KEY_APP_BY_APPID + appId);
     }
 
     public void setAppByAppId(String appId, AppEntity app) {
@@ -55,7 +46,7 @@ public class InternalCacheManager {
     }
 
     public Optional<AppEntity> getAppByHisAppId(String hisAppId) {
-        return get(KEY_APP_BY_HISAPPID + hisAppId, AppEntity.class);
+        return get(KEY_APP_BY_HISAPPID + hisAppId);
     }
 
     public void setAppByHisAppId(String hisAppId, AppEntity app) {
@@ -66,8 +57,7 @@ public class InternalCacheManager {
 
     @SuppressWarnings("unchecked")
     public Optional<List<AppMemberEntity>> getMembers(Long appId) {
-        Optional<List> raw = get(KEY_MEMBER_LIST + appId, List.class);
-        return raw.map(list -> (List<AppMemberEntity>) list);
+        return get(KEY_MEMBER_LIST + appId);
     }
 
     public void setMembers(Long appId, List<AppMemberEntity> members) {
@@ -77,43 +67,27 @@ public class InternalCacheManager {
     // ──────────────────── 内部方法 ────────────────────
 
     @SuppressWarnings("unchecked")
-    private <T> Optional<T> get(String key, Class<T> type) {
-        if (!cacheAvailable) {
-            return Optional.empty();
-        }
+    private <T> Optional<T> get(String key) {
         try {
-            Object value = redisTemplate.opsForValue().get(key);
+            T value = (T) redisTemplate.opsForValue().get(key);
             if (value == null) {
                 log.debug("Cache miss: {}", key);
                 return Optional.empty();
             }
             log.debug("Cache hit: {}", key);
-
-            // RedisTemplate 配置了 GenericJackson2JsonRedisSerializer，
-            // 简单类型直接返回，复杂对象需要反序列化
-            if (type.isInstance(value)) {
-                return Optional.of((T) value);
-            }
-
-            // Jackson LinkedHashMap → target type fallback
-            String json = objectMapper.writeValueAsString(value);
-            T result = objectMapper.readValue(json, type);
-            return Optional.ofNullable(result);
+            return Optional.of(value);
         } catch (Exception e) {
-            log.warn("Cache read error for key={}: {}", key, e.getMessage());
+            log.error("Cache read error for key={}: {}", key, e.getMessage());
             return Optional.empty();
         }
     }
 
     private void set(String key, Object value, Duration ttl) {
-        if (!cacheAvailable) {
-            return;
-        }
         try {
             redisTemplate.opsForValue().set(key, value, ttl);
             log.debug("Cache set: {} (ttl={})", key, ttl);
         } catch (Exception e) {
-            log.warn("Cache write error for key={}: {}", key, e.getMessage());
+            log.error("Cache write error for key={}: {}", key, e.getMessage());
         }
     }
 }
