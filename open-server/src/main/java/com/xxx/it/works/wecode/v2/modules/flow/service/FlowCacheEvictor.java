@@ -3,10 +3,13 @@ package com.xxx.it.works.wecode.v2.modules.flow.service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.Cursor;
+import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 连接流缓存清理器 — 统一管理 open-server 侧所有流相关 Redis 缓存清理
@@ -71,10 +74,19 @@ public class FlowCacheEvictor {
         if (redis == null) return;
         String pattern = "cp:cache:flow:" + flowId + ":*";
         try {
-            Set<String> keys = redis.keys(pattern);
-            if (keys != null && !keys.isEmpty()) {
-                redis.delete(keys);
-                log.info("Evicted execution result caches: {} keys matching {}", keys.size(), pattern);
+            ScanOptions options = ScanOptions.scanOptions()
+                    .match(pattern)
+                    .count(100)
+                    .build();
+            List<String> keysToDelete = new ArrayList<>();
+            try (Cursor<String> cursor = redis.scan(options)) {
+                while (cursor.hasNext()) {
+                    keysToDelete.add(cursor.next());
+                }
+            }
+            if (!keysToDelete.isEmpty()) {
+                redis.delete(keysToDelete);
+                log.info("Evicted execution result caches: {} keys matching {}", keysToDelete.size(), pattern);
             }
         } catch (Exception e) {
             log.warn("Failed to evict execution result caches for flowId={}: {}", flowId, e.getMessage());
