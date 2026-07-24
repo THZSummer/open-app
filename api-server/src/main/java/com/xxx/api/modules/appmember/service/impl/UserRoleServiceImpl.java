@@ -102,11 +102,14 @@ public class UserRoleServiceImpl implements UserRoleService {
             throw BusinessException.unauthorized("内部凭证已失效", "Internal token expired");
         }
 
-        if (allowedAccounts != null && !allowedAccounts.isEmpty()) {
-            if (!allowedAccounts.contains(account)) {
-                log.warn("Account '{}' not in whitelist", account);
-                throw BusinessException.forbidden("无权限调用内部接口", "Access denied: account not in whitelist");
-            }
+        if (allowedAccounts == null || allowedAccounts.isEmpty()) {
+            log.error("No allowed-accounts configured, all internal access denied by fail-closed policy");
+            throw BusinessException.forbidden("无权限调用内部接口", "Access denied");
+        }
+
+        if (!allowedAccounts.contains(account)) {
+            log.warn("Account '{}' not in whitelist", account);
+            throw BusinessException.forbidden("无权限调用内部接口", "Access denied: account not in whitelist");
         }
 
         log.debug("Token validated: account='{}'", account);
