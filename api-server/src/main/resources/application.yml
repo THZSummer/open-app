@@ -40,9 +40,6 @@ logging:
 # --- 内部接口鉴权配置 ---
 internal:
   auth:
-    # 有效内部凭证列表（支持多服务方独立配置）
-    tokens:
-      - dev-token-default
     # 开发阶段绕过凭证校验
     bypass: false
 

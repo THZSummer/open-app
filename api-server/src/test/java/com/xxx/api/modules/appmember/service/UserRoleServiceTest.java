@@ -3,7 +3,6 @@ package com.xxx.api.modules.appmember.service;
 import com.xxx.api.common.exception.BusinessException;
 import com.xxx.api.modules.appmember.auth.SysTokenResolver;
 import com.xxx.api.common.cache.InternalCacheManager;
-import com.xxx.api.modules.appmember.config.InternalAuthProperties;
 import com.xxx.api.modules.appmember.dto.UserRoleQueryRequest;
 import com.xxx.api.modules.appmember.dto.UserRoleQueryResponse;
 import com.xxx.api.modules.app.entity.AppEntity;
@@ -20,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -46,9 +46,6 @@ class UserRoleServiceTest {
     private SysTokenResolver sysTokenResolver;
 
     @Mock
-    private InternalAuthProperties authProperties;
-
-    @Mock
     private InternalCacheManager cacheManager;
 
     @InjectMocks
@@ -59,8 +56,9 @@ class UserRoleServiceTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        when(authProperties.isBypass()).thenReturn(false);
-        when(authProperties.getAllowedAccounts()).thenReturn(List.of("dev-token-001"));
+        // @Value 字段在无 Spring 上下文时不会被注入，需手动设置
+        ReflectionTestUtils.setField(userRoleService, "bypass", false);
+        ReflectionTestUtils.setField(userRoleService, "allowedAccounts", List.of("dev-token-001"));
         when(sysTokenResolver.resolveAccount(VALID_TOKEN)).thenReturn("dev-token-001");
         when(sysTokenResolver.isTokenValid(VALID_TOKEN)).thenReturn(true);
         // 默认缓存 miss，保证回源
@@ -152,9 +150,9 @@ class UserRoleServiceTest {
         }
 
         @Test
-        @DisplayName("bypass 模式 → 跳过凭证校验")
+        @DisplayName("bypass 模式 -> 跳过凭证校验")
         void testBypass() {
-            when(authProperties.isBypass()).thenReturn(true);
+            ReflectionTestUtils.setField(userRoleService, "bypass", true);
 
             UserRoleQueryRequest request = new UserRoleQueryRequest();
             request.setAppId("test-app-001");

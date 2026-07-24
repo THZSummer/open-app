@@ -36,6 +36,11 @@ spring:
 internal:
   gateway:
     url: ${INTERNAL_GATEWAY_URL:http://internal-gateway:9090}
+  # --- 生产环境：正式凭证校验 + Token 解析 + 白名单 ---
+  auth:
+    bypass: false
+    # @Value 注入 List<String> 仅支持逗号分隔单行写法
+    allowed-accounts: ${INTERNAL_ACCOUNT_PLACEHOLDER:change-me-in-production}
 
 mock:
   enabled: false
@@ -44,10 +49,3 @@ logging:
   level:
     root: INFO
     com.xxx.api: INFO
-
-# --- 生产环境：正式凭证校验 + Token 解析 + 白名单 ---
-internal:
-  auth:
-    bypass: false
-    allowed-accounts:
-      - ${INTERNAL_ACCOUNT_PLACEHOLDER:change-me-in-production}

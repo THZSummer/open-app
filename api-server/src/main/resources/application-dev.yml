@@ -42,7 +42,6 @@ logging:
 internal:
   auth:
     bypass: false
-    allowed-accounts:
-      - dev-token-001
-      - dev-token-002
+    # @Value 注入 List<String> 仅支持逗号分隔单行写法
+    allowed-accounts: dev-token-001,dev-token-002
 
