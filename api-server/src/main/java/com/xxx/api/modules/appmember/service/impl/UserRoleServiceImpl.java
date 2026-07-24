@@ -3,7 +3,6 @@ package com.xxx.api.modules.appmember.service.impl;
 import com.xxx.api.common.exception.BusinessException;
 import com.xxx.api.modules.appmember.auth.SysTokenResolver;
 import com.xxx.api.common.cache.InternalCacheManager;
-import com.xxx.api.modules.appmember.config.InternalAuthProperties;
 import com.xxx.api.modules.appmember.dto.UserRoleQueryRequest;
 import com.xxx.api.modules.appmember.dto.UserRoleQueryResponse;
 import com.xxx.api.modules.app.entity.AppEntity;
@@ -15,6 +14,7 @@ import com.xxx.api.modules.app.mapper.AppPropertyEntityMapper;
 import com.xxx.api.modules.appmember.service.UserRoleService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
@@ -37,8 +37,15 @@ public class UserRoleServiceImpl implements UserRoleService {
     private final AppMemberEntityMapper appMemberEntityMapper;
     private final AppPropertyEntityMapper appPropertyEntityMapper;
     private final SysTokenResolver sysTokenResolver;
-    private final InternalAuthProperties authProperties;
     private final InternalCacheManager cacheManager;
+
+    /** 是否跳过凭证校验（开发阶段可设为 true） */
+    @Value("${internal.auth.bypass:false}")
+    private boolean bypass;
+
+    /** 允许调用内部接口的账号白名单（逗号分隔，如 account-a,account-b） */
+    @Value("${internal.auth.allowed-accounts:#{null}}")
+    private List<String> allowedAccounts;
 
     @Override
     public UserRoleQueryResponse queryUserRoles(UserRoleQueryRequest request, String token) {
@@ -74,7 +81,7 @@ public class UserRoleServiceImpl implements UserRoleService {
     // ──────────────────── 凭证校验 ────────────────────
 
     private void validateToken(String token) {
-        if (authProperties.isBypass()) {
+        if (bypass) {
             log.debug("Internal auth bypass enabled");
             return;
         }
@@ -95,8 +102,8 @@ public class UserRoleServiceImpl implements UserRoleService {
             throw BusinessException.unauthorized("内部凭证已失效", "Internal token expired");
         }
 
-        if (authProperties.getAllowedAccounts() != null && !authProperties.getAllowedAccounts().isEmpty()) {
-            if (!authProperties.getAllowedAccounts().contains(account)) {
+        if (allowedAccounts != null && !allowedAccounts.isEmpty()) {
+            if (!allowedAccounts.contains(account)) {
                 log.warn("Account '{}' not in whitelist", account);
                 throw BusinessException.forbidden("无权限调用内部接口", "Access denied: account not in whitelist");
             }
