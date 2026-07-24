@@ -184,7 +184,7 @@ class UserRoleServiceTest {
         }
 
         @Test
-        @DisplayName("不在白名单 → 403")
+        @DisplayName("不在白名单 -> 403")
         void testNotInWhitelist() {
             when(sysTokenResolver.resolveAccount("bad-token")).thenReturn("bad-token");
             when(sysTokenResolver.isTokenValid("bad-token")).thenReturn(true);
@@ -195,6 +195,34 @@ class UserRoleServiceTest {
 
             BusinessException ex = assertThrows(BusinessException.class,
                     () -> userRoleService.queryUserRoles(request, "bad-token"));
+            assertEquals("403", ex.getCode());
+        }
+
+        @Test
+        @DisplayName("白名单未配置(null) -> 403（fail-closed）")
+        void testWhitelistNotConfigured() {
+            ReflectionTestUtils.setField(userRoleService, "allowedAccounts", null);
+
+            UserRoleQueryRequest request = new UserRoleQueryRequest();
+            request.setAppId("test-app-001");
+            request.setUserAccount("admin");
+
+            BusinessException ex = assertThrows(BusinessException.class,
+                    () -> userRoleService.queryUserRoles(request, VALID_TOKEN));
+            assertEquals("403", ex.getCode());
+        }
+
+        @Test
+        @DisplayName("白名单为空 list -> 403（fail-closed）")
+        void testWhitelistEmpty() {
+            ReflectionTestUtils.setField(userRoleService, "allowedAccounts", Collections.emptyList());
+
+            UserRoleQueryRequest request = new UserRoleQueryRequest();
+            request.setAppId("test-app-001");
+            request.setUserAccount("admin");
+
+            BusinessException ex = assertThrows(BusinessException.class,
+                    () -> userRoleService.queryUserRoles(request, VALID_TOKEN));
             assertEquals("403", ex.getCode());
         }
     }
