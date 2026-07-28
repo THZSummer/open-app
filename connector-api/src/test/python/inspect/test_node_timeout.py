@@ -247,8 +247,8 @@ def test_node_timeout():
     resp = trigger(fid_002, body={"msg": "test"}, headers={"X-Sys-Token": "test-token"})
     elapsed = time.time() - start if resp else 0
     if resp is not None:
-        check("[IT-TIMEOUT-002] HTTP 200 或下游错误",
-              resp.status_code in (200, 500, 502),
+        check("[IT-TIMEOUT-002] HTTP 400（执行层错误）",
+              resp.status_code == 400,
               f"status={resp.status_code}")
         # 无节点超时不应触发 timeout 错误
         check("[IT-TIMEOUT-002] 非超时失败（正常完成或下游不可达）",

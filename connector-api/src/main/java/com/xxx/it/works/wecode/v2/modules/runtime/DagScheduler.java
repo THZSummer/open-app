@@ -330,7 +330,7 @@ public class DagScheduler {
                             // 保留 NodeExecutor 已设置的 errorInfo, 仅兜底
                             if (errorOutput.getErrorInfo() == null || errorOutput.getErrorInfo().isEmpty()) {
                                 Map<String, Object> errorInfo = new HashMap<>();
-                                errorInfo.put("code", isTimeout ? ErrorCode.ORCH_NODE_TIMEOUT : ErrorCode.ORCH_NODE_EXECUTION_FAILED);
+                                errorInfo.put("code", isTimeout ? ErrorCode.ORCH_NODE_TIMEOUT.code() : ErrorCode.NODE_EXECUTION_FAILED.code());
                                 String msg = sanitize(e.getMessage());
                                 errorInfo.put("messageZh", "节点[" + nodeId + "]执行" + (isTimeout ? "超时" : "失败") + ": " + msg);
                                 errorInfo.put("messageEn", "Node [" + nodeId + "] execution " + (isTimeout ? "timeout" : "failed") + ": " + msg);
@@ -440,7 +440,7 @@ public class DagScheduler {
         failCtx.setStatus("failed");
         failCtx.setDurationMs(0);
         Map<String, Object> errorInfo = new HashMap<>();
-        errorInfo.put("code", ErrorCode.ORCH_NODE_EXECUTION_FAILED);
+        errorInfo.put("code", ErrorCode.NODE_EXECUTION_FAILED.code());
         String msg = e.getMessage() != null ? sanitize(e.getMessage()) : e.getClass().getSimpleName();
         errorInfo.put("messageZh", "节点[" + nodeId + "]执行异常: " + msg);
         errorInfo.put("messageEn", "Node [" + nodeId + "] execution error: " + msg);

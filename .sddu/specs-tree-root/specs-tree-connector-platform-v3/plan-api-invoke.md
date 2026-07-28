@@ -104,10 +104,10 @@ X-XSRF-TOKEN: user_id=admin001
 HTTP/1.1 200 OK
 X-Flow-Id: 340518008730419200       ← 平台元数据 (X- 前缀)
 X-Execution-Id: abc123...
-X-Status: 0
 X-Duration-Ms: 194
 X-Code: 200
-X-Message-Zh: Flow not running      ← 仅前置校验失败时出现
+X-Message-Zh: 成功                     ← 始终返回（设计上支持中文）
+X-Message-En: Success                  ← 始终返回
 X-Cache-Status: 0
 Echo-To-Header: hello               ← 用户自定义响应头 (出口节点 output.header)
 
@@ -120,20 +120,19 @@ Echo-To-Header: hello               ← 用户自定义响应头 (出口节点 o
 |--------|------|------|---------|
 | `X-Flow-Id` | string | 连接流 ID（雪花 ID） | **始终返回** |
 | `X-Execution-Id` | string | 执行记录 ID | 连接流已执行（含失败） |
-| `X-Status` | int | `0`=成功 / `1`=失败 | 连接流已执行 |
 | `X-Duration-Ms` | int | 执行耗时（毫秒） | 连接流已执行 |
 | `X-Cache-Status` | int | `0`=未命中 / `1`=全流命中 | 缓存生效时 |
 | `X-Code` | string | 平台结果码，见 §4 错误码 | **始终返回** |
-| `X-Message-Zh` | string | 提示信息（英文，HTTP 头仅支持 ASCII） | **始终返回** |
+| `X-Message-Zh` | string | 提示信息 | **始终返回** |
 | `X-Message-En` | string | 英文提示信息 | **始终返回** |
 | `X-Error-Node` | string | 失败节点 ID | 执行失败时 |
 | `X-Error-Node-Type` | string | 失败节点类型 | 执行失败时 |
 
-> ⚠️ **关于 `X-Message-Zh`**：由于 HTTP 协议头仅支持 ASCII 字符，中文会被 Netty 转为 `?`，当前实现中 `X-Message-Zh` 与 `X-Message-En` 使用相同的英文消息。详细技术背景见 [plan-flow-invoke-temp.md](./plan-flow-invoke-temp.md)。
+> ⚠️ **`X-Message-Zh` 实现说明**：HTTP 响应头仅支持 ASCII，当前 `X-Message-Zh` 实际返回 `X-Message-En`（英文消息）。§4.2 中的中文值为设计目标，待 HTTP 头编码方案确定后切换。详见 §9.6。
 
-> 前置校验失败时，连接流未实际执行，`X-Execution-Id`、`X-Status`、`X-Duration-Ms` 不出现。`X-Flow-Id`、`X-Code`、`X-Message-Zh`、`X-Message-En` 始终返回。
+> 前置校验失败时，连接流未实际执行，`X-Execution-Id`、`X-Duration-Ms` 不出现。`X-Flow-Id`、`X-Code`、`X-Message-Zh`、`X-Message-En` 始终返回。
 >
-> 执行层错误时（连接流已执行但节点失败/超时），`X-Execution-Id`、`X-Status`（1 或 2）、`X-Duration-Ms`、`X-Error-Node`、`X-Error-Node-Type` 均会出现。
+> 执行层错误时（连接流已执行但节点失败/超时），`X-Execution-Id`、`X-Duration-Ms`、`X-Error-Node`、`X-Error-Node-Type` 均会出现。
 
 ### 3.3 用户自定义响应头
 
@@ -147,224 +146,251 @@ Echo-To-Header: hello               ← 用户自定义响应头 (出口节点 o
 
 ## 4. 错误码清单
 
-### 4.1 错误码分层体系
+### 4.1 错误码设计规范
 
-| 码段 | 层级 | 含义 | HTTP Status |
-|:---:|------|------|:---:|
-| `200` | — | 执行完成（含业务失败） | 200 |
-| `400` | 前置校验 | 请求参数不合法 | 400 |
-| `401` | 前置校验 | SYSTOKEN 认证失败 | 401 |
-| `403` | 前置校验 | URL 白名单拒绝 | 403 |
-| `404` | 前置校验 | 资源不存在 | 404 |
-| `409` | 前置校验 | 状态冲突（如流未运行） | 409 |
-| `422` | 前置校验 | 前置条件不满足 | 422 |
-| `500` | 兜底 | 内部未知错误 | 500 |
-| `61xxx` | 执行层 | 编排/配置错误 | 400 (X-Status: 1) |
-| `62xxx` | 执行层 | 连接器节点错误 | 400 (X-Status: 1) |
-| `63xxx` | 执行层 | 脚本节点错误 | 400 (X-Status: 1) |
-| `64xxx` | 执行层 | 超时 | 400 (X-Status: 2) |
-| `65xxx` | 执行层 | 并行节点错误 | 400 (X-Status: 1) |
-| `66xxx` | 执行层 | 出口节点错误 | 400 (X-Status: 1) |
+#### 4.1.1 设计原则
 
-> 💡 **关键区分**：前置校验失败 → 400/401/403 + `X-Code` 错误码 + 空 Body；执行层错误 → **同样 400**（用户连接流配置/运行时问题） + `X-Code` 细分码 + 出口 body（按 errorHandler 策略产出）。500 仅平台内部异常时触发。
+**X-Code 按首位数字区分错误大类**，完全脱离 HTTP Status 语义。调用方可仅看首位判断方向，后续位定位原因。
 
-### 4.2 前置校验错误
+| 首位 | 大类 | 含义 | 流是否已执行 | HTTP Status |
+|:---:|------|------|:---:|:---:|
+| `2` | 成功 | 执行成功 | ✅ | 200 |
+| `4` | 校验错误 | **前置拦截**：请求/认证/鉴权/资源/状态不合法，连接流**未执行** | ❌ | 400 / 401 / 403 |
+| `6` | 执行错误 | **运行失败**：流已执行，但节点失败或超时 | ✅ | 400 |
+| `5` | 系统错误 | 平台内部未知异常（极少触发） | — | 500 |
 
-#### 400 — 请求参数错误
+> **核心区分：4xx vs 6xx** — 看连接流是否被调度执行。`4xxxxx` 在执行前拦截（无 X-Execution-Id），`6xxxxx` 在执行中/后产出（有 X-Execution-Id）。
 
-| X-Code | 场景 | 消息（X-Message-En） |
-|:---:|------|------|
-| `400` | 请求参数缺失或格式不合法 | `Bad request` |
-| `400` | 触发器 `inputContract` 校验失败（header/query/body 三段契约不匹配） | `Bad request` |
-| `400` | 触发方式未知（仅支持 `http` / `manual`） | `Bad request` |
-| `400` | HTTP 触发器缺少 `input` 契约 | `Bad request` |
-
-#### 401 — 认证失败
-
-| X-Code | 场景 | 消息（X-Message-En） |
-|:---:|------|------|
-| `401` | `X-Sys-Token` 不在触发器 `sysAccountWhitelist` 白名单内 | `Authentication failed` |
-| `401` | `X-Sys-Token` 缺失或过期 | `Authentication failed` |
-
-#### 403 — 权限拒绝
-
-| X-Code | 场景 | 消息（X-Message-En） |
-|:---:|------|------|
-| `403` | 连接器调用的目标 URL 未通过白名单校验 | `URL whitelist denied` |
-
-#### 404 — 资源不存在
-
-| X-Code | 场景 | 消息（X-Message-En） |
-|:---:|------|------|
-| `404` | 连接流不存在或已被删除 | `Flow not found` |
-| `404` | 连接器不存在或已被删除 | `Flow not found` |
-| `404` | 连接器版本不存在 | `Flow not found` |
-
-#### 409 — 状态冲突
-
-| X-Code | 场景 | 消息（X-Message-En） |
-|:---:|------|------|
-| `409` | 连接流未启动（`lifecycleStatus ≠ 2`） | `Flow not running` |
-
-#### 422 — 前置条件不满足
-
-| X-Code | 场景 | 消息（X-Message-En） |
-|:---:|------|------|
-| `422` | 已部署版本不可用（版本已被失效） | 见错误详情 |
-| `422` | 连接器版本已失效 | 见错误详情 |
-| `422` | 连接器已失效 | 见错误详情 |
-
-#### 500 — 内部错误（兜底）
-
-| X-Code | 场景 | 消息（X-Message-En） |
-|:---:|------|------|
-| `500` | 编排配置无节点 | `Trigger execution failed` |
-| `500` | 编排配置无触发器节点 | `Trigger execution failed` |
-| `500` | 无法归类的运行时异常 | `Trigger execution failed` |
-
-### 4.3 执行层错误（HTTP 200 + X-Status: 1/2）
-
-执行层错误发生在 DAG 编排执行过程中。与前置校验相同，HTTP Status 返回 `400`（用户侧问题），通过 `X-Status`（1=失败/2=超时）和 `X-Code` 携带细分错误码。
-
-#### 编排通用错误 (61xxx / 60xxx)
-
-| X-Code | 场景 | 消息模板（X-Message-En） |
-|:---:|------|------|
-| `61001` | 编排配置 JSON 解析失败 | `Trigger execution failed` |
-| `61002` | 编排中缺少触发器节点 | `Trigger execution failed` |
-| `61003` | 编排中缺少出口节点 | `Trigger execution failed` |
-| `61004` | 节点间边关系缺失 | `Trigger execution failed` |
-| `60000` | DAG 执行整体失败 | `Trigger execution failed` |
-| `60001` | 节点执行失败（通用兜底） | `Trigger execution failed` |
-| `60002` | 节点超时或错误 | `Trigger execution failed` |
-
-#### 触发器节点 (6101x)
-
-| X-Code | 场景 | 消息模板 |
-|:---:|------|------|
-| `61010` | 触发方式未配置（`data.triggerType` 缺失） | `Trigger execution failed` |
-| `61011` | SYSTOKEN 凭证不存在或已过期 | `Trigger execution failed` |
-| `61012` | 调用凭证不在白名单中 | `Trigger execution failed` |
-
-#### 连接器节点 — 配置错误 (6102x)
-
-| X-Code | 场景 | 消息模板 |
-|:---:|------|------|
-| `61020` | 未选择连接器（`connectorId` 缺失） | `Trigger execution failed` |
-| `61021` | 未选择连接器版本（`connectorVersionId` 缺失） | `Trigger execution failed` |
-| `61022` | 节点超时值超过应用上限 | `Trigger execution failed` |
-| `61023` | 入参映射引用了不存在的字段 | `Trigger execution failed` |
-| `61024` | 连接器缺少认证配置 | `Trigger execution failed` |
-| `61025` | 认证类型未选择 | `Trigger execution failed` |
-
-#### 连接器节点 — 运行时错误 (62xxx)
-
-| X-Code | 场景 | 消息模板 |
-|:---:|------|------|
-| `62001` | HTTP 调用下游失败（含下游 statusCode + 截断 body） | `Trigger execution failed` |
-| `62002` | 连接目标超时（TCP 连接不可达） | `Trigger execution failed` |
-| `62003` | 读取超时（下游未在规定时间内响应） | `Trigger execution failed` |
-| `62004` | DNS 解析失败（目标 host 不存在） | `Trigger execution failed` |
-| `62005` | SSL 证书校验失败 | `Trigger execution failed` |
-| `62006` | 请求参数序列化失败 | `Trigger execution failed` |
-| `62007` | 下游响应体超过限制 | `Trigger execution failed` |
-
-#### 脚本节点 — 配置错误 (6103x)
-
-| X-Code | 场景 | 消息模板 |
-|:---:|------|------|
-| `61030` | 脚本源码为空 | `Trigger execution failed` |
-| `61031` | 脚本源码超过字符上限 | `Trigger execution failed` |
-| `61032` | 缺少 `main(ctx)` 函数定义 | `Trigger execution failed` |
-| `61033` | 脚本语法错误 | `Trigger execution failed` |
-
-#### 脚本节点 — 运行时错误 (63xxx)
-
-| X-Code | 场景 | 消息模板 |
-|:---:|------|------|
-| `63001` | 脚本执行时抛出异常（含错误详情） | `Trigger execution failed` |
-| `63002` | 脚本执行超时（超过节点 `timeoutMs`） | `Trigger execution failed` |
-| `63003` | 脚本执行超过语句上限 | `Trigger execution failed` |
-| `63004` | 脚本返回值不是 Object 类型 | `Trigger execution failed` |
-| `63005` | 脚本访问了不存在的上游字段 | `Trigger execution failed` |
-
-#### 超时 (64xxx)
-
-| X-Code | 场景 | 消息模板 | X-Status |
-|:---:|------|------|:---:|
-| `64000` | 单节点执行超时 | `Trigger execution failed` | 2 |
-
-#### 并行节点 — 配置错误 (6104x)
-
-| X-Code | 场景 | 消息模板 |
-|:---:|------|------|
-| `61040` | 分支数不足（最少 2 个） | `Trigger execution failed` |
-| `61041` | 分支数超过上限（最多 8 个） | `Trigger execution failed` |
-| `61042` | 分支内无节点 | `Trigger execution failed` |
-
-#### 并行节点 — 运行时错误 (65xxx)
-
-| X-Code | 场景 | 消息模板 |
-|:---:|------|------|
-| `65001` | 并行分支执行失败 | `Trigger execution failed` |
-| `65002` | 并行分支执行超时 | `Trigger execution failed` |
-| `65003` | 所有并行分支均失败 | `Trigger execution failed` |
-
-#### 出口节点 — 配置错误 (6105x)
-
-| X-Code | 场景 | 消息模板 |
-|:---:|------|------|
-| `61050` | 输出映射引用了不存在的字段 | `Trigger execution failed` |
-| `61051` | 输出映射格式错误 | `Trigger execution failed` |
-
-#### 出口节点 — 运行时错误 (66xxx)
-
-| X-Code | 场景 | 消息模板 |
-|:---:|------|------|
-| `66001` | 出口响应体序列化失败 | `Trigger execution failed` |
-| `66002` | 出口响应头设置失败 | `Trigger execution failed` |
-
-### 4.4 HTTP Status → X-Code 映射规则
-
-#### 设计原则
-
-HTTP Status 仅区分**责任方**：200 成功 / 400 用户侧问题 / 401-403 鉴权问题 / 500 平台问题。具体错误原因通过 `X-Code` 承载。
+**HTTP Status 仅区分责任方**，具体原因由 X-Code 承载。
 
 | HTTP Status | 含义 | 责任方 | 判定口径 |
 |:---:|------|:---:|------|
-| `200` | 执行成功 | — | DAG 编排完整执行完毕，节点无失败（X-Status: 0） |
+| `200` | 执行成功 | — | DAG 编排完整执行完毕，节点无失败 |
 | `400` | 请求不合法 | **用户** | 参数/资源/状态/前置条件/编排配置/运行时错误 — 所有调用方可自主修复的问题 |
 | `401` | 未认证 | **用户** | SYSTOKEN 凭证不在白名单、缺失或过期 |
 | `403` | 无权限 | **用户** | 连接器目标 URL 未通过白名单校验 |
 | `500` | 平台错误 | **平台** | 引擎无法归类的内部异常（极少触发，调用方无法自行修复） |
 
-> **400 的判定核心**：只要错误原因是用户可通过修改请求、编辑连接流配置、调整编排参数来修复的，一律归 `400`。包括但不限于：流不存在/未运行、连接器配置缺失/版本失效、脚本语法/运行时异常、下游 HTTP 调用失败/超时 — 这些都是用户的连接流"没写好"或"下游挂了"，不是平台问题。
+> **400 vs 500 判定**：只要错误原因是用户可通过修改请求、编辑连接流配置、调整编排参数来修复的，一律归 `400`（包括：流不存在/未运行、连接器配置缺失/版本失效、脚本语法/运行时异常、下游调用失败/超时）。仅当平台自身 bug（NPE、DAG 内部崩溃）且不属于用户侧范畴时才归 `500`。调用方看到 500 意味着"联系平台方"。
 
-> **500 的判定核心**：仅当平台自身代码逻辑错误（如 NPE、ConcurrentModificationException）或基础设施故障（如 DAG 调度器内部崩溃）且不属于前述用户侧范畴时才归 500。调用方看到 500 意味着"平台出了 bug，联系平台方"。
+#### 4.1.2 码段规划
 
-#### 映射速查
+X-Code 统一 **5 位数字**，格式为 `{大类1位}{子类2位}{序号2位}`。
 
-| X-Code | HTTP Status | 场景 | Body |
+```
+位置:  [1]  [2][3]  [4][5]
+含义:  大类  子类     序号
+示例:  4    10      01    → 41001 (校验层 → 请求不合法 → 第1个场景)
+      6    20      01    → 62001 (执行层 → 连接器运行时 → HTTP调用失败)
+      2    00      00    → 20000 (成功)
+      5    00      00    → 50000 (系统错误)
+```
+
+| 大类 (位1) | 含义 | 子类 (位2-3) | 流已执行? | HTTP Status |
+|:---:|------|------|:---:|:---:|
+| `2` | 成功 | `00` (固定) | ✅ | 200 |
+| `4` | 校验错误 | `10`~`30` | ❌ | 400 / 401 / 403 |
+| `6` | 执行错误 | `00`~`66` | ✅ | 400 |
+| `5` | 系统错误 | `00` (固定) | — | 500 |
+
+> ⚠️ 当前实现：`2`/`5` 大类尚未按 5 位格式（现用 `200`/`500`），`4` 大类的码值仍为旧格式（`400`/`404`/`409` 等混用）。下表为建议方案。
+
+---
+
+**校验层 `4xxxxx`（建议码段）**
+
+```
+4  10  01                    ← 请求不合法 → 参数缺失
+4  11  01                    ← 资源不存在 → 连接流不存在
+4  12  01                    ← 状态冲突   → 流未运行
+4  13  01                    ← 前置条件   → 版本已失效
+4  20  01                    ← 认证失败   → SYSTOKEN 不在白名单
+4  30  01                    ← 鉴权拒绝   → URL 白名单拒绝
+```
+
+| 建议 X-Code | 旧码 | 子类 | 场景 |
 |:---:|:---:|------|------|
-| `200` | `200` | 执行成功（X-Status: 0） | 出口 body |
-| `400` | `400` | 请求参数/inputContract 校验失败 | 空 |
-| `404` | `400` | 连接流不存在或已被删除 | 空 |
-| `409` | `400` | 连接流未运行（lifecycleStatus ≠ 2） | 空 |
-| `422` | `400` | 版本/连接器已失效等前置条件不满足 | 空 |
-| `60xxx`~`66xxx` | `400` | 编排配置错误 / 连接器/脚本/并行/出口运行时错误 / 超时 | 出口 body（按 errorHandler 策略产出） |
-| `401` | `401` | SYSTOKEN 认证失败 | 空 |
-| `403` | `403` | URL 白名单拒绝 | 空 |
-| `500` | `500` | 引擎内部未知异常 | 空 |
+| `41001` | 400 | 请求不合法 (41xxx) | 请求参数/inputContract 校验失败 |
+| `41002` | 400 | | 触发方式缺失或未知 |
+| `41003` | 400 | | HTTP 触发器缺少 input 契约 |
+| `41101` | 404 | 资源不存在 (411xx) | 连接流不存在或已被删除 |
+| `41102` | 404 | | 连接器/连接器版本不存在 |
+| `41201` | 409 | 状态冲突 (412xx) | 连接流未运行（lifecycleStatus ≠ 2） |
+| `41301` | 422 | 前置条件 (413xx) | 版本/连接器已失效 |
+| `41302` | 422 | | 已部署版本不可用 |
+| `42001` | 401 | 认证失败 (42xxx) | SYSTOKEN 不在白名单 |
+| `42002` | 401 | | SYSTOKEN 缺失或过期 |
+| `43001` | 403 | 鉴权拒绝 (43xxx) | URL 白名单拒绝 |
 
-### 4.5 X-Status 含义
+---
 
-| X-Status | 含义 |
-|:---:|------|
-| `0` | 执行成功（所有节点 `status=success`） |
-| `1` | 执行失败（至少一个节点失败） |
-| `2` | 执行超时（节点超时或整体超时） |
+**执行层 `6xxxxx`（现有，不动）**
 
-> `X-Status` 仅在连接流已实际执行（DAG 编排进入调度阶段）时出现。前置校验失败时不包含此头。执行成功时 X-Status=0 且 HTTP 200；执行失败时 X-Status≠0 且 HTTP 400。
+```
+6  01  01      ← 编排配置解析失败 (61001)
+6  20  01      ← 连接器HTTP调用失败 (62001)
+6  30  01      ← 脚本运行时异常 (63001)
+6  40  00      ← 节点超时 (64000)
+6  50  01      ← 并行分支失败 (65001)
+6  60  01      ← 出口序列化失败 (66001)
+```
+
+| 码段 | 子类 | 说明 |
+|:---:|------|------|
+| `60xxx` | DAG 通用 (600xx) | 执行失败/节点失败/超时兜底码 |
+| `61xxx` | 编排/配置 (610xx) | JSON解析失败 61001 / 缺触发节点 61002 / 缺出口节点 61003 / 边缺失 61004 |
+| `61xxx` | 节点配置 (6101x~6105x) | 触发器配置 6101x / 连接器配置 6102x / 脚本配置 6103x / 并行配置 6104x / 出口配置 6105x |
+| `62xxx` | 连接器运行时 (620xx) | HTTP失败 62001 / 连接超时 62002 / 读取超时 62003 / DNS 62004 / SSL 62005 / 序列化 62006 / 响应过大 62007 |
+| `63xxx` | 脚本运行时 (630xx) | 异常 63001 / 超时 63002 / 语句上限 63003 / 返回值类型 63004 / 字段不存在 63005 |
+| `64xxx` | 超时 (640xx) | 节点级超时 64000 |
+| `65xxx` | 并行节点 (650xx) | 分支失败 65001 / 分支超时 65002 / 全部失败 65003 |
+| `66xxx` | 出口节点 (660xx) | 序列化失败 66001 / 响应头设置失败 66002 |
+
+---
+
+**系统层**
+
+| 建议 X-Code | 旧码 | 含义 |
+|:---:|:---:|------|
+| `20000` | 200 | 执行成功 |
+| `50000` | 500 | 平台内部未知异常 |
+
+### 4.2 错误码全表
+
+> 当前实现：旧码列。建议 X-Code 列按 §4.1.2 五位码段方案。执行层（6xxxxx）额外携带 `X-Execution-Id` + `X-Error-Node` 等诊断头。
+
+#### 成功 / 系统错误
+
+| X-Code | HTTP Status | X-Message-Zh | X-Message-En | 场景 |
+|:---:|:---:|------|------|------|
+| `20000` | `200` | `成功` | `Success` | 执行成功 |
+| `50000` | `500` | `平台内部异常，请联系管理员` | `Trigger execution failed` | 平台内部未知异常 |
+
+#### 校验错误 — 请求不合法 (41xxx)
+
+| 建议 X-Code | 旧码 | HTTP Status | X-Message-Zh | X-Message-En | 场景 |
+|:---:|:---:|:---:|------|------|------|
+| `41001` | 400 | 400 | `请求参数缺失或格式不合法` | `Bad request` | 请求参数缺失或格式不合法 |
+| `41002` | 400 | 400 | `触发器输入参数校验失败` | `Bad request` | 触发器 inputContract 校验失败（header/query/body 三段契约不匹配） |
+| `41003` | 400 | 400 | `触发方式缺失或未知` | `Bad request` | 触发方式缺失或未知（仅支持 http / manual） |
+| `41004` | 400 | 400 | `HTTP 触发器缺少输入契约配置` | `Bad request` | HTTP 触发器缺少 input 契约 |
+
+#### 校验错误 — 资源不存在 (411xx)
+
+| 建议 X-Code | 旧码 | HTTP Status | X-Message-Zh | X-Message-En | 场景 |
+|:---:|:---:|:---:|------|------|------|
+| `41101` | 404 | 400 | `连接流不存在或已被删除` | `Flow not found` | 连接流不存在或已被删除 |
+| `41102` | 404 | 400 | `连接器不存在或已被删除` | `Flow not found` | 连接器不存在或已被删除 |
+| `41103` | 404 | 400 | `连接器版本不存在` | `Flow not found` | 连接器版本不存在 |
+| `41104` | 404 | 400 | `版本不存在，请检查版本 ID` | `Version not found` | 版本不存在（调试传入 versionId 无效） |
+
+#### 校验错误 — 状态冲突 (412xx)
+
+| 建议 X-Code | 旧码 | HTTP Status | X-Message-Zh | X-Message-En | 场景 |
+|:---:|:---:|:---:|------|------|------|
+| `41201` | 409 | 400 | `连接流未启动，请先启动后再调用` | `Flow not running` | 连接流未启动（lifecycleStatus ≠ 2） |
+
+#### 校验错误 — 前置条件 (413xx)
+
+| 建议 X-Code | 旧码 | HTTP Status | X-Message-Zh | X-Message-En | 场景 |
+|:---:|:---:|:---:|------|------|------|
+| `41301` | 422 | 400 | `已部署版本不可用，请重新部署` | `Trigger execution failed` | 已部署版本不可用（版本已被失效） |
+| `41302` | 422 | 400 | `连接器版本已失效` | `Trigger execution failed` | 连接器版本已失效 |
+| `41303` | 422 | 400 | `连接器已失效` | `Trigger execution failed` | 连接器已失效 |
+
+#### 校验错误 — 编排/调试 (414xx)
+
+| 建议 X-Code | 旧码 | HTTP Status | X-Message-Zh | X-Message-En | 场景 |
+|:---:|:---:|:---:|------|------|------|
+| `41401` | 422 | 400 | `编排配置为空，请先完成编排后再调试` | `Orchestration config is empty` | 编排配置为空（调试时校验） |
+| `41402` | 422 | 400 | `版本状态不支持调试` | `Version status not debuggable` | 版本状态不支持调试（仅草稿/已发布可调试） |
+
+#### 校验错误 — 认证失败 (42xxx)
+
+| 建议 X-Code | 旧码 | HTTP Status | X-Message-Zh | X-Message-En | 场景 |
+|:---:|:---:|:---:|------|------|------|
+| `42001` | 401 | 401 | `调用凭证不在白名单中` | `Authentication failed` | X-Sys-Token 不在触发器 sysAccountWhitelist 白名单内 |
+| `42002` | 401 | 401 | `调用凭证缺失或已过期` | `Authentication failed` | X-Sys-Token 缺失或过期 |
+
+#### 校验错误 — 鉴权拒绝 (43xxx)
+
+| 建议 X-Code | 旧码 | HTTP Status | X-Message-Zh | X-Message-En | 场景 |
+|:---:|:---:|:---:|------|------|------|
+| `43001` | 403 | 403 | `目标 URL 未通过白名单校验` | `URL whitelist denied` | 连接器调用的目标 URL 未通过白名单校验 |
+
+---
+
+#### 执行错误 — DAG 编排通用 (60xxx)
+
+| X-Code | HTTP Status | X-Message-Zh | X-Message-En | 场景 |
+|:---:|:---:|------|------|------|
+| `60000` | 400 | `编排执行失败` | `Trigger execution failed` | DAG 执行整体失败 |
+| `60001` | 400 | `节点执行失败` | `Trigger execution failed` | 节点执行失败（通用兜底） |
+| `60002` | 400 | `节点超时或执行错误` | `Trigger execution failed` | 节点超时或错误 |
+
+#### 执行错误 — 编排/配置 (61xxx)
+
+| X-Code | HTTP Status | X-Message-Zh | X-Message-En | 场景 |
+|:---:|:---:|------|------|------|
+| `61001` | 400 | `编排配置 JSON 解析失败` | `Trigger execution failed` | 编排配置 JSON 解析失败 |
+| `61002` | 400 | `编排配置中缺少触发器节点` | `Trigger execution failed` | 编排中缺少触发器节点 |
+| `61003` | 400 | `编排配置中缺少出口节点` | `Trigger execution failed` | 编排中缺少出口节点 |
+| `61004` | 400 | `节点间连接关系缺失` | `Trigger execution failed` | 节点间边关系缺失 |
+| `61010` | 400 | `触发器节点未配置触发方式` | `Trigger execution failed` | 触发器：触发方式未配置（data.triggerType 缺失） |
+| `61011` | 400 | `触发器 SYSTOKEN 凭证不存在或已过期` | `Trigger execution failed` | 触发器：SYSTOKEN 凭证不存在或已过期 |
+| `61012` | 400 | `触发器调用凭证不在白名单中` | `Trigger execution failed` | 触发器：调用凭证不在白名单中 |
+| `61020` | 400 | `连接器节点未选择连接器` | `Trigger execution failed` | 连接器：未选择连接器（connectorId 缺失） |
+| `61021` | 400 | `连接器节点未选择版本` | `Trigger execution failed` | 连接器：未选择连接器版本（connectorVersionId 缺失） |
+| `61022` | 400 | `连接器节点超时值超过上限` | `Trigger execution failed` | 连接器：节点超时值超过应用上限 |
+| `61023` | 400 | `连接器入参映射引用了不存在的字段` | `Trigger execution failed` | 连接器：入参映射引用了不存在的字段 |
+| `61024` | 400 | `连接器缺少认证配置` | `Trigger execution failed` | 连接器：缺少认证配置 |
+| `61025` | 400 | `连接器未选择认证类型` | `Trigger execution failed` | 连接器：认证类型未选择 |
+| `61030` | 400 | `脚本节点源码为空` | `Trigger execution failed` | 脚本：源码为空 |
+| `61031` | 400 | `脚本节点源码超过字符上限` | `Trigger execution failed` | 脚本：源码超过字符上限 |
+| `61032` | 400 | `脚本节点缺少 main(ctx) 函数` | `Trigger execution failed` | 脚本：缺少 main(ctx) 函数定义 |
+| `61033` | 400 | `脚本节点存在语法错误` | `Trigger execution failed` | 脚本：语法错误 |
+| `61040` | 400 | `并行节点分支数不足` | `Trigger execution failed` | 并行：分支数不足（最少 2 个） |
+| `61041` | 400 | `并行节点分支数超过上限` | `Trigger execution failed` | 并行：分支数超过上限（最多 8 个） |
+| `61042` | 400 | `并行节点分支内无节点` | `Trigger execution failed` | 并行：分支内无节点 |
+| `61050` | 400 | `出口节点输出映射引用了不存在的字段` | `Trigger execution failed` | 出口：输出映射引用了不存在的字段 |
+| `61051` | 400 | `出口节点输出映射格式错误` | `Trigger execution failed` | 出口：输出映射格式错误 |
+
+#### 执行错误 — 连接器运行时 (62xxx)
+
+| X-Code | HTTP Status | X-Message-Zh | X-Message-En | 场景 |
+|:---:|:---:|------|------|------|
+| `62001` | 400 | `连接器调用下游失败` | `Trigger execution failed` | HTTP 调用下游失败（含下游 statusCode） |
+| `62002` | 400 | `连接器连接目标超时` | `Trigger execution failed` | TCP 连接超时（目标不可达） |
+| `62003` | 400 | `连接器读取响应超时` | `Trigger execution failed` | 读取超时（下游未在规定时间内响应） |
+| `62004` | 400 | `连接器目标地址解析失败` | `Trigger execution failed` | DNS 解析失败（host 不存在） |
+| `62005` | 400 | `连接器 SSL 证书校验失败` | `Trigger execution failed` | SSL 证书校验失败 |
+| `62006` | 400 | `连接器请求参数序列化失败` | `Trigger execution failed` | 请求参数序列化失败 |
+| `62007` | 400 | `连接器下游响应体超过限制` | `Trigger execution failed` | 下游响应体超过大小限制 |
+
+#### 执行错误 — 脚本运行时 (63xxx)
+
+| X-Code | HTTP Status | X-Message-Zh | X-Message-En | 场景 |
+|:---:|:---:|------|------|------|
+| `63001` | 400 | `脚本节点运行时异常` | `Trigger execution failed` | 脚本执行时抛出异常 |
+| `63002` | 400 | `脚本节点执行超时` | `Trigger execution failed` | 脚本执行超时（超过节点 timeoutMs） |
+| `63003` | 400 | `脚本节点执行超过语句上限` | `Trigger execution failed` | 脚本执行超过语句上限 |
+| `63004` | 400 | `脚本节点返回值不是对象类型` | `Trigger execution failed` | 脚本返回值不是 Object 类型 |
+| `63005` | 400 | `脚本节点访问了不存在的上游字段` | `Trigger execution failed` | 脚本访问了不存在的上游字段 |
+
+#### 执行错误 — 超时 / 并行 / 出口 (64xxx~66xxx)
+
+| X-Code | HTTP Status | X-Message-Zh | X-Message-En | 场景 |
+|:---:|:---:|------|------|------|
+| `64000` | 400 | `节点执行超时` | `Trigger execution failed` | 单节点执行超时 |
+| `65001` | 400 | `并行分支执行失败` | `Trigger execution failed` | 并行分支执行失败 |
+| `65002` | 400 | `并行分支执行超时` | `Trigger execution failed` | 并行分支执行超时 |
+| `65003` | 400 | `所有并行分支均执行失败` | `Trigger execution failed` | 所有并行分支均失败 |
+| `66001` | 400 | `出口节点响应体序列化失败` | `Trigger execution failed` | 出口响应体序列化失败 |
+| `66002` | 400 | `出口节点响应头设置失败` | `Trigger execution failed` | 出口响应头设置失败 |
+
+### 4.3 X-Status 含义
+
+> ⚠️ **已废弃**。X-Code 已可区分成功/失败：`200`=成功，其余=失败。X-Status 冗余，后续版本移除。
 
 ---
 
@@ -538,8 +564,110 @@ FlowInvokeService.invokeFlow()
 
 ---
 
+## 9. 重构计划
+
+### 9.1 ErrorCode 枚举化
+
+**现状问题**
+
+`ErrorCode.java` 是纯常量类，码值和消息完全脱离。同一个 `"404"` 对应 `PRECHECK_FLOW_NOT_FOUND`、`PRECHECK_CONNECTOR_NOT_FOUND` 等多个常量，且消息散落在各 Service/Executor 中硬编码，无法内聚。
+
+**目标**
+
+改为 `enum ErrorCode`，每个枚举值绑定四个维度：
+
+```
+enum ErrorCode {
+    FLOW_NOT_RUNNING("41201", "连接流未启动，请先启动后再调用", "Flow not running", 400),
+    ...
+    
+    String code();
+    String messageZh();
+    String messageEn();
+    int   httpStatus();
+    Map<String,Object> toErrorInfo();
+}
+```
+
+**影响面**
+
+| 维度 | 旧 | 新 |
+|------|------|------|
+| 引用方式 | `ErrorCode.PRECHECK_FLOW_NOT_RUNNING`（String） | `ErrorCode.FLOW_NOT_RUNNING.code()` |
+| PreCheckException | `new PreCheckException(String code, String zh)` | `new PreCheckException(ErrorCode)` |
+| errorInfo 构建 | `ErrorCode.errorInfo(code, zh, en)` 手动传参 | `code.toErrorInfo()` |
+| buildErrorResponse switch | `case "404"` 硬编码字符串 | `case ErrorCode.FLOW_NOT_FOUND` 枚举匹配 |
+
+**改动文件**：~15（ErrorCode.java + 2 个 Service + 6 个 Executor + 4 个 Java 测试 + ~3 个 Python 测试）
+
+### 9.2 五位码值对齐（200/500 → 20000/50000）
+
+当前代码中 `200`/`500` 仅 3 位，改为 `20000`/`50000` 与 5 位码段体系统一：
+
+| 常量 | 旧值 | 新值 |
+|------|:---:|:---:|
+| (新增 SUCCESS) | — | `20000` |
+| PRECHECK_INTERNAL_ERROR | `500` | `50000` |
+
+### 9.3 X-Status 移除
+
+X-Code 已可区分成功/失败（`20000`=成功，其余=失败），`X-Status` 冗余。
+
+**代码侧**：
+- `TransparentFlowResponse.success()` 移除 `X-Status` 写入
+- `FlowInvokeController` 响应头过滤移除 `X-Status` 相关逻辑
+
+**测试侧**：
+- 移除所有 `X-Status` 断言
+
+### 9.4 实施顺序
+
+| 步骤 | 内容 | 预估 |
+|:---:|------|:---:|
+| 1 | 重写 `ErrorCode.java` 为 enum，含全部 54 个枚举值 | 基准 |
+| 2 | `PreCheckException` 改造，接受 `ErrorCode` 参数 | 依赖 1 |
+| 3 | `FlowInvokeService` + `FlowRuntimeEngine` + `InboundRateLimiter` 硬编码字符串替换为枚举 | 依赖 1 |
+| 4 | 6 个 Executor 层 `errorInfo.put("code", ...)` 替换为 `ErrorCode.xxx.toErrorInfo()` | 依赖 1 |
+| 5 | `buildErrorResponse` switch 硬编码 → 枚举匹配 | 依赖 1 |
+| 6 | X-Status 移除 | 独立 |
+| 7 | 200/500 → 20000/50000 码值迁移 | 依赖 1 |
+| 8 | Java + Python 测试对齐 | 依赖 1~7 |
+
+### 9.5 验证标准
+
+每步完成后的验证流程：
+
+```
+1. 编译通过   mvn compile -q -pl connector-api
+2. 启动服务   bash connector-api/scripts/restart.sh
+3. 单元测试   mvn test -pl connector-api
+              测试路径: connector-api/src/test/java
+4. 集成测试   pytest connector-api/src/test/python -x
+5. 手动冒烟   curl POST /api/v1/flows/{flowId}/invoke 验证核心场景
+```
+
+### 9.6 X-Message-Zh 降级策略
+
+**当前实现**：`X-Message-Zh` = `X-Message-En`（英文消息）。
+
+**原因**：HTTP 响应头仅支持 ASCII 字符，Netty 的 `AsciiString` 会将中文转为 `?`。
+
+**设计目标**（§4.2 标注的中文消息）待以下任一条件满足后激活：
+
+| 方案 | 说明 |
+|------|------|
+| A | Netty pipeline 层拦截，UTF-8 编码写入响应头（见 [plan-flow-invoke-temp.md](./plan-flow-invoke-temp.md)） |
+| B | 错误信息放入 Response Body，X- 头仅保留机器可读的 X-Code / X-Flow-Id |
+
+**代码位置**：`TransparentFlowResponse.preExecutionError()` — 当前 `X-Message-Zh` 取 `messageEn` 参数；`FlowInvokeService.populateErrorHeaders()` — 当前从 `errorInfo.get("messageZh")` 取值。
+
+**切换方式**：方案确定后，将上述两处改为取 `ErrorCode.messageZh()` 即可，§4.2 全表中的中文消息直接生效。
+
+---
+
 ## 修订记录
 
 | 版本 | 日期 | 修订内容 | 修订人 |
 |------|------|---------|--------|
-| v1.0 | 2026-07-28 | 初始版本：接口概述 + 请求/响应规范 + 完整错误码清单（前置校验 + 执行层 53 个错误码） | SDDU Fast Agent |
+| v1.0 | 2026-07-28 | 初始版本：接口概述 + 请求/响应规范 + 完整错误码清单（前置校验 + 执行层 54 个错误码） | SDDU Fast Agent |
+| v1.1 | 2026-07-28 | §4 重构：码段统一 5 位、表结构合并 + §4.1.1 融合 HTTP Status 映射 + X-Status 废弃 + §9 重构计划 | SDDU Fast Agent |

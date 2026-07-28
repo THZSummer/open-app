@@ -1,5 +1,6 @@
 package com.xxx.it.works.wecode.v2.modules.runtime.model;
 
+import com.xxx.it.works.wecode.v2.common.error.ErrorCode;
 import org.springframework.http.HttpStatus;
 
 import java.util.LinkedHashMap;
@@ -57,9 +58,12 @@ public class TransparentFlowResponse {
         r.platformHeaders = new LinkedHashMap<>();
         r.platformHeaders.put("X-Flow-Id", flowId);
         r.platformHeaders.put("X-Execution-Id", executionId);
-        r.platformHeaders.put("X-Status", String.valueOf(status));
         r.platformHeaders.put("X-Duration-Ms", String.valueOf(durationMs));
-        r.platformHeaders.put("X-Cache-Status", "0"); // 当前未实现缓存
+        r.platformHeaders.put("X-Cache-Status", "0");
+        r.platformHeaders.put("X-Code", ErrorCode.SUCCESS.code());
+        // X-Message-Zh 当前取 messageEn（HTTP 头 ASCII 限制），切换中文时改 messageZh()
+        r.platformHeaders.put("X-Message-Zh", ErrorCode.SUCCESS.messageEn());
+        r.platformHeaders.put("X-Message-En", ErrorCode.SUCCESS.messageEn());
         r.httpStatus = HttpStatus.OK;
         return r;
     }

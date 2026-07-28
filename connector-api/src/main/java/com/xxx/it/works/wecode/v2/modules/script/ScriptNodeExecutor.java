@@ -289,10 +289,10 @@ public class ScriptNodeExecutor implements NodeExecutor {
         String code;
         String msgZh;
         if (errorMsg.contains("empty") || errorMsg.contains("Script source is empty")) {
-            code = ErrorCode.SCRIPT_EMPTY;
+            code = ErrorCode.SCRIPT_EMPTY.code();
             msgZh = "脚本节点[" + nodeId + "]源码为空，请编写脚本";
         } else {
-            code = ErrorCode.SCRIPT_SYNTAX_ERROR;
+            code = ErrorCode.SCRIPT_SYNTAX_ERROR.code();
             msgZh = "脚本节点[" + nodeId + "]错误: " + errorMsg;
         }
 
@@ -315,28 +315,28 @@ public class ScriptNodeExecutor implements NodeExecutor {
 
         if (e instanceof PolyglotException pe) {
             if (pe.isCancelled()) {
-                code = ErrorCode.SCRIPT_TIMEOUT;
+                code = ErrorCode.SCRIPT_TIMEOUT.code();
                 errorMsg = sanitize("Script execution cancelled (timeout or resource limit): " + pe.getMessage());
                 msgZh = "脚本节点[" + nodeId + "]执行超时或被取消";
                 log.warn("Script node {} cancelled: {}", nodeId, pe.getMessage());
             } else {
-                code = ErrorCode.SCRIPT_RUNTIME_ERROR;
+                code = ErrorCode.SCRIPT_RUNTIME_ERROR.code();
                 errorMsg = sanitize("Script execution error: " + pe.getMessage());
                 msgZh = "脚本节点[" + nodeId + "]运行时错误: " + errorMsg;
                 log.warn("Script node {} execution error: {}", nodeId, pe.getMessage());
             }
         } else if (e instanceof java.util.concurrent.TimeoutException) {
-            code = ErrorCode.SCRIPT_TIMEOUT;
+            code = ErrorCode.SCRIPT_TIMEOUT.code();
             errorMsg = "Script execution timed out";
             msgZh = "脚本节点[" + nodeId + "]执行超时";
             log.warn("Script node {} timed out", nodeId);
         } else if (e instanceof IllegalStateException && e.getMessage() != null
                 && e.getMessage().contains("main(ctx)")) {
-            code = ErrorCode.SCRIPT_NO_MAIN;
+            code = ErrorCode.SCRIPT_NO_MAIN.code();
             errorMsg = sanitize(e.getMessage());
             msgZh = "脚本节点[" + nodeId + "]缺少 main(ctx) 函数定义";
         } else {
-            code = ErrorCode.SCRIPT_RUNTIME_ERROR;
+            code = ErrorCode.SCRIPT_RUNTIME_ERROR.code();
             errorMsg = sanitize(e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
             msgZh = "脚本节点[" + nodeId + "]执行失败: " + errorMsg;
             log.error("Script node {} unexpected error: {}", nodeId, errorMsg, e);

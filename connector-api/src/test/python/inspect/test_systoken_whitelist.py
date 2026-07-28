@@ -148,8 +148,8 @@ def test_systoken_whitelist():
         check("[SYS-001] HTTP 401/403 — 空白名单拒绝所有",
               resp.status_code in (401, 403),
               f"status={resp.status_code}")
-        check("[SYS-001] X-Code 为 401 或 403",
-              resp.headers.get("X-Code") in ("401", "403"),
+        check("[SYS-001] X-Code 为 42001/43001/401/403",
+              resp.headers.get("X-Code") in ("42001", "43001", "401", "403"),
               f"X-Code={resp.headers.get('X-Code')}")
         check("[SYS-001] 响应体为空",
               len(resp.content) == 0,
@@ -176,9 +176,9 @@ def test_systoken_whitelist():
               f"status={resp.status_code}")
         check("[SYS-002] X-Execution-Id 存在",
               bool(resp.headers.get("X-Execution-Id")))
-        check("[SYS-002] X-Status 为 0",
-              resp.headers.get("X-Status") == "0",
-              f"X-Status={resp.headers.get('X-Status')}")
+        check("[SYS-002] X-Code 为 20000",
+              resp.headers.get("X-Code") == "20000",
+              f"X-Code={resp.headers.get('X-Code')}")
         body = resp.json()
         check("[SYS-002] 响应体 echo == ok",
               body.get("echo") == "ok",
@@ -203,8 +203,8 @@ def test_systoken_whitelist():
         check("[SYS-003] HTTP 401/403 — 白名单外凭证拒绝",
               resp.status_code in (401, 403),
               f"status={resp.status_code}")
-        check("[SYS-003] X-Code 为 401 或 403",
-              resp.headers.get("X-Code") in ("401", "403"),
+        check("[SYS-003] X-Code 为 42001/43001/401/403",
+              resp.headers.get("X-Code") in ("42001", "43001", "401", "403"),
               f"X-Code={resp.headers.get('X-Code')}")
         check("[SYS-003] 响应体为空",
               len(resp.content) == 0,

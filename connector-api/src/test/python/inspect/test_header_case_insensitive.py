@@ -132,8 +132,8 @@ def test_header_case_insensitive():
                    headers={"X-Sys-Token": "test-token", "X-Trace-Id": "trace-upper-067"})
     if resp is not None:
         check("HTTP 200", resp.status_code == 200, f"status={resp.status_code}")
-        check("X-Status 为 0", resp.headers.get("X-Status") == "0",
-              f"X-Status={resp.headers.get('X-Status')}")
+        check("X-Code 为 20000", resp.headers.get("X-Code") == "20000",
+              f"X-Code={resp.headers.get('X-Code')}")
         body = resp.json()
         check("trace == trace-upper-067 (原始大小写 header 命中, 开发环境基准)",
               body.get("trace") == "trace-upper-067",
