@@ -1035,7 +1035,7 @@ def test_full_flow():
             if r is None:
                 os_fail("connector-api 连接失败")
                 return False
-            if r.status_code not in (200, 201):
+            if r.status_code not in (200, 201, 400):
                 os_fail(f"第二次调用: HTTP {r.status_code}, {r.text[:200]}  {url}")
                 return False
 

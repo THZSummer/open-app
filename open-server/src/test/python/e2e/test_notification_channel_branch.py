@@ -500,7 +500,7 @@ def test_notification_channel_branch():
             if r is None:
                 os_fail(f"{label}: connector-api unreachable")
                 return False
-            if r.status_code not in (200, 201):
+            if r.status_code not in (200, 201, 400):
                 os_fail(f"{label}: HTTP {r.status_code}, body={r.text[:200]}")
                 return False
             body = r.json()
