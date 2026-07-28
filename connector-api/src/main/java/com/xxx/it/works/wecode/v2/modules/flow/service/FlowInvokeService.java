@@ -454,28 +454,29 @@ public class FlowInvokeService {
 
     /**
      * 根据错误码构建对应的错误响应
+     * <p>
+     * HTTP Status 仅区分责任方: 200=成功, 400=用户侧问题, 401-403=鉴权, 500=平台bug。
+     * 404/409/422 统一归 400（调用方可自行修复），具体原因由 X-Code 承载。
+     * </p>
      */
     private TransparentFlowResponse buildErrorResponse(String flowIdStr, String errorCode,
                                                         String errorMsg, String msg) {
         return switch (errorCode) {
-            case "404" -> TransparentFlowResponse.preExecutionError(
-                    flowIdStr, HttpStatus.NOT_FOUND, errorCode,
-                    errorMsg, "Flow not found: " + msg);
+            case "404", "409", "422" -> TransparentFlowResponse.preExecutionError(
+                    flowIdStr, HttpStatus.BAD_REQUEST, errorCode,
+                    errorMsg, "Flow not running");
             case "403" -> TransparentFlowResponse.preExecutionError(
                     flowIdStr, HttpStatus.FORBIDDEN, errorCode,
-                    errorMsg, "URL whitelist denied: " + msg);
+                    errorMsg, "URL whitelist denied");
             case "401" -> TransparentFlowResponse.preExecutionError(
                     flowIdStr, HttpStatus.UNAUTHORIZED, errorCode,
-                    errorMsg, "Authentication failed: " + msg);
+                    errorMsg, "Authentication failed");
             case "400" -> TransparentFlowResponse.preExecutionError(
                     flowIdStr, HttpStatus.BAD_REQUEST, errorCode,
-                    errorMsg, "Bad request: " + msg);
-            case "409" -> TransparentFlowResponse.preExecutionError(
-                    flowIdStr, HttpStatus.CONFLICT, errorCode,
-                    errorMsg, "Flow not running: " + msg);
+                    errorMsg, "Bad request");
             default -> TransparentFlowResponse.preExecutionError(
                     flowIdStr, HttpStatus.INTERNAL_SERVER_ERROR, errorCode,
-                    errorMsg, "Trigger execution failed: " + msg);
+                    errorMsg, "Trigger execution failed");
         };
     }
 
@@ -722,16 +723,16 @@ public class FlowInvokeService {
     /**
      * 执行失败时根据错误码设置对应的 HTTP 状态码
      */
+    /**
+     * 执行失败/超时时统一返回 {@link HttpStatus#BAD_REQUEST} (400)。
+     * <p>6xxxx 错误码均为用户侧问题（编排配置/下游调用/脚本异常），非平台内部错误。</p>
+     */
     private void setHttpStatusForError(TransparentFlowResponse r) {
         String xCode = r.getPlatformHeaders().get("X-Code");
         if (xCode == null) {
             return;
         }
-        if (xCode.contains("timeout")) {
-            r.setHttpStatus(HttpStatus.GATEWAY_TIMEOUT);
-        } else {
-            r.setHttpStatus(HttpStatus.BAD_GATEWAY);
-        }
+        r.setHttpStatus(HttpStatus.BAD_REQUEST);
     }
 
     /**
