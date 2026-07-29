@@ -129,7 +129,9 @@ class FlowInvokeServiceTest {
                     assertEquals("100", response.getPlatformHeaders().get("X-Flow-Id"));
                     assertNotNull(response.getPlatformHeaders().get("X-Execution-Id"), "Execution ID should not be null");
                     assertTrue(response.getPlatformHeaders().get("X-Execution-Id").matches("[a-f0-9]{32}"), "Should be a 32-char UUID hex");
-                    assertEquals("0", response.getPlatformHeaders().get("X-Status"));
+                    assertEquals("20000", response.getPlatformHeaders().get("X-Code"));
+                    assertEquals("Success", response.getPlatformHeaders().get("X-Message-Zh"));
+                    assertEquals("Success", response.getPlatformHeaders().get("X-Message-En"));
                     assertEquals("150", response.getPlatformHeaders().get("X-Duration-Ms"));
                     assertEquals("0", response.getPlatformHeaders().get("X-Cache-Status"));
                     assertEquals("val1", response.getUserHeaders().get("X-Custom"));
@@ -156,14 +158,14 @@ class FlowInvokeServiceTest {
 
         StepVerifier.create(resultMono)
                 .assertNext(response -> {
-                    assertEquals(409, response.getHttpStatus().value());
+                    assertEquals(400, response.getHttpStatus().value());
                     assertNull(response.getBody(), "错误响应应为空Body");
-                    assertEquals("409", response.getPlatformHeaders().get("X-Code"));
+                    assertEquals("41201", response.getPlatformHeaders().get("X-Code"));
                     assertNotNull(response.getPlatformHeaders().get("X-Message-Zh"),
                             "should have X-Message-Zh");
                     assertTrue(
-                            response.getPlatformHeaders().get("X-Message-Zh").contains("未启动"),
-                            "should mention 未启动");
+                            response.getPlatformHeaders().get("X-Message-Zh").contains("Flow not"),
+                            "should mention Flow not");
                 })
                 .verifyComplete();
     }
@@ -182,9 +184,9 @@ class FlowInvokeServiceTest {
 
         StepVerifier.create(resultMono)
                 .assertNext(response -> {
-                    assertEquals(409, response.getHttpStatus().value());
+                    assertEquals(400, response.getHttpStatus().value());
                     assertNull(response.getBody());
-                    assertEquals("409", response.getPlatformHeaders().get("X-Code"));
+                    assertEquals("41201", response.getPlatformHeaders().get("X-Code"));
                     assertNotNull(response.getPlatformHeaders().get("X-Message-Zh"));
                 })
                 .verifyComplete();
@@ -203,9 +205,9 @@ class FlowInvokeServiceTest {
 
         StepVerifier.create(resultMono)
                 .assertNext(response -> {
-                    assertEquals(403, response.getHttpStatus().value());
+                    assertEquals(400, response.getHttpStatus().value());
                     assertNull(response.getBody(), "错误响应应为空Body");
-                    assertEquals("403", response.getPlatformHeaders().get("X-Code"));
+                    assertEquals("41101", response.getPlatformHeaders().get("X-Code"));
                     assertNotNull(response.getPlatformHeaders().get("X-Message-Zh"),
                             "should have X-Message-Zh");
                     assertNotNull(response.getPlatformHeaders().get("X-Message-En"),
@@ -234,7 +236,7 @@ class FlowInvokeServiceTest {
                 .assertNext(response -> {
                     assertEquals(500, response.getHttpStatus().value());
                     assertNull(response.getBody(), "错误响应应为空Body");
-                    assertEquals("500", response.getPlatformHeaders().get("X-Code"));
+                    assertEquals("50000", response.getPlatformHeaders().get("X-Code"));
                     assertNotNull(response.getPlatformHeaders().get("X-Message-Zh"));
                 })
                 .verifyComplete();

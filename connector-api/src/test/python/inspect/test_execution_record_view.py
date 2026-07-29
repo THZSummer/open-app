@@ -162,9 +162,9 @@ def test_execution_record_view():
               f"实际: {resp.status_code}")
         check("IT-REC-001 X-Execution-Id 存在",
               bool(resp.headers.get("X-Execution-Id")))
-        check("IT-REC-001 X-Status 为 0",
-              resp.headers.get("X-Status") == "0",
-              f"X-Status={resp.headers.get('X-Status')}")
+        check("IT-REC-001 X-Code 为 20000",
+              resp.headers.get("X-Code") == "20000",
+              f"X-Code={resp.headers.get('X-Code')}")
     else:
         check("IT-REC-001 请求发送成功", False,
               "connector-api 未运行")

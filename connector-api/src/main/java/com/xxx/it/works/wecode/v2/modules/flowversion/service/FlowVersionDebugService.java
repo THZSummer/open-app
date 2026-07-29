@@ -74,14 +74,14 @@ public class FlowVersionDebugService {
 
         return flowVersionReadRepository.findById(versionId)
                 .switchIfEmpty(Mono.error(new PreCheckException(
-                        ErrorCode.PRECHECK_VERSION_NOT_FOUND, "版本不存在，请检查版本 ID", "Version not found")))
+                        ErrorCode.VERSION_NOT_FOUND, "版本不存在，请检查版本 ID", "Version not found")))
                 .flatMap(flowVersion -> {
                     // 调试接口不判断版本状态: 草稿/已发布/待审批/已撤回/已驳回/已失效 均可调试
                     // 编排配置非空校验
                     String orchConfig = flowVersion.getOrchestrationConfig();
                     if (orchConfig == null || orchConfig.isBlank()) {
                         return Mono.error(new PreCheckException(
-                                ErrorCode.PRECHECK_ORCHESTRATION_EMPTY,
+                                ErrorCode.ORCHESTRATION_EMPTY,
                                 "编排配置为空，请先完成编排后再调试",
                                 "Orchestration config is empty"));
                     }
@@ -137,7 +137,7 @@ public class FlowVersionDebugService {
                     // 兜底 errorInfo
                     Map<String, Object> errInfo = new HashMap<>();
                     String msg = e.getMessage() != null ? e.getMessage() : "Unknown error";
-                    errInfo.put("code", ErrorCode.ORCH_NODE_EXECUTION_FAILED);
+                    errInfo.put("code", ErrorCode.NODE_EXECUTION_FAILED.code());
                     errInfo.put("messageZh", "测试执行失败: " + msg);
                     errInfo.put("messageEn", "Test execution failed: " + msg);
                     errorResult.setErrorInfo(errInfo);
@@ -346,26 +346,26 @@ public class FlowVersionDebugService {
      * 前置校验异常 — 携带结构化错误码
      */
     public static class PreCheckException extends RuntimeException {
-        private final String code;
+        private final ErrorCode errorCode;
         private final String messageZh;
         private final String messageEn;
 
-        public PreCheckException(String code, String messageZh, String messageEn) {
+        public PreCheckException(ErrorCode errorCode, String messageZh, String messageEn) {
             super(messageZh);
-            this.code = code;
+            this.errorCode = errorCode;
             this.messageZh = messageZh;
             this.messageEn = messageEn;
         }
 
-        public String getCode() { return code; }
+        public ErrorCode getErrorCode() { return errorCode; }
+        public String getCode() { return errorCode.code(); }
         public String getMessageZh() { return messageZh; }
         public String getMessageEn() { return messageEn; }
 
         public Map<String, Object> toErrorInfo() {
-            Map<String, Object> info = new HashMap<>();
-            info.put("code", code);
+            Map<String, Object> info = errorCode.toErrorInfo();
             info.put("messageZh", messageZh);
-            info.put("messageEn", messageEn != null ? messageEn : messageZh);
+            info.put("messageEn", messageEn);
             return info;
         }
     }

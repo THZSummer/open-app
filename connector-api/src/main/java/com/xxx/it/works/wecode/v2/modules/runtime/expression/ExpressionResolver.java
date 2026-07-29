@@ -117,19 +117,27 @@ public class ExpressionResolver {
 
     /**
      * 递归解析嵌套字段路径 (如 "user.name.first")
-     * 支持 Map 嵌套和 List+index 路径
+     * 支持 Map 嵌套和 List+index 路径.
+     *
+     * <p>v5.9: 字段查找先精确匹配 O(1), 未命中时回退大小写不敏感扫描.
+     * HTTP header name 按 RFC 7230 §3.2 大小写不敏感, Nginx/网关可能将 header name
+     * 小写化, 此回退确保表达式以任意大小写引用均可命中, 集中解决散落各处的
+     * {@code new HashMap} 破坏大小写不敏感特性的问题.</p>
      */
     @SuppressWarnings("unchecked")
     private Object resolveNestedField(String expression, Map<String, Object> data, String fieldPath) {
         String[] parts = fieldPath.split("\\.", 2);
         String key = parts[0];
 
-        Object value = data.get(key);
+        Object value = getCaseInsensitive(data, key);
 
         if (parts.length == 1) {
             if (value == null && !data.containsKey(key)) {
-                log.warn("Expression '{}': field '{}' not found, available keys: {}, returning null",
-                        expression, key, data.keySet());
+                // 精确匹配未命中且大小写不敏感回退也未命中, 确认为字段不存在
+                if (!containsCaseInsensitive(data, key)) {
+                    log.warn("Expression '{}': field '{}' not found, available keys: {}, returning null",
+                            expression, key, data.keySet());
+                }
             }
             return value;
         }
@@ -187,5 +195,44 @@ public class ExpressionResolver {
                     expression, remainingPath);
             return null;
         }
+    }
+
+    /**
+     * 大小写不敏感字段查找: 先精确匹配 O(1), 未命中回退大小写不敏感扫描.
+     *
+     * <p>解决 HTTP header 经 Nginx/网关小写化后, 表达式以原始大小写引用查不到的问题.
+     * RFC 7230 §3.2: HTTP header name 大小写不敏感.</p>
+     *
+     * @param data 数据 Map (header/body/query 等任意分区)
+     * @param key 表达式中的字段名 (可能为原始大小写)
+     * @return 匹配到的值, 未命中返回 null
+     */
+    private Object getCaseInsensitive(Map<String, Object> data, String key) {
+        // 1. 精确匹配 (O(1), 覆盖绝大多数场景)
+        if (data.containsKey(key)) {
+            return data.get(key);
+        }
+        // 2. 大小写不敏感回退 (仅精确匹配失败时执行, 解决 Nginx/网关 header 小写化场景)
+        for (Map.Entry<String, Object> entry : data.entrySet()) {
+            if (key.equalsIgnoreCase(entry.getKey())) {
+                return entry.getValue();
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 大小写不敏感 {@code containsKey} 检查.
+     */
+    private boolean containsCaseInsensitive(Map<String, Object> data, String key) {
+        if (data.containsKey(key)) {
+            return true;
+        }
+        for (String k : data.keySet()) {
+            if (key.equalsIgnoreCase(k)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

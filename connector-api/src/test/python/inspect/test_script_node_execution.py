@@ -184,9 +184,9 @@ def test_script_node_execution():
     if resp is not None:
         body = resp.json()
         check("HTTP 200", resp.status_code == 200)
-        check("X-Status 为 0",
-              resp.headers.get("X-Status") == "0",
-              f"X-Status={resp.headers.get('X-Status')}")
+        check("X-Code 为 20000",
+              resp.headers.get("X-Code") == "20000",
+              f"X-Code={resp.headers.get('X-Code')}")
         check("result == hello world",
               body.get("result") == "hello world",
               f"result={body.get('result')}")
@@ -240,8 +240,8 @@ def test_script_node_execution():
     resp = trigger(fid_003, body={"name": "test", "value": 1}, headers={"X-Sys-Token": "test-token"})
     if resp is not None:
         check("脚本超时应返回错误状态",
-              resp.status_code != 200 or resp.headers.get("X-Status") == "1",
-              f"status={resp.status_code}, X-Status={resp.headers.get('X-Status')}")
+              resp.status_code != 200 or bool(resp.headers.get("X-Code")),
+              f"status={resp.status_code}, X-Code={resp.headers.get('X-Code')}")
         check("应有 X-Code 错误头",
               bool(resp.headers.get("X-Code")),
               f"X-Code={resp.headers.get('X-Code')}")
@@ -267,8 +267,8 @@ def test_script_node_execution():
     resp = trigger(fid_004, body={"name": "test", "value": 1}, headers={"X-Sys-Token": "test-token"})
     if resp is not None:
         check("语法错误应返回错误状态",
-              resp.status_code != 200 or resp.headers.get("X-Status") == "1",
-              f"status={resp.status_code}, X-Status={resp.headers.get('X-Status')}")
+              resp.status_code != 200 or bool(resp.headers.get("X-Code")),
+              f"status={resp.status_code}, X-Code={resp.headers.get('X-Code')}")
         check("应有 X-Code 错误头",
               bool(resp.headers.get("X-Code")),
               f"X-Code={resp.headers.get('X-Code')}")

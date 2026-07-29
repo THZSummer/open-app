@@ -124,7 +124,7 @@ public class FlowInvokeService {
                 .flatMap(flow -> {
                     if (flow.getLifecycleStatus() == null || flow.getLifecycleStatus() != 2) {
                         return Mono.error(new PreCheckException(
-                                ErrorCode.PRECHECK_FLOW_NOT_RUNNING, "连接流未启动，请先启动后再调用"));
+                                ErrorCode.FLOW_NOT_RUNNING));
                     }
                     Long deployedVersionId = flow.getDeployedVersionId();
                     Mono<FlowVersionEntity> versionMono;
@@ -138,7 +138,7 @@ public class FlowInvokeService {
                 })
                 .switchIfEmpty(
                     Mono.error(new PreCheckException(
-                            ErrorCode.PRECHECK_URL_WHITELIST_DENIED, "连接流不存在或已被删除"))
+                            ErrorCode.FLOW_NOT_FOUND))
                 );
     }
 
@@ -204,8 +204,7 @@ public class FlowInvokeService {
                 .defaultIfEmpty(true)
                 .onErrorReturn(true)
                 .flatMap(logEnabled -> loadFlowVersion(flowId)
-                .switchIfEmpty(Mono.error(new PreCheckException(
-                        ErrorCode.PRECHECK_FLOW_NOT_FOUND, "连接流不存在: " + flowId)))
+                .switchIfEmpty(Mono.error(new PreCheckException(ErrorCode.FLOW_NOT_FOUND)))
                 .flatMap(tuple -> {
                     FlowVersionEntity flowVersion = tuple.getT1();
                     FlowEntity flow = tuple.getT2().orElse(null);
@@ -290,16 +289,13 @@ public class FlowInvokeService {
                 .onErrorResume(e -> {
                     log.error("Trigger invoke failed: flowId={}, error={}", flowId, e.getMessage());
                     String flowIdStr = String.valueOf(flowId);
-                    String msg = e.getMessage() != null ? e.getMessage() : "";
 
-                    String[] classified = classifyError(msg, e);
-                    String errorCode = classified[0];
-                    String errorMsg = classified[1];
-                    TransparentFlowResponse response = buildErrorResponse(flowIdStr, errorCode, errorMsg, msg);
+                    ErrorCode errorCode = classifyError(e);
+                    TransparentFlowResponse response = buildErrorResponse(flowIdStr, errorCode);
 
                     // ★ 执行失败 - 更新记录 (补耗时: 从触发到失败的时间差)
                     int errorDuration = (int) (System.currentTimeMillis() - invokeStartTime);
-                    return finalizeExecutionRecord(recordId, flowId, ExecStatus.FAILED.code, errorDuration, errorCode, errorMsg, logEnabled)
+                    return finalizeExecutionRecord(recordId, flowId, ExecStatus.FAILED.code, errorDuration, errorCode.code(), errorCode.messageZh(), logEnabled)
                             .thenReturn(response);
                 }));
     }
@@ -378,27 +374,27 @@ public class FlowInvokeService {
         List<Map<String, Object>> nodes = (List<Map<String, Object>>) config.get("nodes");
 
         if (nodes == null || nodes.isEmpty()) {
-            throw new PreCheckException(ErrorCode.PRECHECK_INTERNAL_ERROR, "编排配置没有节点");
+            throw new PreCheckException(ErrorCode.INTERNAL_ERROR);
         }
 
         Map<String, Object> triggerNode = findTriggerNode(nodes);
         if (triggerNode == null) {
-            throw new PreCheckException(ErrorCode.PRECHECK_INTERNAL_ERROR, "编排配置中没有触发节点");
+            throw new PreCheckException(ErrorCode.INTERNAL_ERROR);
         }
 
         Map<String, Object> nodeData = (Map<String, Object>) triggerNode.get("data");
         if (nodeData == null) {
-            throw new PreCheckException(ErrorCode.PRECHECK_INTERNAL_ERROR, "触发节点缺少 data 字段");
+            throw new PreCheckException(ErrorCode.INTERNAL_ERROR);
         }
 
         String triggerNodeId = (String) triggerNode.get("id");
 
         String triggerType = (String) nodeData.get("triggerType");
         if (triggerType == null || triggerType.isBlank()) {
-            throw new PreCheckException(ErrorCode.PRECHECK_INTERNAL_ERROR, "触发节点 data.triggerType 未配置");
+            throw new PreCheckException(ErrorCode.INTERNAL_ERROR);
         }
         if (!"http".equals(triggerType) && !"manual".equals(triggerType)) {
-            throw new PreCheckException(ErrorCode.PRECHECK_INTERNAL_ERROR, "未知的触发类型: " + triggerType);
+            throw new PreCheckException(ErrorCode.INTERNAL_ERROR);
         }
 
         validateAuthConfig(nodeData, headers, triggerType);
@@ -406,7 +402,7 @@ public class FlowInvokeService {
 
         Map<String, Object> input = (Map<String, Object>) nodeData.get("input");
         if ("http".equals(triggerType) && input == null) {
-            throw new PreCheckException(ErrorCode.PRECHECK_BAD_REQUEST, "HTTP 触发器需要配置 input 契约");
+            throw new PreCheckException(ErrorCode.BAD_REQUEST);
         }
         if (input != null) {
             validateInputContractSections(input, headers, queryParams, triggerData);
@@ -418,65 +414,49 @@ public class FlowInvokeService {
     }
 
     /**
-     * 根据异常类型分类错误码与错误消息
+     * 根据异常类型分类错误码
      * <p>
-     * 前置校验层抛出 {@link PreCheckException} 携带明确错误码;
-     * 其他异常归为 500.
+     * 前置校验层抛出 {@link PreCheckException} 携带 ErrorCode;
+     * 其他异常归为 INTERNAL_ERROR.
      * </p>
-     * @return 长度为2的数组：[errorCode, errorMsg]
      */
-    private String[] classifyError(String msg, Throwable e) {
-        if (msg == null) { msg = ""; }
-
+    private ErrorCode classifyError(Throwable e) {
         if (e instanceof PreCheckException pce) {
-            return new String[]{pce.getCode(), pce.getMessageZh()};
+            return pce.getErrorCode();
         }
-
-        return new String[]{ErrorCode.PRECHECK_INTERNAL_ERROR, "调用执行失败: " + msg};
+        return ErrorCode.INTERNAL_ERROR;
     }
 
     /**
-     * 前置校验异常 - 携带明确错误码，供 classifyError 精确分类
+     * 前置校验异常 - 携带 ErrorCode（X-Code + messageZh + messageEn + HTTP Status 四维内聚）
      */
     public static class PreCheckException extends RuntimeException {
-        private final String code;
-        private final String messageZh;
+        private final ErrorCode errorCode;
 
-        public PreCheckException(String code, String messageZh) {
-            super(messageZh);
-            this.code = code;
-            this.messageZh = messageZh;
+        public PreCheckException(ErrorCode errorCode) {
+            super(errorCode.messageZh());
+            this.errorCode = errorCode;
         }
 
-        public String getCode() { return code; }
-        public String getMessageZh() { return messageZh; }
+        /** 兼容旧调用，ErrorCode 作为首个参数时可以省略 message（枚举已内聚） */
+        public PreCheckException(ErrorCode errorCode, String overrideMessage) {
+            super(overrideMessage != null ? overrideMessage : errorCode.messageZh());
+            this.errorCode = errorCode;
+        }
+
+        public ErrorCode getErrorCode() { return errorCode; }
+        public String getCode() { return errorCode.code(); }
+        public String getMessageZh() { return errorCode.messageZh(); }
     }
 
     /**
-     * 根据错误码构建对应的错误响应
+     * 根据 ErrorCode 构建对应的错误响应。
+     * HTTP Status / X-Code / X-Message 均从 ErrorCode 枚举取值。
      */
-    private TransparentFlowResponse buildErrorResponse(String flowIdStr, String errorCode,
-                                                        String errorMsg, String msg) {
-        return switch (errorCode) {
-            case "404" -> TransparentFlowResponse.preExecutionError(
-                    flowIdStr, HttpStatus.NOT_FOUND, errorCode,
-                    errorMsg, "Flow not found: " + msg);
-            case "403" -> TransparentFlowResponse.preExecutionError(
-                    flowIdStr, HttpStatus.FORBIDDEN, errorCode,
-                    errorMsg, "URL whitelist denied: " + msg);
-            case "401" -> TransparentFlowResponse.preExecutionError(
-                    flowIdStr, HttpStatus.UNAUTHORIZED, errorCode,
-                    errorMsg, "Authentication failed: " + msg);
-            case "400" -> TransparentFlowResponse.preExecutionError(
-                    flowIdStr, HttpStatus.BAD_REQUEST, errorCode,
-                    errorMsg, "Bad request: " + msg);
-            case "409" -> TransparentFlowResponse.preExecutionError(
-                    flowIdStr, HttpStatus.CONFLICT, errorCode,
-                    errorMsg, "Flow not running: " + msg);
-            default -> TransparentFlowResponse.preExecutionError(
-                    flowIdStr, HttpStatus.INTERNAL_SERVER_ERROR, errorCode,
-                    errorMsg, "Trigger execution failed: " + msg);
-        };
+    private TransparentFlowResponse buildErrorResponse(String flowIdStr, ErrorCode errorCode) {
+        return TransparentFlowResponse.preExecutionError(
+                flowIdStr, errorCode.status(), errorCode.code(),
+                errorCode.messageZh(), errorCode.messageEn());
     }
 
     /**
@@ -682,6 +662,10 @@ public class FlowInvokeService {
     /**
      * 执行失败/超时时通过 X- 头传递错误信息
      */
+    /**
+     * 执行失败/超时时通过 X- 头传递错误信息。
+     * X-Message-Zh 当前取 messageEn（HTTP 头 ASCII 限制，中文降级策略）。
+     */
     private void populateErrorHeaders(TransparentFlowResponse r, Map<String, Object> errorInfo) {
         if (errorInfo == null) {
             return;
@@ -689,11 +673,10 @@ public class FlowInvokeService {
         if (errorInfo.containsKey("code")) {
             r.getPlatformHeaders().put("X-Code", sanitizeHeaderValue(String.valueOf(errorInfo.get("code"))));
         }
-        if (errorInfo.containsKey("messageZh")) {
-            r.getPlatformHeaders().put("X-Message-Zh", sanitizeHeaderValue(String.valueOf(errorInfo.get("messageZh"))));
-        }
         if (errorInfo.containsKey("messageEn")) {
-            r.getPlatformHeaders().put("X-Message-En", sanitizeHeaderValue(String.valueOf(errorInfo.get("messageEn"))));
+            String msgEn = sanitizeHeaderValue(String.valueOf(errorInfo.get("messageEn")));
+            r.getPlatformHeaders().put("X-Message-Zh", msgEn);
+            r.getPlatformHeaders().put("X-Message-En", msgEn);
         }
     }
 
@@ -722,16 +705,16 @@ public class FlowInvokeService {
     /**
      * 执行失败时根据错误码设置对应的 HTTP 状态码
      */
+    /**
+     * 执行失败/超时时统一返回 {@link HttpStatus#BAD_REQUEST} (400)。
+     * <p>成功时 X-Code="20000" 跳过；其余 X-Code 均为用户侧问题。</p>
+     */
     private void setHttpStatusForError(TransparentFlowResponse r) {
         String xCode = r.getPlatformHeaders().get("X-Code");
-        if (xCode == null) {
+        if (xCode == null || "20000".equals(xCode)) {
             return;
         }
-        if (xCode.contains("timeout")) {
-            r.setHttpStatus(HttpStatus.GATEWAY_TIMEOUT);
-        } else {
-            r.setHttpStatus(HttpStatus.BAD_GATEWAY);
-        }
+        r.setHttpStatus(HttpStatus.BAD_REQUEST);
     }
 
     /**
@@ -839,7 +822,7 @@ public class FlowInvokeService {
         if (required != null && !required.isEmpty()) {
             for (String field : required) {
                 if (!data.containsKey(field) || data.get(field) == null) {
-                    throw new PreCheckException(ErrorCode.PRECHECK_BAD_REQUEST,
+                    throw new PreCheckException(ErrorCode.BAD_REQUEST,
                             "触发器 " + sectionName + " 缺少必填字段: " + field);
                 }
             }
@@ -870,7 +853,7 @@ public class FlowInvokeService {
         switch (expectedType) {
             case "string":
                 if (!(value instanceof String)) {
-                    throw new PreCheckException(ErrorCode.PRECHECK_BAD_REQUEST,
+                    throw new PreCheckException(ErrorCode.BAD_REQUEST,
                             "字段 '" + fieldName + "' 应为 string 类型, 实际: " + value.getClass().getSimpleName());
                 }
                 break;
@@ -883,7 +866,7 @@ public class FlowInvokeService {
                 break;
             case "object":
                 if (!(value instanceof Map)) {
-                    throw new PreCheckException(ErrorCode.PRECHECK_BAD_REQUEST,
+                    throw new PreCheckException(ErrorCode.BAD_REQUEST,
                             "字段 '" + fieldName + "' 应为 object 类型, 实际: " + value.getClass().getSimpleName());
                 }
                 break;
@@ -908,12 +891,12 @@ public class FlowInvokeService {
                     Double.parseDouble((String) value);
                     return;
                 } catch (NumberFormatException e2) {
-                    throw new PreCheckException(ErrorCode.PRECHECK_BAD_REQUEST,
+                    throw new PreCheckException(ErrorCode.BAD_REQUEST,
                             "字段 '" + fieldName + "' 应为 number 类型, 实际值: '" + value + "'");
                 }
             }
         }
-        throw new PreCheckException(ErrorCode.PRECHECK_BAD_REQUEST,
+        throw new PreCheckException(ErrorCode.BAD_REQUEST,
                 "字段 '" + fieldName + "' 应为 number 类型, 实际: " + value.getClass().getSimpleName());
     }
 
@@ -927,7 +910,7 @@ public class FlowInvokeService {
         if (value instanceof String && ("true".equalsIgnoreCase((String) value) || "false".equalsIgnoreCase((String) value))) {
             return;
         }
-        throw new PreCheckException(ErrorCode.PRECHECK_BAD_REQUEST,
+        throw new PreCheckException(ErrorCode.BAD_REQUEST,
                 "字段 '" + fieldName + "' 应为 boolean 类型, 实际: " + value.getClass().getSimpleName());
     }
 
@@ -939,12 +922,12 @@ public class FlowInvokeService {
         List<Map<String, Object>> authConfigs = (List<Map<String, Object>>) nodeData.get("authConfigs");
         if ("http".equals(triggerType)) {
             if (authConfigs == null || authConfigs.isEmpty()) {
-                throw new PreCheckException(ErrorCode.PRECHECK_AUTH_FAILED, "HTTP 触发器需要配置 authConfigs");
+                throw new PreCheckException(ErrorCode.AUTH_NOT_WHITELIST, "HTTP 触发器需要配置 authConfigs");
             }
             for (Map<String, Object> ac : authConfigs) {
                 String authType = (String) ac.get("type");
                 if (authType == null || authType.isBlank()) {
-                    throw new PreCheckException(ErrorCode.PRECHECK_AUTH_FAILED, "authConfigs[].type 未配置");
+                    throw new PreCheckException(ErrorCode.AUTH_NOT_WHITELIST, "authConfigs[].type 未配置");
                 }
             }
         }
@@ -978,23 +961,23 @@ public class FlowInvokeService {
 
             // 1. 凭证异常: 无法从 token 解析出系统账号
             String account = sysTokenResolver.resolveSysAccount(token)
-                    .orElseThrow(() -> new PreCheckException(ErrorCode.PRECHECK_AUTH_FAILED,
+                    .orElseThrow(() -> new PreCheckException(ErrorCode.AUTH_NOT_WHITELIST,
                             "凭证异常: 无法从 " + fieldName + " 解析系统账号"));
 
             // 2. 凭证过期: token 已失效
             if (!sysTokenResolver.isTokenValid(token)) {
-                throw new PreCheckException(ErrorCode.PRECHECK_AUTH_EXPIRED,
+                throw new PreCheckException(ErrorCode.AUTH_MISSING_OR_EXPIRED,
                         "凭证过期: " + fieldName + " 已失效");
             }
 
             // 3. 无权限: 账号不在白名单
             if (whitelistTokens != null) {
                 if (whitelistTokens.isEmpty()) {
-                    throw new PreCheckException(ErrorCode.PRECHECK_URL_WHITELIST_DENIED,
+                    throw new PreCheckException(ErrorCode.URL_WHITELIST_DENIED,
                             "SysAccount 白名单为空，所有请求被拒绝");
                 }
                 if (!whitelistTokens.contains(account)) {
-                    throw new PreCheckException(ErrorCode.PRECHECK_URL_WHITELIST_DENIED,
+                    throw new PreCheckException(ErrorCode.URL_WHITELIST_DENIED,
                             "无权限: SysAccount 不在白名单中: " + account);
                 }
             }
@@ -1019,14 +1002,14 @@ public class FlowInvokeService {
         if (maxQpsObj instanceof Number) {
             int maxQps = ((Number) maxQpsObj).intValue();
             if (maxQps < 1) {
-                throw new PreCheckException(ErrorCode.PRECHECK_INTERNAL_ERROR, "限流 maxQps 必须大于 0, 实际: " + maxQps);
+                throw new PreCheckException(ErrorCode.INTERNAL_ERROR, "限流 maxQps 必须大于 0, 实际: " + maxQps);
             }
         }
         Object maxConcurrencyObj = rateLimitConfig.get("maxConcurrency");
         if (maxConcurrencyObj instanceof Number) {
             int maxConcurrency = ((Number) maxConcurrencyObj).intValue();
             if (maxConcurrency < 1) {
-                throw new PreCheckException(ErrorCode.PRECHECK_INTERNAL_ERROR, "限流 maxConcurrency 必须大于 0, 实际: " + maxConcurrency);
+                throw new PreCheckException(ErrorCode.INTERNAL_ERROR, "限流 maxConcurrency 必须大于 0, 实际: " + maxConcurrency);
             }
         }
     }

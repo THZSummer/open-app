@@ -104,7 +104,7 @@ class FlowVersionDebugServiceTest {
                     assertEquals("failed", result.getStatus());
                     assertTrue(result.isDebug());
                     assertNotNull(result.getErrorInfo());
-                    assertEquals(ErrorCode.PRECHECK_VERSION_NOT_FOUND, result.getErrorInfo().get("code"));
+                    assertEquals(ErrorCode.VERSION_NOT_FOUND.code(), result.getErrorInfo().get("code"));
                 })
                 .verifyComplete();
     }

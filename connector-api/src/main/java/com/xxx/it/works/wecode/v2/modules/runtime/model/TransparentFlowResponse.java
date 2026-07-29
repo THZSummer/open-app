@@ -1,5 +1,6 @@
 package com.xxx.it.works.wecode.v2.modules.runtime.model;
 
+import com.xxx.it.works.wecode.v2.common.error.ErrorCode;
 import org.springframework.http.HttpStatus;
 
 import java.util.LinkedHashMap;
@@ -57,9 +58,12 @@ public class TransparentFlowResponse {
         r.platformHeaders = new LinkedHashMap<>();
         r.platformHeaders.put("X-Flow-Id", flowId);
         r.platformHeaders.put("X-Execution-Id", executionId);
-        r.platformHeaders.put("X-Status", String.valueOf(status));
         r.platformHeaders.put("X-Duration-Ms", String.valueOf(durationMs));
-        r.platformHeaders.put("X-Cache-Status", "0"); // 当前未实现缓存
+        r.platformHeaders.put("X-Cache-Status", "0");
+        r.platformHeaders.put("X-Code", ErrorCode.SUCCESS.code());
+        // X-Message-Zh 当前取 messageEn（HTTP 头 ASCII 限制），切换中文时改 messageZh()
+        r.platformHeaders.put("X-Message-Zh", ErrorCode.SUCCESS.messageEn());
+        r.platformHeaders.put("X-Message-En", ErrorCode.SUCCESS.messageEn());
         r.httpStatus = HttpStatus.OK;
         return r;
     }
@@ -74,14 +78,15 @@ public class TransparentFlowResponse {
      * @param messageEn  英文错误消息
      */
     public static TransparentFlowResponse preExecutionError(String flowId, HttpStatus httpStatus,
-                                                             String code, String messageZh, String messageEn) {
+                                                              String code, String messageZh, String messageEn) {
         TransparentFlowResponse r = new TransparentFlowResponse();
         r.body = null;
         r.userHeaders = new LinkedHashMap<>();
         r.platformHeaders = new LinkedHashMap<>();
         r.platformHeaders.put("X-Flow-Id", flowId);
         r.platformHeaders.put("X-Code", code);
-        r.platformHeaders.put("X-Message-Zh", messageZh);
+        // HTTP 响应头仅支持 ASCII，中文会被 Netty 转 ?，统一用英文消息
+        r.platformHeaders.put("X-Message-Zh", messageEn);
         r.platformHeaders.put("X-Message-En", messageEn);
         r.httpStatus = httpStatus;
         return r;

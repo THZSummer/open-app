@@ -141,7 +141,7 @@ public class ReactiveSequentialExecutor {
                             errorOutput.setStatus("timeout");
                             errorOutput.setDurationMs(System.currentTimeMillis() - nodeStart);
                             Map<String, Object> errInfo = new HashMap<>();
-                            errInfo.put("code", ErrorCode.ORCH_NODE_TIMEOUT_OR_ERROR);
+                            errInfo.put("code", ErrorCode.NODE_TIMEOUT_OR_ERROR);
                             errInfo.put("messageZh", "节点执行超时或错误: " + e.getMessage());
                             errInfo.put("messageEn", "Node execution timeout or error: " + e.getMessage());
                             errInfo.put("message", e.getMessage());
@@ -270,7 +270,7 @@ public class ReactiveSequentialExecutor {
             if ("failed".equals(step.getStatus()) || "timeout".equals(step.getStatus())) {
                 anyFailed = true;
                 if (firstErrorCode == null && step.getErrorInfo() != null) {
-                    firstErrorCode = extractErrorField(step.getErrorInfo(), "code", ErrorCode.ORCH_EXECUTION_FAILED);
+                    firstErrorCode = extractErrorField(step.getErrorInfo(), "code", ErrorCode.ORCH_EXECUTION_FAILED.code());
                     firstErrorMessageZh = extractErrorField(step.getErrorInfo(), "messageZh",
                             extractErrorField(step.getErrorInfo(), "message", step.getStatus()));
                     firstErrorMessageEn = extractErrorField(step.getErrorInfo(), "messageEn",
@@ -403,7 +403,7 @@ public class ReactiveSequentialExecutor {
 
         String msg = (errorMessage != null) ? errorMessage : "Orchestration config has no nodes";
         Map<String, Object> errorInfo = new HashMap<>();
-        errorInfo.put("code", ErrorCode.ORCH_EXECUTION_FAILED);
+        errorInfo.put("code", ErrorCode.ORCH_EXECUTION_FAILED.code());
         errorInfo.put("message", msg);
         errorInfo.put("messageEn", msg);
         errorInfo.put("messageZh", msg);

@@ -7,14 +7,14 @@
   - IT-051: flow 正常运行 (lifecycle_status=2) → 正常执行 + X- 头
   - IT-060: 快乐路径 — 三段参数 (header/query/body) 全链路透传 + 透明响应体
   - IT-061: 请求体缺必填字段 → HTTP 500 + X-Code 头
-  - IT-062: Connector 下游失败 (POST /api/fail → 500) → X-Status=1
+  - IT-062: Connector 下游失败 (POST /api/fail → 500) → X-Code=1
   - IT-063: 常量 + 跨节点引用 + header/query/body 区分验证 + 透明响应
   - IT-064: 超过限流阈值 → 429 + X- 头
   - IT-065: 限流恢复 → 正常 + X- 头
 
 核心设计 (v5.8 — 透明响应格式):
   - 响应体为 exit outputMapping.body 的直接数据 (无 resultData 信封)
-  - 平台元数据通过 X-Flow-Id / X-Execution-Id / X-Status / X-Duration-Ms 等响应头返回
+  - 平台元数据通过 X-Flow-Id / X-Execution-Id / X-Code / X-Duration-Ms 等响应头返回
   - exit outputMapping.header 映射为真实 HTTP 响应头 (如 X-Response-Id)
   - 错误信息通过 X-Code / X-Message-Zh / X-Message-En 响应头返回, 响应体为空
   - 不再返回 steps (hasSteps 逻辑已移除)
@@ -637,7 +637,7 @@ def test_trigger_invoke():
                           query_params={"page": "1", "size": "10"})
     if resp is not None:
         check("HTTP 401", resp.status_code == 401)
-        check("X-Code 为 401", resp.headers.get("X-Code") == "401")
+        check("X-Code 为 42001", resp.headers.get("X-Code") == "42001")
         check("X-Message-Zh 存在", bool(resp.headers.get("X-Message-Zh")))
         check("响应体为空", len(resp.content) == 0, f"body={resp.content}")
     print("\n=== IT-050: Flow 不存在 ===")
@@ -646,7 +646,7 @@ def test_trigger_invoke():
                           query_params={"page": "1"})
     if resp:
         check("HTTP 404", resp.status_code == 404)
-        check("X-Code 为 404", resp.headers.get("X-Code") == "404")
+        check("X-Code 为 41101", resp.headers.get("X-Code") == "41101")
         check("响应体为空", len(resp.content) == 0, f"body={resp.content}")
 
 
@@ -667,7 +667,7 @@ def test_trigger_invoke():
         body = resp.json()
         check("HTTP 200", resp.status_code == 200)
         check("X-Execution-Id 存在", bool(resp.headers.get("X-Execution-Id")))
-        check("X-Status 为 0", resp.headers.get("X-Status") == "0")
+        check("X-Code 为 20000", resp.headers.get("X-Code") == "20000",)
         check("响应体含 searchKeyword 数据", body.get("searchKeyword") == "test")
     print("\n=== IT-060: 快乐路径（header + query + body → connector → exit）===")
     sid_060 = snow_id()
@@ -684,8 +684,8 @@ def test_trigger_invoke():
     if resp is not None:
         body = resp.json()
         check("HTTP 200", resp.status_code == 200)
-        check("X-Status 为 0", resp.headers.get("X-Status") == "0",
-              f"X-Status={resp.headers.get('X-Status')}")
+        check("X-Code 为 20000", resp.headers.get("X-Code") == "20000",
+              f"X-Code={resp.headers.get('X-Code')}")
         check("X-Flow-Id 存在", bool(resp.headers.get("X-Flow-Id")))
         check("X-Execution-Id 存在", bool(resp.headers.get("X-Execution-Id")))
 
@@ -751,7 +751,7 @@ def test_trigger_invoke():
                           query_params={"page": "1", "size": "10"})
     if resp is not None:
         check("HTTP 400", resp.status_code == 400)
-        check("X-Code 为 400", resp.headers.get("X-Code") == "400")
+        check("X-Code 为 41xxx", resp.headers.get("X-Code", "").startswith("41"))
         check("响应体为空", len(resp.content) == 0, f"body={resp.content}")
     print("\n=== IT-061b: 缺失必填 query 参数 page ===")
     sid_061b = snow_id()
@@ -768,7 +768,7 @@ def test_trigger_invoke():
                           query_params={"size": "10"})
     if resp is not None:
         check("HTTP 400", resp.status_code == 400)
-        check("X-Code 为 400", resp.headers.get("X-Code") == "400")
+        check("X-Code 为 41xxx", resp.headers.get("X-Code", "").startswith("41"))
         check("响应体为空", len(resp.content) == 0, f"body={resp.content}")
     print("\n=== IT-061c: 缺失必填 header 参数 X-Trace-Id ===")
     sid_061c = snow_id()
@@ -784,7 +784,7 @@ def test_trigger_invoke():
                           query_params={"page": "1", "size": "10"})
     if resp is not None:
         check("HTTP 400", resp.status_code == 400)
-        check("X-Code 为 400", resp.headers.get("X-Code") == "400")
+        check("X-Code 为 41xxx", resp.headers.get("X-Code", "").startswith("41"))
         check("响应体为空", len(resp.content) == 0, f"body={resp.content}")
     print("\n=== IT-062: Connector 下游失败（POST /api/fail → 500）===")
     sid_062 = snow_id()
@@ -798,9 +798,9 @@ def test_trigger_invoke():
                           headers={"X-Sys-Token": "test-token", "X-Trace-Id": "trace-062"},
                           query_params={"page": "1"})
     if resp is not None:
-        check("HTTP 200 或 502（下游失败透传）", resp.status_code in (200, 502), f"实际: {resp.status_code}")
-        check("X-Status 为 1 (failed)", resp.headers.get("X-Status") == "1",
-              f"X-Status={resp.headers.get('X-Status')}")
+        check("HTTP 400（执行层错误）", resp.status_code == 400, f"实际: {resp.status_code}")
+        check("X-Code 不为 20000（执行失败）", resp.headers.get("X-Code") != "20000",
+              f"X-Code={resp.headers.get('X-Code')}")
     print("\n=== IT-063: 表达式引用链验证（constant + $. 引用混合 + 三段区分）===")
     sid_063 = snow_id()
     fvid_063 = cid_063 = cvid_063 = None
@@ -816,8 +816,8 @@ def test_trigger_invoke():
     if resp is not None:
         body = resp.json()
         check("HTTP 200", resp.status_code == 200)
-        check("X-Status 为 0", resp.headers.get("X-Status") == "0",
-              f"X-Status={resp.headers.get('X-Status')}")
+        check("X-Code 为 20000", resp.headers.get("X-Code") == "20000",
+              f"X-Code={resp.headers.get('X-Code')}")
 
         # ── 用户自定义响应头 ──
         check("X-Response-Id == resp-001 (constant, 作为 HTTP 响应头)",
@@ -900,8 +900,8 @@ def test_trigger_invoke():
             pass
         check("HTTP 200", resp.status_code == 200)
         check("X-Execution-Id 存在", bool(resp.headers.get("X-Execution-Id")))
-        check("X-Status 为 0", resp.headers.get("X-Status") == "0",
-              f"X-Status={resp.headers.get('X-Status')}")
+        check("X-Code 为 20000", resp.headers.get("X-Code") == "20000",
+              f"X-Code={resp.headers.get('X-Code')}")
     mock_server.shutdown()
     print("\nMock server shut down.")
 
