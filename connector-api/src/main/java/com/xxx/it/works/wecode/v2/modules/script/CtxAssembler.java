@@ -14,6 +14,10 @@ import java.util.Map;
  * <p>
  * 将上游节点的 input/output 数据组装为嵌套 Map, 作为 GraalJS 脚本的 {@code main(ctx)} 参数.
  * 使用指针引用 (非深拷贝) 以保证性能.
+ * <p>
+ * 采用 DAG 拓扑自发现: 脚本执行时 ExecutionContext 中所有已完成节点自动纳入 ctx,
+ * 不依赖前端 {@code upstreamNodeIds} (防止并行分支中 connector 遗漏).
+ * </p>
  * </p>
  *
  * <h3>组装结构</h3>
@@ -45,24 +49,15 @@ public class CtxAssembler {
     public Map<String, Object> assembleCtx(ExecutionContext execCtx, List<String> upstreamNodeIds) {
         Map<String, Object> ctx = new LinkedHashMap<>();
 
-        // 1. 组装上游节点数据 (指针引用, 不深拷贝)
-        List<String> effectiveUpstream = upstreamNodeIds;
-        if (effectiveUpstream == null || effectiveUpstream.isEmpty()) {
-            // 未显式指定上游节点时, 包含所有已执行节点
-            effectiveUpstream = new java.util.ArrayList<>(execCtx.getNodeContexts().keySet());
-        }
-
-        for (String nodeId : effectiveUpstream) {
-            NodeContext nodeCtx = execCtx.getNodeContext(nodeId);
-            if (nodeCtx != null) {
-                Map<String, Object> nodeData = new LinkedHashMap<>();
-                nodeData.put("input", nodeCtx.getInput() != null ? nodeCtx.getInput() : new LinkedHashMap<>());
-                nodeData.put("output", nodeCtx.getOutput() != null ? nodeCtx.getOutput() : new LinkedHashMap<>());
-                ctx.put(nodeId, nodeData);
-            } else {
-                log.warn("Node context not found for upstream node: {}, available nodes: {}",
-                        nodeId, execCtx.getNodeContexts().keySet());
-            }
+        // 1. 组装所有已执行节点的数据 (DAG 拓扑保证此时所有上游节点已完成)
+        //    不依赖前端传的 upstreamNodeIds (可能遗漏, 如并行分支中的 connector)
+        for (Map.Entry<String, NodeContext> entry : execCtx.getNodeContexts().entrySet()) {
+            String nodeId = entry.getKey();
+            NodeContext nodeCtx = entry.getValue();
+            Map<String, Object> nodeData = new LinkedHashMap<>();
+            nodeData.put("input", nodeCtx.getInput() != null ? nodeCtx.getInput() : new LinkedHashMap<>());
+            nodeData.put("output", nodeCtx.getOutput() != null ? nodeCtx.getOutput() : new LinkedHashMap<>());
+            ctx.put(nodeId, nodeData);
         }
 
         // 2. 组装 trigger 触发数据 (v5.7 结构化格式: {header, query, body})
@@ -91,8 +86,8 @@ public class CtxAssembler {
         triggerData.put("input", triggerInput);
         ctx.put("trigger", triggerData);
 
-        log.info("Assembled script ctx: upstreamNodeCount={}, hasTrigger={}",
-                effectiveUpstream.size(),
+        log.info("Assembled script ctx: nodeCount={}, hasTrigger={}",
+                execCtx.getNodeContexts().size(),
                 triggerNodeCtx != null);
 
         return ctx;
