@@ -495,7 +495,7 @@ public class FlowVersionService {
         Map<String, String> propertyConfig = propertyService.loadConfigBundle(appIdStr);
         int appMaxQps = getIntFromConfig(propertyConfig, ConnectorPlatformConstants.ITEM_FLOW_MAX_QPS, ConnectorPlatformConstants.DEFAULT_QPS_LIMIT);
         int appMaxConcurrency = getIntFromConfig(propertyConfig, ConnectorPlatformConstants.ITEM_FLOW_MAX_CONCURRENCY, ConnectorPlatformConstants.DEFAULT_CONCURRENCY_LIMIT);
-        int appMaxTimeoutMs = getIntFromConfig(propertyConfig, ConnectorPlatformConstants.ITEM_NODE_MAX_TIMEOUT_SECONDS, ConnectorPlatformConstants.DEFAULT_TIMEOUT_SECONDS) * 1000;
+        int appMaxTimeoutMs = getIntFromConfig(propertyConfig, ConnectorPlatformConstants.ITEM_NODE_MAX_TIMEOUT_SECONDS, ConnectorPlatformConstants.DEFAULT_TIMEOUT_SECONDS); // JSON timeoutMs 字段值含义已统一为秒, 无需 ×1000
         List<String> errors = publishValidator.validateRateLimitAgainstAppMax(config, appMaxQps, appMaxConcurrency);
         if (!errors.isEmpty()) {
             return ApiResponse.error("422", String.join("；", errors), "Validation failed: " + String.join("; ", errors));

@@ -368,11 +368,11 @@ public class DagScheduler {
         if (data != null && data.has("timeoutMs")) {
             JsonNode timeoutNode = data.get("timeoutMs");
             if (timeoutNode.isNumber() && timeoutNode.asLong() > 0) {
-                return Mono.just(Duration.ofMillis(timeoutNode.asLong()));
+                return Mono.just(Duration.ofSeconds(timeoutNode.asLong())); // JSON timeoutMs 字段含义已统一为秒
             }
         }
         return propertyService.getNodeMaxTimeoutSeconds()
-                .map(seconds -> Duration.ofMillis(seconds * 1000L))
+                .map(Duration::ofSeconds) // 平台全局 Node.Max.Timeout.Seconds 已是秒, 无需 ×1000
                 .defaultIfEmpty(Duration.ofSeconds(5));
     }
 

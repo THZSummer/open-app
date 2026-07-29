@@ -50,8 +50,8 @@ import java.util.Map;
 @Component
 public class ScriptNodeExecutor implements NodeExecutor {
 
-    /** 脚本节点默认超时 (毫秒), 仅作为极端兜底 */
-    private static final int DEFAULT_TIMEOUT_MS = 5000;
+    /** 脚本节点默认超时 (秒), 仅作为极端兜底 — JSON timeoutMs 字段值含义已统一为秒 */
+    private static final int DEFAULT_TIMEOUT_MS = 5;
 
     /** Whether script HTTP client is enabled (script.http.client.enabled, default true) */
     @org.springframework.beans.factory.annotation.Value("${script.http.client.enabled:true}")
@@ -105,8 +105,8 @@ public class ScriptNodeExecutor implements NodeExecutor {
         } else {
             timeoutMono = propertyService.getScriptMaxTimeoutSeconds()
                     .defaultIfEmpty(5)
-                    .onErrorReturn(5)
-                    .map(s -> s * 1000);
+                    .onErrorReturn(5);
+            // JSON timeoutMs 字段值含义已统一为秒, getScriptMaxTimeoutSeconds() 返回值也是秒, 无需 ×1000
         }
 
         // 3. 提取上游节点 ID 列表
@@ -130,7 +130,7 @@ public class ScriptNodeExecutor implements NodeExecutor {
             // 5. 在虚拟线程中执行 (轻量级, 不占平台线程), 带超时控制
             return Mono.fromCallable(() -> executeScript(scriptSource, ctxMap))
                     .subscribeOn(Schedulers.fromExecutor(Executors.newVirtualThreadPerTaskExecutor()))
-                    .timeout(Duration.ofMillis(finalTimeoutMs))
+                    .timeout(Duration.ofSeconds(finalTimeoutMs)) // JSON timeoutMs 字段含义已统一为秒
                     .map(result -> {
                         long duration = System.currentTimeMillis() - startTime;
                         ctxMap.remove("http");

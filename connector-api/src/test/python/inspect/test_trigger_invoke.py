@@ -222,7 +222,7 @@ CONNECTION_CONFIG = {
             }
         }
     },
-    "timeoutMs": 3000
+    "timeoutMs": 30  # 单位: 秒
 }
 
 
@@ -512,7 +512,7 @@ FAIL_CONNECTION_CONFIG = {
         "protocol": "HTTP",
         "body": {"type": "object", "properties": {}}
     },
-    "timeoutMs": 3000
+    "timeoutMs": 30  # 单位: 秒
 }
 
 FAIL_CONNECTOR_NODE = {

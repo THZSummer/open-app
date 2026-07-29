@@ -431,7 +431,7 @@ public class FlowPublishValidator {
      * @param errors     错误列表
      */
     private void validateTimeout(JsonNode flowConfig, List<String> errors) {
-        JsonNode timeout = flowConfig.get("timeout");
+        JsonNode timeout = flowConfig.get("timeoutMs"); // 字段名应为 timeoutMs, 值含义为秒
         if (timeout != null && timeout.isNumber() && timeout.asInt() <= 0) {
             errors.add("节点超时必须大于 0");
         }
@@ -490,7 +490,7 @@ public class FlowPublishValidator {
         }
 
         // 校验脚本节点超时值上限
-        JsonNode scriptTimeout = data.get("timeout");
+        JsonNode scriptTimeout = data.get("timeoutMs"); // 字段名应为 timeoutMs, 值含义为秒
         if (scriptTimeout != null && scriptTimeout.isNumber()) {
             int timeoutValue = scriptTimeout.asInt();
             int maxTimeoutSeconds = getIntFromConfig(propertyConfig,
@@ -647,7 +647,7 @@ public class FlowPublishValidator {
                     if (nodeTimeout != null && nodeTimeout.isNumber()
                             && nodeTimeout.asInt() > appMaxTimeoutMs) {
                         errors.add("节点 [" + node.get("id").asText() + "] 超时("
-                                + nodeTimeout.asInt() + "ms) 超过应用上限(" + appMaxTimeoutMs + "ms)");
+                                + nodeTimeout.asInt() + "秒) 超过应用上限(" + appMaxTimeoutMs + "秒)");
                     }
                 }
             }
@@ -667,9 +667,9 @@ public class FlowPublishValidator {
             JsonNode config = objectMapper.readTree(orchestrationConfig);
             JsonNode flowConfig = config.get("flowConfig");
             if (flowConfig != null) {
-                JsonNode timeout = flowConfig.get("timeout");
+                JsonNode timeout = flowConfig.get("timeoutMs"); // 字段名应为 timeoutMs, 值含义为秒
                 if (timeout != null && timeout.isNumber() && timeout.asInt() > appMaxTimeoutMs) {
-                    errors.add("节点超时(" + timeout.asInt() + "ms) 超过应用上限(" + appMaxTimeoutMs + "ms)");
+                    errors.add("节点超时(" + timeout.asInt() + "秒) 超过应用上限(" + appMaxTimeoutMs + "秒)");
                 }
             }
 

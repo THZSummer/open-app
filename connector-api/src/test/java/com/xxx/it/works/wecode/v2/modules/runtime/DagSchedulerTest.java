@@ -212,7 +212,7 @@ class DagSchedulerTest {
     void testNodeTimeout_MarkedAsTimeout() {
         String orchestrationConfig = "{\"nodes\":[" +
                 "{\"id\":\"node_trigger\",\"data\":{\"type\":\"trigger\"}}," +
-                "{\"id\":\"node_conn\",\"data\":{\"type\":\"connector\",\"timeoutMs\":100}}," +
+                "{\"id\":\"node_conn\",\"data\":{\"type\":\"connector\",\"timeoutMs\":1}}," +
                 "{\"id\":\"node_exit\",\"data\":{\"type\":\"exit\"}}" +
                 "],\"edges\":[" +
                 "{\"id\":\"e1\",\"source\":\"node_trigger\",\"target\":\"node_conn\"}," +
@@ -225,9 +225,9 @@ class DagSchedulerTest {
         when(triggerExecutor.execute(any(ExecutionContext.class), any()))
                 .thenReturn(Mono.just(successOutput("node_trigger", "trigger")));
 
-        // connector 模拟超时: 远大于 timeoutMs=100
+        // connector 模拟超时: 延迟大于 timeoutMs=1秒
         when(connectorExecutor.execute(any(ExecutionContext.class), any()))
-                .thenReturn(Mono.delay(Duration.ofMillis(500))
+                .thenReturn(Mono.delay(Duration.ofMillis(2000))
                         .then(Mono.just(successOutput("node_conn", "connector"))));
 
         when(exitExecutor.execute(any(ExecutionContext.class), any()))
@@ -248,7 +248,7 @@ class DagSchedulerTest {
     }
 
     @Test
-    @DisplayName("节点无自定义超时 → 使用默认 30s 超时")
+    @DisplayName("节点无自定义超时 → 使用默认 5s 超时 (平台全局)")
     void testNodeDefaultTimeout_30s() {
         String orchestrationConfig = "{\"nodes\":[" +
                 "{\"id\":\"node_trigger\",\"data\":{\"type\":\"trigger\"}}," +

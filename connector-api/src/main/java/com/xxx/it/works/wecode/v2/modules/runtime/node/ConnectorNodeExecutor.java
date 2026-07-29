@@ -44,8 +44,8 @@ public class ConnectorNodeExecutor implements NodeExecutor {
     private final ExpressionResolver expressionResolver;
     private final UnifiedCredentialProcessor credentialProcessor;
 
-    /** 默认超时时间 (30秒) */
-    private static final long DEFAULT_TIMEOUT_MS = 30000;
+    /** 默认超时时间 (秒) — JSON timeoutMs 字段值含义已统一为秒 */
+    private static final long DEFAULT_TIMEOUT_MS = 5;
 
     public ConnectorNodeExecutor(ObjectMapper objectMapper, WebClient webClient,
                                    UnifiedCredentialProcessor credentialProcessor) {
@@ -389,7 +389,7 @@ public class ConnectorNodeExecutor implements NodeExecutor {
                                         downstreamBody, input, duration));
                     }
                     return response.bodyToMono(String.class)
-                            .timeout(Duration.ofMillis(timeoutMs))
+                            .timeout(Duration.ofSeconds(timeoutMs)) // JSON timeoutMs 字段含义已统一为秒
                             .map(responseBody -> {
                             log.info("Connector HTTP call succeeded: nodeId={}, status=success", nodeId);
                             Map<String, Object> outputData = new HashMap<>();
@@ -440,7 +440,7 @@ public class ConnectorNodeExecutor implements NodeExecutor {
 
         if (e instanceof java.util.concurrent.TimeoutException || errMsg.contains("timeout")) {
             code = ErrorCode.CONNECTOR_READ_TIMEOUT.code();
-            msgZh = "连接器调用超时（超过" + timeoutMs + "ms），目标地址 [" + HtmlUtils.htmlEscape(url) + "] 未在规定时间内响应";
+            msgZh = "连接器调用超时（超过" + timeoutMs + "秒），目标地址 [" + HtmlUtils.htmlEscape(url) + "] 未在规定时间内响应";
         } else if (errMsg.contains("connection refused")) {
             code = ErrorCode.CONNECTOR_CONNECT_TIMEOUT.code();
             msgZh = "连接器连接超时，目标地址 [" + HtmlUtils.htmlEscape(url) + "] 不可达";
