@@ -38,8 +38,9 @@
         <db.user>openapp</db.user>
         <db.password>openapp</db.password>
 
-        <!-- 存量开发库已手动执行到的最高版本（当前=V5），接入 Flyway 时以此为基线，不重跑 V1~V5 -->
-        <flyway.baselineVersion>5</flyway.baselineVersion>
+        <!-- 存量开发库已手动执行到的最高版本（当前=V7，含早期表+平台 schema），
+             接入 Flyway 时以此为基线，不重跑 V1~V7；新变更从 V8 开始 -->
+        <flyway.baselineVersion>7</flyway.baselineVersion>
     </properties>
 
     <build>

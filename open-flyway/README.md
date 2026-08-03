@@ -25,28 +25,25 @@ mvn -f open-flyway/pom.xml flyway:migrate \
 
 开发库已有表但无 `flyway_schema_history` 时，`baseline-on-migrate: true` 会自动执行 baseline：
 
-- `baseline-version: 5`（pom.xml 中 `flyway.baselineVersion`）——标记 V1~V5 已应用，**不重跑**历史脚本
-- 之后 Flyway 只执行 V6+ 增量脚本
+- `baseline-version: 7`（pom.xml 中 `flyway.baselineVersion`）——标记 V1~V7 已应用，**不重跑**历史脚本
+- 之后 Flyway 只执行 V8+ 增量脚本
 - 全新空库：Flyway 自动从 V1 全量执行（空库无需 baseline）
 
-> ⚠️ baseline 只标记版本，不校验库结构与脚本是否完全一致。若开发库结构与 V1~V5 有历史漂移（如 V4 字段缺失），需开发人员自行核对。
+> ⚠️ baseline 只标记版本，不校验库结构与脚本是否完全一致。若开发库结构与 V1~V7 有历史漂移，需开发人员自行核对。
 
 ## 脚本规范
 
 | 版本 | 来源 | 内容 |
 |------|------|------|
-| V1 | open-server `db/migration/V1` | 能力开放平台基础 schema（分类/API/事件/回调/权限/审批等 15 表） |
-| V2 | open-server `db/migration/V2` | 连接器平台 schema（connector/flow 4 表） |
-| V3 | open-server `db/migration/V3` | 连接器平台 V3 schema（执行记录/步骤等） |
-| V4 | open-server `db/migration/V4` | ability 管理字段 |
-| V5 | open-server `db/migration/V5` | common file 表 |
-| V6 | market-server `db/migration/V2` | lookup 文件表（原 market-server V2，统一编号避免版本冲突） |
-| V7 | docs/app 早期表（Navicat 导出） | 应用域 7 表（app / identity / member / version / ability_relation） |
-| V8 | docs/app 早期表（Navicat 导出） | 能力域 2 表（ability / ability_p） |
-| V9 | docs/app 早期表（Navicat 导出） | 数据字典 2 表（lookup_classify / lookup_item） |
-| V10 | docs/app 早期表（Navicat 导出） | 运维域 5 表（operate_log / property / file / employee / eamap） |
+| V1 | docs/app 早期表（Navicat 导出） | 早期 16 表合并：应用域(7) + 能力域(2) + 数据字典(2) + 运维域(5) |
+| V2 | open-server `db/migration/V1` | 能力开放平台基础 schema（分类/API/事件/回调/权限/审批等 15 表） |
+| V3 | open-server `db/migration/V2` | 连接器平台 schema（connector/flow 4 表） |
+| V4 | open-server `db/migration/V3` | 连接器平台 V3 schema（执行记录/步骤等） |
+| V5 | open-server `db/migration/V4` | ability 管理字段 |
+| V6 | open-server `db/migration/V5` | common file 表 |
+| V7 | market-server `db/migration/V2` | lookup 文件表（原 market-server V2，统一编号避免版本冲突） |
 
-> **V7~V10 提取说明**：源自 `docs/app/*.sql`（Navicat Premium 从 MySQL 8.4 导出）。仅提取**表结构 DDL**（不含 INSERT 数据），`CREATE TABLE` 统一为 `IF NOT EXISTS`（开发库已有表时安全跳过），collation 已从 8.x 的 `utf8mb4_0900_ai_ci` 转为 5.7 兼容的 `utf8mb4_unicode_ci`。
+> **V1 提取说明**：源自 `docs/app/*.sql`（Navicat Premium 从 MySQL 8.4 导出）。仅提取**表结构 DDL**（不含 INSERT 数据），`CREATE TABLE` 统一为 `IF NOT EXISTS`（开发库已有表时安全跳过），collation 已从 8.x 的 `utf8mb4_0900_ai_ci` 转为 5.7 兼容的 `utf8mb4_unicode_ci`。
 
 **开发流程**：
 1. 新 DDL 变更 → 新增 `V{n+1}__描述.sql`（append-only，**严禁修改已发布的 V*.sql**）
