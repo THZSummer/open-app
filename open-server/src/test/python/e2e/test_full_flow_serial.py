@@ -419,7 +419,7 @@ def test_full_flow_serial():
                                         }
                                     }
                                 },
-                                "timeoutMs": 3000,
+                                "timeoutMs": 3,
                                 "input": {
                                     "body": {
                                         "type": "object",

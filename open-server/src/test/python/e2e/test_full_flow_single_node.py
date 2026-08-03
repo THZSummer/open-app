@@ -380,7 +380,7 @@ def test_full_flow_single_node():
                                         }
                                     }
                                 },
-                                "timeoutMs": 3000,
+                                "timeoutMs": 3,
                                 "input": {
                                     "body": {
                                         "type": "object",

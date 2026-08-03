@@ -335,7 +335,7 @@ def test_resource_query_parallel():
                         }},
                         {"id": nid_sp, "type": "script", "data": {
                             "type": "script", "labelCn": "预处理",
-                            "script": script_prepare_src, "timeoutMs": 5000,
+                            "script": script_prepare_src, "timeoutMs": 5,
                             "output": {
                                 "type": "object",
                                 "properties": {
@@ -356,7 +356,7 @@ def test_resource_query_parallel():
                             "connectorId": str(cid_c),
                             "connectorVersionId": str(cvid_c),
                             "connectorVersionConfig": config_c,
-                            "timeoutMs": 5000,
+                            "timeoutMs": 5,
                             "input": {
                                 "header": {
                                     "type": "object",
@@ -381,7 +381,7 @@ def test_resource_query_parallel():
                             "connectorId": str(cid_f),
                             "connectorVersionId": str(cvid_f),
                             "connectorVersionConfig": config_f,
-                            "timeoutMs": 5000,
+                            "timeoutMs": 5,
                             "input": {
                                 "header": {
                                     "type": "object",
@@ -403,7 +403,7 @@ def test_resource_query_parallel():
                         }},
                         {"id": nid_sm, "type": "script", "data": {
                             "type": "script", "labelCn": "合并结果",
-                            "script": script_merge_src, "timeoutMs": 5000,
+                            "script": script_merge_src, "timeoutMs": 5,
                             "output": {
                                 "type": "object",
                                 "properties": {

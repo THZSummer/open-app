@@ -744,7 +744,7 @@ def test_full_flow():
                                     }
                                 }
                             },
-                            "timeoutMs": 3000,
+                            "timeoutMs": 3,
                             "input": {
                                 "header": {
                                     "type": "object",
