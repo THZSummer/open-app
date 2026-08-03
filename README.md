@@ -39,6 +39,7 @@ market-server ──→ DB (192.168.3.155:3306)
 | **api-server** | API 管理服务 |
 | **event-server** | 事件管理服务 |
 | **market-server** | 应用市场后端服务, 含 Lookup 数据字典管理 |
+| **open-flyway** | 开发环境数据库迁移工具 (独立 Flyway 工程), 管理 openapp 库 DDL, 默认连临时库, 正式库需显式指定 |
 
 ## 一键启动
 
