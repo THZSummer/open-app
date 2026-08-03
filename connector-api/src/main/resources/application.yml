@@ -5,6 +5,10 @@ spring:
   application:
     name: connector-api
 
+  # WebFlux 上下文根 — 对齐其他服务（open-server=/open-server、api-server=/api-server 等）
+  webflux:
+    base-path: /connector-api
+
   # R2DBC 数据源配置 (Reactive MySQL) — 对齐 open-server 192.168.3.155
   r2dbc:
     url: r2dbc:mysql://192.168.3.155:3306/openapp?useUnicode=true&characterEncoding=utf8mb4&serverTimezone=Asia/Shanghai

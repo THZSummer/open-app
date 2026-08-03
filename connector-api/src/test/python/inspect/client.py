@@ -48,7 +48,7 @@ __all__ = [
     "trigger", "debug_run",
 ]
 
-BASE_URL = "http://localhost:18180/api/v1"
+BASE_URL = "http://localhost:18180/connector-api/api/v1"
 
 # ═══════════════════════════════════════════════════════════
 # 数据库配置 — 切换环境只需改这里
@@ -69,7 +69,7 @@ _REDIS_CLUSTER = {
     ],
     "password": "openapp",
 }
-_API_HOST = "localhost:18180"
+_API_HOST = "localhost:18180/connector-api"
 TEST_APP_ID = "20250730213114178360970"  # 与 open-server 共用测试应用
 INTERNAL_APP_ID = None  # 内部主键 ID，首次使用时从 DB 查询
 

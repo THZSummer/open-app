@@ -426,7 +426,7 @@ def test_full_flow_parallel():
                                 "connectorId": str(cid_a),
                                 "connectorVersionId": str(cvid_a),
                                 "connectorVersionConfig": config_a,
-                                "timeoutMs": 5000,
+                                "timeoutMs": 5,
                                 "input": {
                                     "body": {
                                         "type": "object",
@@ -448,7 +448,7 @@ def test_full_flow_parallel():
                                 "connectorId": str(cid_b),
                                 "connectorVersionId": str(cvid_b),
                                 "connectorVersionConfig": config_b,
-                                "timeoutMs": 5000,
+                                "timeoutMs": 5,
                                 "input": {
                                     "body": {
                                         "type": "object",

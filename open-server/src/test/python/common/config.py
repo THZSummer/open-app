@@ -37,8 +37,8 @@ REDIS_CLUSTER_NODES = [
 ]
 
 # ── 关联服务 ──────────────────────────────────────────
-CONNECTOR_API_BASE    = "http://localhost:18180/api/v1"
-CONNECTOR_API_HEALTH  = "http://localhost:18180/actuator/health"
+CONNECTOR_API_BASE    = "http://localhost:18180/connector-api/api/v1"
+CONNECTOR_API_HEALTH  = "http://localhost:18180/connector-api/actuator/health"
 MOCK_SERVER_URL        = "http://localhost:18980"
 MOCK_SERVER_PARALLEL_URL = "http://localhost:18982"
 
