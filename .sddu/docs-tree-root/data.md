@@ -528,7 +528,55 @@
 
 ---
 
-## 7. 表间关联关系
+## 7. 表间关联关系（ER 图）
+
+> Mermaid ER 图按业务域分组。基数符号：`||` = 1，`o{` = 0..n，`|{` = 1..n，`}o` = 0..n（多侧），`}|` = 1..n（多侧）。
+
+### 7.1 应用管理与基础数据域（V1 系）
+
+```mermaid
+erDiagram
+    app_t ||--o{ app_p_t : "应用属性"
+    app_t ||--o{ app_identity_t : "应用密钥"
+    app_t ||--o{ app_member_t : "应用成员"
+    app_t ||--o{ app_version_t : "应用版本"
+    app_version_t ||--o{ app_version_p_t : "版本属性"
+    app_t ||--o{ app_ability_relation_t : "应用-能力关联"
+    ability_t ||--o{ app_ability_relation_t : "应用-能力关联"
+    ability_t ||--o{ ability_p_t : "能力属性"
+    lookup_classify_t ||--o{ lookup_item_t : "LookUp 项归属"
+```
+
+### 7.2 能力开放域（V2 系：分类/资源/权限/订阅/审批）
+
+```mermaid
+erDiagram
+    v2_category_t ||--o{ v2_category_owner_t : "分类责任人"
+    v2_api_t ||--o{ v2_api_p_t : "API 属性"
+    v2_event_t ||--o{ v2_event_p_t : "事件属性"
+    v2_callback_t ||--o{ v2_callback_p_t : "回调属性"
+    v2_permission_t }o--|| v2_api_t : "权限指向 API(多态)"
+    v2_permission_t }o--|| v2_event_t : "权限指向事件(多态)"
+    v2_permission_t }o--|| v2_callback_t : "权限指向回调(多态)"
+    v2_permission_t ||--o{ v2_permission_p_t : "权限属性"
+    v2_permission_t ||--o{ v2_subscription_t : "订阅权限"
+    v2_approval_record_t ||--o{ v2_approval_log_t : "审批日志"
+    app_t ||--o{ v2_user_authorization_t : "用户授权(逻辑关联)"
+```
+
+### 7.3 连接器开放域（V3/V4 系）
+
+```mermaid
+erDiagram
+    v2_cp_connector_t ||--o{ v2_cp_connector_version_t : "连接器版本"
+    v2_cp_flow_t ||--o{ v2_cp_flow_version_t : "连接流版本"
+    v2_cp_flow_version_t ||--o{ v2_cp_connector_version_ref_t : "编排引用"
+    v2_cp_connector_version_t ||--o{ v2_cp_connector_version_ref_t : "编排引用"
+    v2_cp_flow_t ||--o{ v2_cp_execution_record_t : "执行记录"
+    v2_cp_execution_record_t ||--o{ v2_cp_execution_step_t : "执行步骤"
+```
+
+### 7.4 关系速查表
 
 | 关联模型 | 关联字段 | 关系类型 | 说明 |
 |---------|---------|:------:|------|
@@ -561,4 +609,5 @@
 
 | 版本 | 变更说明 | 日期 | 修订人 |
 |------|---------|------|--------|
+| v1.1 | 表间关联关系改为 ER 图（Mermaid erDiagram，按业务域分 3 组） | 2026-08-03 | SDDU Docs Agent |
 | v1.0 | 代码扫描全量生成（40 表） | 2026-08-03 | SDDU Docs Agent |
