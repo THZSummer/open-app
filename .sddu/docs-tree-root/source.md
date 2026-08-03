@@ -1,66 +1,71 @@
-# open-app 开放平台 — 产物溯源
+# open-app 全景 — 产物溯源
 
 > **文档定位**: sddu-docs-source — 列出本文档聚合的所有原始产物文件，含文件路径、版本和最后修改时间  
-> **输出文件名**: source.md
-> **数据来源**: 聚合自 specs-tree-root/ 全部 9 个 Feature
-> **创建人**: SDDU Docs Agent
-> **创建时间**: 2026-08-03
-> **版本**: v1.0
-> **更新人**: —
-> **更新时间**: —
-> **更新说明**: 初始创建
+> **输出文件名**: source.md  
+> **数据来源**: 代码扫描生成（用户指令触发）  
+> **创建人**: SDDU Docs Agent  
+> **创建时间**: 2026-08-03  
+> **版本**: v1.0 (CODE-SCAN)  
 
-## 1. 产物溯源表
+## 1. 扫描信息源
 
-> 以下表格列出本文档内容所依赖的全部原始产物文件及其版本信息。
+> ⚠️ 本全景基于 **代码扫描** 生成，信息源为项目实际代码与配置文件，非 specs-tree-root 过程产物。
 
-| 原始文件路径 | 版本 | 最后修改时间 | 文件类型 | 说明 |
-|-------------|------|------------|---------|------|
-| `specs-tree-root/specs-tree-capability-open-platform/spec.md` | — | 2026-04-14 | spec | 能力开放平台规范 |
-| `specs-tree-root/specs-tree-capability-open-platform/plan.md` | — | 2026-04-20 | plan | 能力开放平台技术规划 |
-| `specs-tree-root/specs-tree-capability-open-platform/ADR-001~004.md` | — | 2026-04 | ADR | 能力开放平台架构决策 |
-| `specs-tree-root/specs-tree-capability-open-platform/state.json` | — | 2026-04-22 | state | 能力开放平台状态（validated） |
-| `specs-tree-root/specs-tree-app-list/spec.md` | v6.5 | 2026-06-08 | spec | 开放平台应用管理规范 |
-| `specs-tree-root/specs-tree-app-list/plan.md` | — | 2026-06-08 | plan | 开放平台应用管理技术规划 |
-| `specs-tree-root/specs-tree-app-list/state.json` | — | 2026-06-08 | state | 应用管理状态（plan） |
-| `specs-tree-root/specs-tree-data-open-platform/spec.md` | v2.0 | 2026-04-07 | spec | 数据开放平台规范 |
-| `specs-tree-root/specs-tree-data-open-platform/state.json` | — | 2026-06-17 | state | 数据开放平台状态（suspended）⚠️ 无 plan.md |
-| `specs-tree-root/specs-tree-connector-platform/spec.md` | v5.0 | 2026-05-22 | spec | 连接器平台 V1 规范 |
-| `specs-tree-root/specs-tree-connector-platform/plan.md` | v2.8.1 | 2026-05-24 | plan | 连接器平台 V1 技术规划 |
-| `specs-tree-root/specs-tree-connector-platform/ADR-001~003.md` | — | 2026-05 | ADR | 连接器平台 V1 架构决策 |
-| `specs-tree-root/specs-tree-connector-platform/state.json` | — | 2026-05-24 | state | 连接器平台 V1 状态（validated） |
-| `specs-tree-root/specs-tree-connector-platform-v2/spec.md` | v2.15-draft | 2026-06-16 | spec | 连接器平台 V2 规范（terminated） |
-| `specs-tree-root/specs-tree-connector-platform-v2/plan.md` | — | 2026-06-09 | plan | 连接器平台 V2 技术规划 |
-| `specs-tree-root/specs-tree-connector-platform-v2/state.json` | — | 2026-06-17 | state | 连接器平台 V2 状态（terminated） |
-| `specs-tree-root/specs-tree-connector-platform-v3/spec.md` | v2.15-draft | 2026-06-22 | spec | 连接器平台 V3 规范 |
-| `specs-tree-root/specs-tree-connector-platform-v3/plan.md` | — | 2026-06-26 | plan | 连接器平台 V3 技术规划 |
-| `specs-tree-root/specs-tree-connector-platform-v3/ADR-004~008.md` | — | 2026-06 | ADR | 连接器平台 V3 架构决策 |
-| `specs-tree-root/specs-tree-connector-platform-v3/state.json` | — | 2026-06-26 | state | 连接器平台 V3 状态（validated） |
-| `specs-tree-root/specs-tree-ability-embedding/spec.md` | — | 2026-07-22 | spec | 狭义嵌入能力父规范 |
-| `specs-tree-root/specs-tree-ability-embedding/state.json` | — | 2026-07-22 | state | 嵌入能力状态（planned）⚠️ 顶层无 plan.md |
-| `specs-tree-root/specs-tree-ability-embedding/specs-tree-embedding-platform/spec.md` | v1.4 | 2026-07-17 | spec | 嵌入能力平台面规范 |
-| `specs-tree-root/specs-tree-ability-embedding/specs-tree-embedding-platform/plan.md` | — | 2026-07 | plan | 嵌入能力平台面技术规划 |
-| `specs-tree-root/specs-tree-ability-embedding/specs-tree-embedding-open/spec.md` | v1.3 | 2026-07-17 | spec | 嵌入能力开放面规范 |
-| `specs-tree-root/specs-tree-ability-embedding/specs-tree-embedding-open/plan.md` | — | 2026-07 | plan | 嵌入能力开放面技术规划 |
-| `specs-tree-root/specs-tree-ability-embedding/specs-tree-embedding-api/spec.md` | v1.0 | 2026-07-13 | spec | 嵌入能力API面规范 |
-| `specs-tree-root/specs-tree-ability-embedding/specs-tree-embedding-api/plan.md` | — | 2026-07 | plan | 嵌入能力API面技术规划 |
-| `specs-tree-root/specs-tree-dictionary/spec.md` | v1.0.0 | 2026-06-08 | spec | 数据字典管理规范 ⚠️ 无 state.json |
-| `specs-tree-root/specs-tree-dictionary/plan.md` | — | 2026-06-08 | plan | 数据字典管理技术规划 |
-| `specs-tree-root/specs-tree-lookup/spec.md` | v1.0.0 | 2026-06-08 | spec | LookUp 管理规范 ⚠️ 无 state.json |
-| `specs-tree-root/specs-tree-lookup/plan.md` | — | 2026-06-08 | plan | LookUp 管理技术规划 |
+### 1.1 数据库迁移（open-flyway）
 
-## 2. 溯源统计
+| 文件 | 版本 | 说明 |
+|------|:----:|------|
+| open-flyway/src/main/resources/db/migration/V1__create_early_schema.sql | V1 | 早期 schema（16 表） |
+| open-flyway/src/main/resources/db/migration/V2__init_capability_open_platform_schema.sql | V2 | 能力开放平台（15 表） |
+| open-flyway/src/main/resources/db/migration/V3__init_connector_platform_schema.sql | V3 | 连接器 MVP（4 表） |
+| open-flyway/src/main/resources/db/migration/V4__connector_platform_v3_schema.sql | V4 | 连接器 V3（3 表 + ALTER） |
+| open-flyway/src/main/resources/db/migration/V5__add_ability_admin_fields.sql | V5 | 嵌入能力字段 |
+| open-flyway/src/main/resources/db/migration/V6__create_common_file.sql | V6 | 通用文件表 |
+| open-flyway/src/main/resources/db/migration/V7__create_lookup_file_table.sql | V7 | LookUp 文件表 |
 
-| 文件类型 | 数量 |
-|---------|:--:|
-| spec | 12 |
-| plan | 11 |
-| ADR | 12 |
-| state | 7 |
-| **合计** | **42** |
+### 1.2 后端服务代码
+
+| 服务 | 扫描范围 | 实体数 | Controller 数 |
+|------|---------|:-----:|:------------:|
+| open-server | src/main/java + application*.yml | 30+ | 20 |
+| api-server | src/main/java + application*.yml | 9 | 6 |
+| connector-api | src/main/java + application.yml | 4 | 2 |
+| event-server | src/main/java + application*.yml | 0（无实体） | 4 |
+| market-server | src/main/java + application*.yml | 7 | 8 |
+
+### 1.3 前端工程
+
+| 工程 | 扫描范围 | 说明 |
+|------|---------|------|
+| wecodesite | package.json + src/pages/**/route.js | 开发者控制台（20 页面） |
+| market-web | package.json + src/router/routeRedBlue/ | 市场管理（8 模块） |
+| qiankunProject | main-app/src/microApps.js + sub-app-*/src/router | 微前端（4 子应用） |
+| wecodesiteDemo | *.html | 静态原型（9 页） |
+
+### 1.4 specs-tree-root 基线（§5.3 一致性检测）
+
+| Feature | 状态 | 说明 |
+|---------|------|------|
+| specs-tree-capability-open-platform | — | 能力开放平台 spec（含 FR 基线） |
+| specs-tree-connector-platform | validated | 连接器 V1 |
+| specs-tree-connector-platform-v2 | terminated | 连接器 V2（已归档） |
+| specs-tree-connector-platform-v3 | validated | 连接器 V3（当前） |
+| specs-tree-data-open-platform | suspended | 数据开放平台 |
+| specs-tree-app-list | planned | 应用管理 |
+| specs-tree-dictionary / lookup | — | 基础配置 |
+| specs-tree-ability-embedding | planned | 嵌入能力 |
+
+## 2. 生成说明
+
+- **生成方式**: 全量生成（覆盖重建，旧 4 域 17 文档已清理）
+- **生成时间**: 2026-08-03
+- **一致性检测**: 执行了 §5.3（详见 docs-overview.md §3）
+- **未覆盖信息**: 数据库运行时数据、生产环境实际部署、未运行测试验证
+
+---
 
 ## 修订记录
 
 | 版本 | 变更说明 | 日期 | 修订人 |
 |------|---------|------|--------|
-| v1.0 | 初始创建 | 2026-08-03 | SDDU Docs Agent |
+| v1.0 | 代码扫描全量生成 | 2026-08-03 | SDDU Docs Agent |
