@@ -1,104 +1,170 @@
 # open-app 项目全景 — 全景入口
 
-> **文档定位**: sddu-docs-overview — 本级全景入口  
-> **输出文件名**: docs-overview.md  
-> **数据来源**: 代码扫描生成（用户指令触发），未经 SDDU 工作流验证。不包含设计意图、业务语义和技术决策分析。  
-> **创建时间**: 2026-08-03  
-> **版本**: v1.0 (CODE-SCAN)  
-> **生成方式**: 全量生成（SCAN_MODE=CODE）
-
----
-
-> ⚠️ **数据来源**: 代码扫描生成（用户指令触发），未经 SDDU 工作流验证。不包含设计意图、业务语义和技术决策分析。
-
-## 0. 全景速览
-
-| 维度 | 统计 |
-|------|------|
-| **后端服务** | 5 个 Spring Boot 服务 + 1 个 Flyway 迁移工程 |
-| **前端工程** | 4 个（wecodesite 开发者控制台、market-web 市场管理、qiankunProject 微前端、wecodesiteDemo 静态演示） |
-| **数据库表** | 40 张（7 个 Flyway 迁移脚本，单库 `openapp`） |
-| **API 端点** | 约 130 个（open-server ~80、market-server ~25、api-server ~15、event-server ~8、connector-api 2） |
-| **前端页面** | 20+ 路由页面（wecodesite）+ 8 模块（market-web）+ 4 子应用（qiankun） |
-| **事件通道** | SSE、WebSocket、WebHook 回调、内部消息（event-server） |
+> **文档定位**: sddu-docs-overview — 本级全景入口
+> **输出文件名**: docs-overview.md
+> **数据来源**: 业务架构聚合（specs-tree-root 设计文档）+ 代码扫描设计真相（40 表 / 130 API）
+> **创建时间**: 2026-08-03
+> **版本**: v2.0 (BIZ-ARCH)
+> **更新说明**: 业务视角重建 — 以能力开放平台业务架构为骨架
 
 ---
 
 ## 1. 业务全景
 
-### 1.1 自身概述
+### 1.1 核心定位
 
-| 属性 | 值 |
-|------|-----|
-| **类型** | 多服务微服务系统（能力开放平台 + 连接器平台 + 事件回调网关 + 数据开放平台） |
-| **职责描述** | 面向企业内的能力开放平台：统一管理 API / 事件 / 回调 / 连接器的注册、审批、订阅、消费；提供连接流编排与执行引擎；提供数据开放查询与用户授权 |
-| **所属业务域** | open-app 子平台 |
-| **版本** | v1.0 (代码扫描快照) |
+**open-app** 是**企业通讯能力开放平台**：将 **XXX 通讯系统**的核心能力（IM、Meeting、CloudBox 等）通过 API、事件、回调、连接器等形式开放给企业内业务应用和个人应用。
 
-### 1.2 服务/工程清单
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                 open-app 企业通讯能力开放平台                          │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  资源提供者 (Provider)         能力开放 (API/事件/回调/连接器)          │
+│  ┌───────────────┐  ┌───────────────┐        ┌───────────────────┐  │
+│  │ IM 即时通讯    │  │ Meeting 会议   │        │  open-app 平台     │  │
+│  │ CloudBox 云盘 │  │ Calendar 日历  │  ───►  │  (本全景)          │  │
+│  │ Contact 通讯录│  │ Mail 邮件     │        │                   │  │
+│  │ Drive 文档    │  │ Bot 机器人    │        │                   │  │
+│  └───────────────┘  └───────────────┘        └─────────┬─────────┘  │
+│                                                         │ 能力消费   │
+│                                                         ▼           │
+│  资源使用者 (Consumer)                                                 │
+│  ┌───────────────┐  ┌───────────────┐  ┌───────────────┐           │
+│  │ 业务应用 A     │  │ 业务应用 B     │  │ 外部系统       │           │
+│  │ (CRM 系统)     │  │ (OA 系统)      │  │ (第三方)       │           │
+│  └───────────────┘  └───────────────┘  └───────────────┘           │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
 
-| 服务 | 类型 | 端口 | 职责 | 文档目录 |
-|------|------|:----:|------|---------|
-| **open-server** | Spring Boot 3.5 Web (Servlet) | 18080 | 能力开放平台管理面：应用/能力/API/事件/回调/连接器/连接流 CRUD、审批、权限、成员、同步 | `open-server/` |
-| **api-server** | Spring Boot 3.4 Web | 18081 | 数据开放查询网关 + API 消费网关 + 用户授权 + 审批回调 + 内部角色同步 | `api-server/` |
-| **connector-api** | Spring Boot 3.5 WebFlux + R2DBC | 18180 | 连接流执行引擎：HTTP 触发、版本调试、脚本节点（GraalJS）、执行记录 | `connector-api/` |
-| **event-server** | Spring Boot 3.4 Web | 18082 | 事件发布网关 + 回调触发网关 + SSE/WebSocket 通道 | `event-server/` |
-| **market-server** | Spring Boot 3.4 Web | 18083 | 市场管理面：数据字典、LookUp、能力管理（admin）、审批、文件、聊天机器人绑定 | `market-server/` |
-| **open-flyway** | Flyway Maven 工程 | — | 数据库迁移（7 个脚本 / 40 张表） | `database/` |
-| **wecodesite** | React 18 + Vite + qiankun | — | 开发者控制台（应用管理、API/事件/回调管理、连接器/连接流编排） | `frontend/` |
-| **market-web** | React 18 + Vite | — | 市场管理后台（审批、LookUp、字典、能力管理） | `frontend/` |
-| **qiankunProject** | 微前端（main-app + 4 子应用） | — | 嵌入能力微前端容器 | `frontend/` |
-| **wecodesiteDemo** | 静态 HTML 演示 | — | 连接器/流编辑器原型演示 | `frontend/` |
+### 1.2 能力地图（业务视角）
 
-### 1.3 数据库域索引（40 表）
+> 来源：能力开放平台 discovery-report §3.2 能力分类模型。open-app 平台 = **能力开放平台（基础设施）** + **数据开放平台（上层应用）**。
 
-| 迁移脚本 | 表数 | 表清单 |
-|---------|:----:|--------|
-| V1 create_early_schema | 16 | operate_log_t, property_t, file_t, employee_t, eamap_t, app_t, app_p_t, app_identity_t, app_member_t, app_version_t, app_version_p_t, app_ability_relation_t, ability_t, ability_p_t, lookup_classify_t, lookup_item_t |
-| V2 init_capability_open_platform | 15 | v2_category_t, v2_category_owner_t, v2_api_t, v2_api_p_t, v2_event_t, v2_event_p_t, v2_callback_t, v2_callback_p_t, v2_permission_t, v2_permission_p_t, v2_subscription_t, v2_approval_flow_t, v2_approval_record_t, v2_approval_log_t, v2_user_authorization_t |
-| V3 init_connector_platform | 4 | v2_cp_connector_t, v2_cp_connector_version_t, v2_cp_flow_t, v2_cp_flow_version_t |
-| V4 connector_platform_v3 | 3 | v2_cp_connector_version_ref_t, v2_cp_execution_record_t, v2_cp_execution_step_t |
-| V5 add_ability_admin_fields | 0（ALTER） | ability_t 增 6 字段（entry_url/hidden/route_path/alias_name/require_release/load_type） |
-| V6 create_common_file | 1 | common_file_t |
-| V7 create_lookup_file | 1 | lookup_file_t |
+```mermaid
+flowchart TB
+    subgraph OP[open-app 开放平台]
+        subgraph COP[能力开放平台<br/>基础设施 · 阶段 1]
+            direction TB
+            subgraph PC[平台本身能力]
+                direction LR
+                E1[应用管理]:::base
+                E2[成员管理]:::base
+                E3[AKSK 管理]:::base
+                E4[权限管理]:::base
+                E5[审批管理]:::base
+                E9[嵌入能力]:::base
+            end
+            subgraph CC[连接能力]
+                direction LR
+                subgraph Pub[公共连接能力]
+                    R1[API 开放]
+                    R2[事件开放]
+                    R3[回调开放]
+                    R4[连接器开放]
+                end
+                subgraph Spec[特有连接能力]
+                    S1[IM 卡片能力]
+                    S2[云盘业务能力]
+                    S3[邮件业务能力]
+                end
+            end
+            PC -->|被依赖| CC
+        end
+        subgraph Data[数据开放平台<br/>上层应用 · 阶段 2]
+            D1[数据对象管理]
+            D2[数据注册/审批]
+            D3[数据订阅/消费]
+            D4[数据治理]
+        end
+        COP ==>|提供通道/权限/审批| Data
+    end
+    classDef base fill:#e1f5e1,stroke:#2e7d32
+```
 
-> 📖 完整表结构见 [`database/data.md`](database/data.md)
+**能力清单**（对应 specs-tree-root Feature）：
 
-### 1.4 子组件分类
+| 分类 | 能力 | specs-tree Feature | 状态 |
+|------|------|-------------------|------|
+| 平台本身能力 · 基础能力 | 应用管理 | specs-tree-app-list（开放平台应用管理） | ✅ spec v6.5 + plan |
+| 平台本身能力 · 基础能力 | 成员管理 | specs-tree-app-list（应用管理内） | ✅ 同上 |
+| 平台本身能力 · 基础能力 | AKSK 管理 | 能力开放平台（凭证管理） | ✅ validated |
+| 平台本身能力 · 基础能力 | 权限管理 | specs-tree-capability-open-platform | ✅ validated |
+| 平台本身能力 · 基础能力 | 审批管理 | specs-tree-capability-open-platform | ✅ validated |
+| 平台本身能力 · 基础能力 | 嵌入能力 | specs-tree-ability-embedding | 🟡 planned（58%） |
+| 连接能力 · 公共连接能力 | API 开放 | specs-tree-capability-open-platform | ✅ validated |
+| 连接能力 · 公共连接能力 | 事件开放 | specs-tree-capability-open-platform | ✅ validated |
+| 连接能力 · 公共连接能力 | 回调开放 | specs-tree-capability-open-platform | ✅ validated |
+| 连接能力 · 公共连接能力 | 连接器开放 | specs-tree-connector-platform (V1/V3) | ✅ validated |
+| 连接能力 · 特有连接能力 | IM 卡片 / 云盘 / 邮件 | 业务模块构建，经嵌入能力接入 | 由业务模块建设 |
+| 上层应用 · 阶段 2 | 数据开放平台 | specs-tree-data-open-platform | 🟡 suspended（搁置） |
+| 基础数据支撑 | 数据字典 | specs-tree-dictionary | ✅ planned |
+| 基础数据支撑 | LookUp 管理 | specs-tree-lookup | ✅ planned |
 
-| 分类 | 包含组件 |
-|------|---------|
-| **管理面** | open-server、market-server、wecodesite、market-web |
-| **消费网关** | api-server（数据查询/网关）、event-server（事件/回调）、connector-api（连接流执行） |
-| **数据层** | MySQL `openapp`（40 表）、Redis Cluster（6 节点） |
-| **前端层** | wecodesite、market-web、qiankunProject、wecodesiteDemo |
+### 1.3 业务域组织
+
+```
+open-app 项目全景
+├── 能力开放平台/        # 业务域 1：基础设施（阶段 1）— 平台本身能力 + 连接能力 + 基础数据
+│   ├── docs-overview.md
+│   ├── 应用管理.md      # 基础能力（含成员管理、AKSK、应用版本）
+│   ├── 权限中心.md      # 基础能力（权限资源创建与关联）
+│   ├── 审批管理.md      # 基础能力（动态审批流引擎）
+│   ├── 嵌入能力.md      # 基础能力（特有连接能力接入的基础支撑）
+│   ├── 数据字典.md      # 基础数据支撑
+│   ├── LookUp管理.md    # 基础数据支撑
+│   ├── API开放.md       # 公共连接能力 R1
+│   ├── 事件开放.md      # 公共连接能力 R2
+│   ├── 回调开放.md      # 公共连接能力 R3
+│   └── 连接器开放.md    # 公共连接能力 R4（第四种开放形式）
+├── database/            # 数据层（40 表，标注业务归属）
+├── deploy.md            # 部署信息（拓扑/端口/环境变量）
+├── security.md          # 全系统安全模型
+├── relation-deps.md     # 服务依赖关系
+├── relation-flow.md     # 跨域数据流
+├── adr-index.md         # ADR 索引
+└── source.md            # 产物溯源
+```
+
+> 📖 每个能力文档 = 业务说明（来自 spec/discovery 架构图）+ 设计真相（相关表/API/配置）+ 工程映射（由哪些服务实现）。
 
 ---
 
 ## 2. 技术全景
 
-### 2.1 技术栈
+### 2.1 服务清单与业务归属
+
+| 服务 | 端口 | 业务角色 | 支撑的业务能力 |
+|------|:----:|---------|--------------|
+| **open-server** | 18080 | 能力开放平台管理面 | 应用管理/成员/AKSK/权限/审批/API/事件/回调/连接器 CRUD |
+| **market-server** | 18083 | 市场管理面 | 数据字典/LookUp/嵌入能力管理/应用审批 |
+| **api-server** | 18081 | 消费网关（数据/API） | API 消费网关、用户授权、数据开放 |
+| **event-server** | 18082 | 事件/回调网关 | 事件发布、回调触发、SSE/WebSocket |
+| **connector-api** | 18180 | 连接流执行引擎 | 连接器开放（编排执行、GraalJS 脚本） |
+| **open-flyway** | — | 数据库迁移 | 全部 40 表 DDL |
+| **wecodesite** | — | 开发者控制台 | 应用/API/事件/回调/连接器管理前端 |
+| **market-web** | — | 市场管理后台 | 审批/LookUp/字典/能力管理前端 |
+| **qiankunProject** | — | 微前端容器 | 嵌入能力前端容器 |
+| **wecodesiteDemo** | — | 静态演示 | 连接器/流编辑器原型 |
+
+### 2.2 技术栈
 
 | 技术 | 版本 | 用途 |
 |------|------|------|
-| **Java / Spring Boot** | 3.4.6 / 3.5.14 | 后端 5 服务（Web 4 个 + WebFlux 1 个） |
-| **MySQL** | 5.7/8.x（迁移脚本适配 5.7 collation） | 主数据库 `openapp`（192.168.3.155:3306） |
-| **Flyway** | flyway-mysql + flyway-maven-plugin | 数据库迁移（open-flyway 工程） |
-| **MyBatis** | 3.x（mapper-locations 配置） | open-server / api-server / market-server 数据访问 |
+| **Java / Spring Boot** | 3.4.6 / 3.5.14 | 后端 5 服务（Web 4 + WebFlux 1） |
+| **MySQL** | 5.7/8.x | 主数据库 `openapp`（192.168.3.155:3306） |
+| **Flyway** | flyway-mysql | 数据库迁移（V1~V7 / 40 表） |
+| **MyBatis** | 3.x | open-server / api-server / market-server 数据访问 |
 | **R2DBC MySQL** | r2dbc-mysql | connector-api 响应式数据访问 |
-| **Redis Cluster** | 6 节点（192.168.3.201~206:6379） | 缓存 / 限流令牌桶 / 订阅列表缓存（open-server、api-server、market-server、connector-api） |
-| **Spring Data Redis** | Lettuce | 响应式 / 同步 Redis 客户端 |
-| **GraalJS** | polyglot 24.2.1 + js-language | 脚本节点执行（connector-api） |
-| **SpringDoc OpenAPI** | springdoc-openapi | 各服务 Swagger UI（/swagger-ui.html, /api-docs） |
+| **Redis Cluster** | 6 节点（192.168.3.201~206） | 缓存 / 限流令牌桶 / 订阅列表缓存 |
+| **GraalJS** | polyglot 24.2.1 | 脚本节点执行（connector-api） |
 | **React** | 18.2 | wecodesite / market-web / qiankun 子应用 |
-| **React Router** | 6.20 | 前端路由 |
-| **qiankun** | 2.10.16 | 微前端框架（wecodesite 与 qiankunProject） |
+| **qiankun** | 2.10.16 | 微前端框架 |
 | **antd** | 4.24 | UI 组件库 |
-| **zustand / Redux Toolkit** | 4.4 / 2.12 | 状态管理 |
-| **Vite** | 5.x | 前端构建 |
-| **AntV X6 / @xyflow/react** | 12.10 | 连接流编排画布（wecodesite） |
+| **@xyflow/react** | 12.10 | 连接流编排画布（wecodesite） |
 
-### 2.2 服务端口与 context-path
+### 2.3 服务端口与 context-path
 
 | 服务 | 端口 | context-path | Swagger |
 |------|:----:|--------------|---------|
@@ -106,9 +172,23 @@
 | api-server | 18081 | /api-server | /api-server/swagger-ui.html |
 | event-server | 18082 | /event-server | /event-server/swagger-ui.html |
 | market-server | 18083 | /market-server | /market-server/swagger-ui.html |
-| connector-api | 18180 | /connector-api (webflux base-path) | /connector-api/swagger-ui.html |
+| connector-api | 18180 | /connector-api | /connector-api/swagger-ui.html |
 
-### 2.3 部署拓扑
+### 2.4 数据库索引（40 表）
+
+| 迁移脚本 | 表数 | 表清单 |
+|---------|:----:|--------|
+| V1 create_early_schema | 16 | operate_log_t, property_t, file_t, employee_t, eamap_t, app_t, app_p_t, app_identity_t, app_member_t, app_version_t, app_version_p_t, app_ability_relation_t, ability_t, ability_p_t, lookup_classify_t, lookup_item_t |
+| V2 init_capability_open_platform | 15 | v2_category_t, v2_category_owner_t, v2_api_t, v2_api_p_t, v2_event_t, v2_event_p_t, v2_callback_t, v2_callback_p_t, v2_permission_t, v2_permission_p_t, v2_subscription_t, v2_approval_flow_t, v2_approval_record_t, v2_approval_log_t, v2_user_authorization_t |
+| V3 init_connector_platform | 4 | v2_cp_connector_t, v2_cp_connector_version_t, v2_cp_flow_t, v2_cp_flow_version_t |
+| V4 connector_platform_v3 | 3 | v2_cp_connector_version_ref_t, v2_cp_execution_record_t, v2_cp_execution_step_t |
+| V5 add_ability_admin_fields | 0（ALTER） | ability_t 增 6 字段 |
+| V6 create_common_file | 1 | common_file_t |
+| V7 create_lookup_file | 1 | lookup_file_t |
+
+> 📖 完整表结构见 [`database/data.md`](database/data.md)
+
+### 2.5 部署拓扑
 
 ```
 ┌───────────────────────────── 前端层 ─────────────────────────────┐
@@ -127,18 +207,18 @@
                │ 内部调用
 ┌──────────────▼──────────── 消费网关 ──────────────────────────────┐
 │ api-server (18081) ──► MySQL openapp / Redis Cluster              │
-│ event-server (18082) ──► Redis (单机 localhost:6379 / 集群可切)   │
+│ event-server (18082) ──► Redis                                    │
 │   ├── SSE 通道 /sse/connect/{id}                                   │
 │   ├── WebSocket 通道 /ws                                          │
 │   └── WebHook 回调网关 /gateway/callbacks/invoke                   │
 │ connector-api (18180, WebFlux) ── R2DBC ──► MySQL openapp         │
 │   ├── 连接流执行 /api/v1/flows/{flowId}/invoke                     │
-│   ├── 脚本节点 GraalJS 沙箱 (polyglot 24.2.1)                      │
+│   ├── 脚本节点 GraalJS 沙箱                                        │
 │   └── Redis Reactive 集群                                          │
 └────────────────────────────────────────────────────────────────────┘
 ```
 
-### 2.4 跨域数据流
+### 2.6 跨域数据流
 
 | 数据流 | 方向 | 说明 |
 |--------|------|------|
@@ -149,12 +229,6 @@
 | 回调触发 | 外部 → event-server → 订阅方 | CallbackGateway invoke → 消费方 WebHook |
 | 脚本引用 | connector-api → GraalJS | 脚本节点执行复杂逻辑 |
 | 审批回调 | open-server/api-server → 审批平台 | ApprovalCallback 通知审批结果 |
-
-### 2.5 架构决策记录（ADR）索引
-
-| 编号 | 标题 | 状态 | 影响范围 |
-|:--:|------|:--:|---------|
-| ADR-001~008 | 能力开放平台 / 连接器平台 V1~V3 架构决策 | 已记录 | specs-tree-root 过程文档（详见 `adr-index.md`） |
 
 ---
 
@@ -169,16 +243,15 @@
 | C1 技术选型漂移 | 2 | 中 |
 | C2 模块增删 | 1 | 中 |
 | C3 API 差异 | 0 | — |
-| C4 架构偏离 | 1 | 低 |
+| C4 架构偏离 | 0 | — |
 
 ### 3.2 冲突清单
 
 | 冲突类型 | specs-tree 记录 | 代码实际实现 | 建议操作 |
 |---------|---------------|------------|---------|
-| C1 技术选型漂移 | spec: 连接器平台 V3 使用 **React Flow** 编排画布（@xyflow/react） | wecodesite 依赖含 `@xyflow/react ^12.10.1`（一致）；但 qiankunProject 与 wecodesiteDemo 中存在 **AntV X6 / 独立 HTML 编辑器原型**（flow-editor.html, connector-editor.html） | 🔧 确认生产编辑器以 @xyflow 为准，原型 HTML 归为演示资产 |
-| C1 技术选型漂移 | spec: 数据面认证 **AKSK/OAuth** | api-server 认证头支持 SOA/APIG/AKSK（`X-SOA-TOKEN`, `X-APIG-APPID`, `X-AKSK-TOKEN`），未发现 OAuth 授权码流程落地；FR-031 用户授权已落地为 `user_authorization` 表 + ScopeController | 🔧 OAuth 流程仅为授权模型，实际以 AKSK/SOA 凭证为主 |
-| C2 模块增删 | spec: 连接器平台 V1 编排层 3 节点（触发器/连接器/数据输出），V3 新增脚本节点 | 代码 connector-api 支持 trigger/connector/script/parallel/exit 5 类节点（execution_step_t node_type），**数据输出节点并入 exit** | 🔧 更新 spec 或确认 exit 承载数据输出职责 |
-| C4 架构偏离 | spec: 管理面 Spring MVC，数据面 WebFlux | open-server/api-server/market-server/event-server 均 Spring Web（一致）；connector-api 使用 WebFlux + R2DBC（数据面响应式，一致） | ✅ 与设计一致，无偏离 |
+| C1 技术选型漂移 | spec: 连接器平台 V3 使用 **React Flow** 编排画布（@xyflow/react） | wecodesite 依赖含 `@xyflow/react ^12.10.1`（一致）；但 qiankunProject 与 wecodesiteDemo 中存在 **AntV X6 / 独立 HTML 编辑器原型** | 🔧 确认生产编辑器以 @xyflow 为准，原型 HTML 归为演示资产 |
+| C1 技术选型漂移 | spec: 数据面认证 **AKSK/OAuth** | api-server 认证头支持 SOA/APIG/AKSK，未发现 OAuth 授权码流程落地；FR-031 用户授权已落地为 `user_authorization` 表 + ScopeController | 🔧 OAuth 流程仅为授权模型，实际以 AKSK/SOA 凭证为主 |
+| C2 模块增删 | spec: 连接器平台 V1 编排层 3 节点（触发器/连接器/数据输出），V3 新增脚本节点 | 代码 connector-api 支持 trigger/connector/script/parallel/exit 5 类节点，**数据输出节点并入 exit** | 🔧 更新 spec 或确认 exit 承载数据输出职责 |
 
 ### 3.3 结论
 
@@ -190,28 +263,20 @@
 
 | 文档 | 说明 |
 |------|------|
+| `能力开放平台/docs-overview.md` | 能力开放平台域入口（基础设施） |
+| `能力开放平台/应用管理.md` | 应用/成员/AKSK/版本管理 |
+| `能力开放平台/权限中心.md` | 权限资源创建与关联 |
+| `能力开放平台/审批管理.md` | 动态审批流引擎 |
+| `能力开放平台/嵌入能力.md` | 特有连接能力接入基础支撑 |
+| `能力开放平台/数据字典.md` | 基础数据支撑 |
+| `能力开放平台/LookUp管理.md` | 基础数据支撑 |
+| `能力开放平台/API开放.md` | 公共连接能力 R1 |
+| `能力开放平台/事件开放.md` | 公共连接能力 R2 |
+| `能力开放平台/回调开放.md` | 公共连接能力 R3 |
+| `能力开放平台/连接器开放.md` | 公共连接能力 R4（第四种开放形式） |
+| `能力开放平台/数据开放平台.md` | 上层应用（阶段 2，搁置） |
 | `database/docs-overview.md` | 数据库域入口（40 表索引） |
 | `database/data.md` | 全部 40 张表结构（字段/索引/关联） |
-| `open-server/docs-overview.md` | 能力开放平台管理面入口 |
-| `open-server/api.md` | open-server API 端点清单（~80） |
-| `open-server/config.md` | open-server 配置项 |
-| `open-server/security.md` | 认证/安全模型 |
-| `api-server/docs-overview.md` | 数据开放 + API 消费网关入口 |
-| `api-server/api.md` | api-server API 端点清单 |
-| `api-server/config.md` | api-server 配置项 |
-| `connector-api/docs-overview.md` | 连接流执行引擎入口 |
-| `connector-api/api.md` | connector-api API 端点 |
-| `connector-api/config.md` | connector-api 配置项 |
-| `connector-api/security.md` | 脚本沙箱安全模型 |
-| `event-server/docs-overview.md` | 事件/回调网关入口 |
-| `event-server/api.md` | event-server API 端点 |
-| `event-server/event.md` | 事件/通道模型 |
-| `market-server/docs-overview.md` | 市场管理面入口 |
-| `market-server/api.md` | market-server API 端点 |
-| `market-server/config.md` | market-server 配置项 |
-| `frontend/docs-overview.md` | 前端工程入口 |
-| `frontend/page.md` | 前端页面/路由清单 |
-| `frontend/integration.md` | 微前端集成（qiankun） |
 | `deploy.md` | 部署信息（拓扑/端口/环境变量） |
 | `security.md` | 全系统安全模型 |
 | `relation-deps.md` | 服务依赖关系 |
@@ -223,6 +288,7 @@
 
 ## 修订记录
 
-| 生成时间 | 变更 Feature | 生成方式 | 修订人 |
-|---------|-------------|:--:|--------|
-| 2026-08-03 | 全量覆盖重建（代码扫描模式） | code-scan | SDDU Docs Agent |
+| 版本 | 变更说明 | 日期 | 修订人 |
+|------|---------|------|--------|
+| v2.0 | 业务视角重建：以能力开放平台业务架构为骨架，能力文档平铺，工程降级为映射信息 | 2026-08-03 | SDDU Docs Agent |
+| v1.0 | 代码扫描全量生成（工程视角） | 2026-08-03 | SDDU Docs Agent |

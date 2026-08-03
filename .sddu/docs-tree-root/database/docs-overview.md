@@ -32,13 +32,20 @@
 | **V6 通用文件** | 迁移脚本 | common_file_t | 独立 |
 | **V7 LookUp 文件** | 迁移脚本 | lookup_file_t | 独立 |
 
-### 1.3 子组件分类
+### 1.3 子组件分类（业务归属视角）
 
-| 分类 | 包含组件 |
-|------|---------|
-| **能力开放域** | V1 (app/ability/lookup 系) + V2 (api/event/callback/permission/subscription/approval) + V5 |
-| **连接器平台域** | V3 + V4 (connector/flow/execution) |
-| **基础设施域** | V1 (operate_log/property/file/employee) + V6 + V7 |
+| 业务能力 | 包含表 |
+|---------|--------|
+| **应用管理** | app_t, app_p_t, app_identity_t, app_member_t, app_version_t, app_version_p_t, app_ability_relation_t, eamap_t |
+| **权限/订阅** | v2_category_t, v2_category_owner_t, v2_permission_t, v2_permission_p_t, v2_subscription_t, v2_user_authorization_t |
+| **审批管理** | v2_approval_flow_t, v2_approval_record_t, v2_approval_log_t |
+| **API 开放** | v2_api_t, v2_api_p_t |
+| **事件开放** | v2_event_t, v2_event_p_t |
+| **回调开放** | v2_callback_t, v2_callback_p_t |
+| **连接器开放** | v2_cp_connector_t, v2_cp_connector_version_t, v2_cp_flow_t, v2_cp_flow_version_t, v2_cp_connector_version_ref_t, v2_cp_execution_record_t, v2_cp_execution_step_t |
+| **嵌入能力** | ability_t, ability_p_t（V5 增 6 字段） |
+| **基础数据** | lookup_classify_t, lookup_item_t, lookup_file_t, v2_dictionary_t |
+| **基础设施** | operate_log_t, property_t, file_t, employee_t, common_file_t |
 
 ---
 

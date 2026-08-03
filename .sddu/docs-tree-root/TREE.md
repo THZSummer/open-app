@@ -1,38 +1,61 @@
 # Directory: .sddu/docs-tree-root/
 
 ## 目录简介
-docs-tree-root 目录
+open-app 项目全景 — 业务架构视角：能力开放平台（基础设施）+ 数据开放平台（上层应用）+ 跨域技术视图
 
 ## 目录结构
 ```
 docs-tree-root/
-├── TREE.md          # 本文件 - 目录导航
-├── adr-index.md          # open-app — ADR 索引
-├── deploy.md          # open-app 部署信息 — 部署信息
-├── docs-overview.md          # open-app 项目全景 — 全景入口
-├── relation-deps.md          # open-app — 依赖关系
-├── relation-flow.md          # open-app — 数据流
-├── security.md          # open-app 安全模型 — 安全策略文档
-├── source.md          # open-app 全景 — 产物溯源
-├── api-server/          # 子目录
-├── connector-api/          # 子目录
-├── database/          # 子目录
-├── event-server/          # 子目录
-├── frontend/          # 子目录
-├── market-server/          # 子目录
-└── open-server/          # 子目录
+├── TREE.md                  # 本文件 - 目录导航
+├── docs-overview.md         # 项目全景入口（业务架构图 + 能力地图 + 技术全景）
+├── adr-index.md             # ADR 索引
+├── deploy.md                # 部署信息（拓扑/端口/环境变量）
+├── security.md              # 全系统安全模型
+├── relation-deps.md         # 服务依赖关系
+├── relation-flow.md         # 跨域数据流
+├── source.md                # 产物溯源（扫描信息源）
+├── database/                # 数据层（40 表）
+│   ├── docs-overview.md     # 数据库域入口
+│   └── data.md              # 全部 40 张表结构（字段/索引/关联）
+└── 能力开放平台/            # 业务域：能力开放平台（基础设施 · 阶段 1）
+    ├── docs-overview.md     # 域入口（能力结构 + 工程映射）
+    ├── 应用管理.md          # 基础能力：应用/成员/AKSK/版本
+    ├── 权限中心.md          # 基础能力：权限资源创建与关联
+    ├── 审批管理.md          # 基础能力：动态审批流引擎
+    ├── 嵌入能力.md          # 基础能力：特有连接能力接入支撑
+    ├── 数据字典.md          # 基础数据支撑
+    ├── LookUp管理.md        # 基础数据支撑
+    ├── API开放.md           # 公共连接能力 R1
+    ├── 事件开放.md          # 公共连接能力 R2
+    ├── 回调开放.md          # 公共连接能力 R3
+    ├── 连接器开放.md        # 公共连接能力 R4（第四种开放形式）
+    └── 数据开放平台.md      # 上层应用（阶段 2 · 搁置）
 ```
 
 ## 文件说明
 | 文件 | 说明 | 状态 |
 |------|------|------|
-| adr-index.md | open-app — ADR 索引 — open-app — ADR 索引 | ✅ 存在 |
-| deploy.md | open-app 部署信息 — 部署信息 — ┌──────────────────────────┐ | ✅ 存在 |
-| docs-overview.md | open-app 项目全景 — 全景入口 — ┌───────────────────────────── 前端层 ─────────────────────────────┐ | ✅ 存在 |
-| relation-deps.md | open-app — 依赖关系 — wecodesite ──► open-server ──► MySQL | ✅ 存在 |
-| relation-flow.md | open-app — 数据流 — 能力提供方 ──► open-server POST /apis ──► v2_api_t（草稿） | ✅ 存在 |
-| security.md | open-app 安全模型 — 安全策略文档 — API/事件/回调资源: 草稿(0) → 待审(1) → 已发布(2) → 已下线(3) | ✅ 存在 |
-| source.md | open-app 全景 — 产物溯源 — open-app 全景 — 产物溯源 | ✅ 存在 |
+| docs-overview.md | 项目全景入口 — 业务架构图 + 能力地图 + 技术全景 | ✅ 存在 |
+| adr-index.md | ADR 索引（能力开放平台 / 连接器平台） | ✅ 存在 |
+| deploy.md | 部署信息（拓扑/端口/环境变量） | ✅ 存在 |
+| security.md | 全系统安全模型 | ✅ 存在 |
+| relation-deps.md | 服务依赖关系 | ✅ 存在 |
+| relation-flow.md | 跨域数据流 | ✅ 存在 |
+| source.md | 产物溯源 | ✅ 存在 |
+| database/docs-overview.md | 数据库域入口 | ✅ 存在 |
+| database/data.md | 40 张表完整结构 | ✅ 存在 |
+| 能力开放平台/docs-overview.md | 能力开放平台域入口 | ✅ 存在 |
+| 能力开放平台/应用管理.md | 基础能力：应用管理 | ✅ 存在 |
+| 能力开放平台/权限中心.md | 基础能力：权限中心 | ✅ 存在 |
+| 能力开放平台/审批管理.md | 基础能力：审批管理 | ✅ 存在 |
+| 能力开放平台/嵌入能力.md | 基础能力：嵌入能力 | ✅ 存在 |
+| 能力开放平台/数据字典.md | 基础数据支撑 | ✅ 存在 |
+| 能力开放平台/LookUp管理.md | 基础数据支撑 | ✅ 存在 |
+| 能力开放平台/API开放.md | 公共连接能力 R1 | ✅ 存在 |
+| 能力开放平台/事件开放.md | 公共连接能力 R2 | ✅ 存在 |
+| 能力开放平台/回调开放.md | 公共连接能力 R3 | ✅ 存在 |
+| 能力开放平台/连接器开放.md | 公共连接能力 R4 | ✅ 存在 |
+| 能力开放平台/数据开放平台.md | 上层应用（阶段 2 · 搁置） | ✅ 存在 |
 
 ## 上级目录
 - [返回上级](../TREE.md)
