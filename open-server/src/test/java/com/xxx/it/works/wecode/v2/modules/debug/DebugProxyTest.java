@@ -30,7 +30,7 @@ class OpDebugProxyServiceTest {
 
     @BeforeEach
     void setUp() {
-        ReflectionTestUtils.setField(debugProxyService, "connectorApiBaseUrl", "http://localhost:18180");
+        ReflectionTestUtils.setField(debugProxyService, "connectorApiBaseUrl", "http://localhost:18180/connector-api");
     }
 
     @Test

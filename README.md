@@ -5,7 +5,7 @@
 | **wecodesite** | 前端 | 5173 | `/` | `bash wecodesite/scripts/restart.sh` |
 | **market-web** | 前端 | 13000 | `/market-web/` | `bash market-web/scripts/restart.sh` |
 | **open-server** | 后端 | 18080 | `/open-server` | `bash open-server/scripts/restart.sh` |
-| **connector-api** | 后端 | 18180 | `/` | `bash connector-api/scripts/restart.sh` |
+| **connector-api** | 后端 | 18180 | `/connector-api` | `bash connector-api/scripts/restart.sh` |
 | **api-server** | 后端 | 18081 | `/api-server` | `bash api-server/scripts/restart.sh` |
 | **event-server** | 后端 | 18082 | `/event-server` | `bash event-server/scripts/restart.sh` |
 | **market-server** | 后端 | 18083 | `/market-server` | `bash market-server/scripts/restart.sh` |

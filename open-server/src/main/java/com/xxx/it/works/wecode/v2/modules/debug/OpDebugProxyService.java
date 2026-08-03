@@ -27,7 +27,7 @@ public class OpDebugProxyService {
 
     private final RestTemplate restTemplate;
 
-    @Value("${connector-api.base-url:http://localhost:18180}")
+    @Value("${connector-api.base-url:http://localhost:18180/connector-api}")
     private String connectorApiBaseUrl;
 
     public OpDebugProxyService(RestTemplate restTemplate) {

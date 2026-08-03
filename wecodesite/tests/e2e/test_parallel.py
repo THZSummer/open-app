@@ -66,7 +66,7 @@ def setup_mock_server():
 
 # ═══════════════════════════════════════════════════════════
 
-CONNECTOR_API = "http://localhost:18180/api/v1"
+CONNECTOR_API = "http://localhost:18180/connector-api/api/v1"
 
 SCRIPT_PREPARE = """function main(ctx) {
     var q = ctx.trigger.input.query || {};

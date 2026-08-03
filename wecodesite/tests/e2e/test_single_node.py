@@ -34,7 +34,7 @@ from common.client import (
 # ═══════════════════════════════════════════════════════════
 
 OPEN_SERVER_BASE = "http://localhost:18080/open-server"
-CONNECTOR_API     = "http://localhost:18180/api/v1"
+CONNECTOR_API     = "http://localhost:18180/connector-api/api/v1"
 TEST_APP_ID       = "20250730213114178360970"
 
 
