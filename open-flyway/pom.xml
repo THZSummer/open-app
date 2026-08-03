@@ -24,7 +24,7 @@
     <description>开发环境数据库 DDL 统一迁移工程（Flyway）</description>
 
     <properties>
-        <maven.compiler.release>17</maven.compiler.release>
+        <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
         <!-- Flyway 版本（对齐 Spring Boot 3.5 生态） -->
