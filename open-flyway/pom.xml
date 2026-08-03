@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+      开发环境数据库迁移工程（独立于各服务工程）
+
+      设计说明：
+      - open-server / market-server / api-server / event-server / connector-api 共用同一个 openapp 库
+      - 本工程统一管理开发环境 DDL，避免在现有服务工程中追加 Flyway 依赖
+      - 脚本统一编号：V1~V5 源自 open-server 的 db/migration，V6 源自 market-server 的 V2（lookup 文件表）
+      - 标准环境脚本（各服务 db/migration/）保持独立，迁移时由开发人员自行判断
+      - 存量开发库（已有表但无 flyway_schema_history）通过 baseline-on-migrate 接入，不重跑历史脚本
+    -->
+
+    <groupId>com.xxx.it.works.wecode</groupId>
+    <artifactId>open-flyway</artifactId>
+    <version>1.0.0</version>
+    <packaging>pom</packaging>
+
+    <name>Flyway Dev Migration</name>
+    <description>开发环境数据库 DDL 统一迁移工程（Flyway）</description>
+
+    <properties>
+        <maven.compiler.release>21</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <!-- Flyway 版本（对齐 Spring Boot 3.5 生态） -->
+        <flyway.version>10.20.1</flyway.version>
+
+        <!-- 数据库连接
+             默认指向临时/测试库（openapp_flyway_test），避免误操作影响正式库；
+             对开发库/正式库执行迁移时，必须显式覆盖：
+             mvn -f open-flyway/pom.xml flyway:migrate -Ddb.url=jdbc:mysql://<host>:3306/openapp -Ddb.user=<user> -Ddb.password=<pass> -->
+        <db.url>jdbc:mysql://192.168.3.155:3306/openapp_flyway_test?useUnicode=true&amp;characterEncoding=utf8&amp;useSSL=false&amp;serverTimezone=Asia/Shanghai&amp;allowPublicKeyRetrieval=true</db.url>
+        <db.user>openapp</db.user>
+        <db.password>openapp</db.password>
+
+        <!-- 存量开发库已手动执行到的最高版本（当前=V7，含早期表+平台 schema），
+             接入 Flyway 时以此为基线，不重跑 V1~V7；新变更从 V8 开始 -->
+        <flyway.baselineVersion>7</flyway.baselineVersion>
+    </properties>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.flywaydb</groupId>
+                <artifactId>flyway-maven-plugin</artifactId>
+                <version>${flyway.version}</version>
+                <configuration>
+                    <url>${db.url}</url>
+                    <user>${db.user}</user>
+                    <password>${db.password}</password>
+                    <locations>filesystem:src/main/resources/db/migration</locations>
+                    <baselineOnMigrate>true</baselineOnMigrate>
+                    <baselineVersion>${flyway.baselineVersion}</baselineVersion>
+                </configuration>
+                <dependencies>
+                    <!-- Flyway 10+ 需单独引入 MySQL 模块 -->
+                    <dependency>
+                        <groupId>org.flywaydb</groupId>
+                        <artifactId>flyway-mysql</artifactId>
+                        <version>${flyway.version}</version>
+                    </dependency>
+                    <!-- MySQL 驱动 -->
+                    <dependency>
+                        <groupId>com.mysql</groupId>
+                        <artifactId>mysql-connector-j</artifactId>
+                        <version>9.7.0</version>
+                    </dependency>
+                </dependencies>
+            </plugin>
+        </plugins>
+    </build>
+</project>
