@@ -69,7 +69,7 @@
 | 权限中心 | open-server + api-server | v2_permission_t, v2_permission_p_t, v2_subscription_t, v2_user_authorization_t |
 | 审批管理 | open-server + market-server | v2_approval_flow_t, v2_approval_record_t, v2_approval_log_t |
 | 嵌入能力 | market-server + open-server + api-server + qiankunProject | ability_t, ability_p_t, app_ability_relation_t |
-| 数据字典 | market-server + market-web | v2_dictionary_t（market-server 管理） |
+| 数据字典 | market-server + market-web | property_t（openplatform_property_t） |
 | LookUp 管理 | market-server + market-web | lookup_classify_t, lookup_item_t, lookup_file_t |
 | API 开放 | open-server（管理）+ api-server（网关） | v2_api_t, v2_api_p_t, v2_category_t |
 | 事件开放 | open-server（管理）+ event-server（网关） | v2_event_t, v2_event_p_t |

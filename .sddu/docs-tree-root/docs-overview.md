@@ -177,32 +177,23 @@ open-app 项目全景
 
 ### 2.4 数据库索引（40 表）
 
-> 📖 完整表结构（字段/索引/关联）见 [`data.md`](data.md)
+> 📖 完整表结构（字段/索引/关联/ER 图）见 [`data.md`](data.md)。表按**业务能力**分组。
 
 | 业务能力 | 包含表 |
 |---------|--------|
 | **应用管理** | app_t, app_p_t, app_identity_t, app_member_t, app_version_t, app_version_p_t, app_ability_relation_t, eamap_t |
-| **权限/订阅** | v2_category_t, v2_category_owner_t, v2_permission_t, v2_permission_p_t, v2_subscription_t, v2_user_authorization_t |
-| **审批管理** | v2_approval_flow_t, v2_approval_record_t, v2_approval_log_t |
+| **嵌入能力** | ability_t, ability_p_t（管理字段 6 个） |
+| **资源分类** | v2_category_t, v2_category_owner_t |
 | **API 开放** | v2_api_t, v2_api_p_t |
 | **事件开放** | v2_event_t, v2_event_p_t |
 | **回调开放** | v2_callback_t, v2_callback_p_t |
+| **权限/订阅** | v2_permission_t, v2_permission_p_t, v2_subscription_t, v2_user_authorization_t |
+| **审批管理** | v2_approval_flow_t, v2_approval_record_t, v2_approval_log_t |
 | **连接器开放** | v2_cp_connector_t, v2_cp_connector_version_t, v2_cp_flow_t, v2_cp_flow_version_t, v2_cp_connector_version_ref_t, v2_cp_execution_record_t, v2_cp_execution_step_t |
-| **嵌入能力** | ability_t, ability_p_t（V5 增 6 字段） |
-| **基础数据** | lookup_classify_t, lookup_item_t, lookup_file_t, v2_dictionary_t |
-| **基础设施** | operate_log_t, property_t, file_t, employee_t, common_file_t |
+| **基础数据** | property_t（数据字典）, lookup_classify_t, lookup_item_t, lookup_file_t |
+| **基础设施** | operate_log_t, file_t, employee_t, common_file_t |
 
-**迁移脚本**（open-flyway/src/main/resources/db/migration/）：
-
-| 脚本 | 表数 | 表清单 |
-|---------|:----:|--------|
-| V1 create_early_schema | 16 | operate_log_t, property_t, file_t, employee_t, eamap_t, app_t, app_p_t, app_identity_t, app_member_t, app_version_t, app_version_p_t, app_ability_relation_t, ability_t, ability_p_t, lookup_classify_t, lookup_item_t |
-| V2 init_capability_open_platform | 15 | v2_category_t, v2_category_owner_t, v2_api_t, v2_api_p_t, v2_event_t, v2_event_p_t, v2_callback_t, v2_callback_p_t, v2_permission_t, v2_permission_p_t, v2_subscription_t, v2_approval_flow_t, v2_approval_record_t, v2_approval_log_t, v2_user_authorization_t |
-| V3 init_connector_platform | 4 | v2_cp_connector_t, v2_cp_connector_version_t, v2_cp_flow_t, v2_cp_flow_version_t |
-| V4 connector_platform_v3 | 3 | v2_cp_connector_version_ref_t, v2_cp_execution_record_t, v2_cp_execution_step_t |
-| V5 add_ability_admin_fields | 0（ALTER） | ability_t 增 6 字段 |
-| V6 create_common_file | 1 | common_file_t |
-| V7 create_lookup_file | 1 | lookup_file_t |
+> 💡 迁移脚本（Flyway V1~V7）仅为工程执行顺序，非 schema 版本号，详见 `data.md` 附录 §12。
 
 ### 2.5 部署拓扑
 

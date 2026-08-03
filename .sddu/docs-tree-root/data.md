@@ -1,43 +1,36 @@
-# open-app 数据库数据模型 — 数据模型文档
+# open-app 数据库数据模型
 
-> **文档定位**: sddu-docs-data — 数据模型文档 — 表结构、字段、索引、关联关系  
-> **输出文件名**: database-data.md  
-> **数据来源**: 代码扫描生成 — open-flyway/src/main/resources/db/migration/V1~V7 (40 张表)  
-> **创建人**: SDDU Docs Agent  
-> **创建时间**: 2026-08-03  
-> **版本**: v1.0 (CODE-SCAN)  
-> **更新人**: —  
-> **更新时间**: —  
-> **更新说明**: 全量覆盖重建
+> **文档定位**: sddu-docs-data — 数据模型文档 — 表结构、字段、索引、关联关系
+> **输出文件名**: data.md
+> **数据来源**: 代码扫描 + 设计文档聚合（open-flyway 迁移脚本 / entity 实体类）
+> **创建人**: SDDU Docs Agent
+> **创建时间**: 2026-08-03
+> **版本**: v2.0 (BIZ-ARCH)
 
 ## 1. 数据模型概述
 
 | 属性 | 值 |
 |------|-----|
-| **模型名称** | open-app 数据库全模型（40 表） |
+| **模型名称** | open-app 数据库全模型（40 张表） |
 | **对应库名** | `openapp`（MySQL，192.168.3.155:3306） |
-| **所属域** | 数据层 |
+| **所属业务域** | 能力开放平台（数据层） |
 | **存储引擎** | InnoDB（utf8mb4 / utf8mb4_unicode_ci） |
 
-**迁移脚本**（open-flyway/src/main/resources/db/migration/）：
+**设计约定**：
+- 表前缀：`openplatform_`（V1 早期）/ `openplatform_v2_`（V2+）；连接器平台 `openplatform_v2_cp_`
+- 表后缀：`_t`
+- 主键：V1 部分自增，V2+ 应用层雪花 ID
+- 无物理外键（逻辑外键）
+- 审计字段 4 个：create_by / create_time / last_update_by / last_update_time
+- 枚举统一 TINYINT(10) + COMMENT 映射
 
-| 脚本 | 版本 | 说明 | 表数 |
-|------|:----:|------|:----:|
-| V1__create_early_schema.sql | V1 | 能力开放平台早期 schema（应用/能力/字典/运维） | 16 |
-| V2__init_capability_open_platform_schema.sql | V2 | 能力开放平台（分类/API/事件/回调/权限/订阅/审批/授权） | 15 |
-| V3__init_connector_platform_schema.sql | V3 | 连接器平台 MVP（连接器/连接流） | 4 |
-| V4__connector_platform_v3_schema.sql | V4 | 连接器 V3 多版本（引用中间表/执行记录/执行步骤 + 5 表 ALTER） | 3 |
-| V5__add_ability_admin_fields.sql | V5 | 嵌入能力字段（ability_t 增 6 字段，ALTER） | 0 |
-| V6__create_common_file.sql | V6 | 通用文件表 | 1 |
-| V7__create_lookup_file_table.sql | V7 | LookUp 文件表 | 1 |
-
-**命名约定**：前缀 `openplatform_`（V1 早期）/ `openplatform_v2_`（V2+）；连接器平台 `openplatform_v2_cp_`；后缀 `_t`；主键 BIGINT 雪花ID（V2+，应用层生成）；无物理外键（逻辑外键）；标准审计字段 4 个：`create_by, create_time, last_update_by, last_update_time`。
-
-> 本文档列出全部 40 张表。各表仅列出业务字段 + 主键/关键索引；标准审计字段（create_by/create_time/last_update_by/last_update_time）在大部分表中存在，不逐表重复展开。
+> 📖 本文档按**业务能力**组织 40 张表。迁移脚本执行顺序（V1~V7）仅为工程实现细节，见附录 §12，不作为业务分组依据。
 
 ---
 
-## 2. V1 早期 Schema（16 表）
+## 2. 应用管理域（8 表）
+
+> 对应能力：应用管理（应用/成员/AKSK/版本/能力关联/EAMAP）
 
 ### 2.1 `openplatform_app_t` — 应用主表
 
@@ -122,7 +115,23 @@
 | ability_type | tinyint(1) | — | 1-群置顶 2-群通知 3-链接增强 4-点对点通知 5-we码 6-应用入群通知 7-助手广场卡片 |
 | tenant_id / status | — | — | 租户 / 状态 |
 
-### 2.8 `openplatform_ability_t` — 能力主表
+### 2.8 `openplatform_eamap_t` — EAMAP 应用映射
+
+| 字段名 | 类型 | 约束 | 说明 |
+|--------|------|------|------|
+| id | bigint | PK AUTO_INCREMENT | 主键 |
+| eamap_app_code | varchar(100) | — | 应用编码 |
+| name_cn / name_en | varchar(255) | — | 中英文名 |
+| owner_account_id | varchar(100) | — | 负责人账号 |
+| status | tinyint | — | 状态 |
+
+---
+
+## 3. 嵌入能力域（2 表）
+
+> 对应能力：嵌入能力（能力目录/类型，V5 增管理字段）
+
+### 3.1 `openplatform_ability_t` — 能力主表
 
 | 字段名 | 类型 | 约束 | 说明 |
 |--------|------|------|------|
@@ -139,7 +148,7 @@
 | **require_release** (V5) | tinyint | — | 0=即时生效 1=需版本发布 |
 | **load_type** (V5) | tinyint | — | 1=路由加载 2=微前端加载 |
 
-### 2.9 `openplatform_ability_p_t` — 能力属性表
+### 3.2 `openplatform_ability_p_t` — 能力属性表
 
 | 字段名 | 类型 | 约束 | 说明 |
 |--------|------|------|------|
@@ -148,94 +157,13 @@
 | property_name / property_value | — | — | 属性名/值 |
 | status | tinyint | — | 状态 |
 
-### 2.10 `openplatform_eamap_t` — EAMAP 应用映射
-
-| 字段名 | 类型 | 约束 | 说明 |
-|--------|------|------|------|
-| id | bigint | PK AUTO_INCREMENT | 主键 |
-| eamap_app_code | varchar(100) | — | 应用编码 |
-| name_cn / name_en | varchar(255) | — | 中英文名 |
-| owner_account_id | varchar(100) | — | 负责人账号 |
-| status | tinyint | — | 状态 |
-
-### 2.11 `openplatform_employee_t` — 员工表
-
-| 字段名 | 类型 | 约束 | 说明 |
-|--------|------|------|------|
-| id | bigint | PK | 主键 |
-| welink_id | varchar(255) | UNIQUE | WeLink账号ID（=member表account_id） |
-| w3_account | varchar(100) | INDEX | W3工号 |
-| chinese_name / english_name | varchar(255) | — | 中英文名 |
-| department | varchar(255) | — | 部门 |
-| status | tinyint | — | 状态 |
-
-### 2.12 `openplatform_property_t` — 属性配置表
-
-| 字段名 | 类型 | 约束 | 说明 |
-|--------|------|------|------|
-| id | bigint | PK | 主键 |
-| code | varchar(100) | UNIQUE(path,code) | 编码 |
-| name | varchar(100) | INDEX | 名称 |
-| value | varchar(2000) | — | 值 |
-| description | varchar(4000) | — | 描述 |
-| path | varchar(100) | INDEX | 路径（层级归类） |
-| language | tinyint | — | 1-中文 2-英文 |
-| status | tinyint | — | 0-失效 1-有效 |
-
-### 2.13 `openplatform_operate_log_t` — 操作日志表
-
-| 字段名 | 类型 | 约束 | 说明 |
-|--------|------|------|------|
-| id | bigint | PK | 主键 |
-| app_id | varchar(100) | INDEX | 应用ID |
-| operate_type | varchar(10) | — | 操作类型 |
-| operate_object | varchar(64) | INDEX | 操作对象 |
-| operate_desc_cn / operate_desc_en | text | — | 中英文描述 |
-| operate_user | varchar(255) | — | 操作人 |
-| ip_address | varchar(255) | — | 操作人地址 |
-| before_data / after_data | text | — | 操作前后数据 |
-| status | tinyint(1) | — | 0:失败 1:成功 |
-
-### 2.14 `openplatform_file_t` — 文件表
-
-| 字段名 | 类型 | 约束 | 说明 |
-|--------|------|------|------|
-| id | bigint | PK | 主键 |
-| file_id | varchar(100) | UNIQUE | 文件ID |
-| file_name / file_path / url | varchar | — | 文件名/路径/URL |
-| biz_type | tinyint(1) | — | 1-图标 2-功能示意图 |
-| file_size | bigint | — | 大小（字节） |
-| content_type | varchar(100) | — | MIME类型 |
-| tenant_id / status | — | — | 租户 / 状态 |
-
-### 2.15 `openplatform_lookup_classify_t` — LookUp 分类表
-
-| 字段名 | 类型 | 约束 | 说明 |
-|--------|------|------|------|
-| classify_id | bigint | PK | 分类ID |
-| classify_code | varchar(100) | UNIQUE(code,path) | 分类编码 |
-| classify_name | varchar(100) | — | 分类名称 |
-| path | varchar(100) | — | 层级路径 |
-| classify_desc | varchar(4000) | — | 描述 |
-| status | tinyint | INDEX | 状态 |
-
-### 2.16 `openplatform_lookup_item_t` — LookUp 项表
-
-| 字段名 | 类型 | 约束 | 说明 |
-|--------|------|------|------|
-| item_id | bigint | PK | 项ID |
-| classify_id | bigint | UNIQUE(classify_id,item_code)+INDEX | 分类ID（外键） |
-| item_code / item_name | varchar(100) | — | 项编码/名称 |
-| item_value | varchar(2000) | — | 项值 |
-| item_index | int | INDEX | 排序序号 |
-| item_desc | varchar(4000) | — | 描述 |
-| item_attr1~6 | varchar(500) | — | 6 个扩展属性 |
-
 ---
 
-## 3. V2 能力开放平台 Schema（15 表）
+## 4. 资源分类域（2 表）
 
-### 3.1 `openplatform_v2_category_t` — 分类表
+> 对应能力：分类管理（API/事件/回调资源的统一分类树 + 责任人）
+
+### 4.1 `openplatform_v2_category_t` — 分类表
 
 | 字段名 | 类型 | 约束 | 说明 |
 |--------|------|------|------|
@@ -247,7 +175,7 @@
 | sort_order | int | — | 排序号 |
 | status | tinyint | — | 0=禁用 1=启用 |
 
-### 3.2 `openplatform_v2_category_owner_t` — 分类责任人关联表
+### 4.2 `openplatform_v2_category_owner_t` — 分类责任人关联表
 
 | 字段名 | 类型 | 约束 | 说明 |
 |--------|------|------|------|
@@ -256,7 +184,13 @@
 | user_id | varchar(100) | INDEX | 用户ID |
 | user_name | varchar(100) | — | 用户姓名 |
 
-### 3.3 `openplatform_v2_api_t` — API 资源主表
+---
+
+## 5. API 开放域（2 表）
+
+> 对应能力：API 开放（公共连接能力 R1）
+
+### 5.1 `openplatform_v2_api_t` — API 资源主表
 
 | 字段名 | 类型 | 约束 | 说明 |
 |--------|------|------|------|
@@ -268,7 +202,7 @@
 | auth_type | tinyint | INDEX | 0=Cookie 1=SOA 2=APIG 3=IAM 4=免认证 5=AKSK 6=CLITOKEN |
 | status | tinyint | INDEX | 0=草稿 1=待审 2=已发布 3=已下线 |
 
-### 3.4 `openplatform_v2_api_p_t` — API 资源属性表
+### 5.2 `openplatform_v2_api_p_t` — API 资源属性表
 
 | 字段名 | 类型 | 约束 | 说明 |
 |--------|------|------|------|
@@ -278,7 +212,13 @@
 | property_value | text | — | 属性值 |
 | status | tinyint | — | 状态 |
 
-### 3.5 `openplatform_v2_event_t` — 事件资源主表
+---
+
+## 6. 事件开放域（2 表）
+
+> 对应能力：事件开放（公共连接能力 R2）
+
+### 6.1 `openplatform_v2_event_t` — 事件资源主表
 
 | 字段名 | 类型 | 约束 | 说明 |
 |--------|------|------|------|
@@ -288,11 +228,17 @@
 | topic | varchar(200) | UNIQUE | Topic主题 |
 | status | tinyint | INDEX | 0=草稿 1=待审 2=已发布 3=已下线 |
 
-### 3.6 `openplatform_v2_event_p_t` — 事件资源属性表
+### 6.2 `openplatform_v2_event_p_t` — 事件资源属性表
 
 （同 api_p_t 结构：id / parent_id / property_name / property_value / status）
 
-### 3.7 `openplatform_v2_callback_t` — 回调资源主表
+---
+
+## 7. 回调开放域（2 表）
+
+> 对应能力：回调开放（公共连接能力 R3）
+
+### 7.1 `openplatform_v2_callback_t` — 回调资源主表
 
 | 字段名 | 类型 | 约束 | 说明 |
 |--------|------|------|------|
@@ -301,11 +247,17 @@
 | category_id | bigint | INDEX | 所属分类ID |
 | status | tinyint | INDEX | 0=草稿 1=待审 2=已发布 3=已下线 |
 
-### 3.8 `openplatform_v2_callback_p_t` — 回调资源属性表
+### 7.2 `openplatform_v2_callback_p_t` — 回调资源属性表
 
 （同 api_p_t 结构）
 
-### 3.9 `openplatform_v2_permission_t` — 权限资源主表
+---
+
+## 8. 权限与订阅域（4 表）
+
+> 对应能力：权限中心（权限资源/订阅/Scope 授权）
+
+### 8.1 `openplatform_v2_permission_t` — 权限资源主表
 
 | 字段名 | 类型 | 约束 | 说明 |
 |--------|------|------|------|
@@ -319,11 +271,11 @@
 | resource_nodes | varchar(2000) | — | 资源级审批节点配置（JSON） |
 | status | tinyint | INDEX | 0=禁用 1=启用 |
 
-### 3.10 `openplatform_v2_permission_p_t` — 权限资源属性表
+### 8.2 `openplatform_v2_permission_p_t` — 权限资源属性表
 
 （同 api_p_t 结构）
 
-### 3.11 `openplatform_v2_subscription_t` — 订阅关系表
+### 8.3 `openplatform_v2_subscription_t` — 订阅关系表
 
 | 字段名 | 类型 | 约束 | 说明 |
 |--------|------|------|------|
@@ -336,44 +288,7 @@
 | auth_type | tinyint | — | 认证方式 |
 | approved_at / approved_by | — | — | 审批通过时间/人 |
 
-### 3.12 `openplatform_v2_approval_flow_t` — 审批流程模板表
-
-| 字段名 | 类型 | 约束 | 说明 |
-|--------|------|------|------|
-| id | bigint | PK | 主键 |
-| name_cn / name_en | varchar(100) | — | 中英文名称 |
-| code | varchar(50) | UNIQUE → UNIQUE(code,app_id) (V4) | global / api_register / event_register / callback_register / api_permission_apply / event_permission_apply / callback_permission_apply |
-| description_cn / description_en | text | — | 描述 |
-| nodes | varchar(2000) | — | 审批节点配置（JSON） |
-| status | tinyint | INDEX | 0=禁用 1=启用 |
-| app_id (V4) | bigint | — | 应用ID（NULL=全局配置） |
-
-### 3.13 `openplatform_v2_approval_record_t` — 审批记录表
-
-| 字段名 | 类型 | 约束 | 说明 |
-|--------|------|------|------|
-| id | bigint | PK | 主键 |
-| combined_nodes | varchar(4000) | — | 组合后的完整审批节点配置（JSON） |
-| business_type | varchar(50) | INDEX(business_type,business_id) | api_register / event_register / callback_register / api_permission_apply / event_permission_apply / callback_permission_apply |
-| business_id | bigint | — | 业务对象ID |
-| applicant_id / applicant_name | varchar | INDEX | 申请人ID/姓名 |
-| status | tinyint | INDEX | 0=待审 1=已通过 2=已拒绝 3=已撤销 |
-| current_node | int | — | 当前审批节点索引 |
-| completed_at | datetime(3) | — | 完成时间 |
-
-### 3.14 `openplatform_v2_approval_log_t` — 审批操作日志表
-
-| 字段名 | 类型 | 约束 | 说明 |
-|--------|------|------|------|
-| id | bigint | PK | 主键 |
-| record_id | bigint | INDEX | 审批记录ID |
-| node_index | int | — | 节点索引 |
-| level | varchar(20) | INDEX | global=全局 scene=场景 resource=资源 |
-| operator_id / operator_name | varchar | INDEX | 操作人ID/姓名 |
-| action | tinyint | — | 0=同意 1=拒绝 2=撤销 3=转交 |
-| comment | text | — | 审批意见 |
-
-### 3.15 `openplatform_v2_user_authorization_t` — 用户授权表
+### 8.4 `openplatform_v2_user_authorization_t` — 用户授权表
 
 | 字段名 | 类型 | 约束 | 说明 |
 |--------|------|------|------|
@@ -386,9 +301,54 @@
 
 ---
 
-## 4. V3 连接器平台 MVP Schema（4 表）
+## 9. 审批管理域（3 表）
 
-### 4.1 `openplatform_v2_cp_connector_t` — 连接器基本信息表
+> 对应能力：审批管理（动态审批流引擎）
+
+### 9.1 `openplatform_v2_approval_flow_t` — 审批流程模板表
+
+| 字段名 | 类型 | 约束 | 说明 |
+|--------|------|------|------|
+| id | bigint | PK | 主键 |
+| name_cn / name_en | varchar(100) | — | 中英文名称 |
+| code | varchar(50) | UNIQUE → UNIQUE(code,app_id) | global / api_register / event_register / callback_register / api_permission_apply / event_permission_apply / callback_permission_apply |
+| description_cn / description_en | text | — | 描述 |
+| nodes | varchar(2000) | — | 审批节点配置（JSON） |
+| status | tinyint | INDEX | 0=禁用 1=启用 |
+| app_id | bigint | — | 应用ID（NULL=全局配置） |
+
+### 9.2 `openplatform_v2_approval_record_t` — 审批记录表
+
+| 字段名 | 类型 | 约束 | 说明 |
+|--------|------|------|------|
+| id | bigint | PK | 主键 |
+| combined_nodes | varchar(4000) | — | 组合后的完整审批节点配置（JSON） |
+| business_type | varchar(50) | INDEX(business_type,business_id) | api_register / event_register / callback_register / api_permission_apply / event_permission_apply / callback_permission_apply |
+| business_id | bigint | — | 业务对象ID |
+| applicant_id / applicant_name | varchar | INDEX | 申请人ID/姓名 |
+| status | tinyint | INDEX | 0=待审 1=已通过 2=已拒绝 3=已撤销 |
+| current_node | int | — | 当前审批节点索引 |
+| completed_at | datetime(3) | — | 完成时间 |
+
+### 9.3 `openplatform_v2_approval_log_t` — 审批操作日志表
+
+| 字段名 | 类型 | 约束 | 说明 |
+|--------|------|------|------|
+| id | bigint | PK | 主键 |
+| record_id | bigint | INDEX | 审批记录ID |
+| node_index | int | — | 节点索引 |
+| level | varchar(20) | INDEX | global=全局 scene=场景 resource=资源 |
+| operator_id / operator_name | varchar | INDEX | 操作人ID/姓名 |
+| action | tinyint | — | 0=同意 1=拒绝 2=撤销 3=转交 |
+| comment | text | — | 审批意见 |
+
+---
+
+## 10. 连接器开放域（7 表）
+
+> 对应能力：连接器开放（公共连接能力 R4 — 连接器/连接流/执行记录）
+
+### 10.1 `openplatform_v2_cp_connector_t` — 连接器基本信息表
 
 | 字段名 | 类型 | 约束 | 说明 |
 |--------|------|------|------|
@@ -397,21 +357,21 @@
 | description_cn / description_en | varchar(512) | — | 中英文描述 |
 | icon_file_id | varchar(128) | — | 图标文件ID |
 | connector_type | tinyint | INDEX | 1=HTTP（MVP仅支持HTTP） |
-| status | tinyint | INDEX | V3 后：1=有效不可用 2=有效可用 3=已失效 4=物理删除 |
-| app_id (V4) | bigint | INDEX(app_id,status) | 归属应用ID（0=全局） |
+| status | tinyint | INDEX | 1=有效不可用 2=有效可用 3=已失效 4=物理删除 |
+| app_id | bigint | INDEX(app_id,status) | 归属应用ID（0=全局） |
 
-### 4.2 `openplatform_v2_cp_connector_version_t` — 连接器版本/配置表
+### 10.2 `openplatform_v2_cp_connector_version_t` — 连接器版本/配置表
 
 | 字段名 | 类型 | 约束 | 说明 |
 |--------|------|------|------|
 | id | bigint | PK | 雪花ID |
 | connector_id | bigint | INDEX(connector_id,version_number) | 关联连接器ID（逻辑外键） |
-| connection_config | mediumtext | — | 连接配置JSON {protocol,protocolConfig,authTypeSchema,inputSchema,outputSchema,timeoutMs,rateLimit}（V3 草稿可空） |
-| version_number (V4) | int | — | 版本号，实体内从1递增 |
-| status (V4) | tinyint | INDEX(connector_id,status) | 1=草稿 2=已发布 3=已失效 4=物理删除 |
-| published_time / published_by (V4) | — | — | 发布时间/人 |
+| connection_config | mediumtext | — | 连接配置JSON {protocol,protocolConfig,authTypeSchema,inputSchema,outputSchema,timeoutMs,rateLimit}（草稿可空） |
+| version_number | int | — | 版本号，实体内从1递增 |
+| status | tinyint | INDEX(connector_id,status) | 1=草稿 2=已发布 3=已失效 4=物理删除 |
+| published_time / published_by | — | — | 发布时间/人 |
 
-### 4.3 `openplatform_v2_cp_flow_t` — 连接流基本信息表
+### 10.3 `openplatform_v2_cp_flow_t` — 连接流基本信息表
 
 | 字段名 | 类型 | 约束 | 说明 |
 |--------|------|------|------|
@@ -419,27 +379,23 @@
 | name_cn / name_en | varchar(128) | INDEX | 中英文名称 |
 | description_cn / description_en | varchar(512) | — | 中英文描述 |
 | icon_file_id | varchar(128) | — | 图标文件ID |
-| lifecycle_status | tinyint | INDEX | V3 后：1=已停止 2=运行中 3=已失效 4=物理删除 |
-| deployed_version_id (V4) | bigint | INDEX | 当前部署的版本ID |
-| deployed_version_number (V4) | int | — | 当前部署版本号（冗余） |
-| app_id (V4) | bigint | INDEX(app_id,lifecycle_status) | 归属应用ID |
+| lifecycle_status | tinyint | INDEX | 1=已停止 2=运行中 3=已失效 4=物理删除 |
+| deployed_version_id | bigint | INDEX | 当前部署的版本ID |
+| deployed_version_number | int | — | 当前部署版本号（冗余） |
+| app_id | bigint | INDEX(app_id,lifecycle_status) | 归属应用ID |
 
-### 4.4 `openplatform_v2_cp_flow_version_t` — 连接流版本/配置表
+### 10.4 `openplatform_v2_cp_flow_version_t` — 连接流版本/配置表
 
 | 字段名 | 类型 | 约束 | 说明 |
 |--------|------|------|------|
 | id | bigint | PK | 雪花ID |
 | flow_id | bigint | INDEX(flow_id,version_number) | 关联连接流ID |
-| orchestration_config | mediumtext | — | 编排配置JSON {trigger, nodes[], edges[]} 完整 DAG（V3 草稿可空） |
-| version_number (V4) | int | — | 版本号 |
-| status (V4) | tinyint | INDEX(flow_id,status) | 1=草稿 2=待审批 3=已撤回 4=已驳回 5=已发布 6=已失效 7=物理删除 |
-| published_time / published_by (V4) | — | — | 发布时间/人 |
+| orchestration_config | mediumtext | — | 编排配置JSON {trigger, nodes[], edges[]} 完整 DAG（草稿可空） |
+| version_number | int | — | 版本号 |
+| status | tinyint | INDEX(flow_id,status) | 1=草稿 2=待审批 3=已撤回 4=已驳回 5=已发布 6=已失效 7=物理删除 |
+| published_time / published_by | — | — | 发布时间/人 |
 
----
-
-## 5. V4 连接器 V3 Schema（3 张新表 + 5 表 ALTER）
-
-### 5.1 `openplatform_v2_cp_connector_version_ref_t` — 连接器版本引用中间表
+### 10.5 `openplatform_v2_cp_connector_version_ref_t` — 连接器版本引用中间表
 
 | 字段名 | 类型 | 约束 | 说明 |
 |--------|------|------|------|
@@ -452,7 +408,7 @@
 
 用途：M:N 中间表，记录编排中连接器节点引用特定 ConnectorVersion，用于「标记版本失效/删除」前置的「被引用」校验。
 
-### 5.2 `openplatform_v2_cp_execution_record_t` — 执行记录表
+### 10.6 `openplatform_v2_cp_execution_record_t` — 执行记录表
 
 | 字段名 | 类型 | 约束 | 说明 |
 |--------|------|------|------|
@@ -472,7 +428,7 @@
 | duration_ms | int | — | 总耗时（毫秒） |
 | trigger_time | datetime(3) | INDEX | 触发时间 |
 
-### 5.3 `openplatform_v2_cp_execution_step_t` — 执行步骤详情表
+### 10.7 `openplatform_v2_cp_execution_step_t` — 执行步骤详情表
 
 | 字段名 | 类型 | 约束 | 说明 |
 |--------|------|------|------|
@@ -488,33 +444,51 @@
 | error_message / error_code | — | — | 错误信息/码 |
 | duration_ms | int | — | 步骤耗时 |
 
-### 5.4 V4 ALTER 变更汇总
-
-| 表 | 变更 |
-|----|------|
-| connector_t | +app_id, status 语义变更（4 状态）, +idx_app_status/idx_app_name_cn/idx_app_name_en |
-| connector_version_t | 移除 idx_connector_id 唯一性, connection_config 可空, +version_number/+status/+published_time/+published_by |
-| flow_t | +deployed_version_id/+deployed_version_number/+app_id, lifecycle_status 4 状态 |
-| flow_version_t | 移除 idx_flow_id 唯一性, orchestration_config 可空, +version_number/+status(7 状态)/+published_time/+published_by |
-| approval_flow_t | +app_id, uk_code → uk_code_app(code,app_id) |
-
 ---
 
-## 6. V6/V7 附加表（2 表）
+## 11. 基础数据与基础设施域（8 表）
 
-### 6.1 `openplatform_common_file_t` — 通用文件表（V6，开发环境临时表）
+> 对应能力：数据字典 / LookUp 管理 / 操作审计 / 文件存储 / 员工
+
+### 11.1 `openplatform_property_t` — 数据字典表
 
 | 字段名 | 类型 | 约束 | 说明 |
 |--------|------|------|------|
-| id | bigint | PK AUTO_INCREMENT | 主键 |
-| batch_id | varchar(100) | UNIQUE | 文件批次ID |
-| file_name | varchar(500) | — | 原始文件名 |
-| file_path | varchar(1000) | — | 磁盘路径（开发环境本地临时目录） |
-| biz_type | tinyint | — | 1=能力图标 2=能力示意图 |
-| file_size | bigint | — | 大小（字节） |
-| content_type | varchar(100) | — | MIME类型 |
+| id | bigint | PK | 主键 |
+| code | varchar(100) | UNIQUE(path,code) | 编码 |
+| name | varchar(100) | INDEX | 名称 |
+| value | varchar(2000) | — | 值 |
+| description | varchar(4000) | — | 描述 |
+| path | varchar(100) | INDEX | 路径（层级归类） |
+| language | tinyint | — | 1-中文 2-英文 |
+| status | tinyint | — | 0-失效 1-有效 |
 
-### 6.2 `openplatform_lookup_file_t` — LookUp 文件表（V7）
+> 💡 数据字典管理（FR-DICTIONARY-001）对应表，market-server dictionary 模块维护。
+
+### 11.2 `openplatform_lookup_classify_t` — LookUp 分类表
+
+| 字段名 | 类型 | 约束 | 说明 |
+|--------|------|------|------|
+| classify_id | bigint | PK | 分类ID |
+| classify_code | varchar(100) | UNIQUE(code,path) | 分类编码 |
+| classify_name | varchar(100) | — | 分类名称 |
+| path | varchar(100) | — | 层级路径 |
+| classify_desc | varchar(4000) | — | 描述 |
+| status | tinyint | INDEX | 状态 |
+
+### 11.3 `openplatform_lookup_item_t` — LookUp 项表
+
+| 字段名 | 类型 | 约束 | 说明 |
+|--------|------|------|------|
+| item_id | bigint | PK | 项ID |
+| classify_id | bigint | UNIQUE(classify_id,item_code)+INDEX | 分类ID（外键） |
+| item_code / item_name | varchar(100) | — | 项编码/名称 |
+| item_value | varchar(2000) | — | 项值 |
+| item_index | int | INDEX | 排序序号 |
+| item_desc | varchar(4000) | — | 描述 |
+| item_attr1~6 | varchar(500) | — | 6 个扩展属性 |
+
+### 11.4 `openplatform_lookup_file_t` — LookUp 文件表
 
 | 字段名 | 类型 | 约束 | 说明 |
 |--------|------|------|------|
@@ -526,13 +500,109 @@
 | biz_type | int | INDEX | 1-LookUp 2-数据字典 |
 | create_by / create_time / last_update_time | — | — | 审计字段 |
 
+### 11.5 `openplatform_operate_log_t` — 操作日志表
+
+| 字段名 | 类型 | 约束 | 说明 |
+|--------|------|------|------|
+| id | bigint | PK | 主键 |
+| app_id | varchar(100) | INDEX | 应用ID |
+| operate_type | varchar(10) | — | 操作类型 |
+| operate_object | varchar(64) | INDEX | 操作对象 |
+| operate_desc_cn / operate_desc_en | text | — | 中英文描述 |
+| operate_user | varchar(255) | — | 操作人 |
+| ip_address | varchar(255) | — | 操作人地址 |
+| before_data / after_data | text | — | 操作前后数据 |
+| status | tinyint(1) | — | 0:失败 1:成功 |
+
+### 11.6 `openplatform_file_t` — 文件表
+
+| 字段名 | 类型 | 约束 | 说明 |
+|--------|------|------|------|
+| id | bigint | PK | 主键 |
+| file_id | varchar(100) | UNIQUE | 文件ID |
+| file_name / file_path / url | varchar | — | 文件名/路径/URL |
+| biz_type | tinyint(1) | — | 1-图标 2-功能示意图 |
+| file_size | bigint | — | 大小（字节） |
+| content_type | varchar(100) | — | MIME类型 |
+| tenant_id / status | — | — | 租户 / 状态 |
+
+### 11.7 `openplatform_employee_t` — 员工表
+
+| 字段名 | 类型 | 约束 | 说明 |
+|--------|------|------|------|
+| id | bigint | PK | 主键 |
+| welink_id | varchar(255) | UNIQUE | WeLink账号ID（=member表account_id） |
+| w3_account | varchar(100) | INDEX | W3工号 |
+| chinese_name / english_name | varchar(255) | — | 中英文名 |
+| department | varchar(255) | — | 部门 |
+| status | tinyint | — | 状态 |
+
+### 11.8 `openplatform_common_file_t` — 通用文件表
+
+| 字段名 | 类型 | 约束 | 说明 |
+|--------|------|------|------|
+| id | bigint | PK AUTO_INCREMENT | 主键 |
+| batch_id | varchar(100) | UNIQUE | 文件批次ID |
+| file_name | varchar(500) | — | 原始文件名 |
+| file_path | varchar(1000) | — | 磁盘路径 |
+| biz_type | tinyint | — | 1=能力图标 2=能力示意图 |
+| file_size | bigint | — | 大小（字节） |
+| content_type | varchar(100) | — | MIME类型 |
+
+> 💡 `openplatform_lookup_file_t`（LookUp 文件表，V7 新增）结构见附录 §12.4。
+
 ---
 
-## 7. 表间关联关系（ER 图）
+## 12. 附录：迁移脚本参考（工程实现细节）
+
+> ⚠️ 以下仅为 Flyway 迁移执行顺序（V1~V7 = 执行序号，**非 schema 版本号**）。业务分组以上文 §2~§11 为准。
+
+| Flyway 脚本 | 表数 | 涉及表 |
+|------------|:----:|--------|
+| V1 create_early_schema | 16 | 应用域 7 + 能力域 2 + 字典域 2 + 运维域 5 |
+| V2 init_capability_open_platform | 15 | 分类/API/事件/回调/权限/订阅/审批/授权 |
+| V3 init_connector_platform | 4 | v2_cp_connector_t, v2_cp_connector_version_t, v2_cp_flow_t, v2_cp_flow_version_t |
+| V4 connector_platform_v3 | 3+5 ALTER | v2_cp_connector_version_ref_t, v2_cp_execution_record_t, v2_cp_execution_step_t + 5 表字段增强 |
+| V5 add_ability_admin_fields | 0（ALTER） | ability_t 增 6 字段 |
+| V6 create_common_file | 1 | common_file_t |
+| V7 create_lookup_file | 1 | lookup_file_t |
+
+### 12.1 V4 ALTER 变更汇总
+
+| 表 | 变更 |
+|----|------|
+| connector_t | +app_id, status 语义变更（4 状态）, +idx_app_status/idx_app_name_cn/idx_app_name_en |
+| connector_version_t | 移除 idx_connector_id 唯一性, connection_config 可空, +version_number/+status/+published_time/+published_by |
+| flow_t | +deployed_version_id/+deployed_version_number/+app_id, lifecycle_status 4 状态 |
+| flow_version_t | 移除 idx_flow_id 唯一性, orchestration_config 可空, +version_number/+status(7 状态)/+published_time/+published_by |
+| approval_flow_t | +app_id, uk_code → uk_code_app(code,app_id) |
+
+### 12.2 V5 ability_t 字段增强
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| entry_url | varchar(1000) | 进入地址（微前端子应用入口） |
+| hidden | tinyint | 0=展示 1=隐藏 |
+| route_path | varchar(255) | 路由路径（子应用激活路由） |
+| alias_name | varchar(100) | 别名（子应用唯一标识） |
+| require_release | tinyint | 0=即时生效 1=需版本发布 |
+| load_type | tinyint | 1=路由加载 2=微前端加载 |
+
+### 12.3 V6 通用文件表（common_file_t）
+
+见 §11.8。
+
+### 12.4 V7 LookUp 文件表
+
+见 §11.4（lookup_file_t 已按业务能力归入基础数据域）。
+
+---
+
+## 13. 表间关联关系（ER 图）
 
 > Mermaid ER 图按业务域分组。基数符号：`||` = 1，`o{` = 0..n，`|{` = 1..n，`}o` = 0..n（多侧），`}|` = 1..n（多侧）。
 
-### 7.1 应用管理与基础数据域（V1 系）
+### 13.1 应用管理与基础数据域
 
 ```mermaid
 erDiagram
@@ -547,7 +617,7 @@ erDiagram
     lookup_classify_t ||--o{ lookup_item_t : "LookUp 项归属"
 ```
 
-### 7.2 能力开放域（V2 系：分类/资源/权限/订阅/审批）
+### 13.2 能力开放域（分类/资源/权限/订阅/审批）
 
 ```mermaid
 erDiagram
@@ -564,7 +634,7 @@ erDiagram
     app_t ||--o{ v2_user_authorization_t : "用户授权(逻辑关联)"
 ```
 
-### 7.3 连接器开放域（V3/V4 系）
+### 13.3 连接器开放域
 
 ```mermaid
 erDiagram
@@ -576,7 +646,7 @@ erDiagram
     v2_cp_execution_record_t ||--o{ v2_cp_execution_step_t : "执行步骤"
 ```
 
-### 7.4 关系速查表
+### 13.4 关系速查表
 
 | 关联模型 | 关联字段 | 关系类型 | 说明 |
 |---------|---------|:------:|------|
@@ -596,7 +666,7 @@ erDiagram
 | v2_permission_p_t → v2_permission_t | parent_id → id | 1:N | 权限属性 |
 | v2_subscription_t → v2_permission_t | permission_id → id | N:1 | 订阅权限 |
 | v2_approval_log_t → v2_approval_record_t | record_id → id | 1:N | 审批日志 |
-| v2_user_authorization_t → v2_app_t (app_id 逻辑关联) | app_id → id | N:1 | 用户授权应用 |
+| v2_user_authorization_t → app_t (app_id 逻辑关联) | app_id → id | N:1 | 用户授权应用 |
 | v2_cp_connector_version_t → v2_cp_connector_t | connector_id → id | 1:N | 连接器版本 |
 | v2_cp_flow_version_t → v2_cp_flow_t | flow_id → id | 1:N | 连接流版本 |
 | v2_cp_connector_version_ref_t → flow_version + connector_version | flow_version_id / connector_version_id | M:N | 编排引用 |
@@ -609,5 +679,6 @@ erDiagram
 
 | 版本 | 变更说明 | 日期 | 修订人 |
 |------|---------|------|--------|
-| v1.1 | 表间关联关系改为 ER 图（Mermaid erDiagram，按业务域分 3 组） | 2026-08-03 | SDDU Docs Agent |
+| v2.0 | 业务视角重建：按业务能力组织 40 表（应用/嵌入/分类/API/事件/回调/权限/审批/连接器/基础数据），迁移脚本降级为附录；修正数据字典对应表为 property_t | 2026-08-03 | SDDU Docs Agent |
+| v1.1 | 表间关联关系改为 ER 图 | 2026-08-03 | SDDU Docs Agent |
 | v1.0 | 代码扫描全量生成（40 表） | 2026-08-03 | SDDU Docs Agent |
