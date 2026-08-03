@@ -41,6 +41,12 @@ mvn -f open-flyway/pom.xml flyway:migrate \
 | V4 | open-server `db/migration/V4` | ability 管理字段 |
 | V5 | open-server `db/migration/V5` | common file 表 |
 | V6 | market-server `db/migration/V2` | lookup 文件表（原 market-server V2，统一编号避免版本冲突） |
+| V7 | docs/app 早期表（Navicat 导出） | 应用域 7 表（app / identity / member / version / ability_relation） |
+| V8 | docs/app 早期表（Navicat 导出） | 能力域 2 表（ability / ability_p） |
+| V9 | docs/app 早期表（Navicat 导出） | 数据字典 2 表（lookup_classify / lookup_item） |
+| V10 | docs/app 早期表（Navicat 导出） | 运维域 5 表（operate_log / property / file / employee / eamap） |
+
+> **V7~V10 提取说明**：源自 `docs/app/*.sql`（Navicat Premium 从 MySQL 8.4 导出）。仅提取**表结构 DDL**（不含 INSERT 数据），`CREATE TABLE` 统一为 `IF NOT EXISTS`（开发库已有表时安全跳过），collation 已从 8.x 的 `utf8mb4_0900_ai_ci` 转为 5.7 兼容的 `utf8mb4_unicode_ci`。
 
 **开发流程**：
 1. 新 DDL 变更 → 新增 `V{n+1}__描述.sql`（append-only，**严禁修改已发布的 V*.sql**）
