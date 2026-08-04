@@ -64,34 +64,34 @@
 
 | 方法 | 路径 | 说明 | 服务 | 规范文件 |
 |:----:|------|------|:----:|:----:|
-| POST | /service/open/v2/app | 创建应用 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| PUT | /service/open/v2/app | 编辑应用 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| GET | /service/open/v2/app | 应用详情 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| GET | /service/open/v2/app/list | 应用列表 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| GET | /service/open/v2/app/eamap | EAMAP 列表 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| GET | /service/open/v2/app/icons | 默认图标列表 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| PUT | /service/open/v2/app/verify-type | 校验应用类型 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| GET | /service/open/v2/app/identity | 应用身份（AK/SK） | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| GET | /service/open/v2/app/verify-type | 查询类型校验 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| POST | /service/open/v2/app/bind-eamap | 绑定 EAMAP | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| GET | /service/open/v2/app/current-role | 当前用户角色 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| GET | /service/open/v2/member/list | 成员列表 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| POST | /service/open/v2/member | 添加成员 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| DELETE | /service/open/v2/member | 删除成员 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| POST | /service/open/v2/member/transfer-owner | 转移 Owner | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| GET | /service/open/v2/member/search-users | 用户搜索 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| GET | /service/open/v2/version/list | 版本列表 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| POST | /service/open/v2/version | 创建版本 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| GET | /service/open/v2/version | 版本详情 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| POST | /service/open/v2/version/publish | 发布版本 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| POST | /service/open/v2/version/withdraw | 撤回版本 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| DELETE | /service/open/v2/version | 删除版本 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| PUT | /service/open/v2/version | 编辑版本 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| GET | /service/open/v2/apps/{appId}/card-settings | 查询卡片设置 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| PUT | /service/open/v2/apps/{appId}/card-settings | 更新卡片设置 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| GET | /service/open/v2/apps/single-chatbot-accounts | 聊天机器人绑定账号列表 | market-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| POST | /service/open/v2/apps/single-chatbot-accounts | 新增绑定 | market-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| DELETE | /service/open/v2/apps/single-chatbot-accounts | 删除绑定 | market-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
+| POST | /service/open/v2/app | 创建应用 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) |
+| PUT | /service/open/v2/app | 编辑应用 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) |
+| GET | /service/open/v2/app | 应用详情 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) |
+| GET | /service/open/v2/app/list | 应用列表 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) |
+| GET | /service/open/v2/app/eamap | EAMAP 列表 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) |
+| GET | /service/open/v2/app/icons | 默认图标列表 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) |
+| PUT | /service/open/v2/app/verify-type | 校验应用类型 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) |
+| GET | /service/open/v2/app/identity | 应用身份（AK/SK） | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) |
+| GET | /service/open/v2/app/verify-type | 查询类型校验 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) |
+| POST | /service/open/v2/app/bind-eamap | 绑定 EAMAP | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) |
+| GET | /service/open/v2/app/current-role | 当前用户角色 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) |
+| GET | /service/open/v2/member/list | 成员列表 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) |
+| POST | /service/open/v2/member | 添加成员 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) |
+| DELETE | /service/open/v2/member | 删除成员 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) |
+| POST | /service/open/v2/member/transfer-owner | 转移 Owner | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) |
+| GET | /service/open/v2/member/search-users | 用户搜索 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) |
+| GET | /service/open/v2/version/list | 版本列表 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) |
+| POST | /service/open/v2/version | 创建版本 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) |
+| GET | /service/open/v2/version | 版本详情 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) |
+| POST | /service/open/v2/version/publish | 发布版本 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) |
+| POST | /service/open/v2/version/withdraw | 撤回版本 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) |
+| DELETE | /service/open/v2/version | 删除版本 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) |
+| PUT | /service/open/v2/version | 编辑版本 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) |
+| GET | /service/open/v2/apps/{appId}/card-settings | 查询卡片设置 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) |
+| PUT | /service/open/v2/apps/{appId}/card-settings | 更新卡片设置 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) |
+| GET | /service/open/v2/apps/single-chatbot-accounts | 聊天机器人绑定账号列表 | market-server | [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
+| POST | /service/open/v2/apps/single-chatbot-accounts | 新增绑定 | market-server | [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
+| DELETE | /service/open/v2/apps/single-chatbot-accounts | 删除绑定 | market-server | [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
 
 ### 3.2 资源分类
 
@@ -110,67 +110,67 @@
 
 | 方法 | 路径 | 说明 | 服务 | 规范文件 |
 |:----:|------|------|:----:|:----:|
-| GET | /service/open/v2/ability/list | 能力列表 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| POST | /service/open/v2/ability | 创建能力 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| GET | /service/open/v2/ability/subscribed | 已订阅能力 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| GET | /service/open/v2/ability/admin/list | 能力管理列表（平台面） | market-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| POST | /service/open/v2/ability/admin | 新增能力（平台面） | market-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| PUT | /service/open/v2/ability/admin/{id} | 编辑能力（平台面） | market-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| DELETE | /service/open/v2/ability/admin/{id} | 删除能力（平台面） | market-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| POST | /service/open/v2/internal/user/roles | 内部角色同步（API面） | api-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
+| GET | /service/open/v2/ability/list | 能力列表 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) |
+| POST | /service/open/v2/ability | 创建能力 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) |
+| GET | /service/open/v2/ability/subscribed | 已订阅能力 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) |
+| GET | /service/open/v2/ability/admin/list | 能力管理列表（平台面） | market-server | [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
+| POST | /service/open/v2/ability/admin | 新增能力（平台面） | market-server | [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
+| PUT | /service/open/v2/ability/admin/{id} | 编辑能力（平台面） | market-server | [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
+| DELETE | /service/open/v2/ability/admin/{id} | 删除能力（平台面） | market-server | [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
+| POST | /service/open/v2/internal/user/roles | 内部角色同步（API面） | api-server | [openapi-api-server.yaml](openapi/openapi-api-server.yaml) |
 
 ### 3.4 审批管理
 
 | 方法 | 路径 | 说明 | 服务 | 规范文件 |
 |:----:|------|------|:----:|:----:|
-| GET | /service/open/v2/approvals/pending | 我的待办审批 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| GET | /service/open/v2/approvals/{id} | 审批详情 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| POST | /service/open/v2/approvals/{id}/approve | 同意 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| POST | /service/open/v2/approvals/{id}/reject | 拒绝 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| POST | /service/open/v2/approvals/{id}/cancel | 撤销 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| POST | /service/open/v2/approvals/batch-approve | 批量同意 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| POST | /service/open/v2/approvals/batch-reject | 批量拒绝 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| POST | /service/open/v2/approvals/{id}/urge | 催办 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| GET | /service/open/v2/approval-flows | 模板列表 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| GET | /service/open/v2/approval-flows/{id} | 模板详情 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| POST | /service/open/v2/approval-flows | 创建模板 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| PUT | /service/open/v2/approval-flows/{id} | 编辑模板 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| DELETE | /service/open/v2/approval-flows/{id} | 删除模板 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| GET | /service/open/v2/apps/pending | 待审应用列表 | market-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| GET | /service/open/v2/apps/publish | 已发布应用列表 | market-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| POST | /service/open/v2/apps/approval | 应用审批处理 | market-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| POST | /api/v1/approvals/callback | 审批结果回调 | api-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
+| GET | /service/open/v2/approvals/pending | 我的待办审批 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) |
+| GET | /service/open/v2/approvals/{id} | 审批详情 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) |
+| POST | /service/open/v2/approvals/{id}/approve | 同意 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) |
+| POST | /service/open/v2/approvals/{id}/reject | 拒绝 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) |
+| POST | /service/open/v2/approvals/{id}/cancel | 撤销 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) |
+| POST | /service/open/v2/approvals/batch-approve | 批量同意 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) |
+| POST | /service/open/v2/approvals/batch-reject | 批量拒绝 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) |
+| POST | /service/open/v2/approvals/{id}/urge | 催办 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) |
+| GET | /service/open/v2/approval-flows | 模板列表 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) |
+| GET | /service/open/v2/approval-flows/{id} | 模板详情 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) |
+| POST | /service/open/v2/approval-flows | 创建模板 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) |
+| PUT | /service/open/v2/approval-flows/{id} | 编辑模板 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) |
+| DELETE | /service/open/v2/approval-flows/{id} | 删除模板 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) |
+| GET | /service/open/v2/apps/pending | 待审应用列表 | market-server | [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
+| GET | /service/open/v2/apps/publish | 已发布应用列表 | market-server | [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
+| POST | /service/open/v2/apps/approval | 应用审批处理 | market-server | [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
+| POST | /api/v1/approvals/callback | 审批结果回调 | api-server | [openapi-api-server.yaml](openapi/openapi-api-server.yaml) |
 
 ### 3.5 基础数据（数据字典 / LookUp）
 
 | 方法 | 路径 | 说明 | 服务 | 规范文件 |
 |:----:|------|------|:----:|:----:|
-| GET | /service/open/v2/dictionary/list | 字典列表 | market-server | [openapi-market-server.yaml](openapi/openapi-market-server.yaml) + [open-server.yaml](openapi/open-server.yaml) |
-| POST | /service/open/v2/dictionary | 新增字典 | market-server | [openapi-market-server.yaml](openapi/openapi-market-server.yaml) + [open-server.yaml](openapi/open-server.yaml) |
-| GET | /service/open/v2/dictionary/{id} | 字典详情 | market-server | [openapi-market-server.yaml](openapi/openapi-market-server.yaml) + [open-server.yaml](openapi/open-server.yaml) |
-| PUT | /service/open/v2/dictionary/{id} | 编辑字典 | market-server | [openapi-market-server.yaml](openapi/openapi-market-server.yaml) + [open-server.yaml](openapi/open-server.yaml) |
-| DELETE | /service/open/v2/dictionary/{id} | 删除字典 | market-server | [openapi-market-server.yaml](openapi/openapi-market-server.yaml) + [open-server.yaml](openapi/open-server.yaml) |
-| GET | /service/open/v2/lookup/classify/list | LookUp 分类列表 | market-server | [openapi-market-server.yaml](openapi/openapi-market-server.yaml) + [open-server.yaml](openapi/open-server.yaml) |
-| POST | /service/open/v2/lookup/classify | 新增分类 | market-server | [openapi-market-server.yaml](openapi/openapi-market-server.yaml) + [open-server.yaml](openapi/open-server.yaml) |
-| PUT | /service/open/v2/lookup/classify/{classifyId} | 编辑分类 | market-server | [openapi-market-server.yaml](openapi/openapi-market-server.yaml) + [open-server.yaml](openapi/open-server.yaml) |
-| DELETE | /service/open/v2/lookup/classify/{classifyId} | 删除分类 | market-server | [openapi-market-server.yaml](openapi/openapi-market-server.yaml) + [open-server.yaml](openapi/open-server.yaml) |
-| GET | /service/open/v2/lookup/classify/{classifyId} | 分类详情 | market-server | [openapi-market-server.yaml](openapi/openapi-market-server.yaml) + [open-server.yaml](openapi/open-server.yaml) |
-| GET | /service/open/v2/lookup/classify/{classifyId}/items | 分类下项列表 | market-server | [openapi-market-server.yaml](openapi/openapi-market-server.yaml) + [open-server.yaml](openapi/open-server.yaml) |
-| POST | /service/open/v2/lookup/classify/{classifyId}/items | 新增项 | market-server | [openapi-market-server.yaml](openapi/openapi-market-server.yaml) + [open-server.yaml](openapi/open-server.yaml) |
-| PUT | /service/open/v2/lookup/items/{itemId} | 编辑项 | market-server | [openapi-market-server.yaml](openapi/openapi-market-server.yaml) + [open-server.yaml](openapi/open-server.yaml) |
-| DELETE | /service/open/v2/lookup/items/{itemId} | 删除项 | market-server | [openapi-market-server.yaml](openapi/openapi-market-server.yaml) + [open-server.yaml](openapi/open-server.yaml) |
-| GET | /service/open/v2/lookup/items/{itemId} | 项详情 | market-server | [openapi-market-server.yaml](openapi/openapi-market-server.yaml) + [open-server.yaml](openapi/open-server.yaml) |
-| GET | /service/open/v2/lookup/whitelist | LookUp 白名单 | open-server | [openapi-market-server.yaml](openapi/openapi-market-server.yaml) + [open-server.yaml](openapi/open-server.yaml) |
+| GET | /service/open/v2/dictionary/list | 字典列表 | market-server | [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
+| POST | /service/open/v2/dictionary | 新增字典 | market-server | [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
+| GET | /service/open/v2/dictionary/{id} | 字典详情 | market-server | [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
+| PUT | /service/open/v2/dictionary/{id} | 编辑字典 | market-server | [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
+| DELETE | /service/open/v2/dictionary/{id} | 删除字典 | market-server | [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
+| GET | /service/open/v2/lookup/classify/list | LookUp 分类列表 | market-server | [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
+| POST | /service/open/v2/lookup/classify | 新增分类 | market-server | [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
+| PUT | /service/open/v2/lookup/classify/{classifyId} | 编辑分类 | market-server | [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
+| DELETE | /service/open/v2/lookup/classify/{classifyId} | 删除分类 | market-server | [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
+| GET | /service/open/v2/lookup/classify/{classifyId} | 分类详情 | market-server | [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
+| GET | /service/open/v2/lookup/classify/{classifyId}/items | 分类下项列表 | market-server | [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
+| POST | /service/open/v2/lookup/classify/{classifyId}/items | 新增项 | market-server | [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
+| PUT | /service/open/v2/lookup/items/{itemId} | 编辑项 | market-server | [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
+| DELETE | /service/open/v2/lookup/items/{itemId} | 删除项 | market-server | [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
+| GET | /service/open/v2/lookup/items/{itemId} | 项详情 | market-server | [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
+| GET | /service/open/v2/lookup/whitelist | LookUp 白名单 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) |
 
 ### 3.6 辅助能力（操作审计 / 文件）
 
 | 方法 | 路径 | 说明 | 服务 | 规范文件 |
 |:----:|------|------|:----:|:----:|
-| GET | /service/open/v2/operate-log | 操作日志分页查询 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| GET | /service/open/v2/operate-log/filters | 日志筛选项 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| POST | /service/open/v2/common-file/upload | 通用文件上传 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| POST | /service/open/v2/file/upload-image | 图片上传 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| POST | /service/open/v2/file/upload | 文件上传 | market-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
+| GET | /service/open/v2/operate-log | 操作日志分页查询 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) |
+| GET | /service/open/v2/operate-log/filters | 日志筛选项 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) |
+| POST | /service/open/v2/common-file/upload | 通用文件上传 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) |
+| POST | /service/open/v2/file/upload-image | 图片上传 | open-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) |
+| POST | /service/open/v2/file/upload | 文件上传 | market-server | [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
 
 ---
 
@@ -300,9 +300,9 @@
 
 | 方法 | 路径 | 说明 | 服务 | 规范文件 |
 |:----:|------|------|:----:|:----:|
-| GET | /service/open/v2/health | 健康检查 | open-server / market-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) / [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| GET | /service/open/v2/user-info | 当前用户信息 | open-server / market-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) / [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
-| GET | /api/v1/health | 健康检查 | api-server / event-server | [openapi-api-server.yaml](openapi/openapi-api-server.yaml) / [openapi-event-server.yaml](openapi/openapi-event-server.yaml) |
+| GET | /service/open/v2/health | 健康检查 | open-server / market-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
+| GET | /service/open/v2/user-info | 当前用户信息 | open-server / market-server | [openapi-open-server.yaml](openapi/openapi-open-server.yaml) + [openapi-market-server.yaml](openapi/openapi-market-server.yaml) |
+| GET | /api/v1/health | 健康检查 | api-server / event-server | [openapi-api-server.yaml](openapi/openapi-api-server.yaml) + [openapi-event-server.yaml](openapi/openapi-event-server.yaml) |
 
 ---
 
@@ -322,6 +322,7 @@
 
 | 版本 | 变更说明 | 日期 | 修订人 |
 |------|---------|------|--------|
+| v1.3 | "规范文件"列按服务列精确对应（消除混合节整节标注错配） | 2026-08-03 | SDDU Docs Agent |
 | v1.2 | "规范文件"列改为可点击链接（指向 openapi/ 目录） | 2026-08-03 | SDDU Docs Agent |
 | v1.1 | 增加"规范文件"列，关联 openapi/ 目录 OpenAPI YAML | 2026-08-03 | SDDU Docs Agent |
 | v1.0 | 全量接口清单（业务能力组织，184 端点） | 2026-08-03 | SDDU Docs Agent |
