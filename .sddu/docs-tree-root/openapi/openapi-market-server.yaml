@@ -1,0 +1,1504 @@
+# market-server 市场管理面 API
+# 生成方式: 静态分析（controller 注解 + DTO 字段），未运行服务
+# 对应全景: .sddu/docs-tree-root/api.md（业务视角接口清单）
+
+openapi: 3.0.3
+info:
+  title: market-server 市场管理面 API
+  version: v1.0
+  description: 市场管理面：数据字典、LookUp 管理、嵌入能力管理（平台面）、应用审批、文件上传
+servers:
+  -
+    url: "http://localhost:18083/market-server"
+    description: market-server 本地服务
+tags:
+  - name: 健康检查
+  - name: 能力管理
+  - name: 审批管理
+  - name: 机器人绑定管理
+  - name: 数据字典管理
+  - name: 通用文件管理
+  - name: 分类管理
+  - name: LookUp项管理
+paths:
+  /service/open/v2/health:
+    get:
+      tags:
+        - 健康检查
+      summary: health
+      operationId: health_get
+      security:
+        - internalAuth: []
+      responses:
+        200:
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+        400:
+          description: 参数错误
+        401:
+          description: 未认证
+        403:
+          description: 无权限
+        500:
+          description: 服务端错误
+  /service/open/v2/user-info:
+    get:
+      tags:
+        - 健康检查
+      summary: userInfo
+      operationId: userInfo_get
+      security:
+        - internalAuth: []
+      responses:
+        200:
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+        400:
+          description: 参数错误
+        401:
+          description: 未认证
+        403:
+          description: 无权限
+        500:
+          description: 服务端错误
+  /service/open/v2/ability/admin/list:
+    get:
+      tags:
+        - 能力管理
+      summary: list
+      operationId: list_get
+      security:
+        - internalAuth: []
+      responses:
+        200:
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminAbilityVO"
+        400:
+          description: 参数错误
+        401:
+          description: 未认证
+        403:
+          description: 无权限
+        500:
+          description: 服务端错误
+  /service/open/v2/ability/admin:
+    post:
+      tags:
+        - 能力管理
+      summary: create
+      operationId: create_post
+      security:
+        - internalAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminAbilityCreateRequest"
+      responses:
+        200:
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+        400:
+          description: 参数错误
+        401:
+          description: 未认证
+        403:
+          description: 无权限
+        500:
+          description: 服务端错误
+  /service/open/v2/ability/admin/{id}:
+    put:
+      tags:
+        - 能力管理
+      summary: update
+      operationId: update_put
+      security:
+        - internalAuth: []
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminAbilityUpdateRequest"
+      responses:
+        200:
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+        400:
+          description: 参数错误
+        401:
+          description: 未认证
+        403:
+          description: 无权限
+        500:
+          description: 服务端错误
+    delete:
+      tags:
+        - 能力管理
+      summary: delete
+      operationId: delete_delete
+      security:
+        - internalAuth: []
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        200:
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+        400:
+          description: 参数错误
+        401:
+          description: 未认证
+        403:
+          description: 无权限
+        500:
+          description: 服务端错误
+  /service/open/v2/apps/pending:
+    get:
+      tags:
+        - 审批管理
+      summary: 查询待审批应用列表
+      operationId: getPendingList_get
+      security:
+        - internalAuth: []
+      parameters:
+        -
+          name: curPage
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+        -
+          name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+      responses:
+        200:
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ApprovalListVo"
+        400:
+          description: 参数错误
+        401:
+          description: 未认证
+        403:
+          description: 无权限
+        500:
+          description: 服务端错误
+  /service/open/v2/apps/publish:
+    get:
+      tags:
+        - 审批管理
+      summary: 查询已上架应用列表
+      operationId: getPublishedList_get
+      security:
+        - internalAuth: []
+      parameters:
+        -
+          name: curPage
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+        -
+          name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+      responses:
+        200:
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ApprovalListVo"
+        400:
+          description: 参数错误
+        401:
+          description: 未认证
+        403:
+          description: 无权限
+        500:
+          description: 服务端错误
+  /service/open/v2/apps/approval:
+    post:
+      tags:
+        - 审批管理
+      summary: 审批操作（通过/驳回）
+      operationId: processApproval_post
+      security:
+        - internalAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApprovalProcessRequest"
+      responses:
+        200:
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+        400:
+          description: 参数错误
+        401:
+          description: 未认证
+        403:
+          description: 无权限
+        500:
+          description: 服务端错误
+  /service/open/v2/apps/single-chatbot-accounts:
+    get:
+      tags:
+        - 机器人绑定管理
+      summary: 查询已绑定机器人账号列表
+      operationId: getBoundAccounts_get
+      security:
+        - internalAuth: []
+      parameters:
+        -
+          name: appId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChatbotAccountVO"
+        400:
+          description: 参数错误
+        401:
+          description: 未认证
+        403:
+          description: 无权限
+        500:
+          description: 服务端错误
+    post:
+      tags:
+        - 机器人绑定管理
+      summary: 绑定机器人账号
+      operationId: bindAccount_post
+      security:
+        - internalAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatbotBindRequest"
+      responses:
+        200:
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatbotAccountVO"
+        400:
+          description: 参数错误
+        401:
+          description: 未认证
+        403:
+          description: 无权限
+        500:
+          description: 服务端错误
+    delete:
+      tags:
+        - 机器人绑定管理
+      summary: 解绑机器人账号
+      operationId: unbindAccount_delete
+      security:
+        - internalAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatbotBindRequest"
+      responses:
+        200:
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+        400:
+          description: 参数错误
+        401:
+          description: 未认证
+        403:
+          description: 无权限
+        500:
+          description: 服务端错误
+  /service/open/v2/dictionary/list:
+    get:
+      tags:
+        - 数据字典管理
+      summary: 查询数据字典列表
+      operationId: getDictionaryList_get
+      security:
+        - internalAuth: []
+      parameters:
+        -
+          name: code
+          in: query
+          required: false
+          schema:
+            type: string
+        -
+          name: name
+          in: query
+          required: false
+          schema:
+            type: string
+        -
+          name: path
+          in: query
+          required: false
+          schema:
+            type: string
+        -
+          name: status
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+        -
+          name: pageNum
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+        -
+          name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+      responses:
+        200:
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DictionaryListVO"
+        400:
+          description: 参数错误
+        401:
+          description: 未认证
+        403:
+          description: 无权限
+        500:
+          description: 服务端错误
+  /service/open/v2/dictionary/{id}:
+    get:
+      tags:
+        - 数据字典管理
+      summary: 获取数据字典详情
+      operationId: getDictionaryDetail_get
+      security:
+        - internalAuth: []
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        200:
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DictionaryVO"
+        400:
+          description: 参数错误
+        401:
+          description: 未认证
+        403:
+          description: 无权限
+        500:
+          description: 服务端错误
+    put:
+      tags:
+        - 数据字典管理
+      summary: 编辑数据字典
+      operationId: updateDictionary_put
+      security:
+        - internalAuth: []
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DictionaryUpdateDTO"
+      responses:
+        200:
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+        400:
+          description: 参数错误
+        401:
+          description: 未认证
+        403:
+          description: 无权限
+        500:
+          description: 服务端错误
+    delete:
+      tags:
+        - 数据字典管理
+      summary: 删除数据字典
+      operationId: deleteDictionary_delete
+      security:
+        - internalAuth: []
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        200:
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+        400:
+          description: 参数错误
+        401:
+          description: 未认证
+        403:
+          description: 无权限
+        500:
+          description: 服务端错误
+  /service/open/v2/dictionary:
+    post:
+      tags:
+        - 数据字典管理
+      summary: 新增数据字典
+      operationId: createDictionary_post
+      security:
+        - internalAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DictionaryCreateDTO"
+      responses:
+        200:
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+        400:
+          description: 参数错误
+        401:
+          description: 未认证
+        403:
+          description: 无权限
+        500:
+          description: 服务端错误
+  /service/open/v2/file/upload:
+    post:
+      tags:
+        - 通用文件管理
+      summary: 通用文件上传
+      operationId: upload_post
+      security:
+        - internalAuth: []
+      parameters:
+        -
+          name: file
+          in: query
+          required: true
+          schema:
+            type: string
+            format: binary
+        -
+          name: bizType
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int32
+      responses:
+        200:
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+        400:
+          description: 参数错误
+        401:
+          description: 未认证
+        403:
+          description: 无权限
+        500:
+          description: 服务端错误
+  /service/open/v2/lookup/classify/list:
+    get:
+      tags:
+        - 分类管理
+      summary: 查询分类列表
+      operationId: getClassifyList_get
+      security:
+        - internalAuth: []
+      parameters:
+        -
+          name: classifyCode
+          in: query
+          required: false
+          schema:
+            type: string
+        -
+          name: classifyName
+          in: query
+          required: false
+          schema:
+            type: string
+        -
+          name: classifyDesc
+          in: query
+          required: false
+          schema:
+            type: string
+        -
+          name: status
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+        -
+          name: pageNum
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+        -
+          name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+      responses:
+        200:
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClassifyListVO"
+        400:
+          description: 参数错误
+        401:
+          description: 未认证
+        403:
+          description: 无权限
+        500:
+          description: 服务端错误
+  /service/open/v2/lookup/classify/{classifyId}:
+    get:
+      tags:
+        - 分类管理
+      summary: 获取分类详情
+      operationId: getClassifyDetail_get
+      security:
+        - internalAuth: []
+      parameters:
+        -
+          name: classifyId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        200:
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClassifyVO"
+        400:
+          description: 参数错误
+        401:
+          description: 未认证
+        403:
+          description: 无权限
+        500:
+          description: 服务端错误
+    put:
+      tags:
+        - 分类管理
+      summary: 编辑分类
+      operationId: updateClassify_put
+      security:
+        - internalAuth: []
+      parameters:
+        -
+          name: classifyId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClassifyUpdateDTO"
+      responses:
+        200:
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+        400:
+          description: 参数错误
+        401:
+          description: 未认证
+        403:
+          description: 无权限
+        500:
+          description: 服务端错误
+    delete:
+      tags:
+        - 分类管理
+      summary: 删除分类
+      operationId: deleteClassify_delete
+      security:
+        - internalAuth: []
+      parameters:
+        -
+          name: classifyId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        200:
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+        400:
+          description: 参数错误
+        401:
+          description: 未认证
+        403:
+          description: 无权限
+        500:
+          description: 服务端错误
+  /service/open/v2/lookup/classify:
+    post:
+      tags:
+        - 分类管理
+      summary: 新增分类
+      operationId: createClassify_post
+      security:
+        - internalAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClassifyCreateDTO"
+      responses:
+        200:
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+        400:
+          description: 参数错误
+        401:
+          description: 未认证
+        403:
+          description: 无权限
+        500:
+          description: 服务端错误
+  /service/open/v2/lookup/classify/{classifyId}/items:
+    get:
+      tags:
+        - LookUp项管理
+      summary: 查询LookUp项列表
+      operationId: getItemList_get
+      security:
+        - internalAuth: []
+      parameters:
+        -
+          name: itemCode
+          in: query
+          required: false
+          schema:
+            type: string
+        -
+          name: itemName
+          in: query
+          required: false
+          schema:
+            type: string
+        -
+          name: status
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+        -
+          name: pageNum
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+        -
+          name: pageSize
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+        -
+          name: classifyId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        200:
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ItemListVO"
+        400:
+          description: 参数错误
+        401:
+          description: 未认证
+        403:
+          description: 无权限
+        500:
+          description: 服务端错误
+    post:
+      tags:
+        - LookUp项管理
+      summary: 新增LookUp项
+      operationId: createItem_post
+      security:
+        - internalAuth: []
+      parameters:
+        -
+          name: classifyId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ItemCreateDTO"
+      responses:
+        200:
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+        400:
+          description: 参数错误
+        401:
+          description: 未认证
+        403:
+          description: 无权限
+        500:
+          description: 服务端错误
+  /service/open/v2/lookup/items/{itemId}:
+    get:
+      tags:
+        - LookUp项管理
+      summary: 获取LookUp项详情
+      operationId: getItemDetail_get
+      security:
+        - internalAuth: []
+      parameters:
+        -
+          name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        200:
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ItemDetailVO"
+        400:
+          description: 参数错误
+        401:
+          description: 未认证
+        403:
+          description: 无权限
+        500:
+          description: 服务端错误
+    put:
+      tags:
+        - LookUp项管理
+      summary: 编辑LookUp项
+      operationId: updateItem_put
+      security:
+        - internalAuth: []
+      parameters:
+        -
+          name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ItemUpdateDTO"
+      responses:
+        200:
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+        400:
+          description: 参数错误
+        401:
+          description: 未认证
+        403:
+          description: 无权限
+        500:
+          description: 服务端错误
+    delete:
+      tags:
+        - LookUp项管理
+      summary: 删除LookUp项
+      operationId: deleteItem_delete
+      security:
+        - internalAuth: []
+      parameters:
+        -
+          name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        200:
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+        400:
+          description: 参数错误
+        401:
+          description: 未认证
+        403:
+          description: 无权限
+        500:
+          description: 服务端错误
+components:
+  securitySchemes:
+    internalAuth:
+      type: http
+      scheme: bearer
+      description: 管理面内部凭证（open-server/market-server）
+    akskAuth:
+      type: apiKey
+      in: header
+      name: X-AKSK-TOKEN
+      description: 消费面 AKSK 认证（api-server/event-server/connector-api），另支持 X-SOA-TOKEN / X-APIG-APPID
+  schemas:
+    AdminAbilityCreateRequest:
+      type: object
+      properties:
+        abilityType:
+          type: integer
+          format: int32
+        nameCn:
+          type: string
+        nameEn:
+          type: string
+        descCn:
+          type: string
+        descEn:
+          type: string
+        orderNum:
+          type: integer
+          format: int32
+        entryUrl:
+          type: string
+        routePath:
+          type: string
+        aliasName:
+          type: string
+        hidden:
+          type: integer
+          format: int32
+        requireRelease:
+          type: integer
+          format: int32
+        loadType:
+          type: integer
+          format: int32
+        iconBatchId:
+          type: string
+        diagramBatchId:
+          type: string
+    AdminAbilityUpdateRequest:
+      type: object
+      properties:
+        nameCn:
+          type: string
+        nameEn:
+          type: string
+        descCn:
+          type: string
+        descEn:
+          type: string
+        orderNum:
+          type: integer
+          format: int32
+        entryUrl:
+          type: string
+        routePath:
+          type: string
+        aliasName:
+          type: string
+        hidden:
+          type: integer
+          format: int32
+        requireRelease:
+          type: integer
+          format: int32
+        loadType:
+          type: integer
+          format: int32
+        iconBatchId:
+          type: string
+        diagramBatchId:
+          type: string
+        lastUpdateTime:
+          type: string
+          format: date-time
+    AdminAbilityVO:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        abilityType:
+          type: integer
+          format: int32
+        nameCn:
+          type: string
+        nameEn:
+          type: string
+        descCn:
+          type: string
+        descEn:
+          type: string
+        icon:
+          type: string
+        iconUrl:
+          type: string
+        exampleDiagram:
+          type: string
+        exampleDiagramUrl:
+          type: string
+        orderNum:
+          type: integer
+          format: int32
+        entryUrl:
+          type: string
+        hidden:
+          type: integer
+          format: int32
+        routePath:
+          type: string
+        aliasName:
+          type: string
+        requireRelease:
+          type: integer
+          format: int32
+        loadType:
+          type: integer
+          format: int32
+        createTime:
+          type: string
+          format: date-time
+        updateBy:
+          type: string
+        updateTime:
+          type: string
+          format: date-time
+    ApprovalListVo:
+      type: object
+      properties:
+        id:
+          type: string
+        businessType:
+          type: string
+        businessId:
+          type: string
+        appId:
+          type: string
+        hisAppId:
+          type: string
+        appNameCn:
+          type: string
+        appNameEn:
+          type: string
+        versionNo:
+          type: string
+        capabilityNames:
+          type: string
+        applicantId:
+          type: string
+        status:
+          type: integer
+          format: int32
+        createTime:
+          type: string
+          format: date-time
+    ApprovalProcessRequest:
+      type: object
+      properties:
+        id:
+          type: string
+        action:
+          type: integer
+          format: int32
+    ChatbotAccountVO:
+      type: object
+      properties:
+        id:
+          type: string
+        accountId:
+          type: string
+        bindTime:
+          type: string
+        bindBy:
+          type: string
+    ChatbotBindRequest:
+      type: object
+      properties:
+        appId:
+          type: string
+        accountId:
+          type: string
+    ClassifyCreateDTO:
+      type: object
+      properties:
+        classifyCode:
+          type: string
+        classifyName:
+          type: string
+        path:
+          type: string
+        classifyDesc:
+          type: string
+    ClassifyListVO:
+      type: object
+      properties:
+        classifyId:
+          type: string
+        classifyCode:
+          type: string
+        classifyName:
+          type: string
+        path:
+          type: string
+        classifyDesc:
+          type: string
+        status:
+          type: integer
+          format: int32
+        statusName:
+          type: string
+        createBy:
+          type: string
+        createTime:
+          type: string
+          format: date-time
+        lastUpdateBy:
+          type: string
+        lastUpdateTime:
+          type: string
+          format: date-time
+    ClassifyUpdateDTO:
+      type: object
+      properties:
+        classifyId:
+          type: integer
+          format: int64
+        classifyName:
+          type: string
+        path:
+          type: string
+        classifyDesc:
+          type: string
+        status:
+          type: integer
+          format: int32
+    ClassifyVO:
+      type: object
+      properties:
+        classifyId:
+          type: string
+        classifyCode:
+          type: string
+        classifyName:
+          type: string
+        path:
+          type: string
+        classifyDesc:
+          type: string
+        status:
+          type: integer
+          format: int32
+        statusName:
+          type: string
+        createBy:
+          type: string
+        createTime:
+          type: string
+          format: date-time
+        lastUpdateBy:
+          type: string
+        lastUpdateTime:
+          type: string
+          format: date-time
+    DictionaryCreateDTO:
+      type: object
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        value:
+          type: string
+        path:
+          type: string
+        description:
+          type: string
+    DictionaryListVO:
+      type: object
+      properties:
+        id:
+          type: string
+        code:
+          type: string
+        name:
+          type: string
+        value:
+          type: string
+        description:
+          type: string
+        path:
+          type: string
+        status:
+          type: integer
+          format: int32
+        statusName:
+          type: string
+        createBy:
+          type: string
+        createTime:
+          type: string
+          format: date-time
+        lastUpdateBy:
+          type: string
+        lastUpdateTime:
+          type: string
+          format: date-time
+    DictionaryUpdateDTO:
+      type: object
+      properties:
+        name:
+          type: string
+        value:
+          type: string
+        path:
+          type: string
+        description:
+          type: string
+        status:
+          type: integer
+          format: int32
+    DictionaryVO:
+      type: object
+      properties:
+        id:
+          type: string
+        code:
+          type: string
+        name:
+          type: string
+        value:
+          type: string
+        description:
+          type: string
+        path:
+          type: string
+        status:
+          type: integer
+          format: int32
+        statusName:
+          type: string
+        createBy:
+          type: string
+        createTime:
+          type: string
+          format: date-time
+        lastUpdateBy:
+          type: string
+        lastUpdateTime:
+          type: string
+          format: date-time
+    ItemCreateDTO:
+      type: object
+      properties:
+        itemCode:
+          type: string
+        itemName:
+          type: string
+        itemValue:
+          type: string
+        itemIndex:
+          type: integer
+          format: int32
+        itemDesc:
+          type: string
+        itemAttr1:
+          type: string
+        itemAttr2:
+          type: string
+        itemAttr3:
+          type: string
+        itemAttr4:
+          type: string
+        itemAttr5:
+          type: string
+        itemAttr6:
+          type: string
+    ItemDetailVO:
+      type: object
+      properties:
+        itemId:
+          type: string
+        classifyId:
+          type: string
+        classifyName:
+          type: string
+        itemCode:
+          type: string
+        itemName:
+          type: string
+        itemValue:
+          type: string
+        itemIndex:
+          type: integer
+          format: int32
+        itemDesc:
+          type: string
+        itemAttr1:
+          type: string
+        itemAttr2:
+          type: string
+        itemAttr3:
+          type: string
+        itemAttr4:
+          type: string
+        itemAttr5:
+          type: string
+        itemAttr6:
+          type: string
+        status:
+          type: integer
+          format: int32
+        statusName:
+          type: string
+        createBy:
+          type: string
+        createTime:
+          type: string
+          format: date-time
+        lastUpdateBy:
+          type: string
+        lastUpdateTime:
+          type: string
+          format: date-time
+    ItemListVO:
+      type: object
+      properties:
+        itemId:
+          type: string
+        classifyId:
+          type: string
+        itemCode:
+          type: string
+        itemName:
+          type: string
+        itemValue:
+          type: string
+        itemIndex:
+          type: integer
+          format: int32
+        itemDesc:
+          type: string
+        itemAttr1:
+          type: string
+        itemAttr2:
+          type: string
+        itemAttr3:
+          type: string
+        itemAttr4:
+          type: string
+        itemAttr5:
+          type: string
+        itemAttr6:
+          type: string
+        status:
+          type: integer
+          format: int32
+        statusName:
+          type: string
+        createBy:
+          type: string
+        createTime:
+          type: string
+          format: date-time
+        lastUpdateBy:
+          type: string
+        lastUpdateTime:
+          type: string
+          format: date-time
+    ItemUpdateDTO:
+      type: object
+      properties:
+        itemName:
+          type: string
+        itemValue:
+          type: string
+        itemIndex:
+          type: integer
+          format: int32
+        itemDesc:
+          type: string
+        itemAttr1:
+          type: string
+        itemAttr2:
+          type: string
+        itemAttr3:
+          type: string
+        itemAttr4:
+          type: string
+        itemAttr5:
+          type: string
+        itemAttr6:
+          type: string
+        status:
+          type: integer
+          format: int32
