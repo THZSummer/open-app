@@ -1,0 +1,110 @@
+# connector-api 连接流执行引擎 API
+# 生成方式: 静态分析（controller 注解 + DTO 字段），未运行服务
+# 对应全景: .sddu/docs-tree-root/api.md（业务视角接口清单）
+
+openapi: 3.0.3
+info:
+  title: connector-api 连接流执行引擎 API
+  version: v1.0
+  description: 连接流执行引擎：HTTP 触发执行、版本调试（公共连接能力 R4 消费面，GraalJS 脚本沙箱）
+servers:
+  -
+    url: "http://localhost:18180/connector-api"
+    description: connector-api 本地服务
+tags:
+  - name: HTTP 触发
+  - name: 测试执行
+paths:
+  /api/v1/flows/{flowId}/invoke:
+    post:
+      tags:
+        - HTTP 触发
+      summary: HTTP 触发连接流 (v5.8 透明穿透)
+      operationId: invokeFlow_post
+      security:
+        - akskAuth: []
+      parameters:
+        -
+          name: flowId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        200:
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+        400:
+          description: 参数错误
+        401:
+          description: 未认证
+        403:
+          description: 无权限
+        500:
+          description: 服务端错误
+  /api/v1/flows/{flowId}/versions/{versionId}/debug:
+    post:
+      tags:
+        - 测试执行
+      summary: 执行测试运行 (v5.5)
+      operationId: executeTestRun_post
+      security:
+        - akskAuth: []
+      parameters:
+        -
+          name: flowId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        -
+          name: versionId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TestRunRequest"
+      responses:
+        200:
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExecutionResult"
+        400:
+          description: 参数错误
+        401:
+          description: 未认证
+        403:
+          description: 无权限
+        500:
+          description: 服务端错误
+components:
+  securitySchemes:
+    internalAuth:
+      type: http
+      scheme: bearer
+      description: 管理面内部凭证（open-server/market-server）
+    akskAuth:
+      type: apiKey
+      in: header
+      name: X-AKSK-TOKEN
+      description: 消费面 AKSK 认证（api-server/event-server/connector-api），另支持 X-SOA-TOKEN / X-APIG-APPID
+  schemas:
+    ExecutionResult:
+      type: object
+      description: ExecutionResult（未在代码中定位到定义，见实现）
+    TestRunRequest:
+      type: object
+      description: TestRunRequest（未在代码中定位到定义，见实现）
