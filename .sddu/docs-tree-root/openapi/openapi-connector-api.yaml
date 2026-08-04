@@ -37,7 +37,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Object>>"
+                type: object
         400:
           description: 参数错误
         401:
@@ -81,7 +81,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ExecutionResult>"
+                $ref: "#/components/schemas/ExecutionResult"
         400:
           description: 参数错误
         401:
