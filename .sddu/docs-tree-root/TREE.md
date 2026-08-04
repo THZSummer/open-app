@@ -10,6 +10,7 @@ docs-tree-root/
 ├── docs-overview.md         # 项目全景入口（业务架构图 + 能力地图 + 技术全景）
 ├── data.md                  # 全部 40 张表结构（字段/索引/关联）
 ├── api.md                   # 全部接口清单（184 端点，按业务能力组织）
+├── openapi/                 # OpenAPI 契约（5 服务 YAML，186 端点）
 ├── adr-index.md             # ADR 索引
 ├── deploy.md                # 部署信息（拓扑/端口/环境变量）
 ├── security.md              # 全系统安全模型
@@ -37,6 +38,12 @@ docs-tree-root/
 | docs-overview.md | 项目全景入口 — 业务架构图 + 能力地图 + 技术全景 | ✅ 存在 |
 | data.md | 40 张表完整结构 | ✅ 存在 |
 | api.md | 全部接口清单（184 端点） | ✅ 存在 |
+| openapi/README.md | OpenAPI 规范索引 | ✅ 存在 |
+| openapi/openapi-open-server.yaml | open-server 135 ops / 82 schemas | ✅ 存在 |
+| openapi/openapi-market-server.yaml | market-server 28 ops / 20 schemas | ✅ 存在 |
+| openapi/openapi-api-server.yaml | api-server 11 ops / 10 schemas | ✅ 存在 |
+| openapi/openapi-event-server.yaml | event-server 10 ops / 5 schemas | ✅ 存在 |
+| openapi/openapi-connector-api.yaml | connector-api 2 ops / 2 schemas | ✅ 存在 |
 | adr-index.md | ADR 索引（能力开放平台 / 连接器平台） | ✅ 存在 |
 | deploy.md | 部署信息（拓扑/端口/环境变量） | ✅ 存在 |
 | security.md | 全系统安全模型 | ✅ 存在 |
