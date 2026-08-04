@@ -430,8 +430,6 @@ components:
         status:
           type: integer
           format: int32
-        data:
-          $ref: "#/components/schemas/T"
         errorInfo:
           $ref: "#/components/schemas/ErrorInfo"
         code:
@@ -463,6 +461,9 @@ components:
         authType:
           type: integer
           format: int32
+    ErrorInfo:
+      type: object
+      description: ErrorInfo（未在代码中定位到定义，见实现）
     PermissionCheckResponse:
       type: object
       properties:
@@ -543,4 +544,5 @@ components:
         appId:
           type: string
         roles:
-          $ref: "#/components/schemas/Integer[]"
+          type: integer
+          format: int32

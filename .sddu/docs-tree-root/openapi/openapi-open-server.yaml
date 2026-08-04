@@ -2032,7 +2032,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/?"
+                type: object
         400:
           description: 参数错误
         401:
@@ -2063,7 +2063,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/?"
+                type: object
         400:
           description: 参数错误
         401:
@@ -2133,7 +2133,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/?"
+                type: object
         400:
           description: 参数错误
         401:
@@ -2214,7 +2214,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/?"
+                type: object
         400:
           description: 参数错误
         401:
@@ -2289,7 +2289,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/?"
+                type: object
         400:
           description: 参数错误
         401:
@@ -2327,7 +2327,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/?"
+                type: object
         400:
           description: 参数错误
         401:
@@ -2365,7 +2365,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/?"
+                type: object
         400:
           description: 参数错误
         401:
@@ -2403,7 +2403,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/?"
+                type: object
         400:
           description: 参数错误
         401:
@@ -2953,7 +2953,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/?"
+                type: object
         400:
           description: 参数错误
         401:
@@ -2984,7 +2984,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/?"
+                type: object
         400:
           description: 参数错误
         401:
@@ -3164,7 +3164,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/?"
+                type: object
         400:
           description: 参数错误
         401:
@@ -3245,7 +3245,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/?"
+                type: object
         400:
           description: 参数错误
         401:
@@ -3358,7 +3358,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/?"
+                type: object
         400:
           description: 参数错误
         401:
@@ -3396,7 +3396,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/?"
+                type: object
         400:
           description: 参数错误
         401:
@@ -3434,7 +3434,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/?"
+                type: object
         400:
           description: 参数错误
         401:
@@ -3472,7 +3472,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/?"
+                type: object
         400:
           description: 参数错误
         401:
@@ -3510,7 +3510,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/?"
+                type: object
         400:
           description: 参数错误
         401:
@@ -4823,6 +4823,9 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/PropertyDto"
+    ApiInfo:
+      type: object
+      description: ApiInfo（未在代码中定位到定义，见实现）
     ApiListResponse:
       type: object
       properties:
@@ -5042,6 +5045,17 @@ components:
             format: int32
         apiSecret:
           type: string
+    AppVersionAbilityVO:
+      type: object
+      properties:
+        id:
+          type: string
+        abilityNameCn:
+          type: string
+        abilityNameEn:
+          type: string
+        iconUrl:
+          type: string
     AppVersionDetailVO:
       type: object
       properties:
@@ -5181,6 +5195,15 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ApprovalNodeDto"
+    ApprovalLogDto:
+      type: object
+      description: ApprovalLogDto（未在代码中定位到定义，见实现）
+    ApprovalLogInfo:
+      type: object
+      description: ApprovalLogInfo（未在代码中定位到定义，见实现）
+    ApprovalNodeDto:
+      type: object
+      description: ApprovalNodeDto（未在代码中定位到定义，见实现）
     ApprovalPendingListResponse:
       type: object
       properties:
@@ -5205,6 +5228,9 @@ components:
         createTime:
           type: string
           format: date-time
+    ApproverInfo:
+      type: object
+      description: ApproverInfo（未在代码中定位到定义，见实现）
     BatchApprovalRequest:
       type: object
       properties:
@@ -5253,6 +5279,9 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/CallbackPropertyDto"
+    CallbackInfo:
+      type: object
+      description: CallbackInfo（未在代码中定位到定义，见实现）
     CallbackListResponse:
       type: object
       properties:
@@ -5276,6 +5305,9 @@ components:
           format: date-time
         docUrl:
           type: string
+    CallbackPropertyDto:
+      type: object
+      description: CallbackPropertyDto（未在代码中定位到定义，见实现）
     CallbackResponse:
       type: object
       properties:
@@ -5397,6 +5429,9 @@ components:
         sortOrder:
           type: integer
           format: int32
+    CategoryInfo:
+      type: object
+      description: CategoryInfo（未在代码中定位到定义，见实现）
     CategoryOwnerRequest:
       type: object
       properties:
@@ -5689,6 +5724,17 @@ components:
     EmergencyResult:
       type: object
       description: EmergencyResult（未在代码中定位到定义，见实现）
+    EmployeeInfoVO:
+      type: object
+      properties:
+        welinkId:
+          type: string
+        memberNameCn:
+          type: string
+        memberNameEn:
+          type: string
+        w3Account:
+          type: string
     EventCreateRequest:
       type: object
       properties:
@@ -5706,6 +5752,9 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/EventPropertyDto"
+    EventInfo:
+      type: object
+      description: EventInfo（未在代码中定位到定义，见实现）
     EventListResponse:
       type: object
       properties:
@@ -5733,6 +5782,9 @@ components:
           type: string
         scope:
           type: string
+    EventPropertyDto:
+      type: object
+      description: EventPropertyDto（未在代码中定位到定义，见实现）
     EventResponse:
       type: object
       properties:
@@ -5950,6 +6002,15 @@ components:
         stepCount:
           type: integer
           format: int32
+    ExecutionStepVO:
+      type: object
+      description: ExecutionStepVO（未在代码中定位到定义，见实现）
+    FailedItem:
+      type: object
+      description: FailedItem（未在代码中定位到定义，见实现）
+    FailedRecord:
+      type: object
+      description: FailedRecord（未在代码中定位到定义，见实现）
     FileV2VO:
       type: object
       properties:
@@ -6255,6 +6316,32 @@ components:
           type: string
         result:
           type: string
+    PermissionCreateRequest:
+      type: object
+      properties:
+        nameCn:
+          type: string
+        nameEn:
+          type: string
+        scope:
+          type: string
+        needApproval:
+          type: integer
+          format: int32
+        resourceNodes:
+          type: string
+    PermissionDefinitionDto:
+      type: object
+      description: PermissionDefinitionDto（未在代码中定位到定义，见实现）
+    PermissionDto:
+      type: object
+      description: PermissionDto（未在代码中定位到定义，见实现）
+    PermissionInfo:
+      type: object
+      description: PermissionInfo（未在代码中定位到定义，见实现）
+    PermissionSimpleDto:
+      type: object
+      description: PermissionSimpleDto（未在代码中定位到定义，见实现）
     PermissionSubscribeRequest:
       type: object
       properties:
@@ -6290,6 +6377,26 @@ components:
           format: int32
         reason:
           type: string
+    PermissionUpdateRequest:
+      type: object
+      properties:
+        nameCn:
+          type: string
+        nameEn:
+          type: string
+        scope:
+          type: string
+        needApproval:
+          type: integer
+          format: int32
+        resourceNodes:
+          type: string
+    PropertyDto:
+      type: object
+      description: PropertyDto（未在代码中定位到定义，见实现）
+    ResourceInfo:
+      type: object
+      description: ResourceInfo（未在代码中定位到定义，见实现）
     SubscriptionConfigRequest:
       type: object
       properties:
@@ -6301,6 +6408,12 @@ components:
         authType:
           type: integer
           format: int32
+    SubscriptionData:
+      type: object
+      description: SubscriptionData（未在代码中定位到定义，见实现）
+    SubscriptionRecord:
+      type: object
+      description: SubscriptionRecord（未在代码中定位到定义，见实现）
     SyncRequest:
       type: object
       properties:

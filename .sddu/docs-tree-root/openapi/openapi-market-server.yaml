@@ -439,7 +439,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PageVO"
+                $ref: "#/components/schemas/DictionaryListVO"
         400:
           description: 参数错误
         401:
@@ -666,7 +666,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PageVO"
+                $ref: "#/components/schemas/ClassifyListVO"
         400:
           description: 参数错误
         401:
@@ -856,7 +856,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PageVO"
+                $ref: "#/components/schemas/ItemListVO"
         400:
           description: 参数错误
         401:
@@ -1500,24 +1500,5 @@ components:
         itemAttr6:
           type: string
         status:
-          type: integer
-          format: int32
-    PageVO:
-      type: object
-      properties:
-        list:
-          type: array
-          items:
-            $ref: "#/components/schemas/T"
-        total:
-          type: integer
-          format: int64
-        pages:
-          type: integer
-          format: int32
-        pageNum:
-          type: integer
-          format: int32
-        pageSize:
           type: integer
           format: int32

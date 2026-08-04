@@ -11,10 +11,10 @@
 |---------|------|:----:|:----:|---------|
 | [openapi-open-server.yaml](openapi-open-server.yaml) | open-server 能力开放平台管理面 | 135 | 82 | http://localhost:18080/open-server |
 | [openapi-market-server.yaml](openapi-market-server.yaml) | market-server 市场管理面 | 28 | 20 | http://localhost:18083/market-server |
-| [openapi-api-server.yaml](openapi-api-server.yaml) | api-server 消费网关 | 11 | 10 | http://localhost:18081/api-server |
+| [openapi-api-server.yaml](openapi-api-server.yaml) | api-server 消费网关 | 11 | 11 | http://localhost:18081/api-server |
 | [openapi-event-server.yaml](openapi-event-server.yaml) | event-server 事件/回调网关 | 10 | 5 | http://localhost:18082/event-server |
 | [openapi-connector-api.yaml](openapi-connector-api.yaml) | connector-api 连接流执行引擎 | 2 | 2 | http://localhost:18180/connector-api |
-| **合计** | | **186** | **119** | |
+| **合计** | | **186** | **144** | |
 
 ## 与 api.md 的映射
 
