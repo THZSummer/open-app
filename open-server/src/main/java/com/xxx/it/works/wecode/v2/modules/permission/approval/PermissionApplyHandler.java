@@ -14,6 +14,7 @@ import com.xxx.it.works.wecode.v2.modules.event.mapper.EventMapper;
 import com.xxx.it.works.wecode.v2.modules.event.mapper.PermissionMapper;
 import com.xxx.it.works.wecode.v2.modules.permission.entity.Subscription;
 import com.xxx.it.works.wecode.v2.modules.permission.mapper.SubscriptionMapper;
+import com.xxx.it.works.wecode.v2.modules.permission.entity.SubscriptionWithAppVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -89,12 +90,14 @@ class PermissionApplyHandler {
 
     Map<String, Object> getBusinessData(Long businessId) {
         Map<String, Object> data = new HashMap<>();
-        Subscription subscription = subscriptionMapper.selectById(businessId);
+        SubscriptionWithAppVO subscription = subscriptionMapper.selectByIdWithApp(businessId);
         if (subscription == null) {
             return data;
         }
 
         data.put("appId", subscription.getAppId());
+        data.put("appNameCn", subscription.getAppNameCn());
+        data.put("hisAppId", subscription.getHisAppId());
         data.put("permissionId", subscription.getPermissionId());
 
         Permission permission = permissionMapper.selectById(subscription.getPermissionId());

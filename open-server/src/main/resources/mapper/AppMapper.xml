@@ -241,4 +241,34 @@
         ORDER BY code
     </select>
 
+    <!-- 新增：应用详情（含 hisAppId），用于审批中心 -->
+    <resultMap id="AppWithHisAppIdResultMap" type="com.xxx.it.works.wecode.v2.modules.app.entity.AppWithHisAppIdVO" extends="AppResultMap">
+        <result column="eamap_app_code" property="hisAppId"/>
+    </resultMap>
+
+    <select id="selectByIdWithHisAppId" resultMap="AppWithHisAppIdResultMap">
+        SELECT a.id,
+               a.app_id,
+               a.tenant_id,
+               a.icon_id,
+               a.app_name_cn,
+               a.app_name_en,
+               a.app_desc_cn,
+               a.app_desc_en,
+               a.app_type,
+               a.app_sub_type,
+               a.status,
+               a.create_by,
+               a.create_time,
+               a.last_update_by,
+               a.last_update_time,
+               p.property_value AS eamap_app_code
+        FROM openplatform_app_t a
+        LEFT JOIN openplatform_app_p_t p
+               ON p.parent_id = a.id
+              AND p.property_name = 'eamap_app_code'
+              AND p.status = 1
+        WHERE a.id = #{id}
+    </select>
+
 </mapper>

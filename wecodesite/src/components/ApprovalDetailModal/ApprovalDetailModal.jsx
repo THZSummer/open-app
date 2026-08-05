@@ -74,6 +74,8 @@ function ApprovalDetailModal({
               <Descriptions.Item label="申请人">{detail.applicantName}</Descriptions.Item>
               <Descriptions.Item label="业务类型">{detail.businessType}</Descriptions.Item>
               <Descriptions.Item label="业务名称">{detail.businessData?.nameCn || '-'}</Descriptions.Item>
+              <Descriptions.Item label="应用名称">{detail.appNameCn || '-'}</Descriptions.Item>
+              <Descriptions.Item label="AppID">{detail.hisAppId || '-'}</Descriptions.Item>
               <Descriptions.Item label="业务ID">{detail.businessId}</Descriptions.Item>
               <Descriptions.Item label="状态">
                 <Tag color={SUBSCRIPTION_STATUS[detail.status]?.color || 'default'}>

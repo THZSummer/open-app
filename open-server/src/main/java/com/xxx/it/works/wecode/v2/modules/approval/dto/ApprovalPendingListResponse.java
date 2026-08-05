@@ -37,6 +37,16 @@ public class ApprovalPendingListResponse implements Serializable {
     private String businessName;
 
     /**
+     * 应用名称
+     */
+    private String appNameCn;
+
+    /**
+     * AppID
+     */
+    private String hisAppId;
+
+    /**
      * 申请人ID
      */
     private String applicantId;

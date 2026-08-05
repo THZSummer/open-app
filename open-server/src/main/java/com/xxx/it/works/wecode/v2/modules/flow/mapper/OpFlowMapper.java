@@ -1,6 +1,7 @@
 package com.xxx.it.works.wecode.v2.modules.flow.mapper;
 
 import com.xxx.it.works.wecode.v2.modules.flow.entity.Flow;
+import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowWithAppVO;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -84,4 +85,9 @@ public interface OpFlowMapper {
             @Param("lastUpdateTime") java.util.Date lastUpdateTime,
             @Param("lastUpdateBy") String lastUpdateBy
     );
+
+    /**
+     * 查询连接流详情（含应用信息），用于审批中心
+     */
+    FlowWithAppVO selectByIdWithApp(@Param("id") Long id);
 }

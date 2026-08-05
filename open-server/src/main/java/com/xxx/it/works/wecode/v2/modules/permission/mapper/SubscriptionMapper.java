@@ -1,6 +1,7 @@
 package com.xxx.it.works.wecode.v2.modules.permission.mapper;
 
 import com.xxx.it.works.wecode.v2.modules.permission.entity.Subscription;
+import com.xxx.it.works.wecode.v2.modules.permission.entity.SubscriptionWithAppVO;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -126,4 +127,9 @@ public interface SubscriptionMapper {
      * 统计权限被订阅的数量
      */
     Long countByPermissionId(@Param("permissionId") Long permissionId);
+
+    /**
+     * 查询订阅详情（含应用信息），用于审批中心
+     */
+    SubscriptionWithAppVO selectByIdWithApp(@Param("id") Long id);
 }

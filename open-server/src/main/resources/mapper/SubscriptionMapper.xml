@@ -222,4 +222,37 @@
         WHERE permission_id = #{permissionId}
     </select>
 
+    <!-- 新增：订阅详情（含应用信息），用于审批中心 -->
+    <resultMap id="SubscriptionWithAppResultMap" type="com.xxx.it.works.wecode.v2.modules.permission.entity.SubscriptionWithAppVO" extends="BaseResultMap">
+        <result column="app_name_cn" property="appNameCn"/>
+        <result column="eamap_app_code" property="hisAppId"/>
+    </resultMap>
+
+    <select id="selectByIdWithApp" resultMap="SubscriptionWithAppResultMap">
+        SELECT s.id,
+               s.app_id,
+               s.permission_id,
+               s.status,
+               s.channel_type,
+               s.channel_address,
+               s.auth_type,
+               s.create_time,
+               s.last_update_time,
+               s.create_by,
+               s.last_update_by,
+               s.approved_at,
+               s.approved_by,
+               a.app_name_cn,
+               p.property_value AS eamap_app_code
+        FROM openplatform_v2_subscription_t s
+        LEFT JOIN openplatform_app_t a
+               ON a.id = s.app_id
+              AND a.status = 1
+        LEFT JOIN openplatform_app_p_t p
+               ON p.parent_id = a.id
+              AND p.property_name = 'eamap_app_code'
+              AND p.status = 1
+        WHERE s.id = #{id}
+    </select>
+
 </mapper>
