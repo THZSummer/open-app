@@ -39,6 +39,16 @@ public class ApprovalDetailResponse implements Serializable {
     private Map<String, Object> businessData;
 
     /**
+     * 应用名称
+     */
+    private String appNameCn;
+
+    /**
+     * AppID
+     */
+    private String hisAppId;
+
+    /**
      * 申请人ID
      */
     private String applicantId;

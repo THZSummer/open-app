@@ -3,8 +3,8 @@ package com.xxx.it.works.wecode.v2.modules.version.approval;
 import com.xxx.it.works.wecode.v2.modules.approval.engine.ApprovalBusinessHandler;
 import com.xxx.it.works.wecode.v2.modules.approval.engine.ApprovalEngine;
 import com.xxx.it.works.wecode.v2.modules.approval.entity.ApprovalRecord;
-import com.xxx.it.works.wecode.v2.modules.app.entity.App;
 import com.xxx.it.works.wecode.v2.modules.app.mapper.AppMapper;
+import com.xxx.it.works.wecode.v2.modules.app.entity.AppWithHisAppIdVO;
 import com.xxx.it.works.wecode.v2.modules.version.entity.AppVersion;
 import com.xxx.it.works.wecode.v2.modules.version.enums.VersionStatusEnum;
 import com.xxx.it.works.wecode.v2.modules.version.mapper.AppVersionMapper;
@@ -77,7 +77,7 @@ public class AppVersionPublishHandler implements ApprovalBusinessHandler {
         data.put("versionDescEn", version.getVersionDescEn());
 
         if (version.getAppId() != null) {
-            App app = appMapper.selectById(version.getAppId());
+            AppWithHisAppIdVO app = appMapper.selectByIdWithHisAppId(version.getAppId());
             if (app != null) {
                 String versionSuffix = " (版本" + version.getVersionCode() + ")";
                 data.put("nameCn", app.getAppNameCn() + versionSuffix);
@@ -85,6 +85,7 @@ public class AppVersionPublishHandler implements ApprovalBusinessHandler {
                 data.put("appNameCn", app.getAppNameCn());
                 data.put("appNameEn", app.getAppNameEn());
                 data.put("appId", app.getAppId());
+                data.put("hisAppId", app.getHisAppId());
             }
         }
 

@@ -33,6 +33,22 @@ export const BUSINESS_COLUMNS = [
     ellipsis: true,
   },
   {
+    title: '应用名称',
+    dataIndex: 'appNameCn',
+    key: 'appNameCn',
+    width: 150,
+    ellipsis: true,
+    render: (v) => v || '-',
+  },
+  {
+    title: 'AppID',
+    dataIndex: 'hisAppId',
+    key: 'hisAppId',
+    width: 160,
+    ellipsis: true,
+    render: (v) => v || '-',
+  },
+  {
     title: '业务ID',
     dataIndex: 'businessId',
     key: 'businessId',

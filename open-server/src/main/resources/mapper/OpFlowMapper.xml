@@ -148,4 +148,38 @@
         </where>
     </select>
 
+    <!-- 新增：连接流详情（含应用信息），用于审批中心 -->
+    <resultMap id="FlowWithAppResultMap" type="com.xxx.it.works.wecode.v2.modules.flow.entity.FlowWithAppVO" extends="BaseResultMap">
+        <result column="app_name_cn" property="appNameCn"/>
+        <result column="eamap_app_code" property="hisAppId"/>
+    </resultMap>
+
+    <select id="selectByIdWithApp" resultMap="FlowWithAppResultMap">
+        SELECT f.id,
+               f.name_cn,
+               f.name_en,
+               f.description_cn,
+               f.description_en,
+               f.icon_file_id,
+               f.lifecycle_status,
+               f.deployed_version_id,
+               f.deployed_version_number,
+               f.app_id,
+               f.create_time,
+               f.last_update_time,
+               f.create_by,
+               f.last_update_by,
+               a.app_name_cn,
+               p.property_value AS eamap_app_code
+        FROM openplatform_v2_cp_flow_t f
+        LEFT JOIN openplatform_app_t a
+               ON a.id = f.app_id
+              AND a.status = 1
+        LEFT JOIN openplatform_app_p_t p
+               ON p.parent_id = a.id
+              AND p.property_name = 'eamap_app_code'
+              AND p.status = 1
+        WHERE f.id = #{id}
+    </select>
+
 </mapper>

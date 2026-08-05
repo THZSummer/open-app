@@ -9,6 +9,7 @@ import com.xxx.it.works.wecode.v2.modules.flowversion.mapper.OpFlowVersionMapper
 import com.xxx.it.works.wecode.v2.modules.flow.entity.Flow;
 import com.xxx.it.works.wecode.v2.modules.flow.mapper.OpFlowMapper;
 import com.xxx.it.works.wecode.v2.modules.flow.service.FlowCacheEvictor;
+import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowWithAppVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -91,7 +92,7 @@ public class FlowVersionPublishHandler implements ApprovalBusinessHandler {
         data.put("status", version.getStatus());
 
         if (version.getFlowId() != null) {
-            Flow flow = flowMapper.selectById(version.getFlowId());
+            FlowWithAppVO flow = flowMapper.selectByIdWithApp(version.getFlowId());
             if (flow != null) {
                 String versionSuffix = " (版本" + version.getVersionNumber() + ")";
                 data.put("nameCn", flow.getNameCn() + versionSuffix);
@@ -99,6 +100,8 @@ public class FlowVersionPublishHandler implements ApprovalBusinessHandler {
                 data.put("flowNameCn", flow.getNameCn());
                 data.put("flowNameEn", flow.getNameEn());
                 data.put("appId", flow.getAppId());
+                data.put("appNameCn", flow.getAppNameCn());
+                data.put("hisAppId", flow.getHisAppId());
             }
         }
 

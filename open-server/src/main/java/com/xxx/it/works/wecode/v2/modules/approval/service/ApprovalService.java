@@ -87,8 +87,16 @@ public class ApprovalService {
 
             // 设置业务名称（从业务数据中获取）
             Map<String, Object> businessData = getBusinessData(record.getBusinessType(), record.getBusinessId());
-            if (businessData != null && businessData.get("nameCn") != null) {
-                response.setBusinessName((String) businessData.get("nameCn"));
+            if (businessData != null) {
+                if (businessData.get("nameCn") != null) {
+                    response.setBusinessName((String) businessData.get("nameCn"));
+                }
+                if (businessData.get("appNameCn") != null) {
+                    response.setAppNameCn((String) businessData.get("appNameCn"));
+                }
+                if (businessData.get("hisAppId") != null) {
+                    response.setHisAppId((String) businessData.get("hisAppId"));
+                }
             }
             response.setApplicantId(record.getApplicantId());
             response.setApplicantName(record.getApplicantName());
@@ -210,8 +218,16 @@ public class ApprovalService {
         response.setBusinessId(String.valueOf(record.getBusinessId()));
 
         Map<String, Object> businessData = getBusinessData(record.getBusinessType(), record.getBusinessId());
-        if (businessData != null && businessData.get("nameCn") != null) {
-            response.setBusinessName((String) businessData.get("nameCn"));
+        if (businessData != null) {
+            if (businessData.get("nameCn") != null) {
+                response.setBusinessName((String) businessData.get("nameCn"));
+            }
+            if (businessData.get("appNameCn") != null) {
+                response.setAppNameCn((String) businessData.get("appNameCn"));
+            }
+            if (businessData.get("hisAppId") != null) {
+                response.setHisAppId((String) businessData.get("hisAppId"));
+            }
         }
         response.setApplicantId(record.getApplicantId());
         response.setApplicantName(record.getApplicantName());
@@ -329,6 +345,17 @@ public class ApprovalService {
         response.setNodes(nodes);  // 审批节点列表（含状态和 level）
         response.setLogs(buildLogDtos(logs, nodes));
         response.setCreateTime(record.getCreateTime());
+
+        // 新增：从 businessData 取 appNameCn / hisAppId
+        Map<String, Object> bd = response.getBusinessData();
+        if (bd != null) {
+            if (bd.get("appNameCn") != null) {
+                response.setAppNameCn((String) bd.get("appNameCn"));
+            }
+            if (bd.get("hisAppId") != null) {
+                response.setHisAppId((String) bd.get("hisAppId"));
+            }
+        }
 
         return response;
     }

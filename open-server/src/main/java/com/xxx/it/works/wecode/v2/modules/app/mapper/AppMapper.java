@@ -2,6 +2,7 @@ package com.xxx.it.works.wecode.v2.modules.app.mapper;
 
 import com.xxx.it.works.wecode.v2.modules.app.entity.App;
 import com.xxx.it.works.wecode.v2.modules.app.entity.AppProperty;
+import com.xxx.it.works.wecode.v2.modules.app.entity.AppWithHisAppIdVO;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -71,4 +72,9 @@ public interface AppMapper {
      */
     List<String> selectDictionaryValuesByPathAndCodePrefix(
             @Param("path") String path, @Param("codePrefix") String codePrefix);
+
+    /**
+     * 查询应用详情（含 hisAppId），用于审批中心
+     */
+    AppWithHisAppIdVO selectByIdWithHisAppId(@Param("id") Long id);
 }
