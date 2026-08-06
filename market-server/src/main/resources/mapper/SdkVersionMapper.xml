@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.xxx.it.works.wecode.v2.modules.sdk.mapper.SdkVersionMapper">
+
+    <resultMap id="BaseResultMap" type="com.xxx.it.works.wecode.v2.modules.sdk.entity.SdkVersionEntity">
+        <id column="id" property="id"/>
+        <result column="version_name" property="versionName"/>
+        <result column="update_notes" property="updateNotes"/>
+        <result column="artifact_url" property="artifactUrl"/>
+        <result column="permission_id" property="permissionId"/>
+        <result column="status" property="status"/>
+        <result column="deprecate_reason" property="deprecateReason"/>
+        <result column="create_by" property="createBy"/>
+        <result column="create_time" property="createTime"/>
+        <result column="last_update_by" property="lastUpdateBy"/>
+        <result column="last_update_time" property="lastUpdateTime"/>
+    </resultMap>
+
+    <resultMap id="DetailResultMap" type="com.xxx.it.works.wecode.v2.modules.sdk.entity.SdkVersionEntity">
+        <id column="id" property="id"/>
+        <result column="version_name" property="versionName"/>
+        <result column="update_notes" property="updateNotes"/>
+        <result column="artifact_url" property="artifactUrl"/>
+        <result column="permission_id" property="permissionId"/>
+        <result column="status" property="status"/>
+        <result column="deprecate_reason" property="deprecateReason"/>
+        <result column="create_by" property="createBy"/>
+        <result column="create_time" property="createTime"/>
+        <result column="last_update_by" property="lastUpdateBy"/>
+        <result column="last_update_time" property="lastUpdateTime"/>
+        <result column="permission_name" property="permissionName"/>
+        <result column="permission_scope" property="permissionScope"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, version_name, update_notes, artifact_url, permission_id, status, deprecate_reason,
+        create_by, create_time, last_update_by, last_update_time
+    </sql>
+
+    <!-- ==================== insert ==================== -->
+    <insert id="insert" parameterType="com.xxx.it.works.wecode.v2.modules.sdk.entity.SdkVersionEntity">
+        INSERT INTO openplatform_sdk_version_t (
+            id, version_name, update_notes, artifact_url, permission_id, status, deprecate_reason,
+            create_by, create_time, last_update_by, last_update_time
+        ) VALUES (
+            #{id}, #{versionName}, #{updateNotes}, #{artifactUrl}, #{permissionId}, #{status}, #{deprecateReason},
+            #{createBy}, #{createTime}, #{lastUpdateBy}, #{lastUpdateTime}
+        )
+    </insert>
+
+    <!-- ==================== updateByPrimaryKeySelective ==================== -->
+    <update id="updateByPrimaryKeySelective"
+            parameterType="com.xxx.it.works.wecode.v2.modules.sdk.entity.SdkVersionEntity">
+        UPDATE openplatform_sdk_version_t
+        <set>
+            <if test="updateNotes != null">update_notes = #{updateNotes},</if>
+            <if test="artifactUrl != null">artifact_url = #{artifactUrl},</if>
+            <if test="permissionId != null">permission_id = #{permissionId},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="deprecateReason != null">deprecate_reason = #{deprecateReason},</if>
+            <if test="lastUpdateBy != null">last_update_by = #{lastUpdateBy},</if>
+            last_update_time = NOW(),
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <!-- ==================== updateByPrimaryKey（全字段更新，null 也写入） ==================== -->
+    <update id="updateByPrimaryKey"
+            parameterType="com.xxx.it.works.wecode.v2.modules.sdk.entity.SdkVersionEntity">
+        UPDATE openplatform_sdk_version_t
+        SET update_notes = #{updateNotes},
+            artifact_url = #{artifactUrl},
+            permission_id = #{permissionId},
+            last_update_by = #{lastUpdateBy},
+            last_update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <!-- ==================== selectByPrimaryKey ==================== -->
+    <select id="selectByPrimaryKey" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM openplatform_sdk_version_t
+        WHERE id = #{id}
+    </select>
+
+    <!-- ==================== selectDetailByPrimaryKey（含权限名） ==================== -->
+    <select id="selectDetailByPrimaryKey" resultMap="DetailResultMap">
+        SELECT v.*, p.name_cn AS permission_name, p.scope AS permission_scope
+        FROM openplatform_sdk_version_t v
+        LEFT JOIN openplatform_v2_permission_t p ON v.permission_id = p.id
+        WHERE v.id = #{id}
+    </select>
+
+    <!-- ==================== selectPage（含权限名） ==================== -->
+    <select id="selectPage" resultMap="DetailResultMap">
+        SELECT v.*, p.name_cn AS permission_name, p.scope AS permission_scope
+        FROM openplatform_sdk_version_t v
+        LEFT JOIN openplatform_v2_permission_t p ON v.permission_id = p.id
+        <where>
+            <if test="status != null">
+                AND v.status = #{status}
+            </if>
+            <if test="versionName != null and versionName != ''">
+                AND v.version_name LIKE #{versionName}
+            </if>
+        </where>
+        ORDER BY v.create_time DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <!-- ==================== countByPage ==================== -->
+    <select id="countByPage" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM openplatform_sdk_version_t v
+        <where>
+            <if test="status != null">
+                AND v.status = #{status}
+            </if>
+            <if test="versionName != null and versionName != ''">
+                AND v.version_name LIKE #{versionName}
+            </if>
+        </where>
+    </select>
+
+    <!-- ==================== countDuplicate（查重） ==================== -->
+    <select id="countDuplicate" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM openplatform_sdk_version_t
+        WHERE version_name = #{versionName}
+        <choose>
+            <when test="permissionId != null">
+                AND permission_id = #{permissionId}
+            </when>
+            <otherwise>
+                AND permission_id IS NULL
+            </otherwise>
+        </choose>
+        <if test="excludeId != null">
+            AND id != #{excludeId}
+        </if>
+    </select>
+
+</mapper>

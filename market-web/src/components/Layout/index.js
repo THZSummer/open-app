@@ -8,6 +8,7 @@ import {
   FileTextOutlined,
   AuditOutlined,
   AppstoreAddOutlined,
+  ToolOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 import useGlobalStore from '@/stores/global.store';
@@ -43,6 +44,11 @@ const menuItems = [
     key: '/ability-admin',
     icon: <AppstoreAddOutlined />,
     label: '能力管理',
+  },
+  {
+    key: '/sdk-version',
+    icon: <ToolOutlined />,
+    label: 'SDK版本管理',
   },
 ];
 

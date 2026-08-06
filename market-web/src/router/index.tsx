@@ -19,6 +19,9 @@ import ApprovalDetail from './routeRedBlue/approveDetail';
 // 能力目录管理
 import AbilityAdminList from './routeRedBlue/ability-admin';
 
+// SDK版本管理
+import SdkVersionList from './routeRedBlue/sdk-version';
+
 /**
  * 路由配置
  *
@@ -30,6 +33,7 @@ import AbilityAdminList from './routeRedBlue/ability-admin';
  * - /approval: 审批管理
  * - /approveDetail: 机器人绑定页面
  * - /ability-admin: 能力目录管理
+ * - /sdk-version: SDK版本管理
  * - /404: 404 页面
  */
 const Router = () => {
@@ -43,6 +47,7 @@ const Router = () => {
         <Route path="approval" element={<Approval />} />
         <Route path="approveDetail" element={<ApprovalDetail />} />
         <Route path="ability-admin" element={<AbilityAdminList />} />
+        <Route path="sdk-version" element={<SdkVersionList />} />
         <Route path="404" element={<NotFound />} />
         <Route path="*" element={<Navigate to="/404" replace />} />
       </Route>

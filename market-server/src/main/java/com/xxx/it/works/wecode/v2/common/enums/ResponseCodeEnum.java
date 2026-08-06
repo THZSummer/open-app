@@ -31,6 +31,18 @@ public enum ResponseCodeEnum {
     ALREADY_EXISTS("40901", "资源已存在", "Resource already exists"),
     ITEM_CODE_EXISTS("40902", "项编码已存在", "Item code already exists"),
 
+    // SDK版本 - 状态流转
+    SDK_VERSION_DEPRECATED_CANNOT_EDIT("40005", "已废弃版本不可编辑", "Deprecated version cannot be edited"),
+    SDK_VERSION_ALREADY_DEPRECATED("40006", "该版本已是废弃状态", "Version is already deprecated"),
+    SDK_VERSION_ALREADY_PUBLISHED("40007", "该版本已是发布状态", "Version is already published"),
+
+    // SDK版本 - 资源不存在
+    SDK_VERSION_NOT_FOUND("40403", "SDK版本不存在", "SDK version not found"),
+    SDK_PERMISSION_NOT_FOUND("40404", "关联的权限不存在", "Related permission not found"),
+
+    // SDK版本 - 资源已存在
+    SDK_VERSION_ALREADY_EXISTS("40903", "该版本号与权限的组合已存在", "SDK version with this permission already exists"),
+
     // 服务器错误
     INTERNAL_ERROR("50000", "服务器内部错误", "Internal server error");
 

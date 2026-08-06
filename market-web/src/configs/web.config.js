@@ -39,4 +39,12 @@ export default {
   ABILITY_UPDATE: '/market-web/service/open/v2/ability/admin/{id}',
   ABILITY_DELETE: '/market-web/service/open/v2/ability/admin/{id}',
   FILE_UPLOAD: '/market-web/service/open/v2/file/upload',
+
+  // SDK版本管理 API 配置
+  SDK_VERSION_LIST: '/market-web/service/open/v2/sdk/version/list',
+  SDK_VERSION_DETAIL: '/market-web/service/open/v2/sdk/version/{id}',
+  SDK_VERSION_CREATE: '/market-web/service/open/v2/sdk/version',
+  SDK_VERSION_UPDATE: '/market-web/service/open/v2/sdk/version/{id}',
+  SDK_VERSION_UPDATE_STATUS: '/market-web/service/open/v2/sdk/version/updateStatus',
+  SDK_PERMISSIONS: '/market-web/service/open/v2/sdk/version/permissions',
 };

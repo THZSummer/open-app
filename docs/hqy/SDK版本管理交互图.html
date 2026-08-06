@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SDK 版本管理 - 管理后台页面交互图</title>
+<style>
+  :root {
+    --primary: #2b5ff5;
+    --primary-hover: #4d7af5;
+    --primary-light: #eef2ff;
+    --border: #e5e6eb;
+    --row-border: #f2f3f5;
+    --bg: #f2f3f5;
+    --text: #1d2129;
+    --text-2: #4e5969;
+    --text-3: #86909c;
+    --success: #00b578;
+    --success-bg: #e8ffea;
+    --warn: #fa8c16;
+    --warn-bg: #fff7e6;
+    --danger: #f54a45;
+    --sider-bg: #001529;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", "Microsoft YaHei", -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ============ 整体布局 ============ */
+  .layout { display: flex; height: 100vh; }
+
+  /* ============ 侧边栏 ============ */
+  .sider {
+    width: 200px; flex-shrink: 0;
+    background: var(--sider-bg);
+    color: rgba(255,255,255,.75);
+    display: flex; flex-direction: column;
+  }
+  .logo {
+    height: 56px; display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 16px; font-weight: 600; gap: 8px;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+  }
+  .logo-dot { width: 24px; height: 24px; border-radius: 6px; background: linear-gradient(135deg,#4d7af5,#2b5ff5); display: inline-flex; align-items: center; justify-content: center; font-size: 12px; }
+  .menu { flex: 1; padding: 8px 0; overflow: auto; }
+  .menu-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 24px; font-size: 13px; cursor: pointer;
+    color: rgba(255,255,255,.72); transition: all .2s;
+  }
+  .menu-item:hover { color: #fff; }
+  .menu-item.active { background: var(--primary); color: #fff; }
+  .menu-item .ico { width: 16px; height: 16px; text-align: center; line-height: 16px; font-size: 13px; }
+
+  /* ============ 主区域 ============ */
+  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .topbar {
+    height: 56px; background: #fff; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 16px; box-shadow: 0 1px 4px rgba(0,0,0,.06);
+  }
+  .topbar .trigger { font-size: 18px; cursor: pointer; color: var(--text-2); padding: 0 8px; }
+  .topbar .user { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-2); cursor: pointer; padding: 6px 10px; border-radius: 6px; }
+  .topbar .user:hover { background: #f5f5f5; }
+  .avatar { width: 28px; height: 28px; border-radius: 50%; background: #2b5ff5; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; }
+
+  .content { flex: 1; overflow: auto; padding: 16px; }
+  .page {
+    background: #fff; border: 1px solid var(--border); border-radius: 8px;
+    display: flex; flex-direction: column; min-height: 100%;
+  }
+
+  /* ============ 页面头部 ============ */
+  .page-head { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .page-title { font-size: 15px; font-weight: 600; }
+  .page-tip { font-size: 12px; color: var(--text-3); }
+
+  /* ============ 工具栏 ============ */
+  .toolbar {
+    padding: 12px 20px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    border-bottom: 1px solid var(--border); background: #fafafa;
+  }
+  .toolbar .left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .toolbar .right { margin-left: auto; }
+  .label { font-size: 13px; color: var(--text-2); white-space: nowrap; }
+  .input, .select {
+    height: 32px; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px;
+    font-size: 13px; outline: none; background: #fff; color: var(--text); transition: border-color .2s;
+  }
+  .input:focus, .select:focus { border-color: var(--primary); }
+  .input::placeholder { color: var(--text-3); }
+  .select { padding-right: 28px; cursor: pointer; appearance: none; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2386909c' d='M6 8L1 3h10z'/%3E%3C/svg%3E") no-repeat right 8px center; }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+    height: 32px; padding: 0 14px; border: none; border-radius: 6px;
+    font-size: 13px; cursor: pointer; transition: all .2s; white-space: nowrap;
+  }
+  .btn:active { transform: scale(.98); }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: var(--primary-hover); }
+  .btn-outline { background: #fff; color: var(--text-2); border: 1px solid var(--border); }
+  .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+  .btn-danger { background: #fff; color: var(--danger); border: 1px solid var(--border); }
+  .btn-danger:hover { border-color: var(--danger); color: var(--danger); }
+
+  /* ============ 表格 ============ */
+  .table-wrap { flex: 1; overflow: auto; }
+  .table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .table th {
+    padding: 12px 16px; text-align: left; font-weight: 500; font-size: 13px;
+    color: var(--text-2); background: #fafafa; border-bottom: 1px solid var(--border);
+    white-space: nowrap; position: sticky; top: 0; z-index: 1;
+  }
+  .table td { padding: 13px 16px; font-size: 13px; border-bottom: 1px solid var(--row-border); color: var(--text); }
+  .table tbody tr { transition: background .15s; }
+  .table tbody tr:hover td { background: #f8f9fb; }
+  .cell-link { color: var(--primary); cursor: pointer; font-weight: 500; }
+  .cell-link:hover { text-decoration: underline; }
+  .cell-truncate { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cell-muted { color: var(--text-3); }
+
+  .tag { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; }
+  .tag .dot { width: 6px; height: 6px; border-radius: 50%; }
+  .tag-published { color: var(--success); }
+  .tag-published .dot { background: var(--success); box-shadow: 0 0 0 3px rgba(0,181,120,.15); }
+  .tag-deprecated { color: var(--warn); }
+  .tag-deprecated .dot { background: var(--warn); box-shadow: 0 0 0 3px rgba(250,140,22,.15); }
+
+  .actions { display: flex; gap: 4px; align-items: center; }
+  .action {
+    color: var(--primary); font-size: 13px; cursor: pointer; padding: 4px 6px; border-radius: 4px;
+    background: none; border: none; transition: background .15s;
+  }
+  .action:hover { background: var(--primary-light); }
+  .action.danger { color: var(--danger); }
+  .action.danger:hover { background: #fff2f0; }
+  .action.success { color: var(--success); }
+  .action.success:hover { background: var(--success-bg); }
+
+  .empty { text-align: center; padding: 80px 20px; color: var(--text-3); font-size: 14px; }
+
+  /* ============ 分页 ============ */
+  .pagination {
+    padding: 12px 20px; display: flex; align-items: center; justify-content: space-between;
+    border-top: 1px solid var(--border); flex-shrink: 0; gap: 12px; flex-wrap: wrap; background: #fafafa;
+  }
+  .page-total { font-size: 13px; color: var(--text-3); }
+  .pager { display: flex; align-items: center; gap: 6px; }
+  .pager .select { height: 32px; }
+  .page-btn {
+    min-width: 32px; height: 32px; padding: 0 8px; border: 1px solid var(--border); border-radius: 6px;
+    background: #fff; cursor: pointer; font-size: 13px; color: var(--text-2);
+    display: inline-flex; align-items: center; justify-content: center; transition: all .15s;
+  }
+  .page-btn:hover:not(:disabled):not(.active) { border-color: var(--primary); color: var(--primary); }
+  .page-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .page-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  /* ============ 弹窗 ============ */
+  .mask {
+    position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 100;
+    display: none; align-items: center; justify-content: center;
+  }
+  .mask.show { display: flex; }
+  .modal {
+    width: 460px; max-width: 92vw; background: #fff; border-radius: 8px;
+    box-shadow: 0 8px 30px rgba(0,0,0,.2); overflow: hidden;
+  }
+  .modal-head { padding: 14px 20px; font-size: 15px; font-weight: 600; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .modal-x { cursor: pointer; color: var(--text-3); font-size: 16px; padding: 0 4px; }
+  .modal-x:hover { color: var(--text); }
+  .modal-body { padding: 20px; max-height: 60vh; overflow: auto; }
+  .form-item { margin-bottom: 16px; }
+  .form-item:last-child { margin-bottom: 0; }
+  .form-item label { display: block; font-size: 13px; color: var(--text-2); margin-bottom: 6px; }
+  .form-item .req { color: var(--danger); }
+  .form-item .input, .form-item .select, .form-item textarea { width: 100%; }
+  .form-item textarea { min-height: 76px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; outline: none; resize: vertical; font-family: inherit; transition: border-color .2s; }
+  .form-item textarea:focus { border-color: var(--primary); }
+  .form-tip { font-size: 12px; color: var(--text-3); margin-top: 4px; }
+  .form-err { font-size: 12px; color: var(--danger); margin-top: 6px; min-height: 16px; }
+  .modal-foot { padding: 12px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; background: #fafafa; }
+
+  .modal-warn { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 14px; padding: 12px 14px; background: var(--warn-bg); border: 1px solid #ffd591; border-radius: 6px; font-size: 13px; color: #ad6800; line-height: 1.6; }
+
+  /* ============ 抽屉 ============ */
+  .drawer-mask { position: fixed; inset: 0; background: rgba(0,0,0,.3); z-index: 99; display: none; }
+  .drawer-mask.show { display: block; }
+  .drawer {
+    position: fixed; top: 0; right: 0; bottom: 0; width: 480px; max-width: 92vw; z-index: 100;
+    background: #fff; box-shadow: -6px 0 20px rgba(0,0,0,.15);
+    transform: translateX(100%); transition: transform .28s ease; display: flex; flex-direction: column;
+  }
+  .drawer.open { transform: translateX(0); }
+  .drawer-head { padding: 14px 20px; font-size: 15px; font-weight: 600; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .drawer-body { flex: 1; overflow: auto; padding: 20px; }
+  .drawer-foot { padding: 12px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; background: #fafafa; }
+  .desc-item { display: flex; padding: 10px 0; border-bottom: 1px solid var(--row-border); font-size: 13px; }
+  .desc-item .k { width: 110px; flex-shrink: 0; color: var(--text-3); }
+  .desc-item .v { flex: 1; word-break: break-all; }
+  .desc-item .v.url { color: var(--primary); }
+  .desc-item .v.muted { color: var(--text-3); }
+  .desc-item .v.pre { white-space: pre-wrap; word-break: break-all; line-height: 1.6; }
+
+  /* ============ Toast ============ */
+  .toast-wrap { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 200; display: flex; flex-direction: column; gap: 8px; align-items: center; }
+  .toast {
+    padding: 9px 16px; border-radius: 6px; font-size: 13px; color: #fff;
+    box-shadow: 0 4px 14px rgba(0,0,0,.18); opacity: 0; transition: opacity .25s, transform .25s;
+    transform: translateY(-8px); max-width: 70vw;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.success { background: #52c41a; }
+  .toast.error { background: var(--danger); }
+  .toast.info { background: #2b5ff5; }
+</style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- ============ 侧边栏 ============ -->
+  <aside class="sider">
+    <div class="logo"><span class="logo-dot">能</span>能力开放平台</div>
+    <nav class="menu">
+      <div class="menu-item"><span class="ico">⌂</span>首页</div>
+      <div class="menu-item"><span class="ico">▤</span>LookUp管理</div>
+      <div class="menu-item"><span class="ico">☰</span>数据字典</div>
+      <div class="menu-item"><span class="ico">✓</span>审批管理</div>
+      <div class="menu-item"><span class="ico">◧</span>能力管理</div>
+      <div class="menu-item active"><span class="ico">↯</span>SDK版本管理</div>
+    </nav>
+  </aside>
+
+  <!-- ============ 主区域 ============ -->
+  <div class="main">
+    <header class="topbar">
+      <span class="trigger">☰</span>
+      <div class="user"><span class="avatar">管</span>管理员 admin</div>
+    </header>
+
+    <div class="content">
+      <div class="page">
+        <div class="page-head">
+          <span class="page-title">SDK版本管理</span>
+          <span class="page-tip">交互原型 · 数据为模拟数据，操作会实时更新列表与详情</span>
+        </div>
+
+        <!-- 工具栏 -->
+        <div class="toolbar">
+          <div class="left">
+            <span class="label">状态</span>
+            <select class="select" id="search-status">
+              <option value="">全部</option>
+              <option value="1">已发布</option>
+              <option value="2">已废弃</option>
+            </select>
+            <span class="label">版本号</span>
+            <input class="input" id="search-name" placeholder="如 1.2.0" style="width:150px">
+            <button class="btn btn-outline" onclick="doSearch()">搜索</button>
+            <button class="btn btn-outline" onclick="doReset()">重置</button>
+          </div>
+          <div class="right">
+            <button class="btn btn-primary" onclick="openForm('create', null)">＋ 上架新版本</button>
+          </div>
+        </div>
+
+        <!-- 表格 -->
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th style="width:90px">版本号</th>
+                <th style="width:150px">关联权限</th>
+                <th>更新说明</th>
+                <th style="width:90px">状态</th>
+                <th style="width:90px">创建人</th>
+                <th style="width:160px">创建时间</th>
+                <th style="width:90px">更新人</th>
+                <th style="width:160px">更新时间</th>
+                <th style="width:190px">操作</th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+          <div class="empty" id="empty" style="display:none">暂无数据</div>
+        </div>
+
+        <!-- 分页 -->
+        <div class="pagination">
+          <span class="page-total" id="page-total">共 0 条</span>
+          <div class="pager">
+            <span class="label">每页</span>
+            <select class="select" id="page-size" onchange="setPageSize(this.value)">
+              <option value="5" selected>5</option>
+              <option value="10">10</option>
+              <option value="20">20</option>
+            </select>
+            <span class="label">条</span>
+            <span id="pager"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 上架 / 编辑 弹窗 ============ -->
+<div class="mask" id="form-mask">
+  <div class="modal">
+    <div class="modal-head"><span id="form-title">上架新版本</span><span class="modal-x" onclick="closeForm()">×</span></div>
+    <div class="modal-body">
+      <div class="form-item" id="item-name">
+        <label>版本号 <span class="req">*</span></label>
+        <input class="input" id="f-name" placeholder="如 1.3.0">
+        <div class="form-tip">版本号创建后不可修改，与关联权限组合全局唯一</div>
+      </div>
+      <div class="form-item">
+        <label>关联权限</label>
+        <select class="select" id="f-perm"></select>
+        <div class="form-tip">选填，从 SDK 权限分类中选择</div>
+      </div>
+      <div class="form-item">
+        <label>更新说明</label>
+        <textarea id="f-notes" placeholder="本次更新内容..."></textarea>
+      </div>
+      <div class="form-item">
+        <label>构建产物下载地址</label>
+        <input class="input" id="f-url" placeholder="https://artifacts.example.com/xxx.jar">
+      </div>
+      <div class="form-err" id="f-err"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeForm()">取消</button>
+      <button class="btn btn-primary" onclick="submitForm()">确认</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 废弃 弹窗 ============ -->
+<div class="mask" id="dep-mask">
+  <div class="modal">
+    <div class="modal-head"><span>废弃版本</span><span class="modal-x" onclick="closeDep()">×</span></div>
+    <div class="modal-body">
+      <div class="modal-warn">确定废弃版本 <b id="dep-name"></b> 吗？</div>
+      <div class="form-item">
+        <label>废弃原因 <span class="req">*</span></label>
+        <textarea id="dep-reason" placeholder="必填，5-2000 字符，说明废弃原因..."></textarea>
+        <div class="form-tip">示例：已被 v1.3.0 取代，存在已知安全漏洞 CVE-2026-XXXX</div>
+      </div>
+      <div class="form-err" id="dep-err"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeDep()">取消</button>
+      <button class="btn btn-danger" onclick="submitDep()">确认废弃</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 恢复 确认弹窗 ============ -->
+<div class="mask" id="res-mask">
+  <div class="modal" style="width:400px">
+    <div class="modal-head"><span>恢复版本</span><span class="modal-x" onclick="closeRes()">×</span></div>
+    <div class="modal-body">
+      <div class="modal-warn">确定恢复版本 <b id="res-name"></b> 吗？</div>
+      <div class="form-err" id="res-err"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeRes()">取消</button>
+      <button class="btn btn-primary" onclick="submitRes()">确认恢复</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 详情抽屉 ============ -->
+<div class="drawer-mask" id="drawer-mask" onclick="closeDetail()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-head"><span>版本详情</span><span class="modal-x" onclick="closeDetail()">×</span></div>
+  <div class="drawer-body" id="drawer-body"></div>
+  <div class="drawer-foot" id="drawer-foot"></div>
+</div>
+
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<script>
+/* ================= 数据 ================= */
+const PERMISSIONS = [
+  { id: 10023, nameCn: 'SDK 查询权限', nameEn: 'SDK read permission', scope: 'sdk:read' },
+  { id: 10024, nameCn: 'SDK 写入权限', nameEn: 'SDK write permission', scope: 'sdk:write' },
+  { id: 10025, nameCn: 'SDK 管理权限', nameEn: 'SDK admin permission', scope: 'sdk:manage' }
+];
+
+let DATA = [
+  { id: 10001, versionName: '1.2.0', permissionId: 10023, updateNotes: '新增 X 接口\n修复 Y bug\n优化鉴权逻辑', artifactUrl: 'https://artifacts.example.com/java-sdk/1.2.0/java-sdk-1.2.0.jar', status: 1, deprecateReason: null, createBy: 'admin', createTime: '2026-08-05 18:30:00', lastUpdateBy: 'admin', lastUpdateTime: '2026-08-05 18:30:00' },
+  { id: 10002, versionName: '1.1.0', permissionId: 10023, updateNotes: '修复 CVE-2026-XXXX 安全漏洞', artifactUrl: '', status: 2, deprecateReason: '已被 v1.2.0 取代\n存在已知安全漏洞 CVE-2026-XXXX', createBy: 'admin', createTime: '2026-07-20 10:12:00', lastUpdateBy: 'admin', lastUpdateTime: '2026-08-01 09:00:00' },
+  { id: 10003, versionName: '1.0.0', permissionId: 10024, updateNotes: '首个正式版本，接口不再兼容 beta', artifactUrl: 'https://artifacts.example.com/java-sdk/1.0.0/java-sdk-1.0.0.jar', status: 2, deprecateReason: '接口变更，不再兼容', createBy: 'admin', createTime: '2026-05-15 14:20:00', lastUpdateBy: 'admin', lastUpdateTime: '2026-07-01 11:30:00' },
+  { id: 10004, versionName: '2.0.0', permissionId: null, updateNotes: '全新架构，重构 SDK 核心', artifactUrl: '', status: 1, deprecateReason: null, createBy: 'admin', createTime: '2026-08-06 09:15:00', lastUpdateBy: 'admin', lastUpdateTime: '2026-08-06 09:15:00' },
+  { id: 10005, versionName: '0.9.1', permissionId: 10025, updateNotes: 'Beta 修复版：修复鉴权超时问题', artifactUrl: '', status: 1, deprecateReason: null, createBy: 'admin', createTime: '2026-04-02 16:40:00', lastUpdateBy: 'admin', lastUpdateTime: '2026-04-02 16:40:00' },
+  { id: 10006, versionName: '1.2.1', permissionId: null, updateNotes: '修复 Y bug', artifactUrl: '', status: 1, deprecateReason: null, createBy: 'admin', createTime: '2026-08-06 10:05:00', lastUpdateBy: 'admin', lastUpdateTime: '2026-08-06 10:05:00' },
+  { id: 10007, versionName: '1.1.1', permissionId: 10024, updateNotes: '', artifactUrl: '', status: 1, deprecateReason: null, createBy: 'admin', createTime: '2026-06-18 13:50:00', lastUpdateBy: 'admin', lastUpdateTime: '2026-06-18 13:50:00' },
+  { id: 10008, versionName: '0.9.0', permissionId: 10025, updateNotes: '功能合并至 1.0.0', artifactUrl: '', status: 2, deprecateReason: '功能被合并至 1.0.0', createBy: 'admin', createTime: '2026-03-01 10:00:00', lastUpdateBy: 'admin', lastUpdateTime: '2026-04-01 10:00:00' }
+];
+
+let nextId = 10009;
+const state = { status: '', name: '', cur: 1, pageSize: 5 };
+let formMode = null, formId = null, actingId = null, restoringId = null, drawerId = null;
+
+/* ================= 工具 ================= */
+function permName(id) {
+  if (!id) return '';
+  const p = PERMISSIONS.find(x => x.id === Number(id));
+  return p ? p.nameCn : '';
+}
+function permScope(id) {
+  if (!id) return '';
+  const p = PERMISSIONS.find(x => x.id === Number(id));
+  return p ? p.scope : '';
+}
+function fmtVal(v) { return (v && String(v).trim()) ? v : '—'; }
+function escHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function nowStr() {
+  const d = new Date();
+  const p = n => String(n).padStart(2, '0');
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+}
+function findById(id) { return DATA.find(r => r.id === Number(id)); }
+
+function toast(msg, type) {
+  const wrap = document.getElementById('toast-wrap');
+  const el = document.createElement('div');
+  el.className = 'toast ' + (type || 'info');
+  el.textContent = msg;
+  wrap.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('show'));
+  setTimeout(() => {
+    el.classList.remove('show');
+    setTimeout(() => el.remove(), 300);
+  }, 2600);
+}
+
+/* ================= 列表渲染 ================= */
+function getFiltered() {
+  let rows = DATA.slice();
+  if (state.status) rows = rows.filter(r => String(r.status) === state.status);
+  if (state.name.trim()) rows = rows.filter(r => r.versionName.includes(state.name.trim()));
+  return rows;
+}
+
+function renderTable() {
+  const rows = getFiltered();
+  const maxPage = Math.max(1, Math.ceil(rows.length / state.pageSize));
+  if (state.cur > maxPage) state.cur = maxPage;
+  const start = (state.cur - 1) * state.pageSize;
+  const pageRows = rows.slice(start, start + state.pageSize);
+
+  const tbody = document.getElementById('tbody');
+  const empty = document.getElementById('empty');
+  if (!pageRows.length) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+  } else {
+    empty.style.display = 'none';
+    tbody.innerHTML = pageRows.map(r => {
+      const tag = r.status === 1
+        ? '<span class="tag tag-published"><span class="dot"></span>已发布</span>'
+        : '<span class="tag tag-deprecated"><span class="dot"></span>已废弃</span>';
+      const perm = r.permissionId ? permName(r.permissionId) : '<span class="cell-muted">—</span>';
+      const notes = r.updateNotes || '<span class="cell-muted">—</span>';
+      const actEdit = r.status === 1 ? `<button class="action" onclick="openForm('edit', ${r.id})">编辑</button>` : '';
+      const actDep = r.status === 1 ? `<button class="action danger" onclick="openDep(${r.id})">废弃</button>` : '';
+      const actRes = r.status === 2 ? `<button class="action success" onclick="openRes(${r.id})">恢复</button>` : '';
+      return `<tr>
+        <td><span class="cell-link" onclick="openDetail(${r.id})">${r.versionName}</span></td>
+        <td>${perm}</td>
+        <td><div class="cell-truncate" title="${escHtml(r.updateNotes || '')}">${notes}</div></td>
+        <td>${tag}</td>
+        <td>${r.createBy}</td>
+        <td>${r.createTime}</td>
+        <td>${r.lastUpdateBy}</td>
+        <td>${r.lastUpdateTime}</td>
+        <td><div class="actions">
+          <button class="action" onclick="openDetail(${r.id})">详情</button>
+          ${actEdit}${actDep}${actRes}
+        </div></td>
+      </tr>`;
+    }).join('');
+  }
+
+  document.getElementById('page-total').textContent = '共 ' + rows.length + ' 条';
+  renderPager(rows.length, maxPage);
+}
+
+function renderPager(total, maxPage) {
+  let html = '';
+  html += `<button class="page-btn" onclick="goPage(${state.cur - 1})" ${state.cur <= 1 ? 'disabled' : ''}>‹</button>`;
+  for (let i = 1; i <= maxPage; i++) {
+    html += `<button class="page-btn ${i === state.cur ? 'active' : ''}" onclick="goPage(${i})">${i}</button>`;
+  }
+  html += `<button class="page-btn" onclick="goPage(${state.cur + 1})" ${state.cur >= maxPage ? 'disabled' : ''}>›</button>`;
+  document.getElementById('pager').innerHTML = html;
+}
+function goPage(p) {
+  if (p < 1) return;
+  state.cur = p;
+  renderTable();
+}
+function setPageSize(v) {
+  state.pageSize = Number(v);
+  state.cur = 1;
+  renderTable();
+}
+
+/* ================= 搜索 / 重置 ================= */
+function doSearch() {
+  state.status = document.getElementById('search-status').value;
+  state.name = document.getElementById('search-name').value;
+  state.cur = 1;
+  renderTable();
+}
+function doReset() {
+  document.getElementById('search-status').value = '';
+  document.getElementById('search-name').value = '';
+  state.status = ''; state.name = ''; state.cur = 1;
+  renderTable();
+}
+
+/* ================= 上架 / 编辑 表单 ================= */
+function initPermSelect(selectedId) {
+  const sel = document.getElementById('f-perm');
+  let html = '<option value="">请选择关联权限</option>';
+  PERMISSIONS.forEach(p => {
+    html += `<option value="${p.id}" ${String(selectedId) === String(p.id) ? 'selected' : ''}>${p.nameCn}（${p.scope}）</option>`;
+  });
+  sel.innerHTML = html;
+}
+
+function openForm(mode, id) {
+  formMode = mode;
+  formId = id;
+  document.getElementById('f-err').textContent = '';
+  if (mode === 'create') {
+    document.getElementById('form-title').textContent = '上架新版本';
+    document.getElementById('item-name').style.display = 'block';
+    document.getElementById('f-name').value = '';
+    document.getElementById('f-name').readOnly = false;
+    initPermSelect(null);
+    document.getElementById('f-notes').value = '';
+    document.getElementById('f-url').value = '';
+  } else {
+    const r = findById(id);
+    if (!r) return;
+    if (r.status !== 1) {
+      toast('已废弃版本不可编辑', 'error');
+      return;
+    }
+    document.getElementById('form-title').textContent = '编辑版本';
+    document.getElementById('item-name').style.display = 'none';
+    document.getElementById('f-name').value = r.versionName;
+    initPermSelect(r.permissionId);
+    document.getElementById('f-notes').value = r.updateNotes || '';
+    document.getElementById('f-url').value = r.artifactUrl || '';
+  }
+  document.getElementById('form-mask').classList.add('show');
+}
+function closeForm() { document.getElementById('form-mask').classList.remove('show'); }
+
+function submitForm() {
+  const err = document.getElementById('f-err');
+  err.textContent = '';
+  const name = document.getElementById('f-name').value.trim();
+  const perm = document.getElementById('f-perm').value;
+  const permId = perm ? Number(perm) : null;
+  const notes = document.getElementById('f-notes').value.trim();
+  const url = document.getElementById('f-url').value.trim();
+
+  if (formMode === 'create') {
+    if (!name) { err.textContent = '版本号（versionName）必填'; return; }
+    // 查重：(versionName, permissionId) 联合唯一，不区分状态；permissionId 为空时按 versionName 单独查重
+    const dup = DATA.some(r => r.versionName === name && (permId ? r.permissionId === permId : r.permissionId == null));
+    if (dup) { err.textContent = '该版本号与权限的组合已存在（SDK_VERSION_ALREADY_EXISTS）'; return; }
+    DATA.unshift({
+      id: nextId++, versionName: name, permissionId: permId, updateNotes: notes, artifactUrl: url,
+      status: 1, deprecateReason: null, createBy: 'admin', createTime: nowStr(),
+      lastUpdateBy: 'admin', lastUpdateTime: nowStr()
+    });
+    closeForm();
+    state.cur = 1;
+    renderTable();
+    toast(`版本 ${name} 上架成功`, 'success');
+  } else {
+    const r = findById(formId);
+    if (!r) return;
+    if (r.status !== 1) { err.textContent = '已废弃版本不可编辑（SDK_VERSION_DEPRECATED_CANNOT_EDIT）'; return; }
+    r.permissionId = permId;
+    r.updateNotes = notes;
+    r.artifactUrl = url;
+    r.lastUpdateBy = 'admin';
+    r.lastUpdateTime = nowStr();
+    closeForm();
+    renderTable();
+    if (drawerId === r.id) renderDrawer();
+    toast(`版本 ${r.versionName} 编辑成功`, 'success');
+  }
+}
+
+/* ================= 废弃 ================= */
+function openDep(id) {
+  const r = findById(id);
+  if (!r) return;
+  actingId = id;
+  document.getElementById('dep-name').textContent = r.versionName;
+  document.getElementById('dep-reason').value = '';
+  document.getElementById('dep-err').textContent = '';
+  document.getElementById('dep-mask').classList.add('show');
+}
+function closeDep() { document.getElementById('dep-mask').classList.remove('show'); }
+
+function submitDep() {
+  const r = findById(actingId);
+  const err = document.getElementById('dep-err');
+  err.textContent = '';
+  if (!r) return;
+  const reason = document.getElementById('dep-reason').value.trim();
+  if (!reason) { err.textContent = '废弃原因必填'; return; }
+  if (reason.length < 5) { err.textContent = '废弃原因至少 5 个字符'; return; }
+  if (reason.length > 2000) { err.textContent = '废弃原因最多 2000 个字符'; return; }
+  if (r.status !== 1) { err.textContent = '该版本已是废弃状态（SDK_VERSION_ALREADY_DEPRECATED）'; return; }
+  r.status = 2;
+  r.deprecateReason = reason;
+  r.lastUpdateBy = 'admin';
+  r.lastUpdateTime = nowStr();
+  closeDep();
+  renderTable();
+  if (drawerId === r.id) renderDrawer();
+  toast(`版本 ${r.versionName} 已废弃`, 'success');
+}
+
+/* ================= 恢复 ================= */
+function openRes(id) {
+  const r = findById(id);
+  if (!r) return;
+  restoringId = id;
+  document.getElementById('res-name').textContent = r.versionName;
+  document.getElementById('res-err').textContent = '';
+  document.getElementById('res-mask').classList.add('show');
+}
+function closeRes() { document.getElementById('res-mask').classList.remove('show'); }
+
+function submitRes() {
+  const r = findById(restoringId);
+  const err = document.getElementById('res-err');
+  err.textContent = '';
+  if (!r) return;
+  if (r.status !== 2) { err.textContent = '该版本已是发布状态（SDK_VERSION_ALREADY_PUBLISHED）'; return; }
+  r.status = 1;
+  r.deprecateReason = null;
+  r.lastUpdateBy = 'admin';
+  r.lastUpdateTime = nowStr();
+  closeRes();
+  renderTable();
+  if (drawerId === r.id) renderDrawer();
+  toast(`版本 ${r.versionName} 已恢复，废弃原因已清空`, 'success');
+}
+
+/* ================= 详情抽屉 ================= */
+function openDetail(id) {
+  drawerId = id;
+  renderDrawer();
+  document.getElementById('drawer-mask').classList.add('show');
+  document.getElementById('drawer').classList.add('open');
+}
+function closeDetail() {
+  drawerId = null;
+  document.getElementById('drawer-mask').classList.remove('show');
+  document.getElementById('drawer').classList.remove('open');
+}
+function renderDrawer() {
+  const r = findById(drawerId);
+  if (!r) return;
+  const body = document.getElementById('drawer-body');
+  const tag = r.status === 1
+    ? '<span class="tag tag-published"><span class="dot"></span>已发布</span>'
+    : '<span class="tag tag-deprecated"><span class="dot"></span>已废弃</span>';
+  const reason = r.status === 2 ? '<div class="v pre">' + escHtml(r.deprecateReason) + '</div>' : '<div class="v muted">—</div>';
+  body.innerHTML = `
+    <div class="desc-item"><div class="k">版本号</div><div class="v">${r.versionName}</div></div>
+    <div class="desc-item"><div class="k">关联权限</div><div class="v">${r.permissionId ? permName(r.permissionId) + '（' + permScope(r.permissionId) + '）' : '<span class="cell-muted">—</span>'}</div></div>
+    <div class="desc-item"><div class="k">更新说明</div><div class="v pre">${r.updateNotes ? escHtml(r.updateNotes) : '<span class="cell-muted">—</span>'}</div></div>
+    <div class="desc-item"><div class="k">构建产物地址</div><div class="v ${r.artifactUrl ? 'url' : 'muted'}">${fmtVal(r.artifactUrl)}</div></div>
+    <div class="desc-item"><div class="k">状态</div><div class="v">${tag}</div></div>
+    <div class="desc-item"><div class="k">废弃原因</div>${reason}</div>
+    <div class="desc-item"><div class="k">创建人</div><div class="v">${r.createBy}</div></div>
+    <div class="desc-item"><div class="k">创建时间</div><div class="v">${r.createTime}</div></div>
+    <div class="desc-item"><div class="k">最后更新人</div><div class="v">${r.lastUpdateBy}</div></div>
+    <div class="desc-item"><div class="k">最后更新时间</div><div class="v">${r.lastUpdateTime}</div></div>
+  `;
+  const foot = document.getElementById('drawer-foot');
+  foot.innerHTML = r.status === 1
+    ? `<button class="btn btn-danger" onclick="openDep(${r.id})">废弃</button>`
+    : `<button class="btn btn-primary" onclick="openRes(${r.id})">恢复</button>`;
+}
+
+/* ================= 初始化 ================= */
+(function init() {
+  const sel = document.getElementById('f-perm');
+  let html = '<option value="">请选择关联权限</option>';
+  PERMISSIONS.forEach(p => { html += `<option value="${p.id}">${p.nameCn}（${p.scope}）</option>`; });
+  sel.innerHTML = html;
+  renderTable();
+})();
+</script>
+</body>
+</html>
