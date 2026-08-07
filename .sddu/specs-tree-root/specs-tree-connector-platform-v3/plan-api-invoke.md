@@ -107,14 +107,16 @@ HTTP/1.1 200 OK
 X-Flow-Id: 340518008730419200       ← 平台元数据 (X- 前缀)
 X-Execution-Id: abc123...
 X-Duration-Ms: 194
-X-Code: 200
-X-Message-Zh: 成功                     ← 始终返回（设计上支持中文）
-X-Message-En: Success                  ← 始终返回
+X-Code: 200                        ← 当前实现旧码（建议 20000，见 §4.1.2）
+X-Message-Zh: Success               ← 始终返回（当前实现返回英文；设计目标为中文，见 §9.6）
+X-Message-En: Success               ← 始终返回
 X-Cache-Status: 0
 Echo-To-Header: hello               ← 用户自定义响应头 (出口节点 output.header)
 
 {"code":"200","page":{...}}          ← 响应体 = 出口节点 output.body (裸数据)
 ```
+
+> **码制口径说明**：本节示例与 §5 一致，采用**当前实现**口径——`X-Code` 为旧码值（`200`），`X-Message-Zh` 返回英文消息（§9.6 降级策略）。设计目标为五位码（`20000`）与中文消息（§4.2 表格），切换方式见 §9.6。
 
 ### 3.2 平台元数据响应头
 
