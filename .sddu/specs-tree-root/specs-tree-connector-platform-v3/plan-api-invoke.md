@@ -35,12 +35,14 @@
 
 | # | 条件 | 校验时机 | 不满足时 |
 |---|------|:---:|------|
-| 1 | 连接流存在 | 前置 | HTTP 404 |
-| 2 | `flow.lifecycleStatus = 2`（运行中） | 前置 | HTTP 409 |
-| 3 | 已部署版本可用（`deployedVersionId` 非空，版本未失效） | 前置 | HTTP 422 |
+| 1 | 连接流存在 | 前置 | HTTP 400（X-Code: 404） |
+| 2 | `flow.lifecycleStatus = 2`（运行中） | 前置 | HTTP 400（X-Code: 409） |
+| 3 | 已部署版本可用（`deployedVersionId` 非空，版本未失效） | 前置 | HTTP 400（X-Code: 422） |
 | 4 | `X-Sys-Token` 在触发器 `authConfig.sysAccountWhitelist` 白名单内 | 前置 | HTTP 401 |
 | 5 | 未超过入站限流阈值（`flowConfig.rateLimitConfig.maxQps`） | 前置 | HTTP 429 |
 | 6 | 触发器 `inputContract` 校验通过（header/query/body 三段契约） | 前置 | HTTP 400 |
+
+> 注：`不满足时` 列中 `X-Code` 为当前实现的旧码值，HTTP Status 与 §4.2 表格对齐（前置校验错误统一映射到 400/401/403，详见 §4.1.1）。
 
 ---
 
@@ -396,6 +398,8 @@ X-Code 统一 **5 位数字**，格式为 `{大类1位}{子类2位}{序号2位}`
 
 ## 5. 调用示例
 
+> **码制口径说明**：以下示例中的 `X-Code` 采用**当前实现**的旧码值（`200`/`400`/`409`/`401`/`62001` 等），与 §4.2 表格"旧码"列一致。§4.1.2 建议的五位码段（`20000`/`41201`/`42001` 等）尚未实施，对应关系见 §4.2"建议 X-Code"列。`X-Message-Zh` 按 §9.6 降级策略返回英文消息（与 `X-Message-En` 相同）。
+
 ### 5.1 成功调用（完整示例）
 
 假设触发器定义了 `key`（query）、`echoToHeader`（body）入参：
@@ -415,17 +419,18 @@ curl -s -D - -X POST \
 HTTP/1.1 200 OK
 X-Flow-Id: 340518008730419200
 X-Execution-Id: 3480bf89739a42119c6c9c329ffe2142
-X-Status: 0
 X-Duration-Ms: 194
 X-Code: 200
-X-Message-Zh: Flow not running
-X-Message-En: Flow not running
+X-Message-Zh: Success
+X-Message-En: Success
 X-Cache-Status: 0
 Echo-To-Header: hello                              ← 用户自定义响应头（出口 output.header）
 Content-Type: application/json
 
 {"code":"200","messageEn":"Success",...}            ← 出口 output.body（透传）
 ```
+
+> 按 §9.6 降级策略，当前实现 `X-Message-Zh` 与 `X-Message-En` 均返回英文 `Success`；设计目标为 `成功`（见 §4.2 错误码表）。`X-Status` 已废弃（§4.3），示例中不再返回。
 
 ### 5.2 连接流未运行（400）
 
@@ -476,7 +481,6 @@ content-length: 0
 HTTP/1.1 400 Bad Request
 X-Flow-Id: 340518008730419200
 X-Execution-Id: 1234567890123456789
-X-Status: 1
 X-Duration-Ms: 5123
 X-Code: 62001
 X-Message-Zh: Trigger execution failed
@@ -503,7 +507,7 @@ X-Error-Node-Type: connector
 | **响应格式** | 透明穿透（出口 body 裸数据 + X- 头） | `ExecutionResult` JSON（含 steps 详情） |
 | **triggerType** | `1`（http） | `3`（manual） |
 | **isDebug** | `false` | `true` |
-| **HTTP Status（执行失败）** | 400 + X-Status: 1 | 200 + errorInfo.code |
+| **HTTP Status（执行失败）** | 400 + X-Error-Node/Type 诊断头 | 200 + errorInfo.code |
 
 ---
 
