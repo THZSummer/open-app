@@ -122,34 +122,6 @@ public class FlowCacheManager {
     }
 
     /**
-     * 使指定 flow 的所有缓存失效
-     * <p>
-     * 使用 KEYS + DEL 模式删除所有匹配的缓存 key。
-     * 注意: KEYS 在生产环境下可能有性能影响, 后续可替换为 SCAN 模式。
-     * </p>
-     *
-     * @param flowId 连接流 ID
-     * @return Mono&lt;Long&gt; 被删除的 key 数量
-     */
-    public Mono<Long> invalidateFlowCache(Long flowId) {
-        String pattern = CACHE_KEY_PREFIX + flowId + ":*";
-        return reactiveRedisTemplate.keys(pattern)
-                .collectList()
-                .flatMap(keys -> {
-                    if (keys.isEmpty()) {
-                        log.debug("No cache keys to invalidate for flowId={}", flowId);
-                        return Mono.just(0L);
-                    }
-                    return reactiveRedisTemplate.delete(keys.toArray(new String[0]))
-                            .doOnSuccess(count -> log.debug("Invalidated {} cache keys for flowId={}",
-                                    count, flowId));
-                })
-                .doOnError(e -> log.warn("Failed to invalidate flow cache for flowId={}: {}",
-                        flowId, e.getMessage()))
-                .onErrorReturn(0L);
-    }
-
-    /**
      * 构建 Redis 缓存 key
      */
     private String buildCacheKey(Long flowId, String cacheKey) {

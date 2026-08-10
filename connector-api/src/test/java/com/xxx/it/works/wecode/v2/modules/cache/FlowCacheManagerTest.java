@@ -109,17 +109,4 @@ class FlowCacheManagerTest {
                 eq(Duration.ofSeconds(9999999)));
     }
 
-    @Test
-    @DisplayName("版本变更 → invalidateFlowCache 清空相关 key")
-    void testInvalidateFlowCache() {
-        when(redisTemplate.keys(contains("cp:cache:flow:100:*")))
-                .thenReturn(reactor.core.publisher.Flux.just("cp:cache:flow:100:key1", "cp:cache:flow:100:key2"));
-        when(redisTemplate.delete(any(String[].class)))
-                .thenReturn(Mono.just(2L));
-
-        StepVerifier.create(cacheManager.invalidateFlowCache(100L))
-                .expectNext(2L)
-                .verifyComplete();
-    }
-
 }
