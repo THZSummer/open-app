@@ -112,7 +112,7 @@ SCAN 的耗时取决于 Redis 哈希表大小（总 key 数），**不是**匹�
 
 写入缓存时同步维护索引，清理时精确删除。**默认按大量成员场景设计**——统一采用 SSCAN 分批取 + 每批 UNLINK，不做"小成员量用 SMEMBERS 一次性"的分支优化：无论单个 flow 有多少缓存 key 都安全，代码路径单一。
 
-> 📌 索引 key 命名（决策 #2）：**`cp:cache:flow:keys:{flowId}`** — 对齐 `cp:cache:flow:{flowId}:*` 命名空间（同属 `cp:cache:flow:` 前缀、针对同一 flow），Set 为具体 key 不带 `:*` 通配。
+> 📌 索引 key 命名（决策 #2）：**`cp:cache:flow:keys:{{flowId}}`** — 对齐 `cp:cache:flow:{{flowId}}:*` 命名空间（同属 `cp:cache:flow:` 前缀、针对同一 flow），Set 为具体 key 不带 `:*` 通配。**业务 key 与索引 key 均含 `{flowId}` hash tag**，确保集群模式下同 slot（Lua 原子写不触发 CROSSSLOT，见 §5.2 Step 1 注）。
 
 **① 写入缓存时（FlowCacheManager.writeCache）——在现有写缓存逻辑上追加一步索引维护（Lua 原子化，决策 #5）**：
 
@@ -121,6 +121,11 @@ SCAN 的耗时取决于 Redis 哈希表大小（总 key 数），**不是**匹�
 // KEYS[1]=redisKey, KEYS[2]="cp:cache:flow:keys:{flowId}", ARGV[1]=json, ARGV[2]=ttl
 SET KEYS[1] ARGV[1] EX ARGV[2]
 SADD KEYS[2] KEYS[1]
+
+// ⚠️ key 格式必须含 {flowId} hash tag（集群同 slot 约束）:
+//   业务 key: cp:cache:flow:{flowId}:{cacheKey}
+//   索引 key: cp:cache:flow:keys:{flowId}
+//   Redis 对 hash tag 内内容做 CRC16 → 两 key 必同 slot，无 CROSSSLOT
 ```
 
 **② 清理时（FlowCacheEvictor.evictExecutionResults）——不再 SCAN，SSCAN 分批取 + 分批 UNLINK**：
@@ -201,7 +206,7 @@ redis.call('SADD', KEYS[2], KEYS[1])
 return 1
 ```
 
-> ⚠️ 集群约束：KEYS[1] 与 KEYS[2] 必须同 slot —— `cp:cache:flow:{flowId}:...` 与 `cp:cache:flow:keys:{flowId}` 前缀相同，Redis Cluster hash 规则下同 slot，满足要求。
+> ⚠️ 集群约束：KEYS[1] 与 KEYS[2] 必须同 slot —— 靠 **hash tag** 保证：业务 key `cp:cache:flow:{flowId}:{cacheKey}` 与索引 key `cp:cache:flow:keys:{flowId}` 都含 `{flowId}`，Redis 对 hash tag 内内容做 CRC16，两 key 必同 slot，无 CROSSSLOT 风险。~~前缀相同→同 slot~~ 是错误假设（Redis Cluster 对无 hash tag 的 key 是对整个 key 做 CRC16，前缀相同不保证同 slot，review 实测证伪）。
 
 #### Step 2：修改 `FlowCacheManager.writeCache`（connector-api）
 
@@ -292,7 +297,7 @@ TransactionSynchronizationManager.registerSynchronization(
 
 | 风险 | 对策 |
 |------|------|
-| Lua 脚本跨 slot 异常 | 已确认前缀相同同 slot；单测覆盖参数断言 |
+| Lua 脚本跨 slot 异常 | **已修复**：业务/索引 key 引入 `{flowId}` hash tag 强制同 slot（review 实测证伪"前缀相同同 slot"，见 §5.2 Step 1）；单测断言 hash tag 一致 + 集群 EVAL 实测验证 |
 | 索引滞后（SADD 失败但 SET 成功） | Lua 原子化已消除写路径竞态；清理侧 SSCAN 读索引，滞后仅导致该次清理少删，TTL 兜底 |
 | 存量 50w key 无索引 | 决策 #4：不处理，TTL 自然过期；SSCAN 只读索引集合不受影响 |
 | afterCommit 内异常吞掉 | 保留 try-catch + warn 日志；清理失败不影响接口成功返回 |
@@ -427,6 +432,7 @@ pytest modules/flow/test_cache_evict.py -v
 
 | 版本 | 变更说明 | 日期 | 修订人 |
 |------|---------|------|--------|
+| v2.1-draft | review 修复记录：业务/索引 key 引入 `{flowId}` hash tag 修复集群 CROSSSLOT 阻断（原"前缀相同→同 slot"假设实测证伪）；同步更新 §3 方案 D key 格式、§5.2 Step 1 集群约束说明、§5.3 风险对策 | 2026-08-10 | SDDU Fast Agent |
 | v2.0-draft | 章节顺序调整：实施细则移到验证方案之前（§4 决策 → §5 实施 → §6 验证），修正编号与交叉引用 | 2026-08-10 | SDDU Fast Agent |
 | v1.9-draft | 新增 §6 实施细则：变更文件总览（7 文件）、6 步实施步骤（Lua 脚本→writeCache→evictor→事务外清理→单测→验证）、风险对策表、验收口径 | 2026-08-10 | SDDU Fast Agent |
 | v1.8-draft | §5 验证方案细化为可落地执行方案：前置条件、单元测试文件与用例、功能集成测试脚本、50w 数据性能验证（预置脚本+bench 脚本+执行要求）、集群漏删验证脚本、验收判定标准 | 2026-08-10 | SDDU Fast Agent |
