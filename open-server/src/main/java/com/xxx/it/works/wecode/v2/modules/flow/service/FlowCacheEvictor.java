@@ -32,7 +32,7 @@ public class FlowCacheEvictor {
 
     private static final Logger log = LoggerFactory.getLogger(FlowCacheEvictor.class);
 
-    /** 索引 Key 前缀（对齐 cp:cache:flow:{flowId}:* 命名空间, Set 存储该 flow 的缓存 key 名） */
+    /** 索引 Key 前缀（Set 存储该 flow 的缓存 key 名; 含 {flowId} hash tag 与业务 key 同 slot） */
     private static final String INDEX_KEY_PREFIX = "cp:cache:flow:keys:";
 
     /** SSCAN 每批数量 hint */
@@ -115,7 +115,7 @@ public class FlowCacheEvictor {
      */
     public void evictExecutionResults(Long flowId) {
         if (redis == null) return;
-        String indexKey = INDEX_KEY_PREFIX + flowId;
+        String indexKey = buildIndexKey(flowId);
         try {
             ScanOptions options = ScanOptions.scanOptions()
                     .count(SSCAN_BATCH_SIZE)
@@ -138,5 +138,10 @@ public class FlowCacheEvictor {
         } catch (Exception e) {
             log.warn("Failed to evict execution result caches for flowId={}: {}", flowId, e.getMessage());
         }
+    }
+
+    /** 构建 flow 维度索引 key (与 connector-api FlowCacheManager.buildIndexKey 一致, 含 {flowId} hash tag) */
+    private String buildIndexKey(Long flowId) {
+        return INDEX_KEY_PREFIX + "{" + flowId + "}";
     }
 }

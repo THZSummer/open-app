@@ -12,9 +12,12 @@ import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.SetOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -40,7 +43,7 @@ class FlowCacheEvictorTest {
     @InjectMocks
     private FlowCacheEvictor evictor;
 
-    private static final String INDEX_KEY = "cp:cache:flow:keys:100";
+    private static final String INDEX_KEY = "cp:cache:flow:keys:{100}";
 
     @BeforeEach
     void setUp() {
@@ -105,10 +108,41 @@ class FlowCacheEvictorTest {
     @Test
     @DisplayName("runAfterCommit: 无活动事务时立即执行")
     void testRunAfterCommit_NoTransaction() {
-        evictor.runAfterCommit(() -> { /* 不抛异常即可 */ });
-        // 无事务时直接执行 action, 不抛异常
-        assertDoesNotThrow(() -> evictor.runAfterCommit(() -> {
-        }));
+        AtomicBoolean executed = new AtomicBoolean(false);
+        evictor.runAfterCommit(() -> executed.set(true));
+        assertTrue(executed.get(), "无事务时 action 应立即执行");
+    }
+
+    @Test
+    @DisplayName("runAfterCommit: 有活动事务时注册回调, 提交后才执行")
+    void testRunAfterCommit_WithTransaction() {
+        AtomicBoolean executed = new AtomicBoolean(false);
+        try {
+            TransactionSynchronizationManager.initSynchronization();
+            // 注册回调 (此时不应立即执行)
+            evictor.runAfterCommit(() -> executed.set(true));
+            assertFalse(executed.get(), "事务未提交时 action 不应立即执行");
+
+            // 模拟事务提交 → afterCommit 触发
+            TransactionSynchronizationManager.getSynchronizations().forEach(TransactionSynchronization::afterCommit);
+            assertTrue(executed.get(), "事务提交后 action 应执行");
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
+
+    @Test
+    @DisplayName("runAfterCommit: 事务提交但 action 抛异常 → 不向上抛")
+    void testRunAfterCommit_WithTransaction_ActionError() {
+        try {
+            TransactionSynchronizationManager.initSynchronization();
+            assertDoesNotThrow(() -> evictor.runAfterCommit(() -> {
+                throw new RuntimeException("evict fail");
+            }));
+            TransactionSynchronizationManager.getSynchronizations().forEach(TransactionSynchronization::afterCommit);
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
     }
 
     // ─── helpers ────────────────────────────────────────────

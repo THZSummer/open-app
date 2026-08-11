@@ -13,7 +13,6 @@ import org.springframework.scripting.support.ResourceScriptSource;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
-import java.time.Duration;
 import java.util.List;
 
 /**
@@ -25,7 +24,9 @@ import java.util.List;
  * §3.3.4: ③(ttlSeconds)存在用③不截断, ③不存在回退①(平台全局)。
  * </p>
  * <p>
- * 缓存 Key 格式: {@code cp:cache:flow:{flowId}:{cacheKey}}
+ * 缓存 Key 格式: {@code cp:cache:flow:{{flowId}}:{cacheKey}}
+ * 索引 Key 格式: {@code cp:cache:flow:keys:{{flowId}}}
+ * 两者均以 {@code {flowId}} 作 hash tag, 确保集群模式下落在同一 slot (Lua 原子写不触发 CROSSSLOT)。
  * </p>
  */
 @Component
@@ -36,11 +37,8 @@ public class FlowCacheManager {
     /** Redis Key 前缀 */
     private static final String CACHE_KEY_PREFIX = "cp:cache:flow:";
 
-    /** 索引 Key 前缀（对齐 cp:cache:flow:{flowId}:* 命名空间, Set 存储该 flow 的缓存 key 名） */
+    /** 索引 Key 前缀（Set 存储该 flow 的缓存 key 名; 含 {flowId} hash tag 与业务 key 同 slot） */
     private static final String INDEX_KEY_PREFIX = "cp:cache:flow:keys:";
-
-    /** SCAN 每批数量 */
-    private static final int SCAN_BATCH_SIZE = 100;
 
     /** 写缓存 Lua 脚本: SET 业务数据 + SADD 索引 (原子化, 一次往返保证一致性) */
     private static final RedisScript<Long> WRITE_SCRIPT;
@@ -145,15 +143,17 @@ public class FlowCacheManager {
 
     /**
      * 构建 Redis 缓存 key
+     * <p>含 {@code {flowId}} hash tag, 与索引 key 同 slot (集群 Lua 原子写要求)</p>
      */
     private String buildCacheKey(Long flowId, String cacheKey) {
-        return CACHE_KEY_PREFIX + flowId + ":" + cacheKey;
+        return CACHE_KEY_PREFIX + "{" + flowId + "}:" + cacheKey;
     }
 
     /**
      * 构建 flow 维度索引 key (Set: 存储该 flow 的所有缓存 key 名)
+     * <p>含 {@code {flowId}} hash tag, 与业务 key 同 slot</p>
      */
     private String buildIndexKey(Long flowId) {
-        return INDEX_KEY_PREFIX + flowId;
+        return INDEX_KEY_PREFIX + "{" + flowId + "}";
     }
 }

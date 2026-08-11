@@ -64,13 +64,18 @@ class TestCacheIndexWrite:
 
     @pytest.mark.L2
     def test_write_cache_index_pattern(self):
-        """索引 key 命名对齐 cp:cache:flow:{flowId}:* 命名空间"""
+        """业务 key 与索引 key 含同一 {flowId} hash tag (集群同 slot 约束, B1 回归)"""
         fid = "100"
-        idx = f"cp:cache:flow:keys:{fid}"
+        biz = f"cp:cache:flow:{{{fid}}}:k1"
+        idx = f"cp:cache:flow:keys:{{{fid}}}"
         # 命名空间对齐: 索引 key 与业务 key 同前缀 cp:cache:flow:
         assert idx.startswith("cp:cache:flow:")
         # Set 是具体 key, 不带 :* 通配
         assert not idx.endswith(":*")
+        # hash tag 一致: {flowId} 相同 → 集群下同 slot (Lua 原子写不 CROSSSLOT)
+        tag_biz = biz[biz.index("{"):biz.index("}") + 1]
+        tag_idx = idx[idx.index("{"):idx.index("}") + 1]
+        assert tag_biz == tag_idx == "{" + fid + "}", f"hash tag 应一致: {tag_biz} vs {tag_idx}"
 
 
 class TestCacheIndexEvict:
@@ -80,11 +85,11 @@ class TestCacheIndexEvict:
     def test_deploy_same_version_keeps_index(self, deployed_flow):
         """同版本重部署 → 执行结果缓存不清 (方案 E: 版本变化才清理)"""
         fid, fvid = deployed_flow
-        idx = f"cp:cache:flow:keys:{fid}"
+        idx = f"cp:cache:flow:keys:{{{fid}}}"
 
         # 模拟写入缓存 (直连 Redis SET + SADD, 模拟 writeCache 的 Lua 效果)
-        _redis.set(f"cp:cache:flow:{fid}:k1", "v1", ex=600)
-        _redis.sadd(idx, f"cp:cache:flow:{fid}:k1")
+        _redis.set(f"cp:cache:flow:{{{fid}}}:k1", "v1", ex=600)
+        _redis.sadd(idx, f"cp:cache:flow:{{{fid}}}:k1")
 
         assert _redis_exists(idx), "前置: 索引应存在"
         # 再次 deploy (同版本重部署)
@@ -95,15 +100,15 @@ class TestCacheIndexEvict:
         time.sleep(1)
         # 同版本重部署: 版本未变, 执行结果缓存应保留 (方案 E 设计)
         assert _redis_exists(idx), "同版本重部署不应清理执行结果缓存索引"
-        assert _redis_exists(f"cp:cache:flow:{fid}:k1"), "同版本重部署业务缓存应保留"
+        assert _redis_exists(f"cp:cache:flow:{{{fid}}}:k1"), "同版本重部署业务缓存应保留"
 
     @pytest.mark.L2
     def test_deploy_version_change_evicts(self, deployed_flow, published_connector):
         """版本变化 → 执行结果缓存被清理 (方案 E: 版本变化才清理)"""
         fid, fvid = deployed_flow
-        idx = f"cp:cache:flow:keys:{fid}"
-        _redis.set(f"cp:cache:flow:{fid}:k1", "v1", ex=600)
-        _redis.sadd(idx, f"cp:cache:flow:{fid}:k1")
+        idx = f"cp:cache:flow:keys:{{{fid}}}"
+        _redis.set(f"cp:cache:flow:{{{fid}}}:k1", "v1", ex=600)
+        _redis.sadd(idx, f"cp:cache:flow:{{{fid}}}:k1")
 
         # 创建新版本并部署 (版本变化)
         cid, cvid = published_connector
@@ -142,15 +147,15 @@ class TestCacheIndexEvict:
 
         time.sleep(1)
         assert not _redis_exists(idx), "版本变化 deploy 后索引应被清理"
-        assert not _redis_exists(f"cp:cache:flow:{fid}:k1"), "业务缓存 key 应被清理"
+        assert not _redis_exists(f"cp:cache:flow:{{{fid}}}:k1"), "业务缓存 key 应被清理"
 
     @pytest.mark.L2
     def test_stop_evicts_index(self, deployed_flow):
         """stop → 索引被清理"""
         fid, _ = deployed_flow
-        idx = f"cp:cache:flow:keys:{fid}"
-        _redis.set(f"cp:cache:flow:{fid}:k1", "v1", ex=600)
-        _redis.sadd(idx, f"cp:cache:flow:{fid}:k1")
+        idx = f"cp:cache:flow:keys:{{{fid}}}"
+        _redis.set(f"cp:cache:flow:{{{fid}}}:k1", "v1", ex=600)
+        _redis.sadd(idx, f"cp:cache:flow:{{{fid}}}:k1")
 
         api("POST", f"/flows/{fid}/start")
         resp = api("POST", f"/flows/{fid}/stop")
@@ -158,4 +163,4 @@ class TestCacheIndexEvict:
 
         time.sleep(1)
         assert not _redis_exists(idx), f"stop 后索引 {idx} 应被清理"
-        assert not _redis_exists(f"cp:cache:flow:{fid}:k1"), "业务缓存 key 应被清理"
+        assert not _redis_exists(f"cp:cache:flow:{{{fid}}}:k1"), "业务缓存 key 应被清理"

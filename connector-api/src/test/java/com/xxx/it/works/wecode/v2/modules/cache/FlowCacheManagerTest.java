@@ -76,7 +76,7 @@ class FlowCacheManagerTest {
     }
 
     @Test
-    @DisplayName("写入缓存 → Lua 脚本 SET + SADD 原子化")
+    @DisplayName("写入缓存 → Lua 脚本 SET + SADD 原子化 (业务 key 与索引 key 同 hash tag)")
     void testWriteCache_Normal() {
         when(redisTemplate.execute(any(), anyList(), anyList()))
                 .thenReturn(reactor.core.publisher.Flux.just(1L));
@@ -87,7 +87,16 @@ class FlowCacheManagerTest {
         StepVerifier.create(cacheManager.writeCache(100L, "key1", data, 3600))
                 .verifyComplete();
 
-        verify(redisTemplate).execute(any(), anyList(), anyList());
+        // 断言: 脚本身份 + keys 含业务 key + 索引 key (含 {flowId} hash tag) + args 含 json + ttl
+        verify(redisTemplate).execute(
+                org.mockito.ArgumentMatchers.<org.springframework.data.redis.core.script.RedisScript<Long>>argThat(
+                        script -> script != null && script.getScriptAsString() != null
+                                && script.getScriptAsString().contains("SADD")),
+                eq(List.of("cp:cache:flow:{100}:key1", "cp:cache:flow:keys:{100}")),
+                org.mockito.ArgumentMatchers.<java.util.List<String>>argThat(
+                        args -> args.size() == 2
+                                && ((String) args.get(0)).contains("test-value")
+                                && "3600".equals(args.get(1))));
     }
 
     @Test
@@ -102,7 +111,40 @@ class FlowCacheManagerTest {
         StepVerifier.create(cacheManager.writeCache(100L, "key1", data, 9999999))
                 .verifyComplete();
 
-        verify(redisTemplate).execute(any(), anyList(), anyList());
+        verify(redisTemplate).execute(
+                org.mockito.ArgumentMatchers.<org.springframework.data.redis.core.script.RedisScript<Long>>argThat(
+                        script -> script != null && script.getScriptAsString() != null
+                                && script.getScriptAsString().contains("SADD")),
+                eq(List.of("cp:cache:flow:{100}:key1", "cp:cache:flow:keys:{100}")),
+                org.mockito.ArgumentMatchers.<java.util.List<String>>argThat(
+                        args -> args.size() == 2
+                                && ((String) args.get(0)).contains("test")
+                                && "9999999".equals(args.get(1))));
+    }
+
+    @Test
+    @DisplayName("业务 key 与索引 key 含同一 {flowId} hash tag (集群同 slot 约束)")
+    void testCacheKey_SameHashTag() {
+        // 通过 writeCache 的 execute 调用断言 keys 中两个 key 的 hash tag 一致
+        when(redisTemplate.execute(any(), anyList(), anyList()))
+                .thenReturn(reactor.core.publisher.Flux.just(1L));
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("result", "v");
+
+        StepVerifier.create(cacheManager.writeCache(345539333287051264L, "k1", data, 60))
+                .verifyComplete();
+
+        verify(redisTemplate).execute(
+                any(),
+                org.mockito.ArgumentMatchers.<java.util.List<String>>argThat(keys -> {
+                    String biz = (String) keys.get(0);   // cp:cache:flow:{flowId}:k1
+                    String idx = (String) keys.get(1);   // cp:cache:flow:keys:{flowId}
+                    String tagBiz = biz.substring(biz.indexOf("{"), biz.indexOf("}") + 1);
+                    String tagIdx = idx.substring(idx.indexOf("{"), idx.indexOf("}") + 1);
+                    return tagBiz.equals(tagIdx) && tagBiz.startsWith("{") && tagBiz.endsWith("}");
+                }),
+                anyList());
     }
 
 }
