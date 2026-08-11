@@ -192,20 +192,24 @@ class FlowDeployServiceTest {
     // ===== 幂等: 重复部署同一版本 =====
 
     @Test
-    @DisplayName("重复部署同一已发布版本 → 幂等, 部署成功")
+    @DisplayName("重复部署同一版本 → 短路返回成功, 不重复执行 DB 部署")
     void testRedeploySameVersion_Idempotent() {
+        // 第一次部署: flow 尚无部署版本 → 正常执行
+        flow.setDeployedVersionId(null);
         when(flowMapper.selectById(100L)).thenReturn(flow);
         when(flowVersionMapper.selectById(200L)).thenReturn(version);
 
-        // 第一次部署
         ApiResponse<FlowDeployResponse> r1 = deployService.deployVersion(100L, 200L);
         assertEquals("200", r1.getCode());
+        verify(flowMapper).deploy(eq(100L), eq(200L), eq(1), any(), any());
 
-        // 第二次部署同一版本
+        // 第二次部署同一版本: flow 已绑定该版本 → 短路返回成功, 不再执行 DB 部署
+        flow.setDeployedVersionId(200L);
         ApiResponse<FlowDeployResponse> r2 = deployService.deployVersion(100L, 200L);
         assertEquals("200", r2.getCode());
+        assertEquals("200", r2.getData().getDeployedVersionId());
 
-        // deploy 被调用两次（幂等由 DB 层保证）
-        verify(flowMapper, times(2)).deploy(eq(100L), eq(200L), eq(1), any(), any());
+        // deploy 仅被调用一次 (同版本重部署短路, 不重复执行)
+        verify(flowMapper, times(1)).deploy(eq(100L), eq(200L), eq(1), any(), any());
     }
 }
