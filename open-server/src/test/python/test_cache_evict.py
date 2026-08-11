@@ -9,17 +9,12 @@
 4. 同版本重部署跳过执行结果清理 (方案 E)
 
 前置: open-server(:18080) + connector-api(:18180) 运行, Redis 集群可达
-用法: cd open-server/src/test/python && pytest modules/flow/test_cache_evict.py -v -m L2
+用法: cd open-server/src/test/python && pytest test_cache_evict.py -v -m L2
 """
 import os
-import sys
 import time
 
 import pytest
-import importlib.util
-
-TEST_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(os.path.dirname(TEST_DIR), "common"))
 
 from conftest import api, _get_data, deployed_flow, published_connector  # noqa: F401
 from common import _REDIS_CLUSTER_NODES, REDIS_PASSWORD

@@ -5,6 +5,8 @@
 - **公共依赖** `common/` — 基础设施（API client、DB、fixtures）
 - **单接口测试** `modules/` — 与源码 `modules/` 1:1 对应，L0~L4 分层
 - **全流程测试** `e2e/` — 部署→启动→调用 端到端链路
+- **跨接口测试** `test_*.py`（根目录）— 横切关注点：安全/配置边界/缓存行为
+- **性能测试** `perf/` — 独立性能基准（详见 [perf/README.md](perf/README.md)）
 
 ## 快速开始
 
@@ -66,6 +68,14 @@ test/python/
 ├── e2e/                     # 全流程端到端
 │   └── test_full_flow*.py
 │
+├── perf/                    # 性能测试（独立基准）
+│   ├── README.md            #   性能测试标准
+│   ├── prepare_50w_keys.py  #   存量数据预置
+│   └── bench_deploy_stop.py #   接口耗时基准
+│
+├── verify_no_residue.py     # 集群一致性: 漏删验证（跨模块工具）
+│
+├── test_cache_evict.py      # 跨接口: 缓存索引写入/清理（方案 D/E）
 ├── test_config_boundary.py  # 跨模块: 平台配置边界
 ├── test_misc.py             # 跨模块: 删除 + JSON 校验
 ├── test_security.py         # 跨模块: 白名单 + 操作日志
@@ -108,6 +118,25 @@ test/python/
 | UPDATE | 重新 GET 验证变更已持久化 |
 | DELETE | 验证资源已不可访问 |
 | 生命周期 | 前置状态正确 → 操作 → 后置状态变更符合规范 |
+
+---
+
+## 性能测试
+
+性能验证独立于功能测试（`perf/` 目录），标准见 [perf/README.md](perf/README.md)。
+
+要点：
+- **对比原则**：修复前 vs 修复后同环境对比，而非只看绝对数值（开发环境存在跨机 RTT，基础接口可能 ~150ms）
+- **判定公式**：`清理相关接口耗时 - 基础接口耗时` 修复后应趋近于 0
+- **数据规模**：性能验证需预置存量数据模拟标准环境（`perf/prepare_50w_keys.py 500000`）
+- **Redis 佐证**：`SLOWLOG` 无 SCAN 慢命令
+
+```bash
+# 预置 50w 存量数据 → 跑基准 → 查看报告
+python3 perf/prepare_50w_keys.py 500000
+python3 perf/bench_deploy_stop.py --flow-ids 100 101 102 --rounds 3
+cat reports/bench_result.json
+```
 
 ---
 

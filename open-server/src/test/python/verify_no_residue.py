@@ -17,7 +17,7 @@ import argparse
 import os
 import sys
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "common"))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "common"))
 
 from client import _REDIS_CLUSTER_NODES, REDIS_PASSWORD  # noqa: E402
 from redis.cluster import RedisCluster
