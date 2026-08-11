@@ -22,6 +22,7 @@ import com.xxx.it.works.wecode.v2.modules.security.AppContextHolder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -68,6 +69,9 @@ public class FlowService {
 
     @Autowired
     private FlowCacheEvictor flowCacheEvictor;
+
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -360,11 +364,10 @@ public class FlowService {
         String currentUser = UserContextHolder.getUserName();
         flowMapper.updateLifecycleStatus(flowId, FlowLifecycleStatus.STOPPED.getCode(), now, currentUser);
 
-        // 方案 E: 缓存清理移出事务, 事务提交后执行
-        flowCacheEvictor.runAfterCommit(() -> {
-            flowCacheEvictor.evictFlowEntity(flowId);
-            flowCacheEvictor.evictExecutionResults(flowId);
-        });
+        // 方案 E: 事务提交后异步清理缓存
+        eventPublisher.publishEvent(new FlowCacheEvictEvent(flowId,
+                FlowCacheEvictEvent.SCOPE_FLOW_ENTITY,
+                FlowCacheEvictEvent.SCOPE_EXECUTION_RESULTS));
 
         log.info("Flow stopped: id={}, appId={}", flowId, appId);
 
@@ -402,11 +405,10 @@ public class FlowService {
         String currentUser = UserContextHolder.getUserName();
         flowMapper.updateLifecycleStatus(flowId, FlowLifecycleStatus.INVALIDATED.getCode(), now, currentUser);
 
-        // 方案 E: 缓存清理移出事务, 事务提交后执行
-        flowCacheEvictor.runAfterCommit(() -> {
-            flowCacheEvictor.evictFlowEntity(flowId);
-            flowCacheEvictor.evictExecutionResults(flowId);
-        });
+        // 方案 E: 事务提交后异步清理缓存
+        eventPublisher.publishEvent(new FlowCacheEvictEvent(flowId,
+                FlowCacheEvictEvent.SCOPE_FLOW_ENTITY,
+                FlowCacheEvictEvent.SCOPE_EXECUTION_RESULTS));
 
         log.info("Flow invalidated: id={}, appId={}", flowId, appId);
         return ApiResponse.success();
@@ -471,12 +473,11 @@ public class FlowService {
         // 删除连接流基本信息
         flowMapper.deleteById(flowId);
 
-        // 方案 E: 缓存清理移出事务, 事务提交后执行
-        flowCacheEvictor.runAfterCommit(() -> {
-            flowCacheEvictor.evictFlowConfig(flowId);
-            flowCacheEvictor.evictFlowEntity(flowId);
-            flowCacheEvictor.evictExecutionResults(flowId);
-        });
+        // 方案 E: 事务提交后异步清理缓存
+        eventPublisher.publishEvent(new FlowCacheEvictEvent(flowId,
+                FlowCacheEvictEvent.SCOPE_FLOW_CONFIG,
+                FlowCacheEvictEvent.SCOPE_FLOW_ENTITY,
+                FlowCacheEvictEvent.SCOPE_EXECUTION_RESULTS));
 
         log.info("Flow deleted: id={}, appId={}", flowId, appId);
         return ApiResponse.success();

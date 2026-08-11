@@ -38,6 +38,9 @@ class FlowDeployServiceTest {
     @Mock
     private FlowCacheEvictor flowCacheEvictor;
 
+    @Mock
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
+
     @InjectMocks
     private FlowDeployService deployService;
 
@@ -67,6 +70,7 @@ class FlowDeployServiceTest {
         version.setOrchestrationConfig("{\"nodes\":[],\"edges\":[]}");
 
         ReflectionTestUtils.setField(deployService, "flowCacheEvictor", flowCacheEvictor);
+        ReflectionTestUtils.setField(deployService, "eventPublisher", eventPublisher);
     }
 
     @AfterEach

@@ -11,7 +11,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 /**
  * 异步任务配置
  *
- * <p>提供审计日志异步写入的线程池</p>
+ * <p>提供审计日志异步写入、缓存清理异步执行的线程池</p>
  *
  * @author SDDU Build Agent
  * @version 1.0.0
@@ -45,6 +45,35 @@ public class AsyncConfig {
         executor.setAwaitTerminationSeconds(30);
         executor.initialize();
         log.info("Audit log async executor initialized (core=2, max=5, queue=200)");
+        return executor;
+    }
+
+    /**
+     * 缓存清理异步执行线程池
+     *
+     * <p>连接流生命周期操作 (部署/停止/失效/删除) 提交事务后, 异步清理 Redis 缓存, 不阻塞请求线程。</p>
+     * <ul>
+     *   <li>corePoolSize=2：常驻线程处理缓存清理</li>
+     *   <li>maxPoolSize=4：高峰期扩展到 4 个</li>
+     *   <li>queueCapacity=500：缓冲待清理任务</li>
+     *   <li>CallerRunsPolicy：队列满时由调用线程同步执行，保证缓存最终一致</li>
+     * </ul>
+     *
+     * @return 线程池执行器
+     */
+    @Bean("cacheEvictExecutor")
+    public Executor cacheEvictExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(4);
+        executor.setQueueCapacity(500);
+        executor.setThreadNamePrefix("cache-evict-");
+        // 队列满时由调用线程同步执行，保证缓存清理不丢失
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(30);
+        executor.initialize();
+        log.info("Cache evict async executor initialized (core=2, max=4, queue=500)");
         return executor;
     }
 }

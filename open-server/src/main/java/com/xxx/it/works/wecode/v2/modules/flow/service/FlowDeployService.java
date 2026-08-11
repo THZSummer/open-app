@@ -37,6 +37,9 @@ public class FlowDeployService {
     @Autowired
     private FlowCacheEvictor flowCacheEvictor;
 
+    @Autowired
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
+
     /**
      * 部署版本到连接流
      * <p>
@@ -88,12 +91,11 @@ public class FlowDeployService {
         // 部署：仅绑定版本
         flowMapper.deploy(flowId, versionId, version.getVersionNumber(), now, currentUser);
 
-        // 方案 E: 缓存清理移出事务, 事务提交后执行 (走到此处必然是新版本部署, 全量清理)
-        flowCacheEvictor.runAfterCommit(() -> {
-            flowCacheEvictor.evictFlowConfig(flowId);
-            flowCacheEvictor.evictFlowEntity(flowId);
-            flowCacheEvictor.evictExecutionResults(flowId);
-        });
+        // 方案 E: 事务提交后异步清理缓存 (AFTER_COMMIT + @Async, 不阻塞请求线程)
+        eventPublisher.publishEvent(new FlowCacheEvictEvent(flowId,
+                FlowCacheEvictEvent.SCOPE_FLOW_CONFIG,
+                FlowCacheEvictEvent.SCOPE_FLOW_ENTITY,
+                FlowCacheEvictEvent.SCOPE_EXECUTION_RESULTS));
 
         log.info("Flow deployed: flowId={}, versionId={}, versionNumber={}, appId={}",
                 flowId, versionId, version.getVersionNumber(), appId);

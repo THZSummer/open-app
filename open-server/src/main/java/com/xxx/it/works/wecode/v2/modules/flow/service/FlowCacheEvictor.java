@@ -8,8 +8,6 @@ import org.springframework.data.redis.core.Cursor;
 import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -76,35 +74,6 @@ public class FlowCacheEvictor {
             log.info("Evicted flow config cache: cp:flow:config:{}", flowId);
         } catch (Exception e) {
             log.warn("Failed to evict flow config cache: {}", e.getMessage());
-        }
-    }
-
-    /**
-     * 事务提交后执行缓存清理（方案 E）
-     * <p>
-     * 在 {@code @Transactional} 方法内调用, 将 Redis 清理注册到事务提交后执行:
-     * - 避免 "DB 回滚但缓存已清" 的不一致 (DB 成功才清缓存)
-     * - 避免清理拖长事务持有时间、占用 DB 连接池
-     * 若当前无活动事务, 则立即执行 (兜底)。
-     * </p>
-     *
-     * @param action 清理动作 (内部各 evictXxx 方法已有 try-catch, 异常不向上抛)
-     */
-    public void runAfterCommit(Runnable action) {
-        if (redis == null) return;
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    try {
-                        action.run();
-                    } catch (Exception e) {
-                        log.warn("Cache eviction after commit failed: {}", e.getMessage());
-                    }
-                }
-            });
-        } else {
-            action.run();
         }
     }
 

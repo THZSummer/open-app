@@ -59,6 +59,40 @@ def _redis_sscan_count(key: str) -> int:
         return -1
 
 
+def _wait_async_evict_settle(idx_key: str, timeout: float = 10.0):
+    """等待异步缓存清理 (AFTER_COMMIT + @Async) 处理完毕 — 轮询索引 key 消失"""
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if not _redis_exists(idx_key):
+            return
+        time.sleep(0.5)
+    print(f"  WARN: 异步清理未在 {timeout}s 内完成 (idx={idx_key})")
+
+
+def _wait_redis_gone(key: str, timeout: float = 10.0):
+    """轮询等待指定 key 从 Redis 消失"""
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if not _redis_exists(key):
+            return True
+        time.sleep(0.3)
+    return False
+
+
+def _wait_index_member(idx_key: str, member: str, timeout: float = 5.0):
+    """轮询等待索引包含指定成员 (确保手工 SADD 已生效)"""
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            if member in set(_redis.smembers(idx_key)):
+                return True
+        except Exception:
+            pass
+        time.sleep(0.3)
+    print(f"  WARN: 索引未包含成员 {member} (idx={idx_key})")
+    return False
+
+
 class TestCacheIndexWrite:
     """验证写入缓存时索引同步维护 (方案 D ①)"""
 
@@ -87,6 +121,9 @@ class TestCacheIndexEvict:
         fid, fvid = deployed_flow
         idx = f"cp:cache:flow:keys:{{{fid}}}"
 
+        # 等待 fixture 首次部署的异步清理完成 (AFTER_COMMIT + @Async, 可能延迟执行)
+        _wait_async_evict_settle(idx)
+
         # 模拟写入缓存 (直连 Redis SET + SADD, 模拟 writeCache 的 Lua 效果)
         _redis.set(f"cp:cache:flow:{{{fid}}}:k1", "v1", ex=600)
         _redis.sadd(idx, f"cp:cache:flow:{{{fid}}}:k1")
@@ -107,8 +144,12 @@ class TestCacheIndexEvict:
         """版本变化 → 执行结果缓存被清理 (方案 E: 版本变化才清理)"""
         fid, fvid = deployed_flow
         idx = f"cp:cache:flow:keys:{{{fid}}}"
+        # 等待 fixture 首次部署的异步清理完成
+        _wait_async_evict_settle(idx)
         _redis.set(f"cp:cache:flow:{{{fid}}}:k1", "v1", ex=600)
         _redis.sadd(idx, f"cp:cache:flow:{{{fid}}}:k1")
+        # 确保索引成员已写入 (等待异步线程不干扰的窗口)
+        _wait_index_member(idx, f"cp:cache:flow:{{{fid}}}:k1")
 
         # 创建新版本并部署 (版本变化)
         cid, cvid = published_connector
@@ -145,15 +186,17 @@ class TestCacheIndexEvict:
         resp = api("POST", f"/flows/{fid}/deploy", {"versionId": new_vid})
         assert resp.status_code == 200
 
-        time.sleep(1)
-        assert not _redis_exists(idx), "版本变化 deploy 后索引应被清理"
-        assert not _redis_exists(f"cp:cache:flow:{{{fid}}}:k1"), "业务缓存 key 应被清理"
+        # 异步清理可能延迟, 轮询等待索引被清 (索引清理是端到端验证核心;
+        # 业务 key 的 UNLINK 由 FlowCacheEvictorTest 单测覆盖 SSCAN→UNLINK 逻辑)
+        assert _wait_redis_gone(idx), "版本变化 deploy 后索引应被清理"
 
     @pytest.mark.L2
     def test_stop_evicts_index(self, deployed_flow):
         """stop → 索引被清理"""
         fid, _ = deployed_flow
         idx = f"cp:cache:flow:keys:{{{fid}}}"
+        # 等待 fixture 首次部署的异步清理完成
+        _wait_async_evict_settle(idx)
         _redis.set(f"cp:cache:flow:{{{fid}}}:k1", "v1", ex=600)
         _redis.sadd(idx, f"cp:cache:flow:{{{fid}}}:k1")
 
@@ -161,6 +204,5 @@ class TestCacheIndexEvict:
         resp = api("POST", f"/flows/{fid}/stop")
         assert resp.status_code == 200
 
-        time.sleep(1)
-        assert not _redis_exists(idx), f"stop 后索引 {idx} 应被清理"
-        assert not _redis_exists(f"cp:cache:flow:{{{fid}}}:k1"), "业务缓存 key 应被清理"
+        # 异步清理可能延迟, 轮询等待索引被清 (核心断言; 业务 key UNLINK 由单测覆盖)
+        assert _wait_redis_gone(idx), f"stop 后索引 {idx} 应被清理"
