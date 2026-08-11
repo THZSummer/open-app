@@ -360,8 +360,11 @@ public class FlowService {
         String currentUser = UserContextHolder.getUserName();
         flowMapper.updateLifecycleStatus(flowId, FlowLifecycleStatus.STOPPED.getCode(), now, currentUser);
 
-        flowCacheEvictor.evictFlowEntity(flowId);
-        flowCacheEvictor.evictExecutionResults(flowId);
+        // 方案 E: 缓存清理移出事务, 事务提交后执行
+        flowCacheEvictor.runAfterCommit(() -> {
+            flowCacheEvictor.evictFlowEntity(flowId);
+            flowCacheEvictor.evictExecutionResults(flowId);
+        });
 
         log.info("Flow stopped: id={}, appId={}", flowId, appId);
 
@@ -399,8 +402,11 @@ public class FlowService {
         String currentUser = UserContextHolder.getUserName();
         flowMapper.updateLifecycleStatus(flowId, FlowLifecycleStatus.INVALIDATED.getCode(), now, currentUser);
 
-        flowCacheEvictor.evictFlowEntity(flowId);
-        flowCacheEvictor.evictExecutionResults(flowId);
+        // 方案 E: 缓存清理移出事务, 事务提交后执行
+        flowCacheEvictor.runAfterCommit(() -> {
+            flowCacheEvictor.evictFlowEntity(flowId);
+            flowCacheEvictor.evictExecutionResults(flowId);
+        });
 
         log.info("Flow invalidated: id={}, appId={}", flowId, appId);
         return ApiResponse.success();
@@ -465,9 +471,12 @@ public class FlowService {
         // 删除连接流基本信息
         flowMapper.deleteById(flowId);
 
-        flowCacheEvictor.evictFlowConfig(flowId);
-        flowCacheEvictor.evictFlowEntity(flowId);
-        flowCacheEvictor.evictExecutionResults(flowId);
+        // 方案 E: 缓存清理移出事务, 事务提交后执行
+        flowCacheEvictor.runAfterCommit(() -> {
+            flowCacheEvictor.evictFlowConfig(flowId);
+            flowCacheEvictor.evictFlowEntity(flowId);
+            flowCacheEvictor.evictExecutionResults(flowId);
+        });
 
         log.info("Flow deleted: id={}, appId={}", flowId, appId);
         return ApiResponse.success();

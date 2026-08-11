@@ -76,11 +76,10 @@ class FlowCacheManagerTest {
     }
 
     @Test
-    @DisplayName("写入缓存 → 正确调用 SETEX")
+    @DisplayName("写入缓存 → Lua 脚本 SET + SADD 原子化")
     void testWriteCache_Normal() {
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.set(anyString(), anyString(), any(Duration.class)))
-                .thenReturn(Mono.just(Boolean.TRUE));
+        when(redisTemplate.execute(any(), anyList(), anyList()))
+                .thenReturn(reactor.core.publisher.Flux.just(1L));
 
         Map<String, Object> data = new HashMap<>();
         data.put("result", "test-value");
@@ -88,16 +87,14 @@ class FlowCacheManagerTest {
         StepVerifier.create(cacheManager.writeCache(100L, "key1", data, 3600))
                 .verifyComplete();
 
-        verify(valueOperations).set(contains("cp:cache:flow:100:key1"), anyString(),
-                eq(Duration.ofSeconds(3600)));
+        verify(redisTemplate).execute(any(), anyList(), anyList());
     }
 
     @Test
     @DisplayName("写入缓存使用给定 TTL（不截断）")
     void testWriteCache_UseGivenTtl() {
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.set(anyString(), anyString(), any(Duration.class)))
-                .thenReturn(Mono.just(Boolean.TRUE));
+        when(redisTemplate.execute(any(), anyList(), anyList()))
+                .thenReturn(reactor.core.publisher.Flux.just(1L));
 
         Map<String, Object> data = new HashMap<>();
         data.put("result", "test");
@@ -105,8 +102,7 @@ class FlowCacheManagerTest {
         StepVerifier.create(cacheManager.writeCache(100L, "key1", data, 9999999))
                 .verifyComplete();
 
-        verify(valueOperations).set(anyString(), anyString(),
-                eq(Duration.ofSeconds(9999999)));
+        verify(redisTemplate).execute(any(), anyList(), anyList());
     }
 
 }

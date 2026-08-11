@@ -72,12 +72,21 @@ public class FlowDeployService {
         Date now = new Date();
         String currentUser = UserContextHolder.getUserName();
 
+        // 部署前旧版本号（用于判断同版本重部署）
+        Long previousVersionId = flow.getDeployedVersionId();
+
         // 部署：仅绑定版本
         flowMapper.deploy(flowId, versionId, version.getVersionNumber(), now, currentUser);
 
-        flowCacheEvictor.evictFlowConfig(flowId);
-        flowCacheEvictor.evictFlowEntity(flowId);
-        flowCacheEvictor.evictExecutionResults(flowId);
+        // 方案 E: 缓存清理移出事务, 事务提交后执行
+        flowCacheEvictor.runAfterCommit(() -> {
+            flowCacheEvictor.evictFlowConfig(flowId);
+            flowCacheEvictor.evictFlowEntity(flowId);
+            // 仅版本号变化才清理执行结果缓存（同版本重部署执行逻辑未变, 跳过）
+            if (!versionId.equals(previousVersionId)) {
+                flowCacheEvictor.evictExecutionResults(flowId);
+            }
+        });
 
         log.info("Flow deployed: flowId={}, versionId={}, versionNumber={}, appId={}",
                 flowId, versionId, version.getVersionNumber(), appId);

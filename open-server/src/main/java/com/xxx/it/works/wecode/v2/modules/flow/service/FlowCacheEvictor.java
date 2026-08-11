@@ -7,6 +7,8 @@ import org.springframework.data.redis.core.Cursor;
 import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,6 +31,12 @@ import java.util.List;
 public class FlowCacheEvictor {
 
     private static final Logger log = LoggerFactory.getLogger(FlowCacheEvictor.class);
+
+    /** 索引 Key 前缀（对齐 cp:cache:flow:{flowId}:* 命名空间, Set 存储该 flow 的缓存 key 名） */
+    private static final String INDEX_KEY_PREFIX = "cp:cache:flow:keys:";
+
+    /** SSCAN 每批数量 hint */
+    private static final int SSCAN_BATCH_SIZE = 1000;
 
     @Autowired(required = false)
     private StringRedisTemplate redis;
@@ -69,25 +77,64 @@ public class FlowCacheEvictor {
         }
     }
 
-    /** 清理执行结果缓存 (流状态变更导致缓存结果失效时) */
+    /**
+     * 事务提交后执行缓存清理（方案 E）
+     * <p>
+     * 在 {@code @Transactional} 方法内调用, 将 Redis 清理注册到事务提交后执行:
+     * - 避免 "DB 回滚但缓存已清" 的不一致 (DB 成功才清缓存)
+     * - 避免清理拖长事务持有时间、占用 DB 连接池
+     * 若当前无活动事务, 则立即执行 (兜底)。
+     * </p>
+     *
+     * @param action 清理动作 (内部各 evictXxx 方法已有 try-catch, 异常不向上抛)
+     */
+    public void runAfterCommit(Runnable action) {
+        if (redis == null) return;
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    try {
+                        action.run();
+                    } catch (Exception e) {
+                        log.warn("Cache eviction after commit failed: {}", e.getMessage());
+                    }
+                }
+            });
+        } else {
+            action.run();
+        }
+    }
+
+    /**
+     * 清理执行结果缓存 (流状态变更导致缓存结果失效时)
+     * <p>
+     * 通过 flow 维度索引 (cp:cache:flow:keys:{flowId}) 精确删除, 不再 SCAN 全库。
+     * 默认按大量成员场景设计: SSCAN 分批取 + 每批 1000 个 UNLINK, 不阻塞主线程。
+     * </p>
+     */
     public void evictExecutionResults(Long flowId) {
         if (redis == null) return;
-        String pattern = "cp:cache:flow:" + flowId + ":*";
+        String indexKey = INDEX_KEY_PREFIX + flowId;
         try {
             ScanOptions options = ScanOptions.scanOptions()
-                    .match(pattern)
-                    .count(100)
+                    .count(SSCAN_BATCH_SIZE)
                     .build();
-            List<String> keysToDelete = new ArrayList<>();
-            try (Cursor<String> cursor = redis.scan(options)) {
+            List<String> batch = new ArrayList<>();
+            try (Cursor<String> cursor = redis.opsForSet().scan(indexKey, options)) {
                 while (cursor.hasNext()) {
-                    keysToDelete.add(cursor.next());
+                    batch.add(cursor.next());
+                    if (batch.size() >= SSCAN_BATCH_SIZE) {
+                        redis.unlink(batch);
+                        batch.clear();
+                    }
                 }
             }
-            if (!keysToDelete.isEmpty()) {
-                redis.delete(keysToDelete);
-                log.info("Evicted execution result caches: {} keys matching {}", keysToDelete.size(), pattern);
+            if (!batch.isEmpty()) {
+                redis.unlink(batch);
             }
+            redis.delete(indexKey);
+            log.info("Evicted execution result caches for flowId={} via index {}", flowId, indexKey);
         } catch (Exception e) {
             log.warn("Failed to evict execution result caches for flowId={}: {}", flowId, e.getMessage());
         }
