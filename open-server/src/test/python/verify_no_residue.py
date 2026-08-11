@@ -3,9 +3,9 @@
 集群漏删验证 — 确认 6 节点上 cp:cache:flow:{flowId}:* 全部清理无残留
 
 用法:
-    python3 scripts/verify_no_residue.py <flowId>           # 验证单个 flow
-    python3 scripts/verify_no_residue.py <flowId> --index   # 同时验证索引 key 已删
-    python3 scripts/verify_no_residue.py all                # 验证全部 flow 无残留
+    python3 verify_no_residue.py <flowId>           # 验证单个 flow
+    python3 verify_no_residue.py <flowId> --index   # 同时验证索引 key 已删
+    python3 verify_no_residue.py all                # 验证全部 flow 无残留
 
 前置:
     - 6 节点 Redis 集群可达 (config.py REDIS_CLUSTER_NODES)

@@ -5,9 +5,9 @@
 对 N 个 flow 循环执行 deploy → start → stop, 统计每个接口耗时。
 
 用法:
-    python3 scripts/bench_deploy_stop.py              # 默认 20 个 flow
-    python3 scripts/bench_deploy_stop.py --flows 50
-    python3 scripts/bench_deploy_stop.py --report /tmp/bench.json
+    python3 perf/bench_deploy_stop.py              # 默认 20 个 flow
+    python3 perf/bench_deploy_stop.py --flows 50
+    python3 perf/bench_deploy_stop.py --report /tmp/bench.json
 
 前置:
     - open-server(:18080) 运行
@@ -29,8 +29,15 @@ from client import api  # noqa: E402
 
 
 def _get_data(resp):
-    """从 API 响应提取 data 字段"""
-    return resp.json()["data"]
+    """从 API 响应提取 data 字段; 业务失败(非 200)返回 None"""
+    try:
+        body = resp.json()
+    except Exception:
+        return None
+    # 业务状态码检查: 仅 code==200 视为成功
+    if body.get("code") not in (200, "200"):
+        return None
+    return body.get("data")
 
 
 def _pct(data, p):
@@ -72,7 +79,7 @@ def main():
 
     if not args.flow_ids:
         print("⚠️  请提供 --flow-ids (已创建且含已发布版本的 flowId 列表)")
-        print("   示例: python3 scripts/bench_deploy_stop.py --flow-ids 100 101 102")
+        print("   示例: python3 perf/bench_deploy_stop.py --flow-ids 100 101 102")
         sys.exit(1)
 
     flow_ids = args.flow_ids
@@ -84,10 +91,16 @@ def main():
     for fid in flow_ids:
         # 获取当前已部署版本 (若无则跳过)
         r = api("GET", f"/flows/{fid}")
+        if r is None:
+            print(f"  flow {fid}: 连接失败, 跳过")
+            continue
         if r.status_code != 200:
-            print(f"  flow {fid}: 获取失败, 跳过")
+            print(f"  flow {fid}: HTTP {r.status_code} 获取失败, 跳过")
             continue
         data = _get_data(r)
+        if data is None:
+            print(f"  flow {fid}: 业务返回非 200 (flow 可能不存在), 跳过")
+            continue
         vid = data.get("deployedVersionId")
         if vid is None:
             print(f"  flow {fid}: 无已部署版本, 跳过")
@@ -108,6 +121,10 @@ def main():
             "max": round(max(v), 2) if v else 0,
             "count": len(v),
         }
+
+    if summary["deploy"]["count"] == 0 or summary["stop"]["count"] == 0:
+        print("\n❌ 无有效测试数据: 所有 flow 均被跳过 (检查 flow-ids 是否为已部署的真实 flow)")
+        sys.exit(2)
 
     os.makedirs(os.path.dirname(args.report), exist_ok=True)
     with open(args.report, "w", encoding="utf-8") as f:

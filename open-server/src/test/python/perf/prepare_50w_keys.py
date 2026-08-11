@@ -6,9 +6,9 @@
 模拟存量执行结果缓存 (无索引, 对应"存量数据不处理"决策)。
 
 用法:
-    python3 scripts/prepare_50w_keys.py            # 默认 500000 个
-    python3 scripts/prepare_50w_keys.py 100000     # 指定数量
-    python3 scripts/prepare_50w_keys.py 500000 --clean   # 先清旧数据
+    python3 perf/prepare_50w_keys.py            # 默认 500000 个
+    python3 perf/prepare_50w_keys.py 100000     # 指定数量
+    python3 perf/prepare_50w_keys.py 500000 --clean   # 先清旧数据
 
 输出: 写入总数 / 各节点 key 分布 / 耗时
 """
