@@ -44,3 +44,6 @@ logging:
 # 平台配置
 platform:
   approval-url-prefix: https://platform.example.com/approval/
+  # 连接流执行结果缓存清理 — SSCAN 每批数量 hint（默认 1000）
+  flow-cache:
+    sscan-batch-size: 1000

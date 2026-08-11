@@ -3,6 +3,7 @@ package com.xxx.it.works.wecode.v2.modules.flow.service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.Cursor;
 import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -35,8 +36,9 @@ public class FlowCacheEvictor {
     /** 索引 Key 前缀（Set 存储该 flow 的缓存 key 名; 含 {flowId} hash tag 与业务 key 同 slot） */
     private static final String INDEX_KEY_PREFIX = "cp:cache:flow:keys:";
 
-    /** SSCAN 每批数量 hint */
-    private static final int SSCAN_BATCH_SIZE = 1000;
+    /** SSCAN 每批数量 hint（可配置, 默认 1000; count 为 hint 非严格限制） */
+    @Value("${platform.flow-cache.sscan-batch-size:1000}")
+    private int sscanBatchSize = 1000;
 
     @Autowired(required = false)
     private StringRedisTemplate redis;
@@ -118,13 +120,13 @@ public class FlowCacheEvictor {
         String indexKey = buildIndexKey(flowId);
         try {
             ScanOptions options = ScanOptions.scanOptions()
-                    .count(SSCAN_BATCH_SIZE)
+                    .count(sscanBatchSize)
                     .build();
             List<String> batch = new ArrayList<>();
             try (Cursor<String> cursor = redis.opsForSet().scan(indexKey, options)) {
                 while (cursor.hasNext()) {
                     batch.add(cursor.next());
-                    if (batch.size() >= SSCAN_BATCH_SIZE) {
+                    if (batch.size() >= sscanBatchSize) {
                         redis.unlink(batch);
                         batch.clear();
                     }
