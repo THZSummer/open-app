@@ -14,8 +14,6 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * - 保证语义: 仅 DB 事务成功提交后才清理 (避免 "DB 回滚但缓存已清" 不一致)
  * - 异步执行: 使用 cacheEvictExecutor 线程池, 不阻塞事务提交线程
  * - 异常兜底: 清理失败仅 log.warn, 不影响主业务; TTL 过期兜底最终一致
- * - fallbackExecution=true: 事件发布时若无活动事务(如标准环境调用链差异), 立即执行而非静默丢弃;
- *   清理为幂等操作 + 内部 try-catch + TTL 兜底, 无事务时立即执行更安全
  * </p>
  */
 @Slf4j
@@ -26,11 +24,10 @@ public class FlowCacheEvictListener {
     private FlowCacheEvictor flowCacheEvictor;
 
     @Async("cacheEvictExecutor")
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onEvict(FlowCacheEvictEvent event) {
         try {
             if (event.getFlowId() == null) return;
-            log.debug("Flow cache evict event received: flowId={}, scopes={}", event.getFlowId(), event.getScopes());
             if (event.includes(FlowCacheEvictEvent.SCOPE_FLOW_CONFIG)) {
                 flowCacheEvictor.evictFlowConfig(event.getFlowId());
             }
