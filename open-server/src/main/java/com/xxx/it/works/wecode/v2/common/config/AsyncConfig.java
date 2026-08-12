@@ -53,9 +53,9 @@ public class AsyncConfig {
      *
      * <p>连接流生命周期操作 (部署/停止/失效/删除) 提交事务后, 异步清理 Redis 缓存, 不阻塞请求线程。</p>
      * <ul>
-     *   <li>corePoolSize=2：常驻线程处理缓存清理</li>
-     *   <li>maxPoolSize=4：高峰期扩展到 4 个</li>
-     *   <li>queueCapacity=500：缓冲待清理任务</li>
+     *   <li>corePoolSize=4：常驻线程处理缓存清理</li>
+     *   <li>maxPoolSize=8：高峰期扩展到 8 个</li>
+     *   <li>queueCapacity=200：缓冲待清理任务</li>
      *   <li>CallerRunsPolicy：队列满时由调用线程同步执行，保证缓存最终一致</li>
      * </ul>
      *
@@ -64,16 +64,16 @@ public class AsyncConfig {
     @Bean("cacheEvictExecutor")
     public Executor cacheEvictExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(2);
-        executor.setMaxPoolSize(4);
-        executor.setQueueCapacity(500);
+        executor.setCorePoolSize(4);
+        executor.setMaxPoolSize(8);
+        executor.setQueueCapacity(200);
         executor.setThreadNamePrefix("cache-evict-");
         // 队列满时由调用线程同步执行，保证缓存清理不丢失
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(30);
         executor.initialize();
-        log.info("Cache evict async executor initialized (core=2, max=4, queue=500)");
+        log.info("Cache evict async executor initialized (core=4, max=8, queue=200)");
         return executor;
     }
 }

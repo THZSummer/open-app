@@ -59,14 +59,24 @@ def _redis_sscan_count(key: str) -> int:
         return -1
 
 
-def _wait_async_evict_settle(idx_key: str, timeout: float = 10.0):
-    """等待异步缓存清理 (AFTER_COMMIT + @Async) 处理完毕 — 轮询索引 key 消失"""
+def _wait_async_evict_settle(idx_key: str, timeout: float = 15.0):
+    """等待异步缓存清理 (AFTER_COMMIT + @Async) 彻底处理完毕.
+
+    语义: 索引 key 连续 3 次检查 (间隔 1s) 均不存在, 才认为在途清理事件已全部执行完。
+    避免"首次消失即返回"导致排队中的清理事件随后执行、覆盖测试后续写入的数据。
+    """
+    stable = 0
     deadline = time.time() + timeout
     while time.time() < deadline:
         if not _redis_exists(idx_key):
-            return
-        time.sleep(0.5)
-    print(f"  WARN: 异步清理未在 {timeout}s 内完成 (idx={idx_key})")
+            stable += 1
+            if stable >= 3:
+                return
+            time.sleep(1.0)
+        else:
+            stable = 0
+            time.sleep(0.5)
+    print(f"  WARN: 异步清理未在 {timeout}s 内稳定 (idx={idx_key})")
 
 
 def _wait_redis_gone(key: str, timeout: float = 10.0):
@@ -121,7 +131,7 @@ class TestCacheIndexEvict:
         fid, fvid = deployed_flow
         idx = f"cp:cache:flow:keys:{{{fid}}}"
 
-        # 等待 fixture 首次部署的异步清理完成 (AFTER_COMMIT + @Async, 可能延迟执行)
+        # 等待 fixture 首次部署的异步清理彻底完成 (索引消失且稳定)
         _wait_async_evict_settle(idx)
 
         # 模拟写入缓存 (直连 Redis SET + SADD, 模拟 writeCache 的 Lua 效果)
@@ -129,13 +139,12 @@ class TestCacheIndexEvict:
         _redis.sadd(idx, f"cp:cache:flow:{{{fid}}}:k1")
 
         assert _redis_exists(idx), "前置: 索引应存在"
-        # 再次 deploy (同版本重部署)
+        # 再次 deploy (同版本重部署 → 幂等短路, 不触发清理)
         resp = api("POST", f"/flows/{fid}/deploy", {"versionId": fvid})
         assert resp.status_code == 200
 
-        # 等待 afterCommit 处理
-        time.sleep(1)
-        # 同版本重部署: 版本未变, 执行结果缓存应保留 (方案 E 设计)
+        # 同版本重部署不触发清理事件; 稍等确认索引仍在 (未被任何在途清理误清)
+        time.sleep(2)
         assert _redis_exists(idx), "同版本重部署不应清理执行结果缓存索引"
         assert _redis_exists(f"cp:cache:flow:{{{fid}}}:k1"), "同版本重部署业务缓存应保留"
 
