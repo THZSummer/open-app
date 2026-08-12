@@ -2,19 +2,20 @@ package com.xxx.it.works.wecode.v2.modules.flow.service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
  * 连接流缓存清理异步监听器
  * <p>
- * 监听 {@link FlowCacheEvictEvent}, 事件发布后异步执行 Redis 缓存清理:
- * - 事件驱动解耦: 发布方 (FlowDeployService/FlowService) 不关心清理细节
- * - 异步执行: 使用 cacheEvictExecutor 线程池, 不阻塞事件发布线程
- * - 不绑定事务: 缓存清理是删除操作, 即使事务回滚也仅导致缓存缺失 → 下次读 DB 重建,
- *   无需等待事务提交 (TTL 兜底最终一致)
- * - 异常兜底: 清理失败仅 log.warn, 不影响主业务
+ * 监听 {@link FlowCacheEvictEvent}, 在事务提交后 ({@code AFTER_COMMIT}) 异步执行 Redis 缓存清理:
+ * - 保证语义: 仅 DB 事务成功提交后才清理 (避免 "DB 回滚但缓存已清" 不一致)
+ * - 异步执行: 使用 cacheEvictExecutor 线程池, 不阻塞事务提交线程
+ * - 异常兜底: 清理失败仅 log.warn, 不影响主业务; TTL 过期兜底最终一致
+ * - fallbackExecution=true: 事件发布时若无活动事务(如标准环境调用链差异), 立即执行而非静默丢弃;
+ *   清理为幂等操作 + 内部 try-catch + TTL 兜底, 无事务时立即执行更安全
  * </p>
  */
 @Slf4j
@@ -25,7 +26,7 @@ public class FlowCacheEvictListener {
     private FlowCacheEvictor flowCacheEvictor;
 
     @Async("cacheEvictExecutor")
-    @EventListener
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void onEvict(FlowCacheEvictEvent event) {
         try {
             if (event.getFlowId() == null) return;
