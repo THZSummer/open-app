@@ -95,6 +95,17 @@ class FlowCacheEvictorTest {
     }
 
     @Test
+    @DisplayName("evictExecutionResults: pop 返回 null (Redisson key 不存在) → 不 NPE, 仅删索引")
+    void testEvictExecutionResults_PopReturnsNull() {
+        when(setOperations.pop(eq(INDEX_KEY), anyLong())).thenReturn(null);
+
+        assertDoesNotThrow(() -> evictor.evictExecutionResults(100L));
+
+        verify(redis, never()).unlink(anyList());
+        verify(redis).delete(INDEX_KEY);
+    }
+
+    @Test
     @DisplayName("evictExecutionResults: Redis 异常 → 不抛异常")
     void testEvictExecutionResults_RedisError() {
         when(setOperations.pop(eq(INDEX_KEY), anyLong()))

@@ -87,8 +87,8 @@ public class FlowCacheEvictor {
         String indexKey = buildIndexKey(flowId);
         try {
             List<String> batch;
-            // SPOP: 弹出即从 Set 移除; 返回空列表 = Set 已空, 循环终止
-            while (!(batch = redis.opsForSet().pop(indexKey, evictBatchSize)).isEmpty()) {
+            // SPOP: 弹出即从 Set 移除; null (Redisson key 不存在) 或空 (Lettuce) = Set 已空, 循环终止
+            while ((batch = redis.opsForSet().pop(indexKey, evictBatchSize)) != null && !batch.isEmpty()) {
                 redis.unlink(batch);
             }
             redis.delete(indexKey);
