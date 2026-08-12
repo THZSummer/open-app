@@ -4,12 +4,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.redis.core.Cursor;
-import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -34,9 +31,9 @@ public class FlowCacheEvictor {
     /** 索引 Key 前缀（Set 存储该 flow 的缓存 key 名; 含 {flowId} hash tag 与业务 key 同 slot） */
     private static final String INDEX_KEY_PREFIX = "cp:cache:flow:keys:";
 
-    /** SSCAN 每批数量 hint（可配置, 默认 1000; count 为 hint 非严格限制） */
+    /** SPOP 每批弹出数量（可配置, 默认 1000; 弹出即从索引 Set 移除, 天然分批） */
     @Value("${platform.flow-cache.sscan-batch-size:1000}")
-    private int sscanBatchSize = 1000;
+    private int evictBatchSize = 1000;
 
     @Autowired(required = false)
     private StringRedisTemplate redis;
@@ -81,27 +78,17 @@ public class FlowCacheEvictor {
      * 清理执行结果缓存 (流状态变更导致缓存结果失效时)
      * <p>
      * 通过 flow 维度索引 (cp:cache:flow:keys:{flowId}) 精确删除, 不再 SCAN 全库。
-     * 默认按大量成员场景设计: SSCAN 分批取 + 每批 1000 个 UNLINK, 不阻塞主线程。
+     * 使用 SPOP 批量弹出并移除索引成员 (Redis 原生命令, Lettuce/Redisson 均兼容),
+     * 弹出一批 → UNLINK 一批, 天然分批, 大量 key 场景下不一次性加载全部。
      * </p>
      */
     public void evictExecutionResults(Long flowId) {
         if (redis == null) return;
         String indexKey = buildIndexKey(flowId);
         try {
-            ScanOptions options = ScanOptions.scanOptions()
-                    .count(sscanBatchSize)
-                    .build();
-            List<String> batch = new ArrayList<>();
-            try (Cursor<String> cursor = redis.opsForSet().scan(indexKey, options)) {
-                while (cursor.hasNext()) {
-                    batch.add(cursor.next());
-                    if (batch.size() >= sscanBatchSize) {
-                        redis.unlink(batch);
-                        batch.clear();
-                    }
-                }
-            }
-            if (!batch.isEmpty()) {
+            List<String> batch;
+            // SPOP: 弹出即从 Set 移除; 返回空列表 = Set 已空, 循环终止
+            while (!(batch = redis.opsForSet().pop(indexKey, evictBatchSize)).isEmpty()) {
                 redis.unlink(batch);
             }
             redis.delete(indexKey);
