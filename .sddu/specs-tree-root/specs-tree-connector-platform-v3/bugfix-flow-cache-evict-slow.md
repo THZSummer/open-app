@@ -110,7 +110,7 @@ SCAN 的耗时取决于 Redis 哈希表大小（总 key 数），**不是**匹�
 
 ### 方案 D：flow 维度 key 索引（结构性替代 SCAN，✅ 已采纳）
 
-写入缓存时同步维护索引，清理时精确删除。**默认按大量成员场景设计**——统一采用 SSCAN 分批取 + 每批 UNLINK，不做"小成员量用 SMEMBERS 一次性"的分支优化：无论单个 flow 有多少缓存 key 都安全，代码路径单一。
+写入缓存时同步维护索引，清理时精确删除。**默认按大量成员场景设计**——统一采用 SPOP 批量弹出 + 每批 UNLINK，不做"小成员量用 SMEMBERS 一次性"的分支优化：无论单个 flow 有多少缓存 key 都安全，代码路径单一。
 
 > 📌 索引 key 命名（决策 #2）：**`cp:cache:flow:keys:{{flowId}}`** — 对齐 `cp:cache:flow:{{flowId}}:*` 命名空间（同属 `cp:cache:flow:` 前缀、针对同一 flow），Set 为具体 key 不带 `:*` 通配。**业务 key 与索引 key 均含 `{flowId}` hash tag**，确保集群模式下同 slot（Lua 原子写不触发 CROSSSLOT，见 §5.2 Step 1 注）。
 
@@ -128,30 +128,32 @@ SADD KEYS[2] KEYS[1]
 //   Redis 对 hash tag 内内容做 CRC16 → 两 key 必同 slot，无 CROSSSLOT
 ```
 
-**② 清理时（FlowCacheEvictor.evictExecutionResults）——不再 SCAN，SSCAN 分批取 + 分批 UNLINK**：
+**② 清理时（FlowCacheEvictor.evictExecutionResults）——不再 SCAN，SPOP 批量弹出 + 分批 UNLINK**：
 
 ```java
-Cursor<String> cursor = sscan("cp:cache:flow:keys:" + flowId, count=1000);  // 分批取索引成员
-List<String> batch = new ArrayList<>();
-while (cursor.hasNext()) {
-    batch.add(cursor.next());
-    if (batch.size() >= 1000) { unlink(batch); batch.clear(); }       // 每批 1000 异步删除
+// SPOP: 弹出即从索引 Set 移除; null (Redisson key 不存在) 或空 (Lettuce) = Set 已空, 循环终止
+List<String> batch;
+while ((batch = redis.opsForSet().pop(indexKey, evictBatchSize)) != null && !batch.isEmpty()) {
+    redis.unlink(batch);                    // 每批 1000 异步删除
 }
-if (!batch.isEmpty()) unlink(batch);
-delete("cp:cache:flow:keys:" + flowId);   // 最后删索引本身
+redis.delete(indexKey);                     // 最后删索引本身
 ```
 
-- **优点**：清理 O(flow 的 key 数)，**完全不依赖全库规模**；精确删除无漏删；默认大量成员设计天然适配存量用户流（已有较多 key 也能安全清理）
+> 🔄 **实现演进记录（v260812-5/v260812-6）**：原方案用 SSCAN 游标分批取索引成员，标准环境暴露 **Redisson 不实现 Spring Data 的 `opsForSet().scan()`**（SSCAN）→ 改用 **SPOP 原生命令**（Lettuce/Redisson 均兼容）。SPOP 弹出即从 Set 移除，天然分批、不重复、无需游标。后续补 NPE 防御（Redisson key 不存在时 `pop()` 返回 null，需判空）。
+
+- **优点**：清理 O(flow 的 key 数)，**完全不依赖全库规模**；精确删除无漏删；默认大量成员设计天然适配存量用户流（已有较多 key 也能安全清理）；SPOP 为原生命令两环境兼容
 - **缺点**：写入路径多一次 Redis 往返（可用 pipeline 合并）；**存量 key 无索引**（本方案不考虑存量迁移——存量靠 TTL 自然过期兜底，≤15 天）
-- **存量策略**：🟢 **不考虑存量数据**。方案设计面向增量，存量 50w key 无索引，清理时不受影响（SSCAN 只读索引集合，存量 key 不进入索引），靠现有 TTL 自然过期回收。**无需一次性迁移/重建索引/特殊清理**
-- **大批量键控**：即便存量用户流已有几十万 key 未入索引，索引集合也只含增量 key；每批 1000 UNLINK 保证单命令不过大、主线程不阻塞
+- **存量策略**：🟢 **不考虑存量数据**。方案设计面向增量，存量 50w key 无索引，清理时不受影响（SPOP 只操作索引集合，存量 key 不进入索引），靠现有 TTL 自然过期回收。**无需一次性迁移/重建索引/特殊清理**
+- **大批量键控**：即便存量用户流已有几十万 key 未入索引，索引集合也只含增量 key；SPOP 每批 1000 弹出 + UNLINK，天然分批不一次性加载，单命令不过大、主线程不阻塞
 
 ### 方案 E：清理移出事务 + 按需清理（✅ 已采纳，配套优化）
 
-- `evictExecutionResults` 从 `@Transactional` 方法内移到 `TransactionSynchronization.afterCommit`（缩短事务持有时间，避免 DB 连接池占用 + DB/Redis 一致性窗口）
-- 部署时仅**版本号变化**才清空执行结果缓存（同版本重部署跳过）
-- **优点**：配套优化，降低对 DB 连接池占用；减少无谓清理
+- 缓存清理通过 **事件驱动 + 异步线程池** 执行：`FlowCacheEvictor` 发布事件 → `FlowCacheEvictListener`（`@Async("cacheEvictExecutor")` + `@TransactionalEventListener(AFTER_COMMIT)`）异步执行清理
+- 部署时仅**版本号变化**才清空执行结果缓存（同版本重部署幂等短路，不重复执行 DB 部署与清理）
+- **优点**：不阻塞请求线程（独立线程池）；解耦（发布方不关心清理细节）；`AFTER_COMMIT` 保证 DB 事务成功提交后才清理（避免"DB 回滚但缓存已清"）
 - **缺点**：与 A/B/C/D 正交，需组合使用
+
+> 🔄 **实现演进记录**：最初用 `TransactionSynchronization.afterCommit`（runAfterCommit）→ 改为 `@TransactionalEventListener(AFTER_COMMIT)`（事件驱动 + 事务提交后执行，当前实现）。曾尝试简化为纯 `@EventListener`（不绑定事务），经权衡**保留 `@TransactionalEventListener`**——`AFTER_COMMIT` 提供"DB 成功才清缓存"的严格语义，且 fallbackExecution 场景通过事件发布点保证（发布在 @Transactional 方法内）。
 
 ### 推荐组合（✅ 已决策）
 
@@ -178,7 +180,7 @@ delete("cp:cache:flow:keys:" + flowId);   // 最后删索引本身
 ---
 ## 5. 实施细则（对应 §3 决策，可落地）
 
-> 范围：方案 D（SADD 索引 + Lua 原子化写入 + SSCAN 分批清理）+ 方案 E（事务外清理）。一次性在分支 `perf/flow-cache-evict-scan` 完成。
+> 范围：方案 D（SADD 索引 + Lua 原子化写入 + SPOP 分批清理）+ 方案 E（事件驱动异步清理）。核心实现在分支 `perf/flow-cache-evict-scan` 完成，后续演进（SPOP/NPE）在 main 上补丁完成。
 
 ### 5.1 变更文件总览
 
@@ -186,11 +188,14 @@ delete("cp:cache:flow:keys:" + flowId);   // 最后删索引本身
 |---|------|---------|------|
 | 1 | `connector-api/src/main/resources/lua/flow_cache_write.lua` | 新增 | Lua 脚本：SET 业务数据 + SADD 索引（原子） |
 | 2 | `connector-api/.../modules/cache/FlowCacheManager.java` | 修改 | `writeCache` 改走 Lua 脚本；新增索引 key 常量 |
-| 3 | `open-server/.../modules/flow/service/FlowCacheEvictor.java` | 修改 | `evictExecutionResults` 由 SCAN 改为 SSCAN 索引清理；新增 `evictByFlowId` 支持事务外调用 |
-| 4 | `open-server/.../modules/flow/service/FlowDeployService.java` | 修改 | 部署清理移出事务（afterCommit） |
-| 5 | `open-server/.../modules/flow/service/FlowService.java` | 修改 | 停止/失效/删除清理移出事务（afterCommit） |
-| 6 | `connector-api/.../modules/cache/FlowCacheManagerTest.java` | 修改 | 新增 Lua 写入用例 |
-| 7 | `open-server/src/test/.../FlowCacheEvictorTest.java` | 新增 | 新增 SSCAN 分批清理用例 |
+| 3 | `open-server/.../modules/flow/service/FlowCacheEvictor.java` | 修改 | `evictExecutionResults` 由 SCAN 改为 SPOP 索引清理（含 null 防御） |
+| 4 | `open-server/.../modules/flow/service/FlowDeployService.java` | 修改 | 部署清理改事件发布（publishEvent） |
+| 5 | `open-server/.../modules/flow/service/FlowService.java` | 修改 | 停止/失效/删除清理改事件发布（publishEvent） |
+| 6 | `open-server/.../modules/flow/service/FlowCacheEvictEvent.java` | 新增 | 清理事件（flowId + 清理范围） |
+| 7 | `open-server/.../modules/flow/service/FlowCacheEvictListener.java` | 新增 | 异步事件监听器（@Async + @TransactionalEventListener） |
+| 8 | `open-server/.../common/config/AsyncConfig.java` | 修改 | 新增 cacheEvictExecutor 线程池 |
+| 9 | `connector-api/.../modules/cache/FlowCacheManagerTest.java` | 修改 | 新增 Lua 写入用例（含 hash tag 断言） |
+| 10 | `open-server/src/test/.../FlowCacheEvictorTest.java` | 新增 | 新增 SPOP 分批清理用例（含 null 防御） |
 
 ### 5.2 实施步骤（按依赖顺序）
 
@@ -230,22 +235,20 @@ return reactiveRedisTemplate.execute(
 ```java
 /** 索引 key 前缀（对齐 cp:cache:flow:{flowId}:* 命名空间） */
 private static final String INDEX_KEY_PREFIX = "cp:cache:flow:keys:";
+/** SPOP 每批弹出数量（可配置, 默认 1000） */
+@Value("${platform.flow-cache.sscan-batch-size:1000}")
+private int evictBatchSize = 1000;
 
 public void evictExecutionResults(Long flowId) {
     if (redis == null) return;
     String indexKey = INDEX_KEY_PREFIX + flowId;
     try {
-        // 1. SSCAN 分批取索引成员（只扫该 flow 的 Set，不扫全库）
-        ScanOptions opt = ScanOptions.scanOptions().count(1000).build();
-        List<String> batch = new ArrayList<>();
-        try (Cursor<String> cursor = redis.opsForSet().scan(indexKey, opt)) {
-            while (cursor.hasNext()) {
-                batch.add(cursor.next());
-                if (batch.size() >= 1000) { redis.unlink(batch); batch.clear(); }
-            }
+        // 1. SPOP 批量弹出并移除索引成员（弹出即删, 天然分批; 兼容 Lettuce/Redisson）
+        List<String> batch;
+        while ((batch = redis.opsForSet().pop(indexKey, evictBatchSize)) != null && !batch.isEmpty()) {
+            redis.unlink(batch);
         }
-        // 2. 删剩余 + 删索引本身
-        if (!batch.isEmpty()) redis.unlink(batch);
+        // 2. 删索引本身
         redis.delete(indexKey);
         log.info("Evicted execution result caches for flowId={} via index {}", flowId, indexKey);
     } catch (Exception e) {
@@ -254,40 +257,47 @@ public void evictExecutionResults(Long flowId) {
 }
 ```
 
-#### Step 4：方案 E — 清理移出事务（open-server 4 个方法）
+> 🔄 原实现用 SSCAN 游标（`opsForSet().scan`），标准环境 Redisson 不实现该方法 → 改用 **SPOP**（原生命令两环境兼容）。`pop()` 返回 null（Redisson key 不存在）需判空，避免 NPE。
 
-**原则**：Redis 清理从 `@Transactional` 方法体移出，改注册 `afterCommit` 回调，事务提交后才执行。
+#### Step 4：方案 E — 清理移出事务（open-server 4 个方法，事件驱动 + 异步）
+
+**原则**：Redis 清理从 `@Transactional` 方法体移出，改为发布事件 + `@Async` 异步监听器执行（不阻塞请求线程，不依赖事务时序）。
 
 ```java
-// FlowDeployService.deployVersion — 替换原来的直接调用
+// FlowDeployService.deployVersion — 发布清理事件（事务方法内调用）
 flowMapper.deploy(flowId, versionId, version.getVersionNumber(), now, currentUser);
-TransactionSynchronizationManager.registerSynchronization(
-        new TransactionSynchronization() {
-            @Override public void afterCommit() {
-                flowCacheEvictor.evictFlowConfig(flowId);
-                flowCacheEvictor.evictFlowEntity(flowId);
-                flowCacheEvictor.evictExecutionResults(flowId);
-            }
-        });
+eventPublisher.publishEvent(new FlowCacheEvictEvent(flowId,
+        FlowCacheEvictEvent.SCOPE_FLOW_CONFIG,
+        FlowCacheEvictEvent.SCOPE_FLOW_ENTITY,
+        FlowCacheEvictEvent.SCOPE_EXECUTION_RESULTS));
 ```
 
-**涉及方法**（4 处，统一改 afterCommit）：
+```java
+// FlowCacheEvictListener — 异步事件监听器（事务提交后执行）
+@Async("cacheEvictExecutor")
+@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+public void onEvict(FlowCacheEvictEvent event) {
+    // 按 event 的 scopes 执行 evictFlowConfig / evictFlowEntity / evictExecutionResults
+}
+```
+
+**涉及方法**（4 处，统一改发布事件）：
 
 | 方法 | 原调用（L 行号） | 改动 |
 |------|----------------|------|
-| `FlowDeployService.deployVersion` | L78-80 | 3 个 evict → afterCommit |
-| `FlowService.stopFlow` | L363-364 | 2 个 evict → afterCommit |
-| `FlowService.invalidateFlow` | L402-403 | 2 个 evict → afterCommit |
-| `FlowService.deleteFlow` | L468-470 | 3 个 evict → afterCommit |
+| `FlowDeployService.deployVersion` | L78-80 | 3 个 evict → publishEvent |
+| `FlowService.stopFlow` | L363-364 | 2 个 evict → publishEvent |
+| `FlowService.invalidateFlow` | L402-403 | 2 个 evict → publishEvent |
+| `FlowService.deleteFlow` | L468-470 | 3 个 evict → publishEvent |
 
-> 📌 一致性语义变化：Redis 清理从"事务中"变为"事务提交后"——DB 成功才清缓存，避免"DB 回滚但缓存已清"的不一致；代价是清理失败不影响事务成功（已有 try-catch + warn 日志兜底）。
+> 📌 一致性语义：缓存清理通过事件 + `@Async` 异步执行，不阻塞请求线程。缓存是删除操作，事务回滚仅导致缓存缺失 → 下次读 DB 重建，无需等待事务提交（TTL 兜底最终一致）。
 
 #### Step 5：单元测试
 
 - `FlowCacheManagerTest` 新增：
-  - `writeCache` 调用 `redisTemplate.execute(script, keys, args)`，断言 script 为 WRITE_SCRIPT、keys 含业务 key + 索引 key、args 含 json + ttl
-- `FlowCacheEvictorTest` 新增（mock StringRedisTemplate + Cursor）：
-  - `evictExecutionResults`：mock `opsForSet().scan` 返回分批 cursor，断言 `unlink` 按每批 1000 分批调用、索引 key 最终被 delete
+  - `writeCache` 调用 `redisTemplate.execute(script, keys, args)`，断言 script 为 WRITE_SCRIPT、keys 含业务 key + 索引 key（含 `{flowId}` hash tag）、args 含 json + ttl
+- `FlowCacheEvictorTest` 新增（mock StringRedisTemplate + SetOperations）：
+  - `evictExecutionResults`：mock `opsForSet().pop` 分批返回列表（最后空/null 终止），断言 `unlink` 按每批分批调用、索引 key 最终被 delete、pop 返回 null 不 NPE
 
 #### Step 6：功能/性能/漏删验证
 
@@ -298,8 +308,11 @@ TransactionSynchronizationManager.registerSynchronization(
 | 风险 | 对策 |
 |------|------|
 | Lua 脚本跨 slot 异常 | **已修复**：业务/索引 key 引入 `{flowId}` hash tag 强制同 slot（review 实测证伪"前缀相同同 slot"，见 §5.2 Step 1）；单测断言 hash tag 一致 + 集群 EVAL 实测验证 |
-| 索引滞后（SADD 失败但 SET 成功） | Lua 原子化已消除写路径竞态；清理侧 SSCAN 读索引，滞后仅导致该次清理少删，TTL 兜底 |
-| 存量 50w key 无索引 | 决策 #4：不处理，TTL 自然过期；SSCAN 只读索引集合不受影响 |
+| 索引滞后（SADD 失败但 SET 成功） | Lua 原子化已消除写路径竞态；清理侧 SPOP 只操作索引集合，滞后仅导致该次清理少删，TTL 兜底 |
+| 存量 50w key 无索引 | 决策 #4：不处理，TTL 自然过期；SPOP 只操作索引集合不受影响 |
+| Redisson 不实现 SSCAN | **已修复**（v260812-5）：改用 SPOP 原生命令，Lettuce/Redisson 均兼容 |
+| SPOP 返回 null（Redisson key 不存在） | **已修复**（v260812-6）：`pop() != null` 判空防御，避免 NPE |
+| 事件监听不触发 | **排查结论**：非注解问题——标准环境曾部署不含事件发布链路的旧版本，导致 `publishEvent` 后无清理；重新部署含事件链路版本（≥ v260812-2）后事件正常触发。当前保留 `@TransactionalEventListener(AFTER_COMMIT)`，事件发布点在 `@Transactional` 方法内保证事务上下文 |
 | afterCommit 内异常吞掉 | 保留 try-catch + warn 日志；清理失败不影响接口成功返回 |
 | 部署同版本重部署 | 方案 E 含"版本号变化才清理"——需在 afterCommit 回调内比较新旧版本号（deployVersion 内先取旧值再比对） |
 
@@ -432,6 +445,7 @@ pytest modules/flow/test_cache_evict.py -v
 
 | 版本 | 变更说明 | 日期 | 修订人 |
 |------|---------|------|--------|
+| v3.0-draft | 同步实际实现：方案 D 清理由 SSCAN 改为 SPOP（Redisson 兼容）+ NPE 防御；方案 E 保留 @TransactionalEventListener(AFTER_COMMIT)（纠正此前误记为 @EventListener）；同步 §3/§5/§6 代码示例、变更文件、风险表；修正事件监听排查结论（部署版本问题非注解问题） | 2026-08-12 | SDDU Fast Agent |
 | v2.1-draft | review 修复记录：业务/索引 key 引入 `{flowId}` hash tag 修复集群 CROSSSLOT 阻断（原"前缀相同→同 slot"假设实测证伪）；同步更新 §3 方案 D key 格式、§5.2 Step 1 集群约束说明、§5.3 风险对策 | 2026-08-10 | SDDU Fast Agent |
 | v2.0-draft | 章节顺序调整：实施细则移到验证方案之前（§4 决策 → §5 实施 → §6 验证），修正编号与交叉引用 | 2026-08-10 | SDDU Fast Agent |
 | v1.9-draft | 新增 §6 实施细则：变更文件总览（7 文件）、6 步实施步骤（Lua 脚本→writeCache→evictor→事务外清理→单测→验证）、风险对策表、验收口径 | 2026-08-10 | SDDU Fast Agent |
