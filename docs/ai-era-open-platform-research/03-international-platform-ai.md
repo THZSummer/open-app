@@ -1,5 +1,7 @@
 # 03 · 国际协作平台 AI 化调研（维度 C）
 
+> [⬆ 返回 README（调研总览）](README.md) · [📑 文档导航](README.md#-文档导航)
+
 > **调研目标**: G1/G3 —— Slack/Teams/Google 的 Agent 开放形态、开发者生态策略
 > **采集日期**: 2026-08-12
 > **信息来源**: Slack 官方开发者文档（docs.slack.dev）、A2A 官方（a2a-protocol.org）、MCP 官方、OpenAI 官方 + 领域知识补充

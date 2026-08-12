@@ -1,5 +1,7 @@
 # 04 · Agent 编排 / 连接器生态调研（维度 D）
 
+> [⬆ 返回 README（调研总览）](README.md) · [📑 文档导航](README.md#-文档导航)
+
 > **调研目标**: G3/G5 —— Agent 如何消费"连接器/工具"，编排引擎 AI 化方向（对照 open-app 的 connector-api）
 > **采集日期**: 2026-08-12
 > **信息来源**: n8n 官方文档（docs.n8n.io）、Zapier/Make/Coze/Dify 官方信息（领域知识 + 搜索摘要）

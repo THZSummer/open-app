@@ -1,5 +1,7 @@
 # 01 · AI 接入协议生态调研（维度 A）
 
+> [⬆ 返回 README（调研总览）](README.md) · [📑 文档导航](README.md#-文档导航)
+
 > **调研目标**: G2 —— 摸清 MCP / Function Calling / A2A 等协议的成熟度、被主流平台采纳程度，判断 open-app 应优先支持哪个
 > **采集日期**: 2026-08-12
 > **信息来源**: MCP 官方文档（modelcontextprotocol.io）、A2A 官方（a2a-protocol.org）、OpenAI 官方文档（platform.openai.com）+ 领域知识补充
