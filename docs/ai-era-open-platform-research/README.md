@@ -7,6 +7,21 @@
 
 ---
 
+## 📑 文档导航
+
+| 文档 | 维度 | 对应目标 | 状态 |
+|------|------|:---:|:---:|
+| [**01 · AI 接入协议生态**](01-mcp-protocol-ecosystem.md) | A. MCP / Function Calling / A2A | G2 | ✅ 已产出 |
+| [**02 · 国内开放平台 AI 化**](02-domestic-open-platform-ai.md) | B. 飞书 / 钉钉 / 企微 | G1/G3 | ✅ 已产出 |
+| [**03 · 国际协作平台 AI 化**](03-international-platform-ai.md) | C. Slack / Teams / Google | G1/G3 | ✅ 已产出 |
+| [**04 · Agent 编排 / 连接器生态**](04-agent-orchestration-ecosystem.md) | D. n8n / Zapier / Make / Coze / Dify | G3/G5 | ✅ 已产出 |
+| [**05 · 企业级 AI 治理**](05-enterprise-ai-governance.md) | E. 动态授权 / 审计 / 敏感度分级 | G4 | ✅ 已产出 |
+| [**06 · 汇总路线图建议**](06-summary-roadmap.md) | 综合 01~05 → open-app AI 化路线图 | G5 | ✅ 已产出 |
+
+> **阅读建议**：先读 06（汇总结论）→ 再按需深入 01~05（各维度细节）。
+
+---
+
 ## 一、背景
 
 ### 1.1 open-app 是什么
