@@ -1,6 +1,7 @@
 package com.xxx.it.works.wecode.v2.modules.debug;
 
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
+import com.xxx.it.works.wecode.v2.modules.security.SysTokenResolver;
 import lombok.Data;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,12 +27,14 @@ public class OpDebugProxyService {
     private static final Logger log = LoggerFactory.getLogger(OpDebugProxyService.class);
 
     private final RestTemplate restTemplate;
+    private final SysTokenResolver sysTokenResolver;
 
     @Value("${connector-api.base-url:http://localhost:18180/connector-api}")
     private String connectorApiBaseUrl;
 
-    public OpDebugProxyService(RestTemplate restTemplate) {
+    public OpDebugProxyService(RestTemplate restTemplate, SysTokenResolver sysTokenResolver) {
         this.restTemplate = restTemplate;
+        this.sysTokenResolver = sysTokenResolver;
     }
 
     /**
@@ -65,6 +68,10 @@ public class OpDebugProxyService {
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
+
+            // 调用方凭证: 由 open-server 内部获取 (SysTokenResolver, 非用户透传),
+            // connector-api 调试接口以此校验调用方集成账号
+            headers.set("X-Sys-Token", sysTokenResolver.obtainSysToken());
 
             HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestBody, headers);
 

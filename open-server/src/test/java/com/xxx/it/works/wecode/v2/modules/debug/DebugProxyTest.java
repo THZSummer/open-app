@@ -1,6 +1,7 @@
 package com.xxx.it.works.wecode.v2.modules.debug;
 
 import com.xxx.it.works.wecode.v2.common.model.ApiResponse;
+import com.xxx.it.works.wecode.v2.modules.security.SysTokenResolver;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -25,12 +26,16 @@ class OpDebugProxyServiceTest {
     @Mock
     private RestTemplate restTemplate;
 
+    @Mock
+    private SysTokenResolver sysTokenResolver;
+
     @InjectMocks
     private OpDebugProxyService debugProxyService;
 
     @BeforeEach
     void setUp() {
         ReflectionTestUtils.setField(debugProxyService, "connectorApiBaseUrl", "http://localhost:18180/connector-api");
+        when(sysTokenResolver.obtainSysToken()).thenReturn("dev-sys-token");
     }
 
     @Test

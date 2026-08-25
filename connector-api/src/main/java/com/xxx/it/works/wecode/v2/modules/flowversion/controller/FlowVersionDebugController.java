@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
 import java.util.Map;
+import java.util.TreeMap;
 
 /**
  * 测试执行 Controller
@@ -62,14 +63,23 @@ public class FlowVersionDebugController {
             @PathVariable Long flowId,
             @Parameter(description = "版本ID")
             @PathVariable Long versionId,
+            @RequestHeader Map<String, String> allHeaders,
             @RequestBody TestRunRequest request) {
 
         log.info("Internal test run: flowId={}, versionId={}", flowId, versionId);
 
+        // HTTP header 协议上大小写不敏感 (RFC 7230 §3.2)，包装为大小写不敏感 Map
+        // 使下游 headers.get("X-Sys-Token") 等查找可匹配 x-sys-token / X-SYS-TOKEN 等任意大小写变体
+        Map<String, String> ciHeaders = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+        if (allHeaders != null) {
+            ciHeaders.putAll(allHeaders);
+        }
+
         return testRunService.executeTestRun(
                 flowId,
                 versionId,
-                request != null ? request.getMockTriggerData() : null);
+                request != null ? request.getMockTriggerData() : null,
+                ciHeaders);
     }
 
     /**

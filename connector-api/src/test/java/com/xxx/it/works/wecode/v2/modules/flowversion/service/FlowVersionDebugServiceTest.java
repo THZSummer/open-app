@@ -2,6 +2,7 @@ package com.xxx.it.works.wecode.v2.modules.flowversion.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xxx.it.works.wecode.v2.common.error.ErrorCode;
+import com.xxx.it.works.wecode.v2.modules.auth.SysTokenResolver;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersionEntity;
 import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowVersionReadRepository;
 import com.xxx.it.works.wecode.v2.modules.runtime.DagScheduler;
@@ -34,13 +35,18 @@ class FlowVersionDebugServiceTest {
     private OpFlowVersionReadRepository flowVersionReadRepository;
 
     private ObjectMapper objectMapper;
+    private SysTokenResolver sysTokenResolver;
     private FlowVersionDebugService service;
     private final Long versionId = 200L;
 
     @BeforeEach
     void setUp() {
         objectMapper = new ObjectMapper();
-        service = new FlowVersionDebugService(objectMapper, dagScheduler, flowVersionReadRepository);
+        // 真实 SysTokenResolver: token 非空即有效 (与 DevSysTokenResolver 默认 token 语义一致)
+        sysTokenResolver = new SysTokenResolver();
+        // 白名单: dev-sys-token (与 connector-api application.yml 默认一致)
+        service = new FlowVersionDebugService(objectMapper, dagScheduler, flowVersionReadRepository,
+                sysTokenResolver, "dev-sys-token");
     }
 
     @Test
@@ -86,7 +92,8 @@ class FlowVersionDebugServiceTest {
         Map<String, Object> mockTriggerData = new HashMap<>();
         mockTriggerData.put("body", Map.of("key", "value"));
 
-        StepVerifier.create(service.executeTestRun(100L, 200L, mockTriggerData))
+        StepVerifier.create(service.executeTestRun(100L, 200L, mockTriggerData,
+                        Map.of("X-Sys-Token", "dev-sys-token")))
                 .assertNext(result -> {
                     assertEquals("success", result.getStatus());
                     assertTrue(result.isDebug());
@@ -99,7 +106,8 @@ class FlowVersionDebugServiceTest {
     void testExecuteTestRun_FlowNotFound() {
         when(flowVersionReadRepository.findById(999L)).thenReturn(Mono.empty());
 
-        StepVerifier.create(service.executeTestRun(999L, 999L, Map.of()))
+        StepVerifier.create(service.executeTestRun(999L, 999L, Map.of(),
+                        Map.of("X-Sys-Token", "dev-sys-token")))
                 .assertNext(result -> {
                     assertEquals("failed", result.getStatus());
                     assertTrue(result.isDebug());
@@ -142,10 +150,150 @@ class FlowVersionDebugServiceTest {
 
         when(dagScheduler.schedule(anyString(), any(ExecutionContext.class))).thenReturn(Mono.just(mockCtx));
 
-        StepVerifier.create(service.executeTestRun(100L, 200L, Map.of()))
+        StepVerifier.create(service.executeTestRun(100L, 200L, Map.of(),
+                        Map.of("X-Sys-Token", "dev-sys-token")))
                 .assertNext(result -> {
                     assertTrue(result.isDebug());
                 })
+                .verifyComplete();
+    }
+
+    @Test
+    @DisplayName("无凭证 → 认证失败 (AUTH_MISSING_OR_EXPIRED)")
+    void testExecuteTestRun_MissingToken() {
+        StepVerifier.create(service.executeTestRun(100L, 200L, Map.of(), Map.of()))
+                .assertNext(result -> {
+                    assertEquals("failed", result.getStatus());
+                    assertEquals(ErrorCode.AUTH_MISSING_OR_EXPIRED.code(),
+                            result.getErrorInfo().get("code"));
+                })
+                .verifyComplete();
+
+        verifyNoInteractions(flowVersionReadRepository);
+    }
+
+    @Test
+    @DisplayName("X-Sys-Token 字段名大小写不敏感 → 校验通过")
+    void testExecuteTestRun_TokenHeaderCaseInsensitive() {
+        FlowVersionEntity entity = spy(new FlowVersionEntity());
+        entity.setFlowId(100L);
+        entity.setOrchestrationConfig("{\"nodes\":[{\"id\":\"t1\",\"type\":\"trigger\"}],\"edges\":[]}");
+        doReturn(Map.of("nodes", List.of(Map.of("id", "t1", "type", "trigger")), "edges", List.of()))
+                .when(entity).parseOrchestrationConfigAsMap(any(ObjectMapper.class));
+        when(flowVersionReadRepository.findById(200L)).thenReturn(Mono.just(entity));
+
+        ExecutionContext mockCtx = new ExecutionContext("exec-003", "100");
+        mockCtx.setDebug(true);
+        NodeContext exitCtx = new NodeContext();
+        exitCtx.setNodeId("t1");
+        exitCtx.setNodeType("trigger");
+        exitCtx.setInput(new HashMap<>());
+        exitCtx.setOutput(new HashMap<>());
+        exitCtx.setStatus("success");
+        exitCtx.setDurationMs(0);
+        mockCtx.setNodeContext(exitCtx);
+        when(dagScheduler.schedule(anyString(), any(ExecutionContext.class))).thenReturn(Mono.just(mockCtx));
+
+        // 模拟 Controller 层大小写不敏感包装 (TreeMap.CASE_INSENSITIVE_ORDER)
+        Map<String, String> ciHeaders = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+        ciHeaders.put("x-sys-token", "dev-sys-token");
+
+        StepVerifier.create(service.executeTestRun(100L, 200L, Map.of(), ciHeaders))
+                .assertNext(result -> assertEquals("success", result.getStatus()))
+                .verifyComplete();
+    }
+
+    @Test
+    @DisplayName("无 X-Sys-Token 时兼容 Authorization → 校验通过")
+    void testExecuteTestRun_AuthorizationFallback() {
+        FlowVersionEntity entity = spy(new FlowVersionEntity());
+        entity.setFlowId(100L);
+        entity.setOrchestrationConfig("{\"nodes\":[{\"id\":\"t1\",\"type\":\"trigger\"}],\"edges\":[]}");
+        doReturn(Map.of("nodes", List.of(Map.of("id", "t1", "type", "trigger")), "edges", List.of()))
+                .when(entity).parseOrchestrationConfigAsMap(any(ObjectMapper.class));
+        when(flowVersionReadRepository.findById(200L)).thenReturn(Mono.just(entity));
+
+        ExecutionContext mockCtx = new ExecutionContext("exec-004", "100");
+        mockCtx.setDebug(true);
+        NodeContext exitCtx = new NodeContext();
+        exitCtx.setNodeId("t1");
+        exitCtx.setNodeType("trigger");
+        exitCtx.setInput(new HashMap<>());
+        exitCtx.setOutput(new HashMap<>());
+        exitCtx.setStatus("success");
+        exitCtx.setDurationMs(0);
+        mockCtx.setNodeContext(exitCtx);
+        when(dagScheduler.schedule(anyString(), any(ExecutionContext.class))).thenReturn(Mono.just(mockCtx));
+
+        StepVerifier.create(service.executeTestRun(100L, 200L, Map.of(),
+                        Map.of("Authorization", "dev-sys-token")))
+                .assertNext(result -> assertEquals("success", result.getStatus()))
+                .verifyComplete();
+    }
+
+    @Test
+    @DisplayName("账号不在白名单 → 认证失败 (AUTH_NOT_WHITELIST)")
+    void testExecuteTestRun_AccountNotInWhitelist() {
+        StepVerifier.create(service.executeTestRun(100L, 200L, Map.of(),
+                        Map.of("X-Sys-Token", "unknown-account")))
+                .assertNext(result -> {
+                    assertEquals("failed", result.getStatus());
+                    assertEquals(ErrorCode.AUTH_NOT_WHITELIST.code(),
+                            result.getErrorInfo().get("code"));
+                })
+                .verifyComplete();
+
+        verifyNoInteractions(flowVersionReadRepository);
+    }
+
+    @Test
+    @DisplayName("白名单未配置 (空) → fail-closed 拒绝 (AUTH_NOT_WHITELIST)")
+    void testExecuteTestRun_WhitelistEmpty_FailClosed() {
+        // 覆盖构造器注入的白名单为空串的场景 (fail-closed)
+        FlowVersionDebugService serviceNoWhitelist = new FlowVersionDebugService(
+                objectMapper, dagScheduler, flowVersionReadRepository, sysTokenResolver, "");
+
+        StepVerifier.create(serviceNoWhitelist.executeTestRun(100L, 200L, Map.of(),
+                        Map.of("X-Sys-Token", "dev-sys-token")))
+                .assertNext(result -> {
+                    assertEquals("failed", result.getStatus());
+                    assertEquals(ErrorCode.AUTH_NOT_WHITELIST.code(),
+                            result.getErrorInfo().get("code"));
+                })
+                .verifyComplete();
+
+        verifyNoInteractions(flowVersionReadRepository);
+    }
+
+    @Test
+    @DisplayName("白名单多账号逗号分隔 + 空白容忍 → 命中即通过")
+    void testExecuteTestRun_WhitelistMultiple() {
+        FlowVersionDebugService serviceMulti = new FlowVersionDebugService(
+                objectMapper, dagScheduler, flowVersionReadRepository, sysTokenResolver,
+                "gateway, open-server ,dev-sys-token");
+
+        FlowVersionEntity entity = spy(new FlowVersionEntity());
+        entity.setFlowId(100L);
+        entity.setOrchestrationConfig("{\"nodes\":[{\"id\":\"t1\",\"type\":\"trigger\"}],\"edges\":[]}");
+        doReturn(Map.of("nodes", List.of(Map.of("id", "t1", "type", "trigger")), "edges", List.of()))
+                .when(entity).parseOrchestrationConfigAsMap(any(ObjectMapper.class));
+        when(flowVersionReadRepository.findById(200L)).thenReturn(Mono.just(entity));
+
+        ExecutionContext mockCtx = new ExecutionContext("exec-005", "100");
+        mockCtx.setDebug(true);
+        NodeContext exitCtx = new NodeContext();
+        exitCtx.setNodeId("t1");
+        exitCtx.setNodeType("trigger");
+        exitCtx.setInput(new HashMap<>());
+        exitCtx.setOutput(new HashMap<>());
+        exitCtx.setStatus("success");
+        exitCtx.setDurationMs(0);
+        mockCtx.setNodeContext(exitCtx);
+        when(dagScheduler.schedule(anyString(), any(ExecutionContext.class))).thenReturn(Mono.just(mockCtx));
+
+        StepVerifier.create(serviceMulti.executeTestRun(100L, 200L, Map.of(),
+                        Map.of("X-Sys-Token", "dev-sys-token")))
+                .assertNext(result -> assertEquals("success", result.getStatus()))
                 .verifyComplete();
     }
 }
