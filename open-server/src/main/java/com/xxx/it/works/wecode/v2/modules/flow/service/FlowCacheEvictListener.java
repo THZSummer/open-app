@@ -37,8 +37,8 @@ public class FlowCacheEvictListener {
             if (event.includes(FlowCacheEvictEvent.SCOPE_EXECUTION_RESULTS)) {
                 flowCacheEvictor.evictExecutionResults(event.getFlowId());
             }
-        } catch (Exception e) {
-            log.warn("Async cache evict failed for flowId={}: {}", event.getFlowId(), e.getMessage());
+        } catch (Exception ex) {
+            log.error("Async cache evict failed for flowId={}: {}", event.getFlowId(), ex.getMessage(), ex);
         }
     }
 }
