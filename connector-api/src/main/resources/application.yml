@@ -57,3 +57,9 @@ management:
 
 # Script HTTP client (default enabled, scripts can call ctx.http.request(method, url, opts))
 script.http.client.enabled: true
+
+# 调试接口调用方账号白名单 (逗号分隔, 未配置时 fail-closed 拒绝)
+# 开发默认值 dev-sys-token 与 open-server DevSysTokenResolver 默认 token 一致
+internal:
+  auth:
+    sys-account-whitelist: dev-sys-token

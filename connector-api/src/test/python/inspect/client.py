@@ -334,13 +334,19 @@ def trigger(flow_id, body=None, headers=None, query_params=None):
     return api("POST", path, body, headers)
 
 
-def debug_run(flow_id, version_id, body=None):
+def debug_run(flow_id, version_id, body=None, headers=None):
     """测试运行调试 — POST /api/v1/flows/{flowId}/versions/{versionId}/debug
 
     body 示例: {"mockTriggerData": {"sender": "test"}}
     返回 Response 对象（连接失败返回 None）。
+
+    debug 接口认证: 调用方集成账号 token 放入 X-Sys-Token
+    (默认 dev-sys-token, 与 connector-api internal.auth.sys-account-whitelist 默认值一致)
     """
-    return api("POST", f"/flows/{flow_id}/versions/{version_id}/debug", body)
+    if headers is None:
+        headers = {}
+    headers.setdefault("X-Sys-Token", "dev-sys-token")
+    return api("POST", f"/flows/{flow_id}/versions/{version_id}/debug", body, headers)
 
 
 def done():

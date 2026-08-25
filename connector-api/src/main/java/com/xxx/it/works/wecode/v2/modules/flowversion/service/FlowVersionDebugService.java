@@ -1,6 +1,7 @@
 package com.xxx.it.works.wecode.v2.modules.flowversion.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.xxx.it.works.wecode.v2.modules.auth.SysTokenResolver;
 import com.xxx.it.works.wecode.v2.modules.flow.entity.FlowVersionEntity;
 import com.xxx.it.works.wecode.v2.modules.flow.repository.OpFlowVersionReadRepository;
 import com.xxx.it.works.wecode.v2.modules.runtime.context.ExecutionContext;
@@ -11,9 +12,11 @@ import com.xxx.it.works.wecode.v2.common.error.ErrorCode;
 import com.xxx.it.works.wecode.v2.modules.runtime.model.ExecutionResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -46,14 +49,22 @@ public class FlowVersionDebugService {
     private final ObjectMapper objectMapper;
     private final DagScheduler dagScheduler;
     private final OpFlowVersionReadRepository flowVersionReadRepository;
+    private final SysTokenResolver sysTokenResolver;
+
+    /** 调试接口调用方账号白名单 (Spring 配置, 逗号分隔, fail-closed) */
+    private final String sysAccountWhitelist;
 
     public FlowVersionDebugService(
             ObjectMapper objectMapper,
             DagScheduler dagScheduler,
-            OpFlowVersionReadRepository flowVersionReadRepository) {
+            OpFlowVersionReadRepository flowVersionReadRepository,
+            SysTokenResolver sysTokenResolver,
+            @Value("${internal.auth.sys-account-whitelist:}") String sysAccountWhitelist) {
         this.objectMapper = objectMapper;
         this.dagScheduler = dagScheduler;
         this.flowVersionReadRepository = flowVersionReadRepository;
+        this.sysTokenResolver = sysTokenResolver;
+        this.sysAccountWhitelist = sysAccountWhitelist;
     }
 
     /**
@@ -68,11 +79,19 @@ public class FlowVersionDebugService {
     public Mono<ExecutionResult> executeTestRun(
             Long flowId,
             Long versionId,
-            Map<String, Object> mockTriggerData) {
+            Map<String, Object> mockTriggerData,
+            Map<String, String> headers) {
+
+        // 调用方认证: debug 接口固定由 open-server 调用 (内部服务), 校验集成账号 token
+        // 与 invoke 的差异: invoke 校验连接流配置的 sysAccountWhitelist (外部调用方需流所有者授权),
+        // debug 不校验流白名单, 只验证调用方 token 有效且能解析出系统账号
+        // 放入 Mono 管道执行, 使 PreCheckException 可被下方 onErrorResume 捕获并转结构化错误
+        Mono<Void> authCheck = Mono.fromRunnable(() -> validateInvokerToken(headers));
 
         String executionId = UUID.randomUUID().toString().replace("-", "");
 
-        return flowVersionReadRepository.findById(versionId)
+        return authCheck
+                .then(Mono.defer(() -> flowVersionReadRepository.findById(versionId)))
                 .switchIfEmpty(Mono.error(new PreCheckException(
                         ErrorCode.VERSION_NOT_FOUND, "版本不存在，请检查版本 ID", "Version not found")))
                 .flatMap(flowVersion -> {
@@ -143,6 +162,69 @@ public class FlowVersionDebugService {
                     errorResult.setErrorInfo(errInfo);
                     return Mono.just(errorResult);
                 });
+    }
+
+    /**
+     * debug 接口认证 — 校验调用方集成账号 token 及账号白名单
+     * <p>
+     * 与 invoke 的差异 (FlowInvokeService.validateSystoken 校验连接流配置的 sysAccountWhitelist):
+     * debug 的调用方固定为 open-server (内部服务), 白名单来自 Spring 配置
+     * ({@code internal.auth.sys-account-whitelist}), 而非连接流配置。
+     * 白名单未配置时 fail-closed (拒绝所有调用)。
+     * </p>
+     * <p>
+     * Token 来源: 优先 X-Sys-Token, 兼容 Authorization。
+     * headers 已由 Controller 包装为大小写不敏感 Map (TreeMap.CASE_INSENSITIVE_ORDER),
+     * 字段名匹配忽略大小写。
+     * </p>
+     */
+    private void validateInvokerToken(Map<String, String> headers) {
+        // 1. 取 token: 优先 X-Sys-Token, 兼容 Authorization
+        String token = null;
+        if (headers != null) {
+            token = headers.get("X-Sys-Token");
+            if (token == null || token.isBlank()) {
+                token = headers.get("Authorization");
+            }
+        }
+
+        // 2. 凭证缺失或无效 → 401 (42002)
+        if (!sysTokenResolver.isTokenValid(token)) {
+            throw new PreCheckException(ErrorCode.AUTH_MISSING_OR_EXPIRED,
+                    "凭证缺失或已失效: 需要 X-Sys-Token 或 Authorization",
+                    "Credential missing or expired: X-Sys-Token or Authorization required");
+        }
+
+        // 3. 解析出系统账号 (标识调用方) → 解析失败 401 (42001)
+        String account = sysTokenResolver.resolveSysAccount(token)
+                .orElseThrow(() -> new PreCheckException(ErrorCode.AUTH_NOT_WHITELIST,
+                        "凭证异常: 无法从 token 解析系统账号",
+                        "Failed to resolve sys account from token"));
+
+        // 4. 账号白名单校验 (Spring 配置, fail-closed) → 不在白名单 401 (42001)
+        if (!isSysAccountWhitelisted(account)) {
+            throw new PreCheckException(ErrorCode.AUTH_NOT_WHITELIST,
+                    "无权限: 系统账号不在白名单中: " + account,
+                    "Permission denied: sys account not in whitelist: " + account);
+        }
+    }
+
+    /**
+     * 校验系统账号是否在 Spring 配置的白名单内
+     * <p>
+     * 配置项: {@code internal.auth.sys-account-whitelist} (逗号分隔)。
+     * 未配置时返回 false (fail-closed), 拒绝所有 debug 调用。
+     * </p>
+     */
+    private boolean isSysAccountWhitelisted(String account) {
+        if (sysAccountWhitelist == null || sysAccountWhitelist.isBlank()) {
+            log.warn("internal.auth.sys-account-whitelist 未配置, 拒绝所有 debug 调用 (fail-closed)");
+            return false;
+        }
+        return Arrays.stream(sysAccountWhitelist.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .anyMatch(account::equals);
     }
 
     /**
