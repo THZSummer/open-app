@@ -1,0 +1,17 @@
+{
+  "name": "open-app-cli",
+  "version": "0.1.0",
+  "description": "open-app-tools 简单操作 CLI（技能目录内脚本，可 npm link 后全局调用）",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "open-app-cli": "./bin/open-app-cli.js"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.12"
+  },
+  "dependencies": {
+    "@types/blessed": "^0.1.27",
+    "blessed": "^0.1.81"
+  }
+}
