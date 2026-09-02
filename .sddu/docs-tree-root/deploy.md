@@ -41,7 +41,11 @@
                      └─────────────────────────┘
 ```
 
-> 📊 **Archify 交互图**：[部署拓扑](archify/deployment-topology.html)（可交互）· [PNG](archify/deployment-topology.png)
+> 📊 **Archify 部署拓扑**
+
+![部署拓扑](archify/deployment-topology.png)
+
+> 🔗 打开可交互版本： [deployment-topology.html](archify/deployment-topology.html)
 
 ## 2. 服务端口与上下文
 

@@ -21,7 +21,11 @@
          └──► 消费方调用 api-server /gateway/api/** ──► 权限校验（permissions/check）──► 下游能力
 ```
 
-> 📊 **Archify 交互图**：[API 开放注册→审批→订阅→消费](archify/api-open.workflow.html)（可交互）· [PNG](archify/api-open.workflow.png)
+> 📊 **Archify API 开放生命周期**（注册→审批→订阅→消费）
+
+![API 开放生命周期](archify/api-open.workflow.png)
+
+> 🔗 打开可交互版本： [api-open.workflow.html](archify/api-open.workflow.html)
 
 ### 1.2 事件发布流（event-server）
 
@@ -34,7 +38,11 @@
     └──► 内部消息队列
 ```
 
-> 📊 **Archify 交互图**：[事件发布流](archify/event-publish.html)（可交互）· [PNG](archify/event-publish.png)
+> 📊 **Archify 事件发布流**
+
+![事件发布流](archify/event-publish.png)
+
+> 🔗 打开可交互版本： [event-publish.html](archify/event-publish.html)
 
 ### 1.3 回调触发流（event-server）
 
@@ -45,7 +53,11 @@
     └──► 调用消费方 WebHook（channel_address）
 ```
 
-> 📊 **Archify 交互图**：[回调触发流](archify/callback-trigger.html)（可交互）· [PNG](archify/callback-trigger.png)
+> 📊 **Archify 回调触发流**
+
+![回调触发流](archify/callback-trigger.png)
+
+> 🔗 打开可交互版本： [callback-trigger.html](archify/callback-trigger.html)
 
 ### 1.4 连接流执行流（connector-api）
 
@@ -60,7 +72,17 @@
     └──► 写 execution_step_t（每节点输入/输出快照）
 ```
 
-> 📊 **Archify 交互图**：[连接流执行流](archify/connector-exec.html)（可交互）· [PNG](archify/connector-exec.png) · [调用时序](archify/connector-exec-sequence.html)
+> 📊 **Archify 连接流执行流**
+
+![连接流执行流](archify/connector-exec.png)
+
+> 🔗 打开可交互版本： [connector-exec.html](archify/connector-exec.html)
+
+> 📊 **Archify 连接流执行调用时序**
+
+![连接流执行调用时序](archify/connector-exec-sequence.png)
+
+> 🔗 打开可交互版本： [connector-exec-sequence.html](archify/connector-exec-sequence.html)
 
 ### 1.5 数据开放查询流（api-server）
 

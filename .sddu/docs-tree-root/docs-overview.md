@@ -38,7 +38,11 @@
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-> 📊 **Archify 交互图**：[```业务全景图```](archify/business-overview.html)（可交互，深/浅主题）· [PNG 预览](archify/business-overview.png)
+> 📊 **Archify 业务全景图**（可交互，深/浅主题）
+
+![业务全景图](archify/business-overview.png)
+
+> 🔗 打开可交互版本： [business-overview.html](archify/business-overview.html)
 
 ---
 
@@ -87,7 +91,11 @@ flowchart TB
     classDef base fill:#e1f5e1,stroke:#2e7d32
 ```
 
-> 📊 **Archify 交互图**：[```能力地图```](archify/capability-map.html)（可交互，深/浅主题）· [PNG 预览](archify/capability-map.png)
+> 📊 **Archify 能力地图**（可交互，深/浅主题）
+
+![能力地图](archify/capability-map.png)
+
+> 🔗 打开可交互版本： [capability-map.html](archify/capability-map.html)
 
 **能力清单**（对应 specs-tree-root Feature）：
 
@@ -233,7 +241,11 @@ open-app 项目全景
 └────────────────────────────────────────────────────────────────────┘
 ```
 
-> 📊 **Archify 交互图**：[```部署拓扑```](archify/deployment-topology.html)（可交互，深/浅主题）· [PNG 预览](archify/deployment-topology.png)
+> 📊 **Archify 部署拓扑**（可交互，深/浅主题）
+
+![部署拓扑](archify/deployment-topology.png)
+
+> 🔗 打开可交互版本： [deployment-topology.html](archify/deployment-topology.html)
 
 ### 2.6 跨域数据流
 
