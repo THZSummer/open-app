@@ -1,0 +1,282 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "open-app 服务调用依赖关系",
+    "locale": "zh-CN",
+    "output": "service-deps.html",
+    "quality_profile": "showcase",
+    "viewBox": [
+      980,
+      560
+    ],
+    "views": [
+      {
+        "id": "frontend-calls",
+        "label": "前端调用",
+        "focus": [
+          "wecodesite",
+          "market-web",
+          "qiankun",
+          "open-server",
+          "market-server"
+        ],
+        "note": "开发者控制台 / 市场后台 / 微前端容器的调用关系。"
+      },
+      {
+        "id": "service-calls",
+        "label": "服务间调用",
+        "focus": [
+          "api-server",
+          "open-server",
+          "event-server"
+        ],
+        "note": "消费网关与管理面的内部 HTTP 调用。"
+      },
+      {
+        "id": "external-dep",
+        "label": "外部依赖",
+        "focus": [
+          "market-server",
+          "wecontact",
+          "connector-api",
+          "downstream"
+        ],
+        "note": "通讯录 API 与下游连接器调用。"
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "wecodesite",
+      "type": "frontend",
+      "label": "wecodesite",
+      "sublabel": "开发者控制台",
+      "pos": [
+        60,
+        70
+      ],
+      "size": [
+        135,
+        48
+      ]
+    },
+    {
+      "id": "market-web",
+      "type": "frontend",
+      "label": "market-web",
+      "sublabel": "市场管理后台",
+      "pos": [
+        60,
+        175
+      ],
+      "size": [
+        135,
+        48
+      ]
+    },
+    {
+      "id": "qiankun",
+      "type": "frontend",
+      "label": "qiankunProject",
+      "sublabel": "微前端容器",
+      "pos": [
+        60,
+        280
+      ],
+      "size": [
+        135,
+        48
+      ]
+    },
+    {
+      "id": "open-server",
+      "type": "backend",
+      "label": "open-server",
+      "sublabel": "管理面 :18080",
+      "pos": [
+        440,
+        90
+      ],
+      "size": [
+        150,
+        50
+      ]
+    },
+    {
+      "id": "market-server",
+      "type": "backend",
+      "label": "market-server",
+      "sublabel": "市场管理面 :18083",
+      "pos": [
+        440,
+        180
+      ],
+      "size": [
+        150,
+        50
+      ]
+    },
+    {
+      "id": "api-server",
+      "type": "backend",
+      "label": "api-server",
+      "sublabel": "消费网关 :18081",
+      "pos": [
+        440,
+        270
+      ],
+      "size": [
+        150,
+        50
+      ]
+    },
+    {
+      "id": "event-server",
+      "type": "backend",
+      "label": "event-server",
+      "sublabel": "事件/回调网关 :18082",
+      "pos": [
+        440,
+        360
+      ],
+      "size": [
+        150,
+        50
+      ]
+    },
+    {
+      "id": "connector-api",
+      "type": "backend",
+      "label": "connector-api",
+      "sublabel": "连接流引擎 :18180",
+      "pos": [
+        440,
+        450
+      ],
+      "size": [
+        150,
+        50
+      ]
+    },
+    {
+      "id": "wecontact",
+      "type": "cloud",
+      "label": "wecontact API",
+      "sublabel": "通讯录",
+      "pos": [
+        760,
+        180
+      ],
+      "size": [
+        150,
+        52
+      ]
+    },
+    {
+      "id": "downstream",
+      "type": "external",
+      "label": "下游连接器",
+      "sublabel": "外部系统",
+      "pos": [
+        760,
+        450
+      ],
+      "size": [
+        150,
+        52
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "前端层",
+      "wraps": [
+        "wecodesite",
+        "market-web",
+        "qiankun"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "应用服务层 (管理面 + 网关)",
+      "wraps": [
+        "open-server",
+        "market-server",
+        "api-server",
+        "event-server",
+        "connector-api"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "外部依赖",
+      "wraps": [
+        "wecontact",
+        "downstream"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "wec-to-open",
+      "from": "wecodesite",
+      "to": "open-server",
+      "label": "HTTP",
+      "fromSide": "right",
+      "toSide": "top"
+    },
+    {
+      "id": "market-to-market-server",
+      "from": "market-web",
+      "to": "market-server",
+      "label": "HTTP",
+      "fromSide": "right",
+      "toSide": "top"
+    },
+    {
+      "id": "market-to-wecontact",
+      "from": "market-server",
+      "to": "wecontact",
+      "label": "HTTP",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "connector-to-downstream",
+      "from": "connector-api",
+      "to": "downstream",
+      "label": "连接器调用",
+      "labelAt": [680, 452],
+      "fromSide": "right",
+      "toSide": "left"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "前端调用",
+      "items": [
+        "wecodesite → open-server / connector-api / event-server",
+        "market-web → market-server；qiankun → open-server（嵌入能力）"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "服务间耦合点",
+      "items": [
+        "api-server → open-server：订阅/权限关系下发",
+        "event-server → api-server：动态获取认证凭证（api-server 故障影响事件服务）"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "数据与外部依赖",
+      "items": [
+        "各服务共享 MySQL openapp（MyBatis/R2DBC）与 Redis 6 节点集群",
+        "market-server → wecontact 通讯录；connector-api → 下游连接器；open-flyway 执行迁移"
+      ]
+    }
+  ]
+}

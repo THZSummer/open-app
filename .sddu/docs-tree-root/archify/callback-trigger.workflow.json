@@ -1,0 +1,173 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "回调触发流：触发 → 订阅校验 → WebHook 回调",
+    "locale": "zh-CN",
+    "output": "callback-trigger.workflow.html",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "trigger-path",
+        "label": "回调链路",
+        "focus": [
+          "external",
+          "invoke",
+          "scope",
+          "subcache",
+          "webhook",
+          "consumer"
+        ],
+        "note": "外部系统触发回调，经校验与订阅检查后调用消费方 WebHook。"
+      }
+    ]
+  },
+  "lanes": [
+    {
+      "id": "external",
+      "label": "外部系统"
+    },
+    {
+      "id": "gateway",
+      "label": "回调网关 (event-server)"
+    },
+    {
+      "id": "consumer",
+      "label": "消费方"
+    }
+  ],
+  "phases": [
+    {
+      "id": "trigger",
+      "label": "触发与校验",
+      "fromCol": 0,
+      "toCol": 2
+    },
+    {
+      "id": "deliver",
+      "label": "回调",
+      "fromCol": 3,
+      "toCol": 4,
+      "variant": "emphasis"
+    }
+  ],
+  "mainPath": [
+    "external",
+    "invoke",
+    "scope",
+    "subcache",
+    "webhook",
+    "consumer"
+  ],
+  "nodes": [
+    {
+      "id": "external",
+      "lane": "external",
+      "col": 0,
+      "type": "external",
+      "label": "外部系统",
+      "sublabel": "触发方",
+      "width": 140
+    },
+    {
+      "id": "invoke",
+      "lane": "gateway",
+      "col": 1,
+      "type": "backend",
+      "label": "触发",
+      "sublabel": "POST /gateway/callbacks/invoke",
+      "width": 140
+    },
+    {
+      "id": "scope",
+      "lane": "gateway",
+      "col": 2,
+      "type": "security",
+      "label": "校验 scope",
+      "sublabel": "callbackScope",
+      "tag": "权限",
+      "width": 140
+    },
+    {
+      "id": "subcache",
+      "lane": "gateway",
+      "col": 3,
+      "type": "database",
+      "label": "查订阅",
+      "sublabel": "Redis 订阅方列表",
+      "width": 140
+    },
+    {
+      "id": "webhook",
+      "lane": "gateway",
+      "col": 4,
+      "type": "messagebus",
+      "label": "调用 WebHook",
+      "sublabel": "channel_address",
+      "width": 140
+    },
+    {
+      "id": "consumer",
+      "lane": "consumer",
+      "col": 5,
+      "type": "frontend",
+      "label": "消费方系统",
+      "sublabel": "订阅 WebHook 端点",
+      "width": 140
+    }
+  ],
+  "edges": [
+    {
+      "id": "external-invoke",
+      "from": "external",
+      "to": "invoke",
+      "label": "触发回调",
+      "variant": "emphasis"
+    },
+    {
+      "id": "invoke-scope",
+      "from": "invoke",
+      "to": "scope",
+      "label": "校验"
+    },
+    {
+      "id": "scope-subcache",
+      "from": "scope",
+      "to": "subcache",
+      "label": "查订阅",
+      "variant": "security"
+    },
+    {
+      "id": "subcache-webhook",
+      "from": "subcache",
+      "to": "webhook",
+      "label": "匹配",
+      "variant": "default"
+    },
+    {
+      "id": "webhook-consumer",
+      "from": "webhook",
+      "to": "consumer",
+      "label": "HTTP 回调",
+      "variant": "emphasis"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "触发链路",
+      "items": [
+        "外部系统经 POST /gateway/callbacks/invoke 触发",
+        "先校验 callbackScope，再查 Redis 订阅方列表"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "回调分发",
+      "items": [
+        "按 channel_address 调用消费方 WebHook 端点",
+        "scope 校验失败则拒绝回调"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "事件发布流：发布 → 订阅检查 → 多通道分发",
+    "locale": "zh-CN",
+    "output": "event-publish.workflow.html",
+    "quality_profile": "showcase",
+    "views": [
+      { "id": "publish-path", "label": "发布链路", "focus": ["source", "publish", "topiccheck", "cache", "sse", "subscriber"], "note": "外部事件源发布，经校验与订阅检查后推送。" }
+    ]
+  },
+  "lanes": [
+    { "id": "source", "label": "外部事件源" },
+    { "id": "gateway", "label": "事件网关 (event-server)" },
+    { "id": "delivery", "label": "订阅分发" }
+  ],
+  "phases": [
+    { "id": "publish", "label": "发布与校验", "fromCol": 0, "toCol": 2 },
+    { "id": "deliver", "label": "分发", "fromCol": 3, "toCol": 4, "variant": "emphasis" }
+  ],
+  "mainPath": ["source", "publish", "topiccheck", "cache", "sse", "subscriber"],
+  "nodes": [
+    { "id": "source", "lane": "source", "col": 0, "type": "external", "label": "外部事件源", "sublabel": "系统回调", "width": 112 },
+    { "id": "publish", "lane": "gateway", "col": 1, "type": "backend", "label": "发布", "sublabel": "POST /gateway/events/publish", "width": 112 },
+    { "id": "topiccheck", "lane": "gateway", "col": 2, "type": "security", "label": "校验 topic", "sublabel": "v2_event_t", "tag": "权限", "width": 112 },
+    { "id": "cache", "lane": "gateway", "col": 3, "type": "database", "label": "查订阅缓存", "sublabel": "Redis 订阅列表", "width": 112 },
+    { "id": "sse", "lane": "delivery", "col": 4, "type": "messagebus", "label": "SSE 推送", "sublabel": "/sse/connect/{id} · /ws", "width": 112 },
+    { "id": "subscriber", "lane": "delivery", "col": 5, "type": "frontend", "label": "订阅方", "sublabel": "消费应用", "width": 112 }
+  ],
+  "edges": [
+    { "id": "source-publish", "from": "source", "to": "publish", "label": "事件", "variant": "emphasis" },
+    { "id": "publish-topiccheck", "from": "publish", "to": "topiccheck", "label": "校验" },
+    { "id": "topiccheck-cache", "from": "topiccheck", "to": "cache", "label": "查订阅", "variant": "security" },
+    { "id": "cache-sse", "from": "cache", "to": "sse", "label": "推送", "variant": "emphasis" },
+    { "id": "sse-subscriber", "from": "sse", "to": "subscriber", "label": "SSE / WS 下发", "variant": "default" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "发布链路", "items": ["外部事件源经 POST /gateway/events/publish 触发", "先校验 topic 订阅 (v2_event_t)，再查 Redis 订阅缓存"] },
+    { "dot": "emerald", "title": "多通道分发", "items": ["SSE 推送 /sse/connect/{id} 与 WebSocket /ws 并行", "缓存命中后按订阅方列表分发；亦可写入内部消息队列"] }
+  ]
+}

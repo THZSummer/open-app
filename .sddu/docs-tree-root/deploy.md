@@ -41,6 +41,8 @@
                      └─────────────────────────┘
 ```
 
+> 📊 **Archify 交互图**：[部署拓扑](archify/deployment-topology.html)（可交互）· [PNG](archify/deployment-topology.png)
+
 ## 2. 服务端口与上下文
 
 | 服务 | 端口 | context-path | 数据库访问 | Redis |

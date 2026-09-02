@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "open-app 业务全景 — 企业通讯能力开放平台",
+    "locale": "zh-CN",
+    "output": "business-overview.html",
+    "quality_profile": "showcase",
+    "views": [
+      { "id": "main-path", "label": "能力开放主路径", "focus": ["im", "meeting", "cloudbox", "platform", "app-a", "app-b", "external"], "note": "资源提供者经 open-app 平台开放能力，资源使用者消费能力。" }
+    ]
+  },
+  "components": [
+    { "id": "im", "type": "cloud", "label": "IM 即时通讯", "sublabel": "Provider", "pos": [40, 100], "size": [130, 52] },
+    { "id": "meeting", "type": "cloud", "label": "Meeting 会议", "sublabel": "Provider", "pos": [40, 172], "size": [130, 52] },
+    { "id": "cloudbox", "type": "cloud", "label": "CloudBox 云盘", "sublabel": "Provider", "pos": [40, 244], "size": [130, 52] },
+    { "id": "calendar", "type": "cloud", "label": "Calendar 日历", "sublabel": "Provider", "pos": [40, 316], "size": [130, 52] },
+    { "id": "contact", "type": "cloud", "label": "Contact 通讯录", "sublabel": "Provider", "pos": [40, 388], "size": [130, 52] },
+    { "id": "platform", "type": "backend", "label": "open-app 平台", "sublabel": "企业通讯能力开放平台", "tag": "API / 事件 / 回调 / 连接器", "pos": [340, 220], "size": [190, 92] },
+    { "id": "app-a", "type": "frontend", "label": "业务应用 A", "sublabel": "CRM 系统", "pos": [720, 120], "size": [140, 60] },
+    { "id": "app-b", "type": "frontend", "label": "业务应用 B", "sublabel": "OA 系统", "pos": [720, 220], "size": [140, 60] },
+    { "id": "external", "type": "external", "label": "外部系统", "sublabel": "第三方", "pos": [720, 330], "size": [140, 60] }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "资源提供者 (Provider)", "wraps": ["im", "meeting", "cloudbox", "calendar", "contact"] },
+    { "kind": "region", "label": "资源使用者 (Consumer)", "wraps": ["app-a", "app-b", "external"] }
+  ],
+  "connections": [
+    { "id": "im-to-platform", "from": "im", "to": "platform", "label": "能力开放", "variant": "emphasis", "labelAt": [196, 118] },
+    { "id": "meeting-to-platform", "from": "meeting", "to": "platform", "label": "能力开放", "variant": "emphasis", "labelAt": [196, 190] },
+    { "id": "cloudbox-to-platform", "from": "cloudbox", "to": "platform", "label": "能力开放", "variant": "emphasis", "labelAt": [196, 262] },
+    { "id": "calendar-to-platform", "from": "calendar", "to": "platform", "label": "能力开放", "labelAt": [196, 334] },
+    { "id": "contact-to-platform", "from": "contact", "to": "platform", "label": "能力开放", "labelAt": [196, 406] },
+    { "id": "platform-to-app-a", "from": "platform", "to": "app-a", "label": "能力消费", "labelAt": [628, 148] },
+    { "id": "platform-to-app-b", "from": "platform", "to": "app-b", "label": "能力消费", "labelAt": [668, 248] },
+    { "id": "platform-to-external", "from": "platform", "to": "external", "label": "能力消费", "labelAt": [628, 358] }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "业务全景", "items": ["XXX 通讯系统核心能力经开放平台暴露", "IM / Meeting / CloudBox 等为资源提供者", "企业内业务应用与个人应用为资源使用者"] },
+    { "dot": "emerald", "title": "开放形式", "items": ["API / 事件 / 回调 / 连接器四种连接能力", "平台负责凭证、权限、审批与消费网关"] }
+  ]
+}

@@ -1,0 +1,240 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "API 能力开放：注册 → 审批 → 订阅 → 消费",
+    "locale": "zh-CN",
+    "output": "api-open.workflow.html",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "publish-path",
+        "label": "能力上架",
+        "focus": [
+          "provider",
+          "register",
+          "approval",
+          "published"
+        ],
+        "note": "能力提供方注册 API，经审批后发布。"
+      },
+      {
+        "id": "subscribe-path",
+        "label": "订阅与消费",
+        "focus": [
+          "published",
+          "subscriber",
+          "authorized",
+          "gateway",
+          "downstream"
+        ],
+        "note": "消费方订阅并调用消费网关访问下游能力。"
+      }
+    ]
+  },
+  "lanes": [
+    {
+      "id": "actors",
+      "label": "参与方 (提供方 / 消费方)"
+    },
+    {
+      "id": "platform",
+      "label": "管理面 (open-server) + 审批"
+    },
+    {
+      "id": "gateway",
+      "label": "消费网关 (api-server)"
+    }
+  ],
+  "phases": [
+    {
+      "id": "publish",
+      "label": "注册与审批",
+      "fromCol": 0,
+      "toCol": 2
+    },
+    {
+      "id": "subscribe",
+      "label": "订阅与授权",
+      "fromCol": 3,
+      "toCol": 4
+    },
+    {
+      "id": "consume",
+      "label": "消费调用",
+      "fromCol": 5,
+      "toCol": 5,
+      "variant": "emphasis"
+    }
+  ],
+  "mainPath": [
+    "provider",
+    "register",
+    "approval",
+    "published",
+    "subscriber",
+    "authorized",
+    "gateway",
+    "downstream"
+  ],
+  "nodes": [
+    {
+      "id": "provider",
+      "lane": "actors",
+      "col": 0,
+      "type": "external",
+      "label": "能力提供方",
+      "sublabel": "注册 API",
+      "width": 116,
+      "height": 60
+    },
+    {
+      "id": "register",
+      "lane": "platform",
+      "col": 1,
+      "type": "backend",
+      "label": "注册",
+      "sublabel": "POST /apis",
+      "width": 116,
+      "height": 60
+    },
+    {
+      "id": "approval",
+      "lane": "platform",
+      "col": 2,
+      "type": "security",
+      "label": "资源审批",
+      "sublabel": "approval_record",
+      "tag": "通过后发布",
+      "width": 116,
+      "height": 60
+    },
+    {
+      "id": "published",
+      "lane": "platform",
+      "col": 3,
+      "type": "backend",
+      "label": "已发布",
+      "sublabel": "v2_api_t",
+      "width": 116,
+      "height": 60
+    },
+    {
+      "id": "subscriber",
+      "lane": "actors",
+      "col": 3,
+      "type": "frontend",
+      "label": "消费方订阅",
+      "sublabel": "POST /subscribe",
+      "width": 116,
+      "height": 60
+    },
+    {
+      "id": "authorized",
+      "lane": "actors",
+      "col": 4,
+      "type": "messagebus",
+      "label": "订阅已授权",
+      "sublabel": "subscription_t",
+      "tag": "审批通过",
+      "width": 116,
+      "height": 60
+    },
+    {
+      "id": "gateway",
+      "lane": "gateway",
+      "col": 4,
+      "type": "backend",
+      "label": "消费调用",
+      "sublabel": "/gateway/api/**",
+      "tag": "permissions/check",
+      "width": 116,
+      "height": 60
+    },
+    {
+      "id": "downstream",
+      "lane": "gateway",
+      "col": 5,
+      "type": "external",
+      "label": "下游能力",
+      "sublabel": "业务应用",
+      "width": 116,
+      "height": 60
+    }
+  ],
+  "edges": [
+    {
+      "id": "provider-register",
+      "from": "provider",
+      "to": "register",
+      "variant": "emphasis"
+    },
+    {
+      "id": "register-approval",
+      "from": "register",
+      "to": "approval",
+      "label": "提交审批"
+    },
+    {
+      "id": "approval-published",
+      "from": "approval",
+      "to": "published",
+      "label": "通过",
+      "variant": "emphasis"
+    },
+    {
+      "id": "published-subscriber",
+      "from": "published",
+      "to": "subscriber",
+      "label": "查看并订阅"
+    },
+    {
+      "id": "subscriber-authorized",
+      "from": "subscriber",
+      "to": "authorized",
+      "label": "提交订阅 → 审批授权",
+      "variant": "emphasis"
+    },
+    {
+      "id": "authorized-gateway",
+      "from": "authorized",
+      "to": "gateway",
+      "label": "调用"
+    },
+    {
+      "id": "gateway-downstream",
+      "from": "gateway",
+      "to": "downstream",
+      "label": "校验后代理",
+      "variant": "security"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "上架路径",
+      "items": [
+        "能力提供方注册 API，open-server 落草稿 v2_api_t",
+        "资源需审批通过后才发布（approval_record）"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "订阅路径",
+      "items": [
+        "消费方订阅需二次审批，通过后写 subscription_t",
+        "授权后经 api-server 消费网关代理访问"
+      ]
+    }
+  ],
+  "groups": [
+    {
+      "id": "approval-g",
+      "label": "审批",
+      "lane": "platform",
+      "fromCol": 2,
+      "toCol": 2,
+      "variant": "security"
+    }
+  ]
+}

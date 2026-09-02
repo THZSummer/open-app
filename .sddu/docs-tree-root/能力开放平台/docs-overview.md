@@ -76,6 +76,8 @@
 | 回调开放 | open-server（管理）+ event-server（网关） | v2_callback_t, v2_callback_p_t |
 | 连接器开放 | open-server（管理）+ connector-api（执行） | v2_cp_connector_t, v2_cp_flow_t, v2_cp_execution_record_t |
 
+> 📊 **Archify 交互图**：[服务调用依赖关系](../archify/service-deps.html)（可交互）· [PNG](../archify/service-deps.png)
+
 ### 2.2 服务依赖
 
 | 依赖 | 方向 | 说明 |

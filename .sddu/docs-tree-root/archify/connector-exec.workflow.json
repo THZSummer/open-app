@@ -1,0 +1,44 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "连接流执行流：触发 → 解析 → 编排执行",
+    "locale": "zh-CN",
+    "output": "connector-exec.workflow.html",
+    "quality_profile": "showcase",
+    "views": [
+      { "id": "exec-path", "label": "执行链路", "focus": ["trigger", "invoke", "readver", "dag", "connector", "exit"], "note": "HTTP 触发连接流，解析 DAG 并编排执行节点。" }
+    ]
+  },
+  "lanes": [
+    { "id": "trigger", "label": "触发方" },
+    { "id": "engine", "label": "执行引擎 (connector-api)" },
+    { "id": "nodes", "label": "DAG 节点执行" }
+  ],
+  "phases": [
+    { "id": "invoke", "label": "触发与解析", "fromCol": 0, "toCol": 2 },
+    { "id": "run", "label": "编排执行", "fromCol": 3, "toCol": 5, "variant": "emphasis" }
+  ],
+  "mainPath": ["trigger", "invoke", "readver", "dag", "connector", "exit"],
+  "nodes": [
+    { "id": "trigger", "lane": "trigger", "col": 0, "type": "external", "label": "外部触发", "sublabel": "HTTP", "width": 112 },
+    { "id": "invoke", "lane": "engine", "col": 1, "type": "backend", "label": "触发执行", "sublabel": "POST /api/v1/flows/{id}/invoke", "width": 126 },
+    { "id": "readver", "lane": "engine", "col": 2, "type": "database", "label": "读取版本", "sublabel": "flow_t.deployed_version_id", "width": 126 },
+    { "id": "dag", "lane": "engine", "col": 3, "type": "backend", "label": "解析 DAG", "sublabel": "orchestration_config", "width": 126 },
+    { "id": "connector", "lane": "nodes", "col": 4, "type": "messagebus", "label": "连接器节点", "sublabel": "HTTP 调用下游", "width": 112 },
+    { "id": "exit", "lane": "nodes", "col": 5, "type": "backend", "label": "出口节点", "sublabel": "组装响应", "width": 112 }
+  ],
+  "edges": [
+    { "id": "trigger-invoke", "from": "trigger", "to": "invoke", "label": "触发", "variant": "emphasis" },
+    { "id": "invoke-readver", "from": "invoke", "to": "readver", "label": "读取", "variant": "default" },
+    { "id": "readver-dag", "from": "readver", "to": "dag", "label": "解析", "variant": "default" },
+    { "id": "dag-connector", "from": "dag", "to": "connector", "label": "执行", "variant": "emphasis" },
+    { "id": "dag-script", "from": "dag", "to": "connector", "label": "脚本节点 (GraalJS) / 并行", "variant": "security", "role": "branch" },
+    { "id": "connector-exit", "from": "connector", "to": "exit", "label": "结果", "variant": "default", "role": "return" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "触发与解析", "items": ["外部触发 POST /api/v1/flows/{id}/invoke", "由 flow_t.deployed_version_id 读 flow_version_t 编排配置，解析 DAG"] },
+    { "dot": "emerald", "title": "编排执行", "items": ["连接器节点 HTTP 调用下游；脚本节点 GraalJS 沙箱", "并行（parallel）与出口（exit）节点组装响应，同步执行"] },
+    { "dot": "orange", "title": "执行记录", "items": ["写 execution_record_t（总览）与 execution_step_t（每节点快照）", "仅执行已发布版本（deployed_version_id 指针）"] }
+  ]
+}

@@ -35,6 +35,8 @@
 | 用户授权 | OAuth 风格用户主动授权（user_authorization_t + ScopeController） |
 | 成员权限 | 应用成员 Owner/管理员/开发者角色矩阵 |
 
+> 📊 **Archify 交互图**：[资源审批状态机](archify/approval.cycle.html)（可交互，lifecycle）· [PNG](archify/approval.png)
+
 ## 2. 授权矩阵
 
 ### 2.1 应用成员角色（open-server）

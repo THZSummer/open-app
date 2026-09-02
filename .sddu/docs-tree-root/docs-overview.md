@@ -38,6 +38,10 @@
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
+> 📊 **Archify 交互图**：[```业务全景图```](archify/business-overview.html)（可交互，深/浅主题）· [PNG 预览](archify/business-overview.png)
+
+---
+
 ### 1.2 能力地图（业务视角）
 
 > 来源：能力开放平台 discovery-report §3.2 能力分类模型。open-app 平台 = **能力开放平台（基础设施）** + **数据开放平台（上层应用）**。
@@ -82,6 +86,8 @@ flowchart TB
     end
     classDef base fill:#e1f5e1,stroke:#2e7d32
 ```
+
+> 📊 **Archify 交互图**：[```能力地图```](archify/capability-map.html)（可交互，深/浅主题）· [PNG 预览](archify/capability-map.png)
 
 **能力清单**（对应 specs-tree-root Feature）：
 
@@ -226,6 +232,8 @@ open-app 项目全景
 │   └── Redis Reactive 集群                                          │
 └────────────────────────────────────────────────────────────────────┘
 ```
+
+> 📊 **Archify 交互图**：[```部署拓扑```](archify/deployment-topology.html)（可交互，深/浅主题）· [PNG 预览](archify/deployment-topology.png)
 
 ### 2.6 跨域数据流
 

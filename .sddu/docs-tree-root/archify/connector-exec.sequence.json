@@ -1,0 +1,210 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "连接流执行调用时序",
+    "locale": "zh-CN",
+    "output": "connector-exec.sequence.html",
+    "quality_profile": "showcase",
+    "viewBox": [
+      920,
+      600
+    ],
+    "views": [
+      {
+        "id": "main-call",
+        "label": "主调用链",
+        "focus": [
+          "caller",
+          "engine",
+          "codec",
+          "connector",
+          "script"
+        ],
+        "note": "外部触发后按节点顺序执行编排。"
+      },
+      {
+        "id": "persist",
+        "label": "持久化",
+        "focus": [
+          "engine",
+          "codec"
+        ],
+        "note": "执行记录与每节点快照写入。"
+      }
+    ]
+  },
+  "participants": [
+    {
+      "id": "caller",
+      "type": "external",
+      "label": "外部触发方",
+      "sublabel": "HTTP 调用"
+    },
+    {
+      "id": "engine",
+      "type": "backend",
+      "label": "connector-api",
+      "sublabel": "执行引擎"
+    },
+    {
+      "id": "codec",
+      "type": "database",
+      "label": "MySQL openapp",
+      "sublabel": "编排配置"
+    },
+    {
+      "id": "connector",
+      "type": "external",
+      "label": "下游连接器",
+      "sublabel": "HTTP 目标"
+    },
+    {
+      "id": "script",
+      "type": "security",
+      "label": "GraalJS 沙箱",
+      "sublabel": "脚本节点"
+    }
+  ],
+  "segments": [
+    {
+      "from": 160,
+      "to": 265,
+      "label": "触发与解析"
+    },
+    {
+      "from": 284,
+      "to": 430,
+      "label": "节点执行"
+    },
+    {
+      "from": 444,
+      "to": 500,
+      "label": "持久化与返回"
+    }
+  ],
+  "messages": [
+    {
+      "id": "m1",
+      "from": "caller",
+      "to": "engine",
+      "y": 172,
+      "label": "POST /api/v1/flows/{id}/invoke",
+      "variant": "emphasis"
+    },
+    {
+      "id": "m2",
+      "from": "engine",
+      "to": "codec",
+      "y": 205,
+      "label": "读 orchestration_config",
+      "variant": "default"
+    },
+    {
+      "id": "m3",
+      "from": "codec",
+      "to": "engine",
+      "y": 240,
+      "label": "DAG 配置",
+      "variant": "return"
+    },
+    {
+      "id": "m4",
+      "from": "engine",
+      "to": "connector",
+      "y": 300,
+      "label": "连接器节点 HTTP 调用",
+      "variant": "emphasis"
+    },
+    {
+      "id": "m5",
+      "from": "connector",
+      "to": "engine",
+      "y": 335,
+      "label": "返回结果",
+      "variant": "return"
+    },
+    {
+      "id": "m6",
+      "from": "engine",
+      "to": "script",
+      "y": 375,
+      "label": "脚本节点 GraalJS 执行",
+      "variant": "security"
+    },
+    {
+      "id": "m7",
+      "from": "script",
+      "to": "engine",
+      "y": 410,
+      "label": "脚本结果",
+      "variant": "return"
+    },
+    {
+      "id": "m8",
+      "from": "engine",
+      "to": "codec",
+      "y": 450,
+      "label": "写 execution_record / step",
+      "variant": "dashed"
+    },
+    {
+      "id": "m9",
+      "from": "engine",
+      "to": "caller",
+      "y": 473,
+      "label": "200 响应",
+      "variant": "return"
+    }
+  ],
+  "activations": [
+    {
+      "participant": "engine",
+      "from": 172,
+      "to": 492,
+      "type": "backend"
+    },
+    {
+      "participant": "codec",
+      "from": 201,
+      "to": 247,
+      "type": "database"
+    },
+    {
+      "participant": "codec",
+      "from": 446,
+      "to": 478,
+      "type": "database"
+    },
+    {
+      "participant": "connector",
+      "from": 296,
+      "to": 342,
+      "type": "external"
+    },
+    {
+      "participant": "script",
+      "from": 371,
+      "to": 417,
+      "type": "security"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "主调用链",
+      "items": [
+        "外部触发方 HTTP 调用 connector-api 执行连接流",
+        "按 DAG 节点顺序：连接器 → 脚本 → 出口"
+      ]
+    },
+    {
+      "dot": "orange",
+      "title": "持久化",
+      "items": [
+        "读 flow_version_t.orchestration_config 解析 DAG",
+        "写 execution_record_t（总览）+ execution_step_t（每节点快照）"
+      ]
+    }
+  ]
+}

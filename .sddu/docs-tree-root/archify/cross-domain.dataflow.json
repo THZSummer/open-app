@@ -1,0 +1,232 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "open-app 跨域数据流 — 消费方 → 网关 → 数据/下游",
+    "locale": "zh-CN",
+    "output": "cross-domain.flow.html",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1080,
+      740
+    ],
+    "views": [
+      {
+        "id": "consume-path",
+        "label": "能力消费主路径",
+        "focus": [
+          "consumer",
+          "api-server",
+          "event-server",
+          "connector-api",
+          "mysql",
+          "subscriber",
+          "downstream"
+        ],
+        "note": "三方平台经消费网关访问数据、事件或连接流。"
+      },
+      {
+        "id": "subscription-path",
+        "label": "订阅下发",
+        "focus": [
+          "api-server",
+          "event-server",
+          "connector-api"
+        ],
+        "note": "订阅/权限关系由管理面下发至消费网关与缓存。"
+      }
+    ]
+  },
+  "stages": [
+    {
+      "label": "消费方 / 外部"
+    },
+    {
+      "label": "管理面"
+    },
+    {
+      "label": "消费网关"
+    },
+    {
+      "label": "数据层"
+    },
+    {
+      "label": "下游 / 订阅方"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "consumer",
+      "type": "external",
+      "label": "三方平台 / 外部",
+      "sublabel": "调用方",
+      "stage": 0,
+      "row": 4,
+      "tag": "API/事件/连接器",
+      "height": 48
+    },
+    {
+      "id": "api-server",
+      "type": "backend",
+      "label": "api-server",
+      "sublabel": "数据查询网关",
+      "stage": 2,
+      "row": 0,
+      "tag": "代理",
+      "height": 48
+    },
+    {
+      "id": "event-server",
+      "type": "backend",
+      "label": "event-server",
+      "sublabel": "事件/回调网关",
+      "stage": 2,
+      "row": 2,
+      "tag": "SSE/WS",
+      "height": 48
+    },
+    {
+      "id": "connector-api",
+      "type": "backend",
+      "label": "connector-api",
+      "sublabel": "连接流执行",
+      "stage": 2,
+      "row": 4,
+      "tag": "R2DBC",
+      "height": 48
+    },
+    {
+      "id": "mysql",
+      "type": "database",
+      "label": "MySQL openapp",
+      "sublabel": "主库",
+      "stage": 3,
+      "row": 0,
+      "tag": "MyBatis/R2DBC",
+      "height": 48
+    },
+    {
+      "id": "subscriber",
+      "type": "frontend",
+      "label": "订阅方应用",
+      "sublabel": "WebHook/SSE",
+      "stage": 4,
+      "row": 2,
+      "tag": "消费",
+      "height": 48
+    },
+    {
+      "id": "downstream",
+      "type": "external",
+      "label": "下游连接器",
+      "sublabel": "外部系统",
+      "stage": 4,
+      "row": 4,
+      "tag": "调用",
+      "height": 48
+    }
+  ],
+  "flows": [
+    {
+      "id": "consumer-api",
+      "from": "consumer",
+      "to": "api-server",
+      "label": "API 消费",
+      "classification": "数据查询",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "left",
+      "channelY": 160,
+      "labelAt": [
+        330,
+        150
+      ]
+    },
+    {
+      "id": "consumer-event",
+      "from": "consumer",
+      "to": "event-server",
+      "label": "事件/回调发布",
+      "classification": "事件发布",
+      "variant": "default",
+      "fromSide": "right",
+      "toSide": "left",
+      "channelY": 390,
+      "labelAt": [
+        400,
+        378
+      ]
+    },
+    {
+      "id": "consumer-connector",
+      "from": "consumer",
+      "to": "connector-api",
+      "label": "连接流调用",
+      "classification": "编排执行",
+      "variant": "default",
+      "fromSide": "right",
+      "toSide": "left",
+      "channelY": 610,
+      "labelAt": [
+        400,
+        600
+      ]
+    },
+    {
+      "id": "api-mysql",
+      "from": "api-server",
+      "to": "mysql",
+      "label": "数据查询",
+      "classification": "读",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "event-subscriber",
+      "from": "event-server",
+      "to": "subscriber",
+      "label": "SSE/WS/WebHook",
+      "classification": "推送",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "connector-downstream",
+      "from": "connector-api",
+      "to": "downstream",
+      "label": "连接器调用",
+      "classification": "HTTP",
+      "variant": "default",
+      "fromSide": "right",
+      "toSide": "left"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "能力消费主路径",
+      "items": [
+        "三方平台经 api-server / event-server / connector-api 三大网关消费",
+        "数据查询、事件发布/回调、连接流编排三种开放形式"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "订阅与缓存",
+      "items": [
+        "open-server 下发订阅/权限至网关与 Redis 订阅列表",
+        "event-server 按订阅方分发 SSE / WebSocket / WebHook"
+      ]
+    },
+    {
+      "dot": "orange",
+      "title": "脚本与执行",
+      "items": [
+        "connector-api 经 GraalJS 沙箱执行脚本节点",
+        "执行记录经 R2DBC 写入 MySQL，连接器节点 HTTP 调用下游"
+      ]
+    }
+  ]
+}

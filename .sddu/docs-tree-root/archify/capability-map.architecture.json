@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "open-app 能力地图 — 能力开放平台 + 数据开放平台",
+    "locale": "zh-CN",
+    "output": "capability-map.html",
+    "quality_profile": "showcase",
+    "views": [
+      { "id": "platform-capabilities", "label": "平台本身能力", "focus": ["app", "member", "aksk", "perm", "approval", "embed"], "note": "能力开放平台的基础公共底座。" },
+      { "id": "connection-capabilities", "label": "连接能力", "focus": ["api", "event", "callback", "connector", "im-card", "cloudbox", "mail"], "note": "公共连接能力 + 特有连接能力。" },
+      { "id": "data-stage", "label": "数据开放平台", "focus": ["data-obj", "data-reg", "data-sub", "data-govern"], "note": "上层应用阶段 2，依赖能力开放平台通道。" }
+    ]
+  },
+  "components": [
+    { "id": "app", "type": "backend", "label": "应用管理", "sublabel": "成员/版本", "pos": [60, 130], "size": [105, 50] },
+    { "id": "member", "type": "backend", "label": "成员管理", "sublabel": "Owner/管理员", "pos": [190, 130], "size": [105, 50] },
+    { "id": "aksk", "type": "security", "label": "AKSK 管理", "sublabel": "凭证轮换", "pos": [60, 210], "size": [105, 50] },
+    { "id": "perm", "type": "backend", "label": "权限管理", "sublabel": "订阅授权", "pos": [190, 210], "size": [105, 50] },
+    { "id": "approval", "type": "backend", "label": "审批管理", "sublabel": "动态审批流", "pos": [60, 290], "size": [105, 50] },
+    { "id": "embed", "type": "backend", "label": "嵌入能力", "sublabel": "特有能力接入", "pos": [190, 290], "size": [105, 50] },
+    { "id": "api", "type": "messagebus", "label": "API 开放", "sublabel": "R1", "pos": [440, 100], "size": [105, 50] },
+    { "id": "event", "type": "messagebus", "label": "事件开放", "sublabel": "R2", "pos": [440, 180], "size": [105, 50] },
+    { "id": "callback", "type": "messagebus", "label": "回调开放", "sublabel": "R3", "pos": [440, 260], "size": [105, 50] },
+    { "id": "connector", "type": "messagebus", "label": "连接器开放", "sublabel": "R4", "pos": [440, 340], "size": [105, 50] },
+    { "id": "im-card", "type": "cloud", "label": "IM 卡片能力", "sublabel": "特有", "pos": [575, 140], "size": [105, 50] },
+    { "id": "cloudbox", "type": "cloud", "label": "云盘业务能力", "sublabel": "特有", "pos": [575, 220], "size": [105, 50] },
+    { "id": "mail", "type": "cloud", "label": "邮件业务能力", "sublabel": "特有", "pos": [575, 300], "size": [105, 50] },
+    { "id": "data-obj", "type": "database", "label": "数据对象管理", "sublabel": "阶段 2", "pos": [1010, 120], "size": [115, 50] },
+    { "id": "data-reg", "type": "database", "label": "数据注册/审批", "sublabel": "阶段 2", "pos": [1150, 120], "size": [115, 50] },
+    { "id": "data-sub", "type": "database", "label": "数据订阅/消费", "sublabel": "阶段 2", "pos": [1010, 210], "size": [115, 50] },
+    { "id": "data-govern", "type": "database", "label": "数据治理", "sublabel": "阶段 2", "pos": [1150, 210], "size": [115, 50] }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "能力开放平台（基础设施 · 阶段 1）", "wraps": ["app", "member", "aksk", "perm", "approval", "embed", "api", "event", "callback", "connector", "im-card", "cloudbox", "mail"], "pad": 24 },
+    { "kind": "security-group", "label": "平台本身能力（公共底座）", "wraps": ["app", "member", "aksk", "perm", "approval", "embed"] },
+    { "kind": "region", "label": "数据开放平台（上层应用 · 阶段 2）", "wraps": ["data-obj", "data-reg", "data-sub", "data-govern"] }
+  ],
+  "connections": [
+    { "id": "cop-to-data", "from": "connector", "to": "data-obj", "label": "提供通道/权限/审批", "variant": "emphasis", "fromSide": "right", "toSide": "left", "via": [[840, 365], [840, 145], [960, 145]] }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "能力分层", "items": ["平台本身能力为公共底座，被连接能力依赖复用", "连接能力分公共（R1~R4）与特有（IM/云盘/邮件）两层", "数据开放平台为上层应用，依赖能力开放平台通道"] },
+    { "dot": "emerald", "title": "Feature 映射", "items": ["能力开放平台 + 应用管理 + 连接器平台", "嵌入能力 / 数据字典 / LookUp 为辅助与基础支撑"] }
+  ]
+}

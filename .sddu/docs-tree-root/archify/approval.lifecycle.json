@@ -1,0 +1,139 @@
+{
+  "schema_version": 1,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "资源审批状态机：草稿 → 审批 → 发布 → 下线",
+    "locale": "zh-CN",
+    "output": "approval.cycle.html",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "main-rail",
+        "label": "审批主轨",
+        "focus": [
+          "draft",
+          "pending",
+          "published"
+        ],
+        "note": "API/事件/回调资源从草稿经审批到发布。"
+      },
+      {
+        "id": "reject-rail",
+        "label": "拒绝与下线",
+        "focus": [
+          "pending",
+          "rejected",
+          "published",
+          "offline"
+        ],
+        "note": "审批拒绝与发布后下线两条终止路径。"
+      }
+    ]
+  },
+  "lanes": [
+    {
+      "id": "main",
+      "label": "资源生命周期 (API/事件/回调)"
+    },
+    {
+      "id": "terminal",
+      "label": "终止结果"
+    }
+  ],
+  "states": [
+    {
+      "id": "draft",
+      "type": "start",
+      "label": "草稿",
+      "sublabel": "状态 0",
+      "lane": "main",
+      "col": 0,
+      "step": "01",
+      "tag": "初始化"
+    },
+    {
+      "id": "pending",
+      "type": "decision",
+      "label": "待审",
+      "sublabel": "状态 1",
+      "lane": "main",
+      "col": 1,
+      "step": "02",
+      "tag": "审批中"
+    },
+    {
+      "id": "published",
+      "type": "success",
+      "label": "已发布",
+      "sublabel": "状态 2",
+      "lane": "main",
+      "col": 2,
+      "step": "03",
+      "tag": "通过"
+    },
+    {
+      "id": "rejected",
+      "type": "failure",
+      "label": "已拒绝",
+      "sublabel": "审批拒绝",
+      "lane": "terminal",
+      "col": 0,
+      "tag": "终止"
+    },
+    {
+      "id": "offline",
+      "type": "failure",
+      "label": "已下线",
+      "sublabel": "发布后下线",
+      "lane": "terminal",
+      "col": 2,
+      "tag": "终止"
+    }
+  ],
+  "transitions": [
+    {
+      "from": "draft",
+      "to": "pending",
+      "label": "提交",
+      "variant": "default"
+    },
+    {
+      "from": "pending",
+      "to": "published",
+      "label": "通过",
+      "variant": "emphasis"
+    },
+    {
+      "from": "pending",
+      "to": "rejected",
+      "label": "拒绝",
+      "variant": "security",
+      "route": "drop"
+    },
+    {
+      "from": "published",
+      "to": "offline",
+      "label": "下线",
+      "variant": "dashed",
+      "route": "drop"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "资源生命周期",
+      "items": [
+        "API/事件/回调：草稿(0) → 待审(1) → 已发布(2) → 已下线(3)",
+        "待审可被拒绝，发布后也可下线"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "订阅与审批记录",
+      "items": [
+        "订阅：待审(0) → 已授权(1) / 已拒绝(2)，授权后可取消(3)",
+        "审批记录：待审(0) → 已通过(1) / 已拒绝(2)，通过后可撤销(3)"
+      ]
+    }
+  ]
+}

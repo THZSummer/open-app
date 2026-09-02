@@ -16,6 +16,7 @@ docs-tree-root/
 ├── security.md              # 全系统安全模型
 ├── relation-deps.md         # 服务依赖关系
 ├── relation-flow.md         # 跨域数据流
+├── archify/                 # Archify 交互图产物（html + png + json 源）
 ├── source.md                # 产物溯源（扫描信息源）
 └── 能力开放平台/            # 业务域：能力开放平台（基础设施 · 阶段 1）
     ├── docs-overview.md     # 域入口（能力结构 + 工程映射）

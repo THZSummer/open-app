@@ -29,6 +29,10 @@
 | **market-server** | wecontact API | HTTP | → | 通讯录 |
 | **open-flyway** | MySQL openapp | JDBC (Flyway) | → | 迁移 |
 
+> 📊 **Archify 交互图**：[服务调用依赖关系](archify/service-deps.html)（可交互）· [PNG](archify/service-deps.png)
+
+> 📊 **Archify dataflow**：[跨域数据流](archify/cross-domain.flow.html)（可交互）· [PNG](archify/cross-domain.png)
+
 ## 2. 数据依赖方向
 
 ```

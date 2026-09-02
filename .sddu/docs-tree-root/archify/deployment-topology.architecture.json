@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "open-app 部署拓扑",
+    "locale": "zh-CN",
+    "output": "deployment-topology.html",
+    "quality_profile": "showcase",
+    "views": [
+      { "id": "frontend-to-mgmt", "label": "前端 → 管理面", "focus": ["wecodesite", "market-web", "qiankun", "open-server", "market-server"], "note": "开发者控制台与市场管理后台访问管理面。" },
+      { "id": "gateway-plane", "label": "消费网关层", "focus": ["api-server", "event-server", "connector-api"], "note": "数据/API、事件/回调、连接流执行网关。" },
+      { "id": "data-plane", "label": "数据层", "focus": ["mysql", "redis"], "note": "MySQL openapp 主库 + Redis 6 节点集群。" }
+    ]
+  },
+  "components": [
+    { "id": "wecodesite", "type": "frontend", "label": "wecodesite", "sublabel": "开发者控制台 · 主应用", "pos": [30, 70], "size": [140, 50] },
+    { "id": "market-web", "type": "frontend", "label": "market-web", "sublabel": "市场管理后台", "pos": [240, 70], "size": [140, 50] },
+    { "id": "qiankun", "type": "frontend", "label": "qiankunProject", "sublabel": "微前端容器 · b/c/d/e", "pos": [450, 70], "size": [140, 50] },
+    { "id": "open-server", "type": "backend", "label": "open-server", "sublabel": ":18080 /open-server", "pos": [30, 190], "size": [150, 52] },
+    { "id": "market-server", "type": "backend", "label": "market-server", "sublabel": ":18083 /market-server", "pos": [230, 190], "size": [150, 52] },
+    { "id": "api-server", "type": "backend", "label": "api-server", "sublabel": ":18081 消费网关", "pos": [430, 190], "size": [150, 52] },
+    { "id": "event-server", "type": "backend", "label": "event-server", "sublabel": ":18082 事件/回调", "pos": [630, 190], "size": [150, 52] },
+    { "id": "connector-api", "type": "backend", "label": "connector-api", "sublabel": ":18180 WebFlux · R2DBC", "pos": [830, 190], "size": [150, 52] },
+    { "id": "mysql", "type": "database", "label": "MySQL openapp", "sublabel": "192.168.3.155:3306", "pos": [130, 370], "size": [170, 54] },
+    { "id": "redis", "type": "database", "label": "Redis Cluster", "sublabel": "192.168.3.201~206:6379", "pos": [610, 370], "size": [200, 54] }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "前端层", "wraps": ["wecodesite", "market-web", "qiankun"] },
+    { "kind": "region", "label": "服务层 (管理面 + 消费网关)", "wraps": ["open-server", "market-server", "api-server", "event-server", "connector-api"] },
+    { "kind": "region", "label": "数据层", "wraps": ["mysql", "redis"] }
+  ],
+  "connections": [
+    { "id": "wec-to-open", "from": "wecodesite", "to": "open-server", "label": "HTTP", "fromSide": "bottom", "toSide": "top" },
+    { "id": "market-to-market-server", "from": "market-web", "to": "market-server", "label": "HTTP", "fromSide": "bottom", "toSide": "top" },
+    { "id": "open-to-mysql", "from": "open-server", "to": "mysql", "label": "MyBatis JDBC", "fromSide": "bottom", "toSide": "top" },
+    { "id": "market-to-mysql", "from": "market-server", "to": "mysql", "label": "MyBatis JDBC", "fromSide": "bottom", "toSide": "top" },
+    { "id": "api-to-mysql", "from": "api-server", "to": "mysql", "label": "MyBatis", "fromSide": "bottom", "toSide": "right" },
+    { "id": "event-to-redis", "from": "event-server", "to": "redis", "label": "订阅缓存", "fromSide": "bottom", "toSide": "top" },
+    { "id": "connector-to-redis", "from": "connector-api", "to": "redis", "label": "Reactive", "variant": "dashed", "fromSide": "bottom", "toSide": "left" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "前端层", "items": ["wecodesite 为 qiankun 主应用，托管子应用 b/c/d/e", "market-web 市场管理后台", "qiankunProject 经 open-server 接入嵌入能力"] },
+    { "dot": "emerald", "title": "服务层", "items": ["open-server/market-server 管理面；api-server 数据网关", "event-server 事件/回调网关；connector-api WebFlux+R2DBC", "connector-api 经 R2DBC 读写 MySQL（Reactive Redis）"] },
+    { "dot": "amber", "title": "数据层", "items": ["MySQL openapp 主库（MyBatis/R2DBC 双通道）", "Redis Cluster 6 节点，192.168.3.201~206"] }
+  ]
+}
