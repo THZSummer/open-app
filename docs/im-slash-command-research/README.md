@@ -198,51 +198,52 @@ flowchart TD
 
 ## 五、产出物规划
 
-**产出思路**：**每个竞品产出一份单独调研报告**，所有竞品调研完成后，**汇总出一份整体调研对比汇总报告**（`summary.md`）。
+**产出思路**：**每个产品产出一份单独调研报告**（一产品一份，按产品平铺，不按类型分组），所有产品调研完成后，**汇总出一份整体调研对比汇总报告**（`summary.md`）。
 
 ### 5.1 产出结构
 
 ```
 docs/im-slash-command-research/
 ├── README.md                          # 本文件：背景 + 调研计划 + 维度 A~G 定义
-├── summary.md                         # ★ 整体调研对比汇总报告（最终产出）
-└── reports/                           # 各竞品单独调研报告（一竞品一份）
-    ├── 01-slack.md                    # 同类型：Slack
-    ├── 02-discord.md                  # 同类型：Discord
-    ├── 03-telegram.md                 # 同类型：Telegram
-    ├── 04-feishu-lark.md              # 同类型：飞书 / Lark
-    ├── 05-dingtalk.md                 # 同类型：钉钉
-    ├── 06-wecom.md                    # 同类型：企业微信
-    ├── 07-teams.md                    # 同类型：Microsoft Teams
-    ├── 08-agentforce.md               # 不同类型：Slack AI / Agentforce
-    ├── 09-copilot-studio.md           # 不同类型：Microsoft Copilot Studio
-    ├── 10-ai-assistant.md             # 不同类型：飞书智能伙伴 / 钉钉 AI 助理
-    ├── 11-openai-tool-calling.md      # 不同类型：OpenAI Assistants / GPTs / Function Calling
-    ├── 12-claude-code-skills.md       # 不同类型：Claude Code Skills / MCP（含 A2A）
-    ├── 13-ai-cli.md                   # 不同类型：GitHub Copilot CLI / AI CLI
-    └── 14-automation-ipaas.md         # 不同类型：n8n / Zapier / Make / Coze / Dify
+├── summary.md                         # ★ 整体调研对比汇总报告（最终产出，标记同类型/不同类型）
+└── reports/                           # 各产品单独调研报告（一产品一份，不按类型分组）
+    ├── 01-slack.md                    # Slack（同类型 IM）
+    ├── 02-discord.md                  # Discord（同类型 IM）
+    ├── 03-telegram.md                 # Telegram（同类型 IM）
+    ├── 04-feishu-lark.md              # 飞书 / Lark（同类型 IM）
+    ├── 05-dingtalk.md                 # 钉钉（同类型 IM）
+    ├── 06-wecom.md                    # 企业微信（同类型 IM）
+    ├── 07-teams.md                    # Microsoft Teams（同类型 IM）
+    ├── 08-agentforce.md               # Slack AI / Agentforce（不同类型）
+    ├── 09-copilot-studio.md           # Microsoft Copilot Studio（不同类型）
+    ├── 10-ai-assistant.md             # 飞书智能伙伴 / 钉钉 AI 助理（不同类型）
+    ├── 11-openai-tool-calling.md      # OpenAI Assistants / GPTs / Function Calling（不同类型）
+    ├── 12-claude-code-skills.md       # Claude Code Skills / MCP（含 A2A）（不同类型）
+    ├── 13-ai-cli.md                   # GitHub Copilot CLI / AI CLI（不同类型）
+    └── 14-automation-ipaas.md         # n8n / Zapier / Make / Coze / Dify（不同类型）
 ```
 
-> `reports/` 下的一竞品一份对应 §4.1.1 / §4.1.2 的表行列；若后续对分组产品（如 n8n / Zapier / Coze / Dify）需更细粒度，可再拆分。
+> `reports/` 按**产品**平铺（一产品一份），不再按"同类型/不同类型"分组；产品是否同类型在每份报告的**产品描述**中备注，整体分类汇总在 `summary.md` 中统一标记。
 
-### 5.2 单份竞品报告（统一样式）
+### 5.2 单份产品报告（统一三块内容）
 
-每份竞品报告按 **§4.2 维度 A~G** 逐项展开，包含：
+每份产品报告开头一段 **产品描述**（备注该产品属于 §4.1.1 同类型竞品 / §4.1.2 不同类型对照），正文为**统一的三块内容**：
 
-| 小节 | 内容 |
-|------|------|
-| 产品定位 | 归属、形态、目标用户 |
-| 能力盘点 | 逐维度 A~G 的调研发现（含官方文档信源） |
-| 三方面结论 | ① 非 AI 本地 Command 支持、② AI Agent Skill 支持、③ 未来规划 |
-| 对本方案的启示 | 可借鉴 / 需规避 / 差异化机会 |
+| # | 块 | 内容 |
+|---|-----|------|
+| ① | **非 AI 本地 Command 支持** | 是否有确定性命令通道（无 LLM），形态 / 参数 / 本地触发链路（对应维度 A~D） |
+| ② | **AI Agent Skill 支持** | 是否提供 MCP / Function Calling / 自定义 Agent 等机器可调用通道（对应维度 E~F） |
+| ③ | **未来规划** | 厂商对未来方向（本地执行 / AI 化）的战略投入与路线图（对应维度 G） |
+
+> **产品描述**：归属、形态、定位、目标用户，并备注「同类型 / 不同类型」分类；分类不在文件名或目录里体现，统一由 `summary.md` 汇总标记。
 
 ### 5.3 整体对比汇总报告（summary.md）
 
-汇总所有竞品报告，产出：
+汇总所有产品报告，产出：
 
-1. **对标矩阵总表**（填实 §4.3 的骨架：对象 × 维度 A~G）
-2. **三方面全景对比**：非 AI 本地 Command / AI Agent Skill / 未来规划，各竞品横向对照
-3. **趋势判断**：回应用户的调研目标 G1~G5（是否主流 / 主推 / 未来趋势）
+1. **对标矩阵总表**（填实 §4.3 骨架：对象 × 维度 A~G），**并在表中标记每个产品属于同类型 / 不同类型**
+2. **三块内容横向对比**：非 AI 本地 Command / AI Agent Skill / 未来规划，各产品横向对照
+3. **趋势判断**：回应调研目标 G1~G5（是否主流 / 主推 / 未来趋势）
 4. **对 open-app 的结论建议**：是否投入、如何投入该方向
 
 ---
