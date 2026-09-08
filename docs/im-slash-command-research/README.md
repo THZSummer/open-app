@@ -92,31 +92,35 @@ flowchart TD
 
 #### 4.1.1 同类型竞品 —— 提供"确定性命令触发 / Slash 命令"的 IM 与通讯平台（直接竞品）
 
-> 与本方案（IM 内 `/` 唤起命令 → 参数 → 触发本地服务）**形态最接近**的产品。重点看它们是否**保留无 AI 的确定性命令通道**。
+> 与本方案（IM 内 `/` 唤起命令 → 参数 → 触发本地服务）**形态最接近**的产品。统一追踪三方面：**① 非 AI 本地 Command 支持、② AI Agent Skill 支持、③ 未来规划**（是否主推本地执行 / 是否 AI 化取代确定性）。
 
-| 平台 | 归属 | 核心形态 | 与本方案的契合点 |
-|------|------|---------|----------------|
-| **Slack** | Salesforce | Slash Commands（`/command`）+ Block Kit 交互卡片 + Modal 参数表单 | **最接近**：命令直达 Request URL（HTTP server），参数结构化，无 AI 参与 |
-| **Discord** | Discord | Slash Commands + Interactions（Webhook 回传）+ 参数 Options / Autocomplete | **最接近**：命令 → 应用 Webhook，参数可下拉选择，完全确定性 |
-| **Telegram** | Telegram | Bot Commands（`/command`）+ 内联菜单按钮 + 参数 | 命令 → Bot Server，确定性命令 + 按钮参数 |
-| **飞书 / Lark** | 字节跳动 | 快捷指令 / `/` 命令 + 交互卡片 + 回调 | 命令 + 参数表单，通过回调触发（通常到云端服务，非本地） |
-| **钉钉** | 阿里巴巴 | 群机器人 `/` 命令 + 互动卡片 + 酷应用 | 命令 + 卡片参数交互，回调触发 |
-| **企业微信** | 腾讯 | 应用消息 + 回调 + 群机器人 | 回调触发（对象为云端应用，非本地） |
-| **Microsoft Teams** | 微软 | Slash command / Message Extensions / 应用命令 | 命令 + 参数，触发到 Bot 服务（云端） |
+| 平台 | 归属 | 非 AI 本地 Command | AI Agent Skill | 未来规划 |
+|------|------|:---:|:---:|------|
+| **Slack** | Salesforce | ✅ Slash Commands（`/command` 直达 Request URL/HTTP，参数结构化） | ✅ Slack AI + Agentforce + MCP 接入 | 【待调研】主推 Agentforce，是否仍保留确定性通道 |
+| **Discord** | Discord | ✅ Slash Commands + Interactions（Webhook 回传，参数 Options/Autocomplete） | ⚠️ 无原生，靠第三方 AI Bot / Activities | 【待调研】以确定性为主 |
+| **Telegram** | Telegram | ✅ Bot Commands（`/command`）+ 内联菜单按钮 | ⚠️ Bot API 无原生 AI，第三方接入 | 【待调研】确定性为主 |
+| **飞书 / Lark** | 字节跳动 | ✅ 快捷指令 / `/` 命令 + 交互卡片 | ✅ 飞书智能伙伴 + 飞书 MCP | 【待调研】AI 助理与命令并存（双通道） |
+| **钉钉** | 阿里巴巴 | ✅ 群机器人 `/` 命令 + 互动卡片 + 酷应用 | ✅ 钉钉 AI 助理 + 钉钉 MCP | 【待调研】AI 助理与命令并存（双通道） |
+| **企业微信** | 腾讯 | ⚠️ 有限（应用消息 + 回调，无标准 `/` 命令菜单） | ✅ 企微智能机器人 | 【待调研】回调为主 |
+| **Microsoft Teams** | 微软 | ✅ Slash command + Message Extensions | ✅ Copilot Studio + Teams AI Library + 自定义引擎 Agent | 【待调研】AI 与命令并存（双通道） |
+
+> ⚠️ 上表各列初判基于公开认知，**需在信息采集阶段用官方文档核实**；`AI Agent Skill 支持` 列关注是否提供"MCP / Function Calling / 自定义 Agent"等机器可调用通道。
 
 #### 4.1.2 不同类型产品 —— AI 驱动 / 自动化类（对照：区分"确定性 vs AI"）
 
-> 这些是 AI Agent 参与处理的"对立面"，用于验证 **"无 AI 处理"是否为主流 / 是替代还是互补**。
+> 这些是 AI Agent 参与处理的"对立面"，同样统一追踪三方面：**① 非 AI 本地 Command 支持、② AI Agent Skill 支持、③ 未来规划**，用于判断"确定性命令 vs AI 触发"是替代还是互补。
 
-| 平台 / 产品 | 类型 | 与"确定性命令"的对比 |
-|------------|------|--------------------|
-| **Slack AI / Agentforce** | AI Agent 整合 | 在 Slash 命令基础上叠加 AI，观察是否仍保留确定性通道 |
-| **Microsoft Copilot Studio** | Agent 平台 | 自定义 Agent，AI 驱动 |
-| **飞书智能伙伴 / 钉钉 AI 助理** | AI 助理 | 自然语言入口，AI 解析意图 |
-| **OpenAI Assistants / GPTs / Function Calling** | AI 工具调用 | LLM 决策调工具，与"用户显式选命令"相反 |
-| **Claude Code Skills / MCP** | AI Skill 生态 | **本方案的对立面**——AI 理解后调用工具 |
-| **GitHub Copilot CLI / AI CLI** | AI 命令行 | AI CLI 的 slash 命令，但仍由 AI 驱动 |
-| **n8n / Zapier / Make / Coze / Dify** | 编排 / 自动化 | 工作流自动化，部分已 AI 化 |
+| 平台 / 产品 | 类型 | 非 AI 本地 Command | AI Agent Skill | 未来规划 |
+|------------|------|:---:|:---:|------|
+| **Slack AI / Agentforce** | AI Agent 整合 | ⚠️ 复用 Slack 原生 Slash Commands | ✅ 核心（Agentforce 主推） | 观察是否仍保留确定性通道 |
+| **Microsoft Copilot Studio** | Agent 平台 | ⚠️ 无本地 Command 概念 | ✅ 核心（自定义 Agent） | AI 驱动为主 |
+| **飞书智能伙伴 / 钉钉 AI 助理** | AI 助理 | ⚠️ 复用平台原生命令/卡片 | ✅ 核心（自然语言 + 工具调用） | AI 驱动为主 |
+| **OpenAI Assistants / GPTs / Function Calling** | AI 工具调用 | ❌ 无（LLM 决策调工具） | ✅ 核心 | AI 纯驱动 |
+| **Claude Code Skills / MCP** | AI Skill 生态 | ❌ 无（AI 理解后调用） | ✅ 核心（**本方案的对立面**） | AI 纯驱动 |
+| **GitHub Copilot CLI / AI CLI** | AI 命令行 | ❌ 无（slash 命令仍由 AI 驱动） | ✅ 核心 | AI 驱动为主 |
+| **n8n / Zapier / Make / Coze / Dify** | 编排 / 自动化 | ✅ 有（确定性工作流节点） | ✅ 有（AI 节点 / Agent 编排） | 双通道并存 |
+
+> ⚠️ 上表初判基于公开认知，需信息采集阶段核实；本类对标的核心问题是——**它们是否也保留了"非 AI 确定性触发"这条通道，还是全面 AI 化**。
 
 #### 4.1.3 生态基础设施 / 协议
 
@@ -160,32 +164,33 @@ flowchart TD
 #### 维度 E · 确定性 vs AI（核心区分维度）
 - 业界做"命令触发"的主流：确定性（无 LLM）还是 AI 理解？
 - 是否存在纯确定的命令通道（无 AI 参与）？是被主推还是被 AI 取代？
+- **追踪每个平台的「非 AI 本地 Command」与「AI Agent Skill」两套能力的存在与成熟度**。
 
 #### 维度 F · 与 Agent Skill 的关系
 - 确定性命令与 AI Skill 是替代、互补还是并存？
 - 主流厂商是否同时保留两条通道？
 
-#### 维度 G · 生态与趋势
+#### 维度 G · 生态与未来规划
 - 命令市场 / 插件生态规模与活跃度？
 - 该方向的未来演化：过渡 / 互补 / 长期主流？
-- 主流厂商的战略表述（"本地执行 / 本地 agent"是否被视为卖点）？
+- **主流厂商的未来规划**：对"本地执行 / 本地 agent"、以及"AI Agent Skill"两条路线的战略投入与路线图表述。
 
 ---
 
 ### 4.3 对标矩阵（对象 × 维度，S 骨架）
 
-> 下表为计划采集的结构骨架；`【待调研】` 表示需在信息采集阶段填实。**用户核心关注列：维 E（确定性 vs AI）、维 D（本地链路）**。
+> 下表为计划采集的结构骨架；`【待调研】` 表示需在信息采集阶段填实。**用户核心关注列：维 E（确定性 vs AI）、维 D（本地链路）、维 G（未来规划）**。
 
-| 对象 | A 入口 | B 参数 | C 注册 | D 本地链路 | E 确定性/AI | F 与AI关系 |
-|------|:---:|:---:|:---:|:---:|:---:|:---:|
-| **Slack** | 支持 | Modal/Blocks | 应用注册 | 【待调研】 | 【待调研】 | 双通道 |
-| **Discord** | 支持 | Options/Autocomplete | 应用注册 | 【待调研】 | 全确定性 | 无AI入口 |
-| **Telegram** | 支持 | 内联按钮 | Bot 注册 | 【待调研】 | 全确定性 | 无AI入口 |
-| **飞书 / Lark** | 支持 | 交互卡片 | 应用/快捷指令 | 【待调研】 | 部分AI化 | 双通道 |
-| **钉钉** | 支持 | 互动卡片 | 酷应用 | 【待调研】 | 部分AI化 | 双通道 |
-| **企业微信** | 有限 | 卡片消息 | 应用注册 | 【待调研】 | 【待调研】 | 双通道 |
-| **Teams** | 支持 | Message Extensions | 应用注册 | 【待调研】 | 部分AI化 | 【待调研】 |
-| **VS Code** | 支持 | 参数输入 | 扩展注册 | 本地执行 | 全确定性 | 无AI |
+| 对象 | A 入口 | B 参数 | C 注册 | D 本地链路 | E 确定性/AI | F 与AI关系 | G 未来规划 |
+|------|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **Slack** | 支持 | Modal/Blocks | 应用注册 | 【待调研】 | 【待调研】 | 双通道 | 【待调研】 |
+| **Discord** | 支持 | Options/Autocomplete | 应用注册 | 【待调研】 | 全确定性 | 无AI入口 | 【待调研】 |
+| **Telegram** | 支持 | 内联按钮 | Bot 注册 | 【待调研】 | 全确定性 | 无AI入口 | 【待调研】 |
+| **飞书 / Lark** | 支持 | 交互卡片 | 应用/快捷指令 | 【待调研】 | 部分AI化 | 双通道 | 【待调研】 |
+| **钉钉** | 支持 | 互动卡片 | 酷应用 | 【待调研】 | 部分AI化 | 双通道 | 【待调研】 |
+| **企业微信** | 有限 | 卡片消息 | 应用注册 | 【待调研】 | 【待调研】 | 双通道 | 【待调研】 |
+| **Teams** | 支持 | Message Extensions | 应用注册 | 【待调研】 | 部分AI化 | 【待调研】 | 【待调研】 |
+| **VS Code** | 支持 | 参数输入 | 扩展注册 | 本地执行 | 全确定性 | 无AI | 【待调研】 |
 
 > ⚠️ 矩阵中"确定/部分AI化"等初判基于公开认知，**需在信息采集阶段用官方文档核实**，避免结论偏差。
 
@@ -193,12 +198,52 @@ flowchart TD
 
 ## 五、产出物规划
 
+**产出思路**：**每个竞品产出一份单独调研报告**，所有竞品调研完成后，**汇总出一份整体调研对比汇总报告**（`summary.md`）。
+
+### 5.1 产出结构
+
 ```
 docs/im-slash-command-research/
-├── README.md                          # 本文件：背景 + 调研计划
+├── README.md                          # 本文件：背景 + 调研计划 + 维度 A~G 定义
+├── summary.md                         # ★ 整体调研对比汇总报告（最终产出）
+└── reports/                           # 各竞品单独调研报告（一竞品一份）
+    ├── 01-slack.md                    # 同类型：Slack
+    ├── 02-discord.md                  # 同类型：Discord
+    ├── 03-telegram.md                 # 同类型：Telegram
+    ├── 04-feishu-lark.md              # 同类型：飞书 / Lark
+    ├── 05-dingtalk.md                 # 同类型：钉钉
+    ├── 06-wecom.md                    # 同类型：企业微信
+    ├── 07-teams.md                    # 同类型：Microsoft Teams
+    ├── 08-agentforce.md               # 不同类型：Slack AI / Agentforce
+    ├── 09-copilot-studio.md           # 不同类型：Microsoft Copilot Studio
+    ├── 10-ai-assistant.md             # 不同类型：飞书智能伙伴 / 钉钉 AI 助理
+    ├── 11-openai-tool-calling.md      # 不同类型：OpenAI Assistants / GPTs / Function Calling
+    ├── 12-claude-code-skills.md       # 不同类型：Claude Code Skills / MCP（含 A2A）
+    ├── 13-ai-cli.md                   # 不同类型：GitHub Copilot CLI / AI CLI
+    └── 14-automation-ipaas.md         # 不同类型：n8n / Zapier / Make / Coze / Dify
 ```
 
-> 后续调研报告文档将在本目录下按需追加。
+> `reports/` 下的一竞品一份对应 §4.1.1 / §4.1.2 的表行列；若后续对分组产品（如 n8n / Zapier / Coze / Dify）需更细粒度，可再拆分。
+
+### 5.2 单份竞品报告（统一样式）
+
+每份竞品报告按 **§4.2 维度 A~G** 逐项展开，包含：
+
+| 小节 | 内容 |
+|------|------|
+| 产品定位 | 归属、形态、目标用户 |
+| 能力盘点 | 逐维度 A~G 的调研发现（含官方文档信源） |
+| 三方面结论 | ① 非 AI 本地 Command 支持、② AI Agent Skill 支持、③ 未来规划 |
+| 对本方案的启示 | 可借鉴 / 需规避 / 差异化机会 |
+
+### 5.3 整体对比汇总报告（summary.md）
+
+汇总所有竞品报告，产出：
+
+1. **对标矩阵总表**（填实 §4.3 的骨架：对象 × 维度 A~G）
+2. **三方面全景对比**：非 AI 本地 Command / AI Agent Skill / 未来规划，各竞品横向对照
+3. **趋势判断**：回应用户的调研目标 G1~G5（是否主流 / 主推 / 未来趋势）
+4. **对 open-app 的结论建议**：是否投入、如何投入该方向
 
 ---
 
