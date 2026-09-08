@@ -2,8 +2,32 @@
 
 > **调研主题**: 在 IM 中通过 Slash 命令一键唤起命令列表、输入参数、直达用户本地 HTTPServer 的"确定性命令触发"模式，是否业务主流 / 主推 / 未来发展趋势
 > **创建日期**: 2026-09-08
-> **调研状态**: 📋 背景已确认，调研启动
-> **分支**: 待创建
+> **调研状态**: ✅ 调研完成 — 14 份产品报告 + 汇总报告已产出
+> **分支**: `feature/im-slash-command-research`
+
+---
+
+## 📑 文档导航
+
+> **阅读建议**：先读 [summary.md](summary.md)（整体对比汇总 + 结论建议）→ 再按需查看各产品报告。分类（同类型 IM / 不同类型 AI 对照）在各报告与汇总中均有标注。
+
+| 文档 | 分类 | 说明 |
+|------|:---:|------|
+| [**整体对比汇总报告**](summary.md) | — | ★ 执行摘要 + 对标矩阵（对象×维度 A~G）+ 趋势判断 + 对 open-app 结论建议 |
+| [01 · Slack](reports/01-slack.md) | 同类型 IM | 确定性 Slash 命令最成熟范本，双通道（Agents + MCP 双向） |
+| [02 · Discord](reports/02-discord.md) | 同类型 IM | 纯确定性 Interactions，无原生 AI |
+| [03 · Telegram](reports/03-telegram.md) | 同类型 IM | 纯确定性 Bot Commands，长轮询可本地 |
+| [04 · 飞书 / Lark](reports/04-feishu-lark.md) | 同类型 IM | `/` 命令面板 + WebSocket 长连接本地可收 |
+| [05 · 钉钉](reports/05-dingtalk.md) | 同类型 IM | 快捷指令 + Stream 反向连接「五零」本地 |
+| [06 · 企业微信](reports/06-wecom.md) | 同类型 IM | 无标准 `/` 菜单，靠文本关键词 + 智能机器人长连接 |
+| [07 · Microsoft Teams](reports/07-teams.md) | 同类型 IM | `/` autocomplete + manifest 强类型参数 + Dev Tunnels |
+| [08 · Slack AI / Agentforce](reports/08-agentforce.md) | 不同类型 | AI 驱动，无确定性命令形态，确定性降维为内部执行层 |
+| [09 · Copilot Studio](reports/09-copilot-studio.md) | 不同类型 | 纯 AI Agent 平台，AI 取代显式命令入口 |
+| [10 · 飞书智能伙伴 / 钉钉 AI 助理](reports/10-ai-assistant.md) | 不同类型 | AI 助理，Aily 有 skill_id 确定性 API 旁路 |
+| [11 · OpenAI Tool Calling](reports/11-openai-tool-calling.md) | 不同类型 | AI 工具调用标杆，无用户侧确定性通道 |
+| [12 · Claude Code Skills / MCP](reports/12-claude-code-skills.md) | 不同类型 | 本方案对立面；MCP Prompts 命令可对标 |
+| [13 · GitHub Copilot CLI](reports/13-ai-cli.md) | 不同类型 | `/` 命令混合（确定性+AI），业务确定性命令是空档 |
+| [14 · n8n / Zapier / Make / Coze / Dify](reports/14-automation-ipaas.md) | 不同类型 | 确定性工作流 = AI 工具层，命令前端层空白 |
 
 ---
 
@@ -253,10 +277,10 @@ docs/im-slash-command-research/
 | 事项 | 状态 | 说明 |
 |------|:---:|------|
 | 背景确认 | ✅ | 已与用户对齐（链路 / 组件状态 / 核心差异化） |
-| 调研计划对齐 | ⏳ 待办 | 目标 G1~G5、四类调研对象、维度 A~G 细化（见 §四） |
+| 调研计划对齐 | ✅ | 目标 G1~G5、四类调研对象、维度 A~G 已定（见 §四） |
 | 分支创建 | ✅ | `feature/im-slash-command-research` |
-| 信息采集 | ⏳ 待办 | 需换环境执行外部公开信源采集 |
-| 报告撰写 | ⏳ 待办 | 待信息采集后按维度产出 |
-| 结论对齐 | ⏳ 待办 | 结论产出后与用户对齐，再决定是否正式立项 |
+| 信息采集 | ✅ | 14 份产品报告基于官方文档 / 官方渠道采集（见 §📑 文档导航） |
+| 报告撰写 | ✅ | `reports/01~14` + `summary.md` 均已产出 |
+| 结论对齐 | ⏳ 待办 | 结论已产出，待与用户对齐后决定是否正式立项 |
 
-> **下一步**：与用户对齐 §4 调研计划（四类对象、维度 A~G、对标矩阵），确认后可启动信息采集。
+> **下一步**：与用户对齐 `summary.md` 的结论建议（尤其「是否投入 / 如何投入 / 与 AI 的差异化切入点」），决定是否正式立项进入 SDDU 完整流程。
